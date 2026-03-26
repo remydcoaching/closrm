@@ -30,8 +30,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — ne jamais commiter les clés
+.env
+.env.local
+.env*.local
+
+# Claude Code
+.claude/
 
 # vercel
 .vercel
