@@ -16,7 +16,6 @@ import {
   ChevronRight,
   LogOut,
 } from 'lucide-react'
-import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -48,10 +47,14 @@ const NAV_ITEMS = [
   },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean
+  onToggle: () => void
+}
+
+export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [collapsed, setCollapsed] = useState(false)
 
   async function handleLogout() {
     const supabase = createClient()
@@ -64,7 +67,7 @@ export default function Sidebar() {
     <aside
       className={cn(
         'fixed left-0 top-0 h-screen bg-[#141414] border-r border-[#262626] flex flex-col transition-all duration-200 z-40',
-        collapsed ? 'w-[60px]' : 'w-[180px]'
+        collapsed ? 'w-[60px]' : 'w-[220px]'
       )}
     >
       {/* Logo */}
@@ -75,7 +78,7 @@ export default function Sidebar() {
           </span>
         )}
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={onToggle}
           className="text-[#A0A0A0] hover:text-white transition-colors ml-auto"
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
