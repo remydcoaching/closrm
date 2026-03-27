@@ -350,10 +350,12 @@ Claude Code maintient **obligatoirement** trois types de fichiers de suivi :
 ### Branches
 ```
 main          → production stable, jamais de push direct
-develop       → branche d'intégration commune
+develop       → BRANCHE PRINCIPALE de travail — point de départ de toutes les features
 feature/remy-*  → branches de Rémy
 feature/pierre-* → branches de Pierre
 ```
+
+> **`develop` est la branche principale de référence.** Toutes les branches feature partent de `develop` et y reviennent via PR. `main` ne reçoit que les releases validées.
 
 ### Règles
 1. **Toujours partir de `develop`** : `git checkout develop && git pull && git checkout -b feature/remy-ma-feature`
