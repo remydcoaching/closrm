@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-03-27
+> Dernière mise à jour : 2026-03-27 (T-004 Rémy — Module Leads)
 
 ---
 
@@ -22,8 +22,8 @@
 | Auth (login, register, reset, middleware, hooks) | Pierre | ✅ Terminé | T-002 |
 | Landing page | Pierre | ✅ Terminé | T-002 |
 | Refonte visuelle (design system vert) | Pierre | ✅ Terminé | T-002 |
-| Module Leads — Liste + API | Rémy | ⬜ Non démarré | — |
-| Module Leads — Fiche lead | Rémy | ⬜ Non démarré | — |
+| Module Leads — Liste + API | Rémy | ✅ Terminé | T-004 |
+| Module Leads — Fiche lead | Rémy | ✅ Terminé | T-004 |
 | Module Closing — API + Frontend | Pierre | ⬜ Non démarré | T-007 |
 | Module Follow-ups — API + Frontend | Pierre | ⬜ Non démarré | T-008 |
 | Intégration Meta Ads | Pierre | ⬜ Non démarré | T-013 |
@@ -70,9 +70,17 @@
 - [x] Pages auth refaites (glass card, glow, icônes dans inputs)
 - [x] Toutes les pages modules en placeholder
 
+### Module Leads (T-004 — Rémy)
+- [x] API `GET/POST /api/leads` (liste paginée + filtres + création)
+- [x] API `GET/PATCH/DELETE /api/leads/[id]` (détail + calls + follow_ups + soft delete)
+- [x] Validations Zod (`createLeadSchema`, `updateLeadSchema`, `leadFiltersSchema`)
+- [x] Page liste `/leads` (tableau dense, filtres, pagination, toggle "joint", actions)
+- [x] Fiche lead `/leads/[id]` (infos, statut, tags, notes auto-save, timeline, actions)
+- [x] Composants : `StatusBadge`, `SourceBadge`, `LeadFilters`, `LeadForm`, `CallScheduleModal`, `LeadDetail`
+
 ### Ce qui manque
-- [ ] Toutes les API routes (calls, follow-ups, leads, automations)
-- [ ] Tous les modules fonctionnels (closing, follow-ups, etc.)
+- [ ] API routes calls, follow-ups, automations (Pierre)
+- [ ] Modules Closing, Follow-ups (Pierre)
 - [ ] Intégrations tierces (Meta, Google, WhatsApp)
 - [ ] Test flow inscription complet (à vérifier manuellement)
 
@@ -82,8 +90,8 @@
 
 1. **Pierre** : T-007 — Module Closing (API + Frontend)
 2. **Pierre** : T-008 — Module Follow-ups (API + Frontend)
-3. **Rémy** : T-004 — Module Leads (API + Liste + Fiche lead)
-4. **Rémy** : T-003 — Dashboard d'accueil avec vraies données
+3. **Rémy** : T-003 — Dashboard d'accueil avec vraies données Supabase
+4. **Rémy** : T-011 — Module Statistiques
 
 ---
 
@@ -94,6 +102,7 @@
 | 2026-03-27 | Rémy | Setup initial projet | `main` |
 | 2026-03-27 | Pierre | T-001 — Roadmap & priorisation | `feature/pierre-fix-layout` |
 | 2026-03-27 | Pierre | T-002 — Auth + refonte visuelle | `feature/pierre-auth-system` |
+| 2026-03-27 | Rémy | T-004 — Module Leads (API + Liste + Fiche lead) | `feature/remy-module-leads` |
 
 ---
 
