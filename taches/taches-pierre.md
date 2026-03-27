@@ -9,7 +9,7 @@
 
 ### 1. T-002 · Auth — Finaliser le système
 **Priorité :** Critique (débloque tout)
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-03-27)
 
 **À faire :**
 - [ ] Tester flow complet : inscription → création workspace → redirection dashboard
@@ -184,7 +184,7 @@
 
 | # | Tâche | Priorité | Statut |
 |---|-------|----------|--------|
-| 1 | Auth | Critique | ⬜ |
+| 1 | Auth | Critique | ✅ |
 | 2 | Closing (API + Frontend) | Haute | ⬜ |
 | 3 | Follow-ups (API + Frontend) | Haute | ⬜ |
 | 4 | Automations (API + Frontend) | Moyenne | ⬜ |

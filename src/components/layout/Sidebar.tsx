@@ -1,28 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard,
-  Users,
-  Phone,
-  Bell,
-  BarChart2,
-  Database,
-  Zap,
-  Megaphone,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
+  LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
+  Zap, Megaphone, Settings, PanelLeftClose, PanelLeft, LogOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
 
-const NAV_ITEMS = [
+const NAV = [
   {
-    section: 'VENTES',
+    title: 'VENTES',
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Leads', href: '/leads', icon: Users },
@@ -33,30 +21,26 @@ const NAV_ITEMS = [
     ],
   },
   {
-    section: 'ACQUISITION',
+    title: 'ACQUISITION',
     items: [
       { label: 'Automations', href: '/acquisition/automations', icon: Zap },
       { label: 'Publicités', href: '/acquisition/publicites', icon: Megaphone },
     ],
   },
   {
-    section: 'COMPTE',
+    title: 'COMPTE',
     items: [
       { label: 'Paramètres', href: '/parametres/reglages', icon: Settings },
     ],
   },
 ]
 
-interface SidebarProps {
-  collapsed: boolean
-  onToggle: () => void
-}
-
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
+  const W = collapsed ? 64 : 220
 
-  async function handleLogout() {
+  async function logout() {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
@@ -64,71 +48,70 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }
 
   return (
-    <aside
-      className={cn(
-        'fixed left-0 top-0 h-screen bg-[#141414] border-r border-[#262626] flex flex-col transition-all duration-200 z-40',
-        collapsed ? 'w-[60px]' : 'w-[220px]'
-      )}
-    >
-      {/* Logo */}
-      <div className="flex items-center justify-between px-4 py-5 border-b border-[#262626]">
+    <aside style={{
+      position: 'fixed', left: 0, top: 0, bottom: 0, width: W,
+      background: '#0c0c0e', borderRight: '1px solid rgba(255,255,255,0.06)',
+      display: 'flex', flexDirection: 'column', zIndex: 40,
+      transition: 'width 0.2s ease',
+    }}>
+      {/* Header */}
+      <div style={{
+        height: 56, display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between',
+        padding: '0 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
+      }}>
         {!collapsed && (
-          <span className="text-lg font-bold text-white">
-            Clos<span className="text-[#E53E3E]">RM</span>
-          </span>
+          <Link href="/dashboard" style={{ fontSize: 18, fontWeight: 700, color: '#fff', textDecoration: 'none' }}>
+            Clos<span style={{ color: '#00C853' }}>RM</span>
+          </Link>
         )}
-        <button
-          onClick={onToggle}
-          className="text-[#A0A0A0] hover:text-white transition-colors ml-auto"
-        >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        <button onClick={onToggle} style={{
+          width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', cursor: 'pointer', color: '#666',
+        }}>
+          {collapsed ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
         </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2">
-        {NAV_ITEMS.map((group) => (
-          <div key={group.section} className="mb-4">
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 8px' }}>
+        {NAV.map((group) => (
+          <div key={group.title} style={{ marginBottom: 20 }}>
             {!collapsed && (
-              <p className="text-[10px] font-semibold text-[#A0A0A0] px-2 mb-1 tracking-wider">
-                {group.section}
-              </p>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#444', padding: '0 10px', marginBottom: 6, letterSpacing: '0.2em', textTransform: 'uppercase' as const }}>
+                {group.title}
+              </div>
             )}
-            <ul className="space-y-0.5">
-              {group.items.map((item) => {
-                const Icon = item.icon
-                const active = pathname === item.href || pathname.startsWith(item.href + '/')
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      title={collapsed ? item.label : undefined}
-                      className={cn(
-                        'flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm transition-colors',
-                        active
-                          ? 'bg-[#E53E3E]/15 text-[#E53E3E]'
-                          : 'text-[#A0A0A0] hover:text-white hover:bg-[#1A1A1A]'
-                      )}
-                    >
-                      <Icon size={16} className="shrink-0" />
-                      {!collapsed && <span className="truncate">{item.label}</span>}
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
+            {group.items.map((item) => {
+              const Icon = item.icon
+              const active = pathname === item.href || pathname.startsWith(item.href + '/')
+              return (
+                <Link key={item.href} href={item.href} title={collapsed ? item.label : undefined} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '8px 0' : '7px 10px',
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  borderRadius: 8, fontSize: 13, textDecoration: 'none', marginBottom: 2,
+                  color: active ? '#00C853' : '#888',
+                  background: active ? 'rgba(0,200,83,0.08)' : 'transparent',
+                  transition: 'all 0.15s ease',
+                }}>
+                  <Icon size={16} style={{ flexShrink: 0 }} />
+                  {!collapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{item.label}</span>}
+                </Link>
+              )
+            })}
           </div>
         ))}
       </nav>
 
       {/* Logout */}
-      <div className="p-2 border-t border-[#262626]">
-        <button
-          onClick={handleLogout}
-          title={collapsed ? 'Déconnexion' : undefined}
-          className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-[#A0A0A0] hover:text-white hover:bg-[#1A1A1A] transition-colors w-full"
-        >
-          <LogOut size={16} className="shrink-0" />
+      <div style={{ padding: 8, borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+        <button onClick={logout} title={collapsed ? 'Déconnexion' : undefined} style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          padding: collapsed ? '8px 0' : '7px 10px', justifyContent: collapsed ? 'center' : 'flex-start',
+          borderRadius: 8, fontSize: 13, color: '#888', background: 'transparent',
+          border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
+        }}>
+          <LogOut size={16} style={{ flexShrink: 0 }} />
           {!collapsed && <span>Déconnexion</span>}
         </button>
       </div>
