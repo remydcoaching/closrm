@@ -14,6 +14,7 @@ export interface User {
   role: 'coach' | 'setter' | 'closer'
   full_name: string
   avatar_url: string | null
+  created_at: string
 }
 
 // ─── Lead ───────────────────────────────────────────────────────────────────
