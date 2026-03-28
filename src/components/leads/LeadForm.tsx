@@ -1,0 +1,204 @@
+'use client'
+
+import { useState } from 'react'
+import { X, Loader2, Plus } from 'lucide-react'
+import { createLeadSchema } from '@/lib/validations/leads'
+import { Lead } from '@/types'
+
+interface LeadFormProps {
+  onClose: () => void
+  onCreated: (lead: Lead) => void
+}
+
+const inputStyle = {
+  width: '100%', boxSizing: 'border-box' as const,
+  padding: '8px 12px',
+  background: '#0f0f11', border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none',
+}
+
+const labelStyle = { fontSize: 12, color: '#888', marginBottom: 5, display: 'block' }
+
+export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
+  const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [tagInput, setTagInput] = useState('')
+  const [form, setForm] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    source: 'manuel' as const,
+    tags: [] as string[],
+    notes: '',
+  })
+
+  function set(field: string, value: string) {
+    setForm(prev => ({ ...prev, [field]: value }))
+    if (errors[field]) setErrors(prev => { const e = { ...prev }; delete e[field]; return e })
+  }
+
+  function addTag() {
+    const t = tagInput.trim().toLowerCase()
+    if (t && !form.tags.includes(t)) {
+      setForm(prev => ({ ...prev, tags: [...prev.tags, t] }))
+    }
+    setTagInput('')
+  }
+
+  function removeTag(tag: string) {
+    setForm(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const parsed = createLeadSchema.safeParse(form)
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {}
+      parsed.error.issues.forEach(i => {
+        if (i.path[0]) fieldErrors[String(i.path[0])] = i.message
+      })
+      setErrors(fieldErrors)
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed.data),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setErrors({ general: json.error?.formErrors?.[0] ?? 'Erreur lors de la création.' })
+        return
+      }
+      onCreated(json.data)
+      onClose()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100,
+      background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={{
+        background: '#0f0f11', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 14, padding: 28, width: '100%', maxWidth: 480,
+        maxHeight: '90vh', overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>Ajouter un lead</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Prénom *</label>
+              <input style={{ ...inputStyle, borderColor: errors.first_name ? '#ef4444' : 'rgba(255,255,255,0.08)' }}
+                value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="Jean" />
+              {errors.first_name && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.first_name}</p>}
+            </div>
+            <div>
+              <label style={labelStyle}>Nom</label>
+              <input style={inputStyle} value={form.last_name} onChange={e => set('last_name', e.target.value)} placeholder="Dupont" />
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Téléphone</label>
+            <input style={inputStyle} type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+33 6 00 00 00 00" />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Email</label>
+            <input style={{ ...inputStyle, borderColor: errors.email ? '#ef4444' : 'rgba(255,255,255,0.08)' }}
+              type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="jean@exemple.fr" />
+            {errors.email && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.email}</p>}
+          </div>
+
+          <div>
+            <label style={labelStyle}>Source</label>
+            <select value={form.source} onChange={e => set('source', e.target.value)}
+              style={{ ...inputStyle, cursor: 'pointer' }}>
+              <option value="manuel">Manuel</option>
+              <option value="facebook_ads">Facebook Ads</option>
+              <option value="instagram_ads">Instagram Ads</option>
+              <option value="formulaire">Formulaire</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Tags</label>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+              {form.tags.map(tag => (
+                <span key={tag} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 8px', borderRadius: 99, fontSize: 11,
+                  background: 'rgba(0,200,83,0.10)', color: '#00C853', border: '1px solid rgba(0,200,83,0.20)',
+                }}>
+                  {tag}
+                  <button type="button" onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#00C853', padding: 0, lineHeight: 1 }}>
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input style={{ ...inputStyle, flex: 1 }} value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+                placeholder="chaud, vip, referral..." />
+              <button type="button" onClick={addTag} style={{
+                padding: '8px 12px', background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
+                color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center',
+              }}>
+                <Plus size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Notes</label>
+            <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
+              rows={3} placeholder="Notes libres sur ce lead..."
+              style={{ ...inputStyle, resize: 'vertical' }} />
+          </div>
+
+          {errors.general && (
+            <p style={{ fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.08)', padding: '8px 12px', borderRadius: 8 }}>
+              {errors.general}
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8 }}>
+            <button type="button" onClick={onClose} style={{
+              padding: '8px 18px', borderRadius: 8, fontSize: 13,
+              border: '1px solid rgba(255,255,255,0.10)', background: 'transparent',
+              color: '#888', cursor: 'pointer',
+            }}>
+              Annuler
+            </button>
+            <button type="submit" disabled={loading} style={{
+              padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              background: loading ? 'rgba(0,200,83,0.5)' : '#00C853', border: 'none',
+              color: '#000', cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              {loading && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
+              Ajouter
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

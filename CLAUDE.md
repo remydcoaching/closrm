@@ -297,15 +297,66 @@ app/
 
 ---
 
+## 🤖 Protocole Claude Code — Travail à deux développeurs
+
+Ce projet est développé par **Rémy et Pierre travaillant séparément**, chacun via sa propre instance Claude Code. Ce protocole est **obligatoire** à chaque session.
+
+### Garde-fous obligatoires EN DÉBUT DE TÂCHE
+
+Avant d'écrire la moindre ligne de code, Claude Code **doit** :
+
+1. **Vérifier la branche courante** : `git branch --show-current`
+2. **Vérifier le statut Git** : `git status`
+3. **Vérifier si la branche est à jour avec le remote** : `git fetch origin && git log HEAD..origin/$(git branch --show-current) --oneline`
+   - Si des commits distants existent → **stopper et demander de faire un `git pull` avant de continuer**
+   - Si la branche courante est `main` ou `develop` → **stopper et demander de créer une branche feature**
+4. **Confirmer avec le développeur** que la branche de travail est la bonne avant de démarrer
+
+### Garde-fous obligatoires AVANT UN COMMIT
+
+Avant tout commit, Claude Code **doit** :
+
+1. Vérifier que la branche respecte la convention `feature/remy-*` ou `feature/pierre-*`
+2. Si la branche est incorrecte (ex : on est encore sur `develop`) → **ne pas committer**, proposer de créer la bonne branche et d'y basculer
+3. Vérifier que `.env.local` et `.env*.local` ne sont **jamais** inclus dans le commit
+4. Si la branche est correcte → procéder au commit normalement
+
+### Système de fichiers de suivi du projet
+
+Claude Code maintient **obligatoirement** trois types de fichiers de suivi :
+
+#### 1. Fichiers de tâches (`taches/tache-[N]-[description-courte].md`)
+- Créer un fichier par tâche dans le dossier `taches/`
+- Numérotation séquentielle globale (pas par développeur)
+- Contenu obligatoire : description, objectif, fichiers créés/modifiés, tâches liées, statut
+- Ne jamais supprimer un fichier de tâche terminé (archive historique)
+- **Si une spec brainstorming a été validée pour cette tâche** : ajouter une section `## Spec` dans le fichier de tâche avec le chemin vers le fichier spec (`docs/superpowers/specs/YYYY-MM-DD-*.md`) et un résumé en 2-3 lignes des décisions prises. Faire cela **immédiatement après validation de la spec**, avant de passer au plan d'implémentation.
+
+#### 2. Fichier d'état (`etat.md`)
+- Mis à jour **obligatoirement à la fin de chaque tâche**
+- Décrit où en est le projet : modules terminés, en cours, à faire
+- Indique qui a fait quoi et quand
+- Donne une vision claire de la direction du projet
+
+#### 3. Fichier d'améliorations (`ameliorations.md`)
+- Mis à jour **obligatoirement à la fin de chaque tâche**
+- Liste toutes les améliorations identifiées pendant la tâche
+- **RÈGLE ABSOLUE : aucune amélioration ne doit être implémentée sans validation explicite** du développeur concerné
+- Format : proposition + justification + priorité estimée
+
+---
+
 ## 🔄 Workflow GitHub (travail à deux)
 
 ### Branches
 ```
 main          → production stable, jamais de push direct
-develop       → branche d'intégration commune
+develop       → BRANCHE PRINCIPALE de travail — point de départ de toutes les features
 feature/remy-*  → branches de Rémy
 feature/pierre-* → branches de Pierre
 ```
+
+> **`develop` est la branche principale de référence.** Toutes les branches feature partent de `develop` et y reviennent via PR. `main` ne reçoit que les releases validées.
 
 ### Règles
 1. **Toujours partir de `develop`** : `git checkout develop && git pull && git checkout -b feature/remy-ma-feature`
