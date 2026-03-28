@@ -129,4 +129,23 @@ Chaque amélioration suit ce format :
 
 ---
 
+## T-011 Statistiques — Améliorations identifiées
+
+### A-011-01 · Queries stats : agrégation côté serveur via RPC Supabase
+**Priorité :** Moyenne
+**Contexte :** `fetchLeadsPerDay`, `fetchSourceData` et `fetchFunnelData` (DISTINCT) rapatrient toutes les lignes côté client pour agréger en JS. Sur un workspace avec 5000+ leads, la période "Tout" peut devenir lente.
+**Proposition :** Créer des fonctions Postgres via `supabase.rpc()` qui retournent directement les données agrégées.
+
+### A-011-02 · Recharts charts stats : gestion des erreurs Supabase
+**Priorité :** Basse
+**Contexte :** Les queries retournent `?? 0` / `?? []` sur erreur Supabase, produisant une page silencieusement vide plutôt qu'un message d'erreur.
+**Proposition :** Propager les erreurs Supabase et afficher un état d'erreur dans `StatsClient` si une query échoue.
+
+### A-011-03 · KpiCards stats vs dashboard : unifier le pattern formatter
+**Priorité :** Basse
+**Contexte :** `stats/kpi-cards.tsx` retourne `string` depuis ses formatters (via `String()`), tandis que `dashboard/kpi-cards.tsx` retourne `number | string`. Les deux composants co-existent sans conflit mais créent une légère incohérence.
+**Proposition :** Lors d'un prochain refactor, aligner les deux sur `string` (plus propre pour JSX).
+
+---
+
 *Mis à jour par Claude Code — ClosRM*
