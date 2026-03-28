@@ -161,7 +161,7 @@ export async function fetchFunnelData(workspaceId: string, period: number): Prom
     { label: 'Leads', count: totalLeads, pct: totalLeads > 0 ? 100 : 0, color: '#3b82f6' },
     { label: 'Setting', count: settingCount, pct: pct(settingCount), color: '#f59e0b' },
     { label: 'Closing', count: closingCount, pct: pct(closingCount), color: '#a855f7' },
-    { label: 'Closé ✅', count: closedCount, pct: pct(closedCount), color: '#00C853' },
+    { label: 'Closé', count: closedCount, pct: pct(closedCount), color: '#00C853' },
   ]
 }
 
