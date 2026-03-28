@@ -58,6 +58,8 @@ export async function fetchStatsKpis(workspaceId: string, period: number): Promi
     .eq('workspace_id', workspaceId)
   if (since) leadsQuery = leadsQuery.gte('created_at', since)
 
+  // Every row in `calls` = a booked appointment (setting or closing).
+  // Raw dial attempts are tracked in leads.call_attempts, not here.
   let callsQuery = supabase
     .from('calls')
     .select('id', { count: 'exact', head: true })
@@ -156,7 +158,7 @@ export async function fetchFunnelData(workspaceId: string, period: number): Prom
   const pct = (n: number) => totalLeads > 0 ? Math.round((n / totalLeads) * 100) : 0
 
   return [
-    { label: 'Leads', count: totalLeads, pct: 100, color: '#3b82f6' },
+    { label: 'Leads', count: totalLeads, pct: totalLeads > 0 ? 100 : 0, color: '#3b82f6' },
     { label: 'Setting', count: settingCount, pct: pct(settingCount), color: '#f59e0b' },
     { label: 'Closing', count: closingCount, pct: pct(closingCount), color: '#a855f7' },
     { label: 'Closé ✅', count: closedCount, pct: pct(closedCount), color: '#00C853' },
