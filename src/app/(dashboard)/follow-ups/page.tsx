@@ -4,21 +4,25 @@ import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Plus, Search, CheckCircle, XCircle, ExternalLink, Trash2, Clock } from 'lucide-react'
+import { Plus, Search, Zap, Trash2 } from 'lucide-react'
 import { FollowUp, Lead, FollowUpStatus, FollowUpChannel } from '@/types'
-import FollowUpStatusBadge, { FU_STATUS_CONFIG } from '@/components/follow-ups/FollowUpStatusBadge'
+import FollowUpStatusBadge from '@/components/follow-ups/FollowUpStatusBadge'
 import ChannelBadge from '@/components/follow-ups/ChannelBadge'
 import AddFollowUpModal from '@/components/follow-ups/AddFollowUpModal'
+import FollowUpActionModal, { type FollowUpAction } from '@/components/follow-ups/FollowUpActionModal'
+import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
+import LeadSidePanel from '@/components/shared/LeadSidePanel'
 
 type FUWithLead = FollowUp & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'> }
-type Tab = 'pending' | 'overdue' | 'done' | 'all'
+type Tab = 'today' | 'overdue' | 'upcoming' | 'done' | 'all'
 
 const TAB_CONFIG: Record<Tab, { label: string; color: string }> = {
-  pending: { label: 'En attente', color: '#f59e0b' },
+  today: { label: "Aujourd'hui", color: '#00C853' },
   overdue: { label: 'En retard', color: '#ef4444' },
-  done: { label: 'Terminés', color: '#00C853' },
-  all: { label: 'Tous', color: '#888' },
+  upcoming: { label: 'À venir', color: '#3b82f6' },
+  done: { label: 'Terminés', color: '#888' },
+  all: { label: 'Tous', color: '#666' },
 }
 
 const th: React.CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 10, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.15em', borderBottom: '1px solid rgba(255,255,255,0.06)' }
@@ -28,12 +32,15 @@ export default function FollowUpsPage() {
   const [followUps, setFollowUps] = useState<FUWithLead[]>([])
   const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 25, total_pages: 0 })
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('pending')
+  const [tab, setTab] = useState<Tab>('today')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [counts, setCounts] = useState({ pending: 0, overdue: 0, done: 0, all: 0 })
+  const [counts, setCounts] = useState({ today: 0, overdue: 0, upcoming: 0, done: 0, all: 0 })
   const [showAdd, setShowAdd] = useState(false)
+  const [actionTarget, setActionTarget] = useState<FUWithLead | null>(null)
+  const [scheduleLeadId, setScheduleLeadId] = useState<FUWithLead | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FUWithLead | null>(null)
+  const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
 
   const fetchFU = useCallback(async () => {
     setLoading(true)
@@ -42,11 +49,29 @@ export default function FollowUpsPage() {
     params.set('per_page', '25')
     params.set('sort', 'scheduled_at')
 
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
     const now = new Date().toISOString()
-    if (tab === 'pending') { params.set('status', 'en_attente'); params.set('scheduled_after', now); params.set('order', 'asc') }
-    else if (tab === 'overdue') { params.set('status', 'en_attente'); params.set('scheduled_before', now); params.set('order', 'desc') }
-    else if (tab === 'done') { params.set('status', 'fait,annule'); params.set('order', 'desc') }
-    else { params.set('order', 'desc') }
+
+    if (tab === 'today') {
+      params.set('status', 'en_attente')
+      params.set('scheduled_after', todayStart.toISOString())
+      params.set('scheduled_before', todayEnd.toISOString())
+      params.set('order', 'asc')
+    } else if (tab === 'overdue') {
+      params.set('status', 'en_attente')
+      params.set('scheduled_before', todayStart.toISOString())
+      params.set('order', 'desc')
+    } else if (tab === 'upcoming') {
+      params.set('status', 'en_attente')
+      params.set('scheduled_after', todayEnd.toISOString())
+      params.set('order', 'asc')
+    } else if (tab === 'done') {
+      params.set('status', 'fait,annule')
+      params.set('order', 'desc')
+    } else {
+      params.set('order', 'desc')
+    }
 
     if (search) params.set('search', search)
 
@@ -56,22 +81,38 @@ export default function FollowUpsPage() {
   }, [tab, page, search])
 
   const fetchCounts = useCallback(async () => {
-    const now = new Date().toISOString()
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
     const qs: [Tab, string][] = [
-      ['pending', `status=en_attente&scheduled_after=${now}&per_page=1`],
-      ['overdue', `status=en_attente&scheduled_before=${now}&per_page=1`],
+      ['today', `status=en_attente&scheduled_after=${todayStart.toISOString()}&scheduled_before=${todayEnd.toISOString()}&per_page=1`],
+      ['overdue', `status=en_attente&scheduled_before=${todayStart.toISOString()}&per_page=1`],
+      ['upcoming', `status=en_attente&scheduled_after=${todayEnd.toISOString()}&per_page=1`],
       ['done', `status=fait,annule&per_page=1`],
       ['all', `per_page=1`],
     ]
     const r = await Promise.all(qs.map(async ([, q]) => { const res = await fetch(`/api/follow-ups?${q}`); if (res.ok) { const j = await res.json(); return j.meta.total }; return 0 }))
-    setCounts({ pending: r[0], overdue: r[1], done: r[2], all: r[3] })
+    setCounts({ today: r[0], overdue: r[1], upcoming: r[2], done: r[3], all: r[4] })
   }, [])
 
   useEffect(() => { fetchFU(); fetchCounts() }, [fetchFU, fetchCounts])
   useEffect(() => { setPage(1) }, [tab, search])
 
-  async function markStatus(fu: FUWithLead, status: FollowUpStatus) {
-    await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
+  async function handleAction(fu: FUWithLead, action: FollowUpAction) {
+    if (action.type === 'schedule_call') {
+      await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'fait' }) })
+      setScheduleLeadId(fu)
+      return
+    } else if (action.type === 'reschedule') {
+      // Marquer l'actuel comme fait + créer un nouveau follow-up à la date choisie
+      await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'fait' }) })
+      await fetch('/api/follow-ups', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: fu.lead.id, reason: action.reason, scheduled_at: action.date, channel: action.channel }),
+      })
+    } else if (action.type === 'dead') {
+      await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'annule' }) })
+      await fetch(`/api/leads/${fu.lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'dead' }) })
+    }
     fetchFU(); fetchCounts()
   }
 
@@ -148,7 +189,7 @@ export default function FollowUpsPage() {
                   const scheduled = new Date(fu.scheduled_at)
                   const overdue = fu.status === 'en_attente' && scheduled < now
                   return (
-                    <tr key={fu.id} onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                    <tr key={fu.id} style={{ cursor: 'pointer', transition: 'background 0.15s' }} onClick={() => setSidePanelLeadId(fu.lead.id)} onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                       <td style={td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           {overdue && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />}
@@ -159,27 +200,24 @@ export default function FollowUpsPage() {
                         </div>
                       </td>
                       <td style={td}>
-                        <Link href={`/leads/${fu.lead.id}`} style={{ color: '#fff', fontWeight: 500, textDecoration: 'none' }}>{fu.lead.first_name} {fu.lead.last_name}</Link>
+                        <div style={{ color: '#fff', fontWeight: 500 }}>{fu.lead.first_name} {fu.lead.last_name}</div>
                         <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>{fu.lead.phone || fu.lead.email || '—'}</div>
                       </td>
                       <td style={{ ...td, color: '#ccc', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fu.reason}</td>
                       <td style={td}><ChannelBadge channel={fu.channel} /></td>
                       <td style={td}><FollowUpStatusBadge status={fu.status} /></td>
-                      <td style={{ ...td, textAlign: 'right' }}>
+                      <td style={{ ...td, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           {fu.status === 'en_attente' && (
-                            <>
-                              <button onClick={() => markStatus(fu, 'fait')} title="Marquer fait" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <CheckCircle size={14} color="#00C853" />
-                              </button>
-                              <button onClick={() => markStatus(fu, 'annule')} title="Annuler" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <XCircle size={14} color="#f59e0b" />
-                              </button>
-                            </>
+                            <button onClick={() => setActionTarget(fu)} title="Traiter" style={{
+                              height: 30, paddingLeft: 10, paddingRight: 10, borderRadius: 8,
+                              border: '1px solid rgba(0,200,83,0.2)', background: 'rgba(0,200,83,0.06)',
+                              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                              color: '#00C853', fontSize: 11, fontWeight: 600,
+                            }}>
+                              <Zap size={12} />Traiter
+                            </button>
                           )}
-                          <Link href={`/leads/${fu.lead.id}`} title="Voir fiche" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <ExternalLink size={14} color="#888" />
-                          </Link>
                           <button onClick={() => setDeleteTarget(fu)} title="Supprimer" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Trash2 size={14} color="#ef4444" />
                           </button>
@@ -205,7 +243,10 @@ export default function FollowUpsPage() {
 
       {/* Modals */}
       {showAdd && <AddFollowUpModal onClose={() => setShowAdd(false)} onCreated={() => { fetchFU(); fetchCounts() }} />}
+      {actionTarget && <FollowUpActionModal followUp={actionTarget} onClose={() => setActionTarget(null)} onAction={(action) => handleAction(actionTarget, action)} />}
+      {scheduleLeadId && <CallScheduleModal lead={scheduleLeadId.lead} onClose={() => { setScheduleLeadId(null); fetchFU(); fetchCounts() }} onScheduled={() => { setScheduleLeadId(null); fetchFU(); fetchCounts() }} />}
       {deleteTarget && <ConfirmModal title="Supprimer le follow-up" message={`Supprimer le follow-up pour ${deleteTarget.lead.first_name} ${deleteTarget.lead.last_name} ?`} confirmLabel="Supprimer" confirmDanger onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />}
+      {sidePanelLeadId && <LeadSidePanel leadId={sidePanelLeadId} onClose={() => setSidePanelLeadId(null)} />}
     </div>
   )
 }

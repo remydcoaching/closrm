@@ -9,14 +9,16 @@ import CallCalendar from '@/components/closing/CallCalendar'
 import CallOutcomeModal from '@/components/closing/CallOutcomeModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
+import LeadSidePanel from '@/components/shared/LeadSidePanel'
 
 type CallWithLead = Call & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'> }
-type Tab = 'upcoming' | 'overdue' | 'done' | 'cancelled'
+type Tab = 'today' | 'upcoming' | 'overdue' | 'done' | 'cancelled'
 
 const TAB_CONFIG: Record<Tab, { label: string; color: string }> = {
+  today: { label: "Aujourd'hui", color: '#00C853' },
   upcoming: { label: 'À venir', color: '#3b82f6' },
   overdue: { label: 'À actualiser', color: '#ef4444' },
-  done: { label: 'Traités', color: '#00C853' },
+  done: { label: 'Traités', color: '#888' },
   cancelled: { label: 'Annulés / Absents', color: '#f97316' },
 }
 
@@ -24,23 +26,26 @@ export default function ClosingPage() {
   const [calls, setCalls] = useState<CallWithLead[]>([])
   const [meta, setMeta] = useState({ total: 0, page: 1, per_page: 25, total_pages: 0 })
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('upcoming')
+  const [tab, setTab] = useState<Tab>('today')
   const [view, setView] = useState<'list' | 'calendar'>('list')
   const [filters, setFilters] = useState({ search: '', type: null as CallType | null, dateStart: '', dateEnd: '' })
   const [page, setPage] = useState(1)
-  const [counts, setCounts] = useState({ upcoming: 0, overdue: 0, done: 0, cancelled: 0 })
+  const [counts, setCounts] = useState({ today: 0, upcoming: 0, overdue: 0, done: 0, cancelled: 0 })
   const [outcomeTarget, setOutcomeTarget] = useState<CallWithLead | null>(null)
   const [rescheduleTarget, setRescheduleTarget] = useState<CallWithLead | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CallWithLead | null>(null)
+  const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
 
   const buildParams = useCallback((t: Tab, p: number) => {
     const params = new URLSearchParams()
     params.set('page', String(p))
     params.set('per_page', '25')
     params.set('sort', 'scheduled_at')
-    const now = new Date().toISOString()
-    if (t === 'upcoming') { params.set('outcome', 'pending'); params.set('scheduled_after', now); params.set('order', 'asc') }
-    else if (t === 'overdue') { params.set('outcome', 'pending'); params.set('scheduled_before', now); params.set('order', 'desc') }
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
+    if (t === 'today') { params.set('outcome', 'pending'); params.set('scheduled_after', todayStart.toISOString()); params.set('scheduled_before', todayEnd.toISOString()); params.set('order', 'asc') }
+    else if (t === 'upcoming') { params.set('outcome', 'pending'); params.set('scheduled_after', todayEnd.toISOString()); params.set('order', 'asc') }
+    else if (t === 'overdue') { params.set('outcome', 'pending'); params.set('scheduled_before', todayStart.toISOString()); params.set('order', 'desc') }
     else if (t === 'done') { params.set('outcome', 'done'); params.set('order', 'desc') }
     else { params.set('outcome', 'cancelled,no_show'); params.set('order', 'desc') }
     if (filters.type) params.set('type', filters.type)
@@ -56,15 +61,17 @@ export default function ClosingPage() {
   }, [tab, page, buildParams])
 
   const fetchCounts = useCallback(async () => {
-    const now = new Date().toISOString()
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
     const qs: [Tab, string][] = [
-      ['upcoming', `outcome=pending&scheduled_after=${now}&per_page=1`],
-      ['overdue', `outcome=pending&scheduled_before=${now}&per_page=1`],
+      ['today', `outcome=pending&scheduled_after=${todayStart.toISOString()}&scheduled_before=${todayEnd.toISOString()}&per_page=1`],
+      ['upcoming', `outcome=pending&scheduled_after=${todayEnd.toISOString()}&per_page=1`],
+      ['overdue', `outcome=pending&scheduled_before=${todayStart.toISOString()}&per_page=1`],
       ['done', `outcome=done&per_page=1`],
       ['cancelled', `outcome=cancelled,no_show&per_page=1`],
     ]
     const r = await Promise.all(qs.map(async ([, q]) => { const res = await fetch(`/api/calls?${q}`); if (res.ok) { const j = await res.json(); return j.meta.total }; return 0 }))
-    setCounts({ upcoming: r[0], overdue: r[1], done: r[2], cancelled: r[3] })
+    setCounts({ today: r[0], upcoming: r[1], overdue: r[2], done: r[3], cancelled: r[4] })
   }, [])
 
   useEffect(() => { fetchCalls(); fetchCounts() }, [fetchCalls, fetchCounts])
@@ -122,7 +129,7 @@ export default function ClosingPage() {
 
       <div style={{ background: '#0f0f11', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, overflow: 'hidden' }}>
         {view === 'list' ? (
-          <CallTable calls={calls} loading={loading} onOutcome={setOutcomeTarget} onReschedule={setRescheduleTarget} onDelete={setDeleteTarget} />
+          <CallTable calls={calls} loading={loading} onOutcome={setOutcomeTarget} onReschedule={setRescheduleTarget} onDelete={setDeleteTarget} onLeadClick={setSidePanelLeadId} />
         ) : (
           <div style={{ padding: 16 }}><CallCalendar calls={calls} loading={loading} onCallClick={setOutcomeTarget} /></div>
         )}
@@ -139,6 +146,7 @@ export default function ClosingPage() {
       {outcomeTarget && <CallOutcomeModal call={outcomeTarget} onClose={() => setOutcomeTarget(null)} onUpdated={() => { fetchCalls(); fetchCounts() }} />}
       {rescheduleTarget && <CallScheduleModal lead={rescheduleTarget.lead} onClose={() => setRescheduleTarget(null)} onScheduled={() => { fetch(`/api/calls/${rescheduleTarget.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'cancelled' }) }); setRescheduleTarget(null); fetchCalls(); fetchCounts() }} />}
       {deleteTarget && <ConfirmModal title="Supprimer l'appel" message={`Supprimer l'appel avec ${deleteTarget.lead.first_name} ${deleteTarget.lead.last_name} ?`} confirmLabel="Supprimer" confirmDanger onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />}
+      {sidePanelLeadId && <LeadSidePanel leadId={sidePanelLeadId} onClose={() => setSidePanelLeadId(null)} />}
     </div>
   )
 }

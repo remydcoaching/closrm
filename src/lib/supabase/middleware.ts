@@ -48,7 +48,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (user && isPublicRoute(pathname) && pathname !== '/') {
+  if (user && isPublicRoute(pathname) && pathname !== '/' && !pathname.startsWith('/reset-password')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

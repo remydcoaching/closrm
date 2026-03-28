@@ -61,15 +61,27 @@ Créer le module Closing (gestion des appels setting/closing) et le module Follo
 
 ---
 
-## Bugs connus à régler
+## Corrigé dans cette session (feature/pierre-fix-bugs)
 
-- [ ] Bouton "Reprogrammer" dans Closing — vérifier que l'ancien call est bien annulé et le nouveau créé
-- [ ] RDV planifié dans 2 jours qui se retrouve dans "Annulés" — vérifier la logique des onglets
-- [ ] Modale résultat "En attente" — ne devrait probablement pas être une option (c'est le défaut)
-- [ ] Vérifier que le changement de statut lead fonctionne correctement dans tous les cas
-- [ ] CallCalendar — les fragments React `<>` dans le grid peuvent causer des problèmes de rendu
-- [ ] Sélecteur de date/heure — vérifier le rendu sur Safari
+- [x] Onglets "Aujourd'hui" ajoutés sur Closing et Follow-ups
+- [x] Logique des onglets corrigée (today/upcoming/overdue basés sur dates du jour)
+- [x] Cliquer sur une ligne → ouvre le profil lead en panneau latéral (side panel)
+- [x] Side panel éditable : statut lead, phone, email, tags, notes (auto-save)
+- [x] Side panel : modifier date/heure des calls et follow-ups
+- [x] Side panel : changer outcome des calls (En attente/Fait/Annulé/Absent)
+- [x] Side panel : changer statut des follow-ups (En attente/Fait/Annulé)
+- [x] Bouton "Traiter" sur follow-ups → modale d'action (Planifier RDV / Relancer avec date modifiable / Nurturing / Dead)
+- [x] Plus de "Marquer fait" seul — chaque action a une suite logique
+- [x] CallScheduleModal refait (date/heure séparés, icônes)
+- [x] Reset password fix — middleware ne redirige plus /reset-password, page update gère le token recovery
+- [x] Bouton "Voir fiche" retiré des actions (toute la ligne est cliquable)
+
+## Bugs restants à régler
+
+- [ ] Vérifier que le changement auto de statut lead fonctionne (done+closing → clos, etc.)
+- [ ] CallCalendar — fragments React `<>` dans le grid (rendu potentiellement cassé)
 - [ ] Tester le flow complet : créer lead → planifier call → marquer résultat → vérifier statut lead
+- [ ] Tester reset password flow complet (email → lien → nouveau mdp)
 
 ---
 
