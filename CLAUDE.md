@@ -330,6 +330,7 @@ Claude Code maintient **obligatoirement** trois types de fichiers de suivi :
 - Numérotation séquentielle globale (pas par développeur)
 - Contenu obligatoire : description, objectif, fichiers créés/modifiés, tâches liées, statut
 - Ne jamais supprimer un fichier de tâche terminé (archive historique)
+- **Si une spec brainstorming a été validée pour cette tâche** : ajouter une section `## Spec` dans le fichier de tâche avec le chemin vers le fichier spec (`docs/superpowers/specs/YYYY-MM-DD-*.md`) et un résumé en 2-3 lignes des décisions prises. Faire cela **immédiatement après validation de la spec**, avant de passer au plan d'implémentation.
 
 #### 2. Fichier d'état (`etat.md`)
 - Mis à jour **obligatoirement à la fin de chaque tâche**

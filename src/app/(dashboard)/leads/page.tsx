@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { Plus, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar } from 'lucide-react'
+import LeadSidePanel from '@/components/shared/LeadSidePanel'
 import { Lead, LeadStatus, LeadSource } from '@/types'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
@@ -61,6 +61,7 @@ export default function LeadsPage() {
   const [tagInput, setTagInput] = useState('')
   const [confirm, setConfirm] = useState<{ title: string; message: string; danger?: boolean; onConfirm: () => void } | null>(null)
   const [scheduleTarget, setScheduleTarget] = useState<Lead | null>(null)
+  const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
   const dropdownPanelRef = useRef<HTMLDivElement>(null)
   const tagInputRef = useRef<HTMLInputElement>(null)
 
@@ -370,14 +371,14 @@ export default function LeadsPage() {
                       }}>
                         <Calendar size={11} /> Planifier
                       </button>
-                      <Link href={`/leads/${lead.id}`} title="Voir la fiche" style={{
+                      <button onClick={() => setSidePanelLeadId(lead.id)} title="Voir le profil" style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
                         background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)',
-                        color: '#ccc', textDecoration: 'none', whiteSpace: 'nowrap',
+                        color: '#ccc', cursor: 'pointer', whiteSpace: 'nowrap',
                       }}>
                         <ExternalLink size={11} /> Voir
-                      </Link>
+                      </button>
                       <button onClick={() => archiveLead(lead)} title="Archiver" style={{
                         display: 'inline-flex', alignItems: 'center',
                         padding: '5px 7px', borderRadius: 6,
@@ -546,6 +547,10 @@ export default function LeadsPage() {
           onConfirm={confirm.onConfirm}
           onCancel={() => setConfirm(null)}
         />
+      )}
+
+      {sidePanelLeadId && (
+        <LeadSidePanel leadId={sidePanelLeadId} onClose={() => setSidePanelLeadId(null)} />
       )}
     </div>
   )

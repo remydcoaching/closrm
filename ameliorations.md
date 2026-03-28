@@ -81,7 +81,28 @@ Chaque amélioration suit ce format :
 - **Effort estimé :** Élevé
 - **Statut :** En attente de validation
 
-### A-009 — Automations CTA Instagram : réponse DM/Story → lead + nurturing auto
+### A-010 — Dashboard : variations % par rapport à la période précédente
+- **Contexte :** Identifié pendant T-003 (dashboard)
+- **Description :** Afficher sur chaque KPI card la variation par rapport à la période précédente (ex: "+12% vs 30j précédents"). Nécessite une 2ème query pour la période N-1 en parallèle.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-011 — Dashboard : "Statut changé" dans l'activité récente
+- **Contexte :** Identifié pendant T-003 (dashboard)
+- **Description :** L'activité récente n'affiche que les leads créés et appels loggués. Ajouter les changements de statut nécessiterait une table d'audit dédiée (`lead_events`). Utile pour avoir un historique complet.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen (nouvelle table + trigger SQL + query)
+- **Statut :** En attente de validation
+
+### A-012 — Dashboard : borne de date sur l'activité récente
+- **Contexte :** Identifié pendant T-003 (code review)
+- **Description :** La query d'activité récente fait 10 leads + 10 calls sans borne de date. Si un coach a 10 leads vieux de 6 mois et 0 appels récents, la timeline sera biaisée. Ajouter `.gte('created_at', sevenDaysAgo)` pour limiter aux 7 derniers jours.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-013 — Automations CTA Instagram : réponse DM/Story → lead + nurturing auto
 - **Contexte :** Discussion avec Pierre pendant T-007
 - **Description :** Quand un prospect répond à un CTA en story ou DM (ex: "envoie CHAUSSETTE en DM"), il est automatiquement créé comme lead et une séquence de nurturing se lance (envoi de contenu, qualification, prise de RDV). Nécessite : webhook Instagram DM, détection de mots-clés, lancement auto de séquences de follow-ups, et potentiellement un builder de séquences.
 - **Priorité estimée :** Haute
