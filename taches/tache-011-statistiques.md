@@ -1,7 +1,7 @@
 # Tâche 011 — Module Statistiques
 
 **Développeur :** Rémy
-**Statut :** 🔄 En cours (Tasks 8-9 restantes)
+**Statut :** ✅ Terminé
 **Branche :** `feature/remy-dashboard`
 **Dernière mise à jour :** 2026-03-28
 
@@ -36,8 +36,8 @@ Décisions prises lors du brainstorming :
 | `src/components/stats/funnel-chart.tsx` | ✅ Créé |
 | `src/components/stats/source-chart.tsx` | ✅ Créé |
 | `src/components/stats/meta-section.tsx` | ✅ Créé |
-| `src/components/stats/stats-client.tsx` | ⬜ À créer (Task 8) |
-| `src/app/(dashboard)/statistiques/page.tsx` | ⬜ À modifier (Task 9) |
+| `src/components/stats/stats-client.tsx` | ✅ Créé |
+| `src/app/(dashboard)/statistiques/page.tsx` | ✅ Modifié |
 
 ## Déviations du plan documentées
 

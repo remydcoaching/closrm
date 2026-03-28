@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-03-28 (T-003 Rémy — Dashboard d'accueil)
+> Dernière mise à jour : 2026-03-28 (T-011 Rémy — Module Statistiques)
 
 ---
 
@@ -28,7 +28,7 @@
 | Module Closing — API + Frontend | Pierre | 🔄 En cours (bugs à fix) | T-007 |
 | Module Follow-ups — API + Frontend | Pierre | 🔄 En cours (bugs à fix) | T-007 |
 | Intégration Meta Ads | Pierre | ⬜ Non démarré | T-013 |
-| Module Statistiques | Rémy | ⬜ Non démarré | — |
+| Module Statistiques | Rémy | ✅ Terminé | T-011 |
 | Module Automations | Pierre | ⬜ Non démarré | T-014 |
 | Intégration Google Agenda | Rémy | ⬜ Non démarré | — |
 | Module Publicités (Meta Ads dashboard) | Rémy | ⬜ Non démarré | — |
@@ -88,6 +88,15 @@
 - [x] LeadSidePanel au clic lead (dashboard + liste leads)
 - [x] Message de bienvenue avec prénom du coach
 
+### Module Statistiques (T-011 — Rémy)
+- [x] Page `/statistiques` branchée Supabase (vraies données)
+- [x] 5 KPIs : leads totaux, calls bookés, taux de booking, deals closés, win rate
+- [x] Sélecteur période 7j / 30j / 90j / Tout
+- [x] Graphique leads par jour (Recharts BarChart)
+- [x] Funnel de conversion en 4 étapes (Recharts BarChart)
+- [x] Répartition par source (Recharts PieChart donut + légende)
+- [x] Section Meta Ads (banner si non connecté, métriques si connecté)
+
 ### Ce qui manque
 - [ ] API routes calls, follow-ups, automations (Pierre)
 - [ ] Modules Closing, Follow-ups (Pierre)
@@ -99,8 +108,8 @@
 ## Prochaines étapes prioritaires
 
 1. **Pierre** : T-007 — Module Closing (API + Frontend) — bugs à fix
-2. **Rémy** : T-011 — Module Statistiques
-3. **Pierre** : T-008 — Module Follow-ups (API + Frontend)
+2. **Pierre** : T-008 — Module Follow-ups (API + Frontend)
+3. **Rémy** : Intégration Google Agenda ou Module Publicités Meta
 
 ---
 
@@ -114,6 +123,7 @@
 | 2026-03-27 | Rémy | T-004 — Module Leads (API + Liste + Fiche lead) | `feature/remy-module-leads` |
 | 2026-03-28 | Pierre | T-007 — Module Closing + Follow-ups (en cours) | `feature/pierre-closing` |
 | 2026-03-28 | Rémy | T-003 — Dashboard d'accueil avec vraies données Supabase | `feature/remy-dashboard` |
+| 2026-03-28 | Rémy | T-011 — Module Statistiques (page + queries + 6 composants) | `feature/remy-dashboard` |
 
 ---
 
