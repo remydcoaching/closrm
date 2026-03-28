@@ -148,4 +148,44 @@ Chaque amélioration suit ce format :
 
 ---
 
+## T-012 — Base de données
+
+### A-012-01 · Export > 1000 contacts
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-012 (vue globale contacts)
+**Description :** Actuellement plafonné à 1000 contacts dans le CSV. Si le coach a beaucoup de leads, ajouter une route `/api/contacts/export` dédiée qui streame le CSV côté serveur. Pas d'AbortController sur le fetch export actuel.
+**Proposition :** Créer un endpoint streamable et ajouter annulation côté client via AbortController.
+
+### A-012-02 · group_by=tags
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-012 (groupement de contacts)
+**Description :** Retiré de V1 car un lead peut avoir N tags — tri non trivial. À implémenter via une vue agrégée Supabase ou une requête avec DISTINCT ON.
+**Proposition :** Créer une fonction Postgres RPC `get_contacts_grouped_by_tags()`.
+
+### A-012-03 · Suppression en masse
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-012 (actions sur les contacts)
+**Description :** Sélectionner des contacts dans le tableau et les archiver (statut Dead) en une action. Nécessite des checkboxes et un bouton d'action.
+**Proposition :** Ajouter checkboxes au tableau, état sélection global, bouton "Archiver sélection".
+
+### A-012-04 · Groupes collapsibles
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-012 (groupement par statut)
+**Description :** Les séparateurs de groupe actuellement flat. Rendre cliquables pour réduire/afficher les groupes individuels.
+**Proposition :** Ajouter state `collapsedGroups` et icône chevron dans les headers de groupe.
+
+### A-012-05 · ILIKE injection dans filtres
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-012 (sécurité filtres)
+**Description :** Le filtre search dans `/api/contacts` (et `/api/leads`) interpole la chaîne directement dans le filtre PostgREST. Un input avec une virgule pourrait malformer le filtre. Sanitiser les caractères PostgREST (`,`, `.`, `(`, `)`) avant interpolation.
+**Proposition :** Créer une fonction `sanitizePostgRESTFilter()` et l'appliquer sur tous les filtres texte.
+
+### A-012-06 · Meta interface dupliquée
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-012 (code review)
+**Description :** Type `Meta` (total/page/per_page/total_pages) est redéfinie localement dans `leads/page.tsx` et `base-de-donnees/page.tsx`. Exporter depuis `src/types/index.ts`.
+**Proposition :** Centraliser dans `src/types/index.ts` et importer partout.
+
+---
+
 *Mis à jour par Claude Code — ClosRM*
