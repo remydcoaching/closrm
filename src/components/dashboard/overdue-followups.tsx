@@ -1,9 +1,11 @@
-import Link from 'next/link'
+'use client'
+
 import { Clock } from 'lucide-react'
 import type { OverdueFollowUp } from '@/lib/dashboard/queries'
 
 interface OverdueFollowUpsProps {
   followUps: OverdueFollowUp[]
+  onLeadClick: (leadId: string) => void
 }
 
 const CHANNEL_LABEL: Record<string, string> = {
@@ -12,7 +14,7 @@ const CHANNEL_LABEL: Record<string, string> = {
   manuel: 'Manuel',
 }
 
-export default function OverdueFollowUps({ followUps }: OverdueFollowUpsProps) {
+export default function OverdueFollowUps({ followUps, onLeadClick }: OverdueFollowUpsProps) {
   const card: React.CSSProperties = {
     background: '#0f0f11',
     border: '1px solid rgba(255,255,255,0.06)',
@@ -54,13 +56,13 @@ export default function OverdueFollowUps({ followUps }: OverdueFollowUpsProps) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {followUps.map((fu) => (
-            <Link
+            <button
               key={fu.id}
-              href={`/leads/${fu.lead_id}`}
+              onClick={() => onLeadClick(fu.lead_id)}
               style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '8px 10px', background: '#0a0a0c', borderRadius: 8,
-                textDecoration: 'none',
+                border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%',
               }}
             >
               <div>
@@ -72,7 +74,7 @@ export default function OverdueFollowUps({ followUps }: OverdueFollowUpsProps) {
               <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
                 -{fu.days_overdue}j
               </span>
-            </Link>
+            </button>
           ))}
         </div>
       )}

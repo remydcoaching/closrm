@@ -1,4 +1,5 @@
-import Link from 'next/link'
+'use client'
+
 import { Phone } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -6,6 +7,7 @@ import type { UpcomingCall } from '@/lib/dashboard/queries'
 
 interface UpcomingCallsProps {
   calls: UpcomingCall[]
+  onLeadClick: (leadId: string) => void
 }
 
 const CATEGORY_CONFIG = {
@@ -14,7 +16,7 @@ const CATEGORY_CONFIG = {
   upcoming: { label: 'À venir', color: '#888', bg: 'rgba(255,255,255,0.05)', border: '#333' },
 }
 
-export default function UpcomingCalls({ calls }: UpcomingCallsProps) {
+export default function UpcomingCalls({ calls, onLeadClick }: UpcomingCallsProps) {
   const card: React.CSSProperties = {
     background: '#0f0f11',
     border: '1px solid rgba(255,255,255,0.06)',
@@ -31,7 +33,7 @@ export default function UpcomingCalls({ calls }: UpcomingCallsProps) {
           <Phone size={14} color="#f59e0b" />
           <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Prochains appels</span>
         </div>
-        <span style={{ fontSize: 10, color: '#555' }}>Aujourd'hui + 7j</span>
+        <span style={{ fontSize: 10, color: '#555' }}>Aujourd&apos;hui + 7j</span>
       </div>
 
       {calls.length === 0 ? (
@@ -44,14 +46,16 @@ export default function UpcomingCalls({ calls }: UpcomingCallsProps) {
           {calls.map((call) => {
             const cfg = CATEGORY_CONFIG[call.category]
             return (
-              <Link
+              <button
                 key={call.id}
-                href={`/leads/${call.lead_id}`}
+                onClick={() => onLeadClick(call.lead_id)}
                 style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '8px 10px', background: '#0a0a0c',
-                  borderRadius: 8, borderLeft: `2px solid ${cfg.border}`,
-                  textDecoration: 'none',
+                  borderRadius: 8,
+                  border: 'none',
+                  borderLeft: `2px solid ${cfg.border}`,
+                  cursor: 'pointer', textAlign: 'left', width: '100%',
                 }}
               >
                 <div>
@@ -67,7 +71,7 @@ export default function UpcomingCalls({ calls }: UpcomingCallsProps) {
                 }}>
                   {cfg.label}
                 </span>
-              </Link>
+              </button>
             )
           })}
         </div>
