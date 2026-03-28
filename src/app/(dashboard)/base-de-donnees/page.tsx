@@ -34,9 +34,11 @@ export default function BaseDeDonneesPage() {
   const [filters, setFilters] = useState<ContactFilters>(DEFAULT_FILTERS)
   const [showExport, setShowExport] = useState(false)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   const fetchContacts = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     try {
       const params = new URLSearchParams()
       params.set('page', String(page))
@@ -55,7 +57,11 @@ export default function BaseDeDonneesPage() {
       if (res.ok) {
         setContacts(json.data)
         setMeta(json.meta)
+      } else {
+        setFetchError(json.error ?? 'Erreur lors du chargement des contacts')
       }
+    } catch {
+      setFetchError('Impossible de contacter le serveur')
     } finally {
       setLoading(false)
     }
@@ -92,6 +98,17 @@ export default function BaseDeDonneesPage() {
       <div style={{ marginBottom: 16 }}>
         <DatabaseFilters onFiltersChange={setFilters} />
       </div>
+
+      {/* Erreur */}
+      {fetchError && (
+        <div style={{
+          marginBottom: 16, padding: '10px 14px', borderRadius: 8,
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+          color: '#ef4444', fontSize: 12,
+        }}>
+          {fetchError}
+        </div>
+      )}
 
       {/* Tableau */}
       <DatabaseTable
