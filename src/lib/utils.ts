@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { LeadStatus, CallOutcome, FollowUpStatus } from '@/types'
+import { LeadStatus, CallOutcome, CallType, FollowUpStatus } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -47,6 +47,23 @@ export const CALL_OUTCOME_LABELS: Record<CallOutcome, string> = {
   done: 'Fait',
   cancelled: 'Annulé',
   no_show: 'Absent',
+}
+
+export const CALL_OUTCOME_COLORS: Record<CallOutcome, { color: string; bg: string }> = {
+  pending: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  done: { color: '#00C853', bg: 'rgba(0,200,83,0.12)' },
+  cancelled: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  no_show: { color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+}
+
+export const CALL_TYPE_LABELS: Record<CallType, string> = {
+  setting: 'Setting',
+  closing: 'Closing',
+}
+
+export const CALL_TYPE_COLORS: Record<CallType, { color: string; bg: string }> = {
+  setting: { color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  closing: { color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
 }
 
 export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpStatus, string> = {

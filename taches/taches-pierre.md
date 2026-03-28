@@ -101,8 +101,8 @@
 - [ ] `PATCH /api/automations/[id]` — modifier / activer / désactiver
 - [ ] `DELETE /api/automations/[id]` — supprimer
 
-**Triggers :** new_lead, rdv_planifie, rdv_in_x_hours, lead_status_changed, followup_pending_x_days
-**Actions :** send_whatsapp, send_email, create_followup, change_lead_status, send_notification
+**Triggers :** new_lead, rdv_planifie, rdv_in_x_hours, lead_status_changed, followup_pending_x_days, à envoyer "x mot" en. story ou en dm ou a commenter sous uns post. 
+**Actions :** send_whatsapp, send_email, create_followup, change_lead_status, send_notification, send message instagram
 
 **Frontend (page `/acquisition/automations`) :**
 - [ ] Liste des automations avec toggle actif/inactif
@@ -185,8 +185,8 @@
 | # | Tâche | Priorité | Statut |
 |---|-------|----------|--------|
 | 1 | Auth | Critique | ✅ |
-| 2 | Closing (API + Frontend) | Haute | ⬜ |
-| 3 | Follow-ups (API + Frontend) | Haute | ⬜ |
+| 2 | Closing (API + Frontend) | Haute | 🔄 |
+| 3 | Follow-ups (API + Frontend) | Haute | 🔄 |
 | 4 | Automations (API + Frontend) | Moyenne | ⬜ |
 | 5 | Intégration Meta Ads | Moyenne | ⬜ |
 | 6 | Notifications | Moyenne | ⬜ |
