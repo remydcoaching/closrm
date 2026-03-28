@@ -67,6 +67,27 @@ Chaque amélioration suit ce format :
 - **Effort estimé :** Faible
 - **Statut :** En attente de validation
 
+### A-007 — Sources de leads : Follow Ads + Instagram DM channel
+- **Contexte :** Discussion avec Pierre pendant T-007
+- **Description :** Ajouter `follow_ads` comme source de lead + `instagram_dm` comme channel de follow-up. Permet de filtrer les relances Instagram dans la page follow-ups. Simple à implémenter (ajout dans les enums SQL + types TS + filtres UI).
+- **Priorité estimée :** Haute
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-008 — Import auto des leads Follow Ads via API Instagram
+- **Contexte :** Discussion avec Pierre pendant T-007
+- **Description :** À terme, les prospects qui follow le compte via une pub seront loggés automatiquement comme leads via l'API Instagram/Meta. Nécessite l'intégration de l'API Instagram Graph pour détecter les nouveaux followers issus des pubs.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Élevé
+- **Statut :** En attente de validation
+
+### A-009 — Automations CTA Instagram : réponse DM/Story → lead + nurturing auto
+- **Contexte :** Discussion avec Pierre pendant T-007
+- **Description :** Quand un prospect répond à un CTA en story ou DM (ex: "envoie CHAUSSETTE en DM"), il est automatiquement créé comme lead et une séquence de nurturing se lance (envoi de contenu, qualification, prise de RDV). Nécessite : webhook Instagram DM, détection de mots-clés, lancement auto de séquences de follow-ups, et potentiellement un builder de séquences.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Élevé
+- **Statut :** En attente de validation
+
 ---
 
 ## Améliorations validées (à implémenter)

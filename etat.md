@@ -24,8 +24,8 @@
 | Refonte visuelle (design system vert) | Pierre | ✅ Terminé | T-002 |
 | Module Leads — Liste + API | Rémy | ✅ Terminé | T-004 |
 | Module Leads — Fiche lead | Rémy | ✅ Terminé | T-004 |
-| Module Closing — API + Frontend | Pierre | ⬜ Non démarré | T-007 |
-| Module Follow-ups — API + Frontend | Pierre | ⬜ Non démarré | T-008 |
+| Module Closing — API + Frontend | Pierre | 🔄 En cours (bugs à fix) | T-007 |
+| Module Follow-ups — API + Frontend | Pierre | 🔄 En cours (bugs à fix) | T-007 |
 | Intégration Meta Ads | Pierre | ⬜ Non démarré | T-013 |
 | Module Statistiques | Rémy | ⬜ Non démarré | — |
 | Module Automations | Pierre | ⬜ Non démarré | T-014 |
@@ -103,6 +103,7 @@
 | 2026-03-27 | Pierre | T-001 — Roadmap & priorisation | `feature/pierre-fix-layout` |
 | 2026-03-27 | Pierre | T-002 — Auth + refonte visuelle | `feature/pierre-auth-system` |
 | 2026-03-27 | Rémy | T-004 — Module Leads (API + Liste + Fiche lead) | `feature/remy-module-leads` |
+| 2026-03-28 | Pierre | T-007 — Module Closing + Follow-ups (en cours) | `feature/pierre-closing` |
 
 ---
 
