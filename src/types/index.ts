@@ -138,7 +138,7 @@ export interface ContactRow extends Lead {
   last_call_at: string | null
 }
 
-export type ContactGroupBy = 'status' | 'source' | 'tags'
+export type ContactGroupBy = 'status' | 'source'
 
 export interface ContactFilters {
   search: string

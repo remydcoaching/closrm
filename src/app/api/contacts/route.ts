@@ -83,32 +83,17 @@ export async function GET(request: NextRequest) {
 
     // Transformer : agréger les calls en nb_calls + last_call_at
     const contacts: ContactRow[] = (data ?? []).map((lead) => {
-      const calls = (lead.calls as { id: string; scheduled_at: string }[]) ?? []
+      const { calls: rawCalls, ...leadFields } = lead
+      const calls = (rawCalls as { id: string; scheduled_at: string }[]) ?? []
       const last_call_at = calls.length > 0
-        ? calls.reduce((max, c) => c.scheduled_at > max ? c.scheduled_at : max, calls[0].scheduled_at)
+        ? [...calls].sort((a, b) => b.scheduled_at.localeCompare(a.scheduled_at))[0].scheduled_at
         : null
 
       return {
-        id: lead.id,
-        workspace_id: lead.workspace_id,
-        first_name: lead.first_name,
-        last_name: lead.last_name,
-        phone: lead.phone,
-        email: lead.email,
-        status: lead.status,
-        source: lead.source,
-        tags: lead.tags,
-        reached: lead.reached,
-        notes: lead.notes,
-        meta_campaign_id: lead.meta_campaign_id,
-        meta_adset_id: lead.meta_adset_id,
-        meta_ad_id: lead.meta_ad_id,
-        call_attempts: lead.call_attempts,
-        created_at: lead.created_at,
-        updated_at: lead.updated_at,
+        ...leadFields,
         nb_calls: calls.length,
         last_call_at,
-      }
+      } as ContactRow
     })
 
     const total = count ?? 0
