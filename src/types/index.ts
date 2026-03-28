@@ -132,21 +132,7 @@ export interface Integration {
 
 // ─── Database / Contacts ─────────────────────────────────────────────────────
 
-export interface ContactRow {
-  id: string
-  workspace_id: string
-  first_name: string
-  last_name: string
-  phone: string
-  email: string | null
-  status: LeadStatus
-  source: LeadSource
-  tags: string[]
-  reached: boolean
-  notes: string | null
-  meta_campaign_id: string | null
-  created_at: string
-  updated_at: string
+export interface ContactRow extends Lead {
   // Agrégats JOIN calls
   nb_calls: number
   last_call_at: string | null
