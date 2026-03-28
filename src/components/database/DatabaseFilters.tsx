@@ -57,8 +57,6 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
   const [search, setSearch] = useState('')
   const [statuses, setStatuses] = useState<LeadStatus[]>([])
   const [sources, setSources] = useState<LeadSource[]>([])
-  const [tags, setTags] = useState<string[]>([])
-  const [tagInput, setTagInput] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [reached, setReached] = useState<'all' | 'true' | 'false'>('all')
@@ -83,10 +81,10 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      onFiltersChange({ search, statuses, sources, tags, date_from: dateFrom, date_to: dateTo, reached, group_by: groupBy })
+      onFiltersChange({ search, statuses, sources, tags: [], date_from: dateFrom, date_to: dateTo, reached, group_by: groupBy })
     }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [search, statuses, sources, tags, dateFrom, dateTo, reached, groupBy, onFiltersChange])
+  }, [search, statuses, sources, dateFrom, dateTo, reached, groupBy, onFiltersChange])
 
   function openDd(e: React.MouseEvent<HTMLButtonElement>, type: DropdownType) {
     if (openDropdown?.type === type) { setOpenDropdown(null); return }
@@ -102,21 +100,10 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
     setSources(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
   }
 
-  function addTag() {
-    const t = tagInput.trim().toLowerCase()
-    if (!t || tags.includes(t)) { setTagInput(''); return }
-    setTags(prev => [...prev, t])
-    setTagInput('')
-  }
-
-  function removeTag(t: string) {
-    setTags(prev => prev.filter(x => x !== t))
-  }
-
-  const hasActiveFilters = statuses.length > 0 || sources.length > 0 || tags.length > 0 || dateFrom || dateTo || reached !== 'all' || groupBy !== ''
+  const hasActiveFilters = search !== '' || statuses.length > 0 || sources.length > 0 || dateFrom || dateTo || reached !== 'all' || groupBy !== ''
 
   function resetAll() {
-    setStatuses([]); setSources([]); setTags([]); setTagInput('')
+    setStatuses([]); setSources([])
     setDateFrom(''); setDateTo(''); setReached('all'); setGroupBy('')
     setSearch('')
   }
@@ -168,7 +155,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
         ...dropdownBtn,
         ...(reached !== 'all' ? { borderColor: 'rgba(0,200,83,0.4)', color: '#00C853' } : {}),
       }}>
-        {reached === 'all' ? 'Joint' : reached === 'true' ? 'Joint ✓' : 'Non joint'} <ChevronDown size={11} />
+        {reached === 'all' ? 'Joint' : reached === 'true' ? 'Joint (oui)' : 'Non joint'} <ChevronDown size={11} />
       </button>
 
       {/* Grouper par */}
