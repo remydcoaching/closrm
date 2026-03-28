@@ -129,3 +129,38 @@ export interface Integration {
   connected_at: string | null
   is_active: boolean
 }
+
+// ─── Database / Contacts ─────────────────────────────────────────────────────
+
+export interface ContactRow {
+  id: string
+  workspace_id: string
+  first_name: string
+  last_name: string
+  phone: string
+  email: string | null
+  status: LeadStatus
+  source: LeadSource
+  tags: string[]
+  reached: boolean
+  notes: string | null
+  meta_campaign_id: string | null
+  created_at: string
+  updated_at: string
+  // Agrégats JOIN calls
+  nb_calls: number
+  last_call_at: string | null
+}
+
+export type ContactGroupBy = 'status' | 'source' | 'tags'
+
+export interface ContactFilters {
+  search: string
+  statuses: LeadStatus[]
+  sources: LeadSource[]
+  tags: string[]
+  date_from: string
+  date_to: string
+  reached: 'all' | 'true' | 'false'
+  group_by: ContactGroupBy | ''
+}
