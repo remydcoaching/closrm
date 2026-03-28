@@ -52,6 +52,8 @@ export async function fetchKpis(workspaceId: string, period: number): Promise<Da
       .from('calls')
       .select('id', { count: 'exact', head: true })
       .eq('workspace_id', workspaceId)
+      .eq('outcome', 'pending')
+      .eq('type', 'closing')
       .gte('created_at', sinceIso),
     supabase
       .from('leads')
@@ -75,21 +77,21 @@ export async function fetchUpcomingCalls(workspaceId: string): Promise<UpcomingC
   const supabase = await createClient()
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString()
   const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Récupère : appels en retard (outcome null + date passée) + appels dans les 7 prochains jours
+  // Récupère : appels en retard (outcome null + date passée, max 30j) + appels dans les 7 prochains jours
   const { data } = await supabase
     .from('calls')
     .select('id, lead_id, type, scheduled_at, outcome, leads(first_name, last_name)')
     .eq('workspace_id', workspaceId)
     .or(
-      `and(outcome.is.null,scheduled_at.lt.${todayStart}),` +
+      `and(outcome.is.null,scheduled_at.gte.${thirtyDaysAgo},scheduled_at.lt.${todayStart}),` +
       `and(scheduled_at.gte.${todayStart},scheduled_at.lte.${in7Days})`
     )
     .order('scheduled_at', { ascending: true })
     .limit(6)
-
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString()
 
   return (data ?? []).map((row) => {
     const lead = row.leads as unknown as { first_name: string; last_name: string }
@@ -167,7 +169,7 @@ export async function fetchRecentActivity(workspaceId: string): Promise<Activity
     events.push({
       id: `lead-${lead.id}`,
       type: 'new_lead',
-      description: `${lead.first_name} ${lead.last_name} ajouté(e) (${lead.source.replace('_', ' ')})`,
+      description: `${lead.first_name} ${lead.last_name} ajouté(e) (${lead.source.replaceAll('_', ' ')})`,
       created_at: lead.created_at,
     })
   }
