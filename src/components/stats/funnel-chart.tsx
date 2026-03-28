@@ -37,8 +37,8 @@ export default function FunnelChart({ data }: FunnelChartProps) {
           contentStyle={{ background: '#141416', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: '#aaa' }}
           cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-          formatter={(value: number, _name: string, props: { payload?: FunnelData }) => [
-            `${value} (${props.payload?.pct ?? 0}%)`,
+          formatter={(value, _name, props) => [
+            `${value ?? 0} (${(props.payload as FunnelData | undefined)?.pct ?? 0}%)`,
             'Leads',
           ]}
         />
@@ -46,7 +46,7 @@ export default function FunnelChart({ data }: FunnelChartProps) {
           <LabelList
             dataKey="pct"
             position="top"
-            formatter={(v: number) => v > 0 ? `${v}%` : ''}
+            formatter={(v) => (v as number) > 0 ? `${v}%` : ''}
             style={{ fontSize: 10, fill: '#888' }}
           />
           {data.map((entry) => (

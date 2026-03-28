@@ -38,7 +38,10 @@ export default function SourceChart({ data }: SourceChartProps) {
           </Pie>
           <Tooltip
             contentStyle={{ background: '#141416', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
-            formatter={(value: number) => [`${value} (${Math.round((value / total) * 100)}%)`, '']}
+            formatter={(value) => {
+              const n = value as number
+              return [`${n} (${Math.round((n / total) * 100)}%)`, '']
+            }}
           />
         </PieChart>
       </ResponsiveContainer>
