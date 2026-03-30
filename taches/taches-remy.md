@@ -1,7 +1,7 @@
 # Tâches Rémy — ClosRM V1
 
 > Toutes les tâches de Rémy, dans l'ordre. Chaque module = API + Frontend, autonome.
-> Dernière mise à jour : 2026-03-27
+> Dernière mise à jour : 2026-03-30
 
 ---
 
@@ -9,111 +9,76 @@
 
 ### 1. T-004 · Module Leads — API + Frontend
 **Priorité :** Critique (cœur du CRM)
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-03-27)
 
-**API (`/api/leads`) :**
-- [ ] `GET /api/leads` — liste paginée + filtres (status, source, search, tags, date range)
-- [ ] `POST /api/leads` — créer un lead (ajout manuel)
-- [ ] `GET /api/leads/[id]` — détail avec calls et follow-ups associés
-- [ ] `PATCH /api/leads/[id]` — modifier (statut, infos, tags, notes)
-- [ ] `DELETE /api/leads/[id]` — supprimer / archiver
-- [ ] `GET /api/leads/stats` — KPIs agrégés (count par statut, source, période)
-
-**Spécifications API :**
-- Pagination : `?page=1&per_page=25`
-- Filtres : `?status=nouveau,setting_planifie&source=facebook_ads&search=dupont&tag=chaud`
-- Tri : `?sort=created_at&order=desc`
-- Réponse : `{ data: Lead[], meta: { total, page, per_page, total_pages } }`
-
-**Frontend — Liste Leads (page `/leads`) :**
-- [ ] Tableau avec colonnes : date création, prénom/nom, téléphone, email, source, nb tentatives, joint (toggle), statut (badge), tags, actions
-- [ ] Filtres : par statut, source, tags, recherche texte
-- [ ] Actions par lead : Planifier appel, Voir fiche, Archiver
-- [ ] Bouton "Ajouter un lead" → modale de création
-- [ ] Pagination
-
-**Frontend — Fiche Lead (page `/leads/[id]`) :**
-- [ ] Infos contact complètes (prénom, nom, phone, email, source)
-- [ ] Historique de tous les appels (date, durée, résultat, notes)
-- [ ] Timeline des interactions (changements statut, appels, follow-ups)
-- [ ] Bouton "Appeler" → log auto tentative (incrémente call_attempts)
-- [ ] Bouton "Planifier RDV" → modale
-- [ ] Champ notes libre éditable
-- [ ] Statut actuel + historique des changements
-- [ ] Tags éditables (ajout/suppression)
-- [ ] Source publicitaire (campagne, ad set, ad — si Meta connecté)
-
-**Composants à créer :**
-- `src/components/leads/leads-table.tsx`
-- `src/components/leads/lead-filters.tsx`
-- `src/components/leads/add-lead-modal.tsx`
-- `src/components/leads/lead-status-badge.tsx`
-- `src/components/leads/lead-source-badge.tsx`
-- `src/components/leads/lead-info-card.tsx`
-- `src/components/leads/lead-call-history.tsx`
-- `src/components/leads/lead-timeline.tsx`
-- `src/components/leads/lead-notes.tsx`
-- `src/components/leads/lead-tags-editor.tsx`
-- `src/components/leads/schedule-call-modal.tsx`
+- [x] API GET/POST /api/leads (liste paginée + filtres + création)
+- [x] API GET/PATCH/DELETE /api/leads/[id] (détail + calls + follow_ups + soft delete)
+- [x] Page liste /leads (tableau dense, filtres, pagination, toggle joint, actions)
+- [x] Fiche lead /leads/[id] (infos, statut, tags, notes, timeline, actions)
+- [x] Composants : StatusBadge, SourceBadge, LeadFilters, LeadForm, CallScheduleModal, LeadDetail
+- [x] LeadSidePanel au clic lead (dashboard + liste leads)
 
 ---
 
 ### 2. T-003 · Dashboard d'accueil
 **Priorité :** Haute
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-03-28)
 
-**Frontend (page `/dashboard`) :**
-- [ ] Cards KPIs : nouveaux leads, appels planifiés, deals closés, taux closing
-- [ ] Liste des prochains appels (aujourd'hui)
-- [ ] Liste des follow-ups en retard
-- [ ] Accès rapide aux actions (ajouter lead, planifier appel)
-- [ ] Message de bienvenue avec nom du coach
-- [ ] Sélecteur de période (7j / 30j / 90j)
-
-**Composants à créer :**
-- `src/components/dashboard/stats-card.tsx`
-- `src/components/dashboard/upcoming-calls.tsx`
-- `src/components/dashboard/pending-followups.tsx`
-
-**Note :** Le dashboard affiche des données de plusieurs tables (leads, calls, follow_ups). Rémy crée ses propres queries Supabase directement, pas besoin de passer par les API de Pierre.
+- [x] KPI cards branchées Supabase (nouveaux leads, appels planifiés, deals closés, taux closing)
+- [x] Sélecteur de période 7j/30j/90j
+- [x] Prochains appels (en retard + aujourd'hui + 7j à venir)
+- [x] Follow-ups en retard
+- [x] Activité récente (leads créés + appels loggués)
+- [x] Message de bienvenue avec prénom du coach
 
 ---
 
 ### 3. T-011 · Module Statistiques
 **Priorité :** Moyenne
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-03-28)
 
-**Frontend (page `/statistiques`) :**
-- [ ] KPIs : leads totaux, calls bookés + taux, deals closés + win rate
-- [ ] Sélecteur période : 7j / 30j / 90j / tout
-- [ ] Graphique leads par jour (Recharts — line chart)
-- [ ] Funnel conversion visuel : leads → setting → closing → closé (bar chart)
-- [ ] Performance par source : Facebook vs Instagram vs Manuel (pie chart)
-- [ ] Coût par lead, ROAS (si Meta connecté — masqué sinon)
-
-**Composants à créer :**
-- `src/components/stats/kpi-cards.tsx`
-- `src/components/stats/leads-chart.tsx`
-- `src/components/stats/funnel-chart.tsx`
-- `src/components/stats/source-chart.tsx`
-- `src/components/stats/period-selector.tsx`
+- [x] Page /statistiques branchée Supabase (vraies données)
+- [x] 5 KPIs : leads totaux, calls bookés, taux de booking, deals closés, win rate
+- [x] Sélecteur période 7j / 30j / 90j / Tout
+- [x] Graphique leads par jour (Recharts BarChart)
+- [x] Funnel de conversion 4 étapes (Recharts BarChart)
+- [x] Répartition par source (Recharts PieChart donut + légende)
+- [x] Section Meta Ads (banner si non connecté, métriques si connecté)
 
 ---
 
 ### 4. T-012 · Base de données (vue globale)
 **Priorité :** Moyenne
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-03-28)
 
-**Frontend (page `/base-de-donnees`) :**
-- [ ] Recherche full-text (nom, email, phone)
-- [ ] Filtres avancés : statut, source, tags, date range, joint/pas joint
-- [ ] Export CSV (téléchargement fichier)
-- [ ] Historique complet par contact (lien vers fiche lead)
-- [ ] Segmentation : grouper par statut, source, tags
+- [x] API GET /api/contacts (recherche + filtres)
+- [x] Page /base-de-donnees (tableau complet)
+- [x] Recherche full-text (nom, email, phone)
+- [x] Filtres avancés : statut, source, tags, date range
+- [x] Export CSV (télécharger fichier)
+- [x] DatabaseFilters + DatabaseTable + ExportModal
 
 ---
 
-### 5. T-015 · Intégration Google Agenda
+### 5. T-013 · Intégration Meta Ads
+**Priorité :** Haute
+**Statut :** ⬜ Non démarré
+
+- [ ] OAuth Meta Business (bouton Connecter dans Paramètres)
+- [ ] Webhook /api/webhooks/meta pour recevoir leads temps réel
+- [ ] Mapping Meta lead → table leads
+- [ ] Stocker credentials chiffrés dans table integrations
+- [ ] Client Meta Marketing API
+- [ ] Endpoint stats campagnes (budget, dépensé, CPL)
+
+**Fichiers à créer :**
+- `src/app/api/webhooks/meta/route.ts`
+- `src/app/api/integrations/meta/route.ts`
+- `src/lib/meta/client.ts`
+
+---
+
+### 6. T-015 · Intégration Google Agenda
 **Priorité :** Moyenne
 **Statut :** ⬜ Non démarré
 
@@ -128,11 +93,10 @@
 
 ---
 
-### 6. T-017 · Module Publicités (dashboard Meta Ads)
-**Priorité :** Basse
+### 7. T-017 · Module Publicités (dashboard Meta Ads)
+**Priorité :** Moyenne (dépend de T-013)
 **Statut :** ⬜ Non démarré
 
-**Frontend (page `/acquisition/publicites`) :**
 - [ ] Budget pub du mois + dépensé
 - [ ] Leads générés + coût par lead
 - [ ] Performance par plateforme (Facebook / Instagram)
@@ -142,25 +106,36 @@
 
 ---
 
+### 8. T-020 · Module Emails (séquences + broadcast)
+**Priorité :** Moyenne
+**Statut :** ⬜ Non démarré
+
+- [ ] Séquences automatiques (type Mailerlite)
+- [ ] Broadcast à une liste segmentée
+- [ ] Templates d'emails
+- [ ] Stats : taux d'ouverture, clics, désinscriptions
+
+**Fichiers à créer :**
+- `src/app/(dashboard)/acquisition/emails/`
+- `src/app/api/emails/route.ts`
+- `src/components/emails/`
+- `src/lib/email/`
+
+---
+
 ## Résumé
 
 | # | Tâche | Priorité | Statut |
 |---|-------|----------|--------|
-| 1 | Leads — API + Liste + Fiche (cœur CRM) | Critique | ⬜ |
-| 2 | Dashboard d'accueil | Haute | ⬜ |
-| 3 | Statistiques | Moyenne | ⬜ |
-| 4 | Base de données | Moyenne | ⬜ |
-| 5 | Intégration Google Agenda | Moyenne | ⬜ |
-| 6 | Publicités (dashboard Meta) | Basse | ⬜ |
+| 1 | Leads (T-004) | Critique | ✅ |
+| 2 | Dashboard (T-003) | Haute | ✅ |
+| 3 | Statistiques (T-011) | Moyenne | ✅ |
+| 4 | Base de données (T-012) | Moyenne | ✅ |
+| 5 | Intégration Meta Ads (T-013) | Haute | ⬜ |
+| 6 | Intégration Google Agenda (T-015) | Moyenne | ⬜ |
+| 7 | Publicités dashboard (T-017) | Moyenne | ⬜ |
+| 8 | Emails séquences + broadcast (T-020) | Moyenne | ⬜ |
 
 ---
 
-## Note importante
-
-Pour les API routes, Rémy utilise le même pattern que Pierre :
-- Importer `getWorkspaceId()` depuis `src/lib/supabase/get-workspace.ts` (créé par Pierre dans T-002)
-- Si Pierre n'a pas encore push ce fichier, créer une version locale temporaire
-
----
-
-*Créé le 2026-03-27 — ClosRM*
+*Mis à jour le 2026-03-30 — ClosRM*
