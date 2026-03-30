@@ -207,7 +207,7 @@ export function parseLeadFields(fields: MetaLeadField[]): ParsedLead {
 
     const mapped = FIELD_ALIASES[key]
     if (mapped) {
-      (result as Record<string, string | null>)[mapped] = value || null
+      result[mapped] = value || null
     }
   }
 
