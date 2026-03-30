@@ -4,6 +4,7 @@ export interface Workspace {
   id: string
   name: string
   owner_id: string
+  timezone: string
   created_at: string
 }
 
@@ -91,31 +92,106 @@ export interface FollowUp {
   created_at: string
 }
 
-// ─── Automation ──────────────────────────────────────────────────────────────
+// ─── Workflow (replaces Automation) ──────────────────────────────────────────
 
-export type AutomationTrigger =
+export type WorkflowStatus = 'brouillon' | 'actif' | 'inactif'
+
+export type WorkflowTriggerType =
+  // LEADS
   | 'new_lead'
-  | 'rdv_planifie'
-  | 'rdv_in_x_hours'
   | 'lead_status_changed'
+  | 'tag_added'
+  | 'tag_removed'
+  | 'deal_won'
+  // CALLS
+  | 'call_scheduled'
+  | 'call_in_x_hours'
+  | 'call_no_show'
+  | 'call_outcome_logged'
+  // FOLLOW-UPS
   | 'followup_pending_x_days'
+  // INSTAGRAM (future T-021)
+  | 'new_follower'
+  | 'dm_keyword'
+  | 'comment_keyword'
+  // BOOKING (future T-022)
+  | 'booking_created'
+  | 'booking_cancelled'
 
-export type AutomationAction =
-  | 'send_whatsapp'
+export type WorkflowActionType =
   | 'send_email'
+  | 'send_whatsapp'
+  | 'send_dm_instagram'
   | 'create_followup'
   | 'change_lead_status'
+  | 'add_tag'
+  | 'remove_tag'
   | 'send_notification'
+  | 'facebook_conversions_api'
 
-export interface Automation {
+export type WorkflowStepType = 'action' | 'delay' | 'condition'
+
+export type DelayUnit = 'minutes' | 'hours' | 'days'
+
+export type ConditionOperator = 'equals' | 'not_equals' | 'contains' | 'not_contains'
+
+export interface Workflow {
   id: string
   workspace_id: string
-  trigger_type: AutomationTrigger
+  name: string
+  description: string | null
+  trigger_type: WorkflowTriggerType
   trigger_config: Record<string, unknown>
-  action_type: AutomationAction
-  action_config: Record<string, unknown>
-  is_active: boolean
+  status: WorkflowStatus
+  execution_count: number
+  last_run_at: string | null
+  template_id: string | null
   created_at: string
+  updated_at: string
+}
+
+export interface WorkflowStep {
+  id: string
+  workflow_id: string
+  step_order: number
+  step_type: WorkflowStepType
+  action_type: WorkflowActionType | null
+  action_config: Record<string, unknown>
+  delay_value: number | null
+  delay_unit: DelayUnit | null
+  condition_field: string | null
+  condition_operator: ConditionOperator | null
+  condition_value: string | null
+  on_true_step: number | null
+  on_false_step: number | null
+  created_at: string
+}
+
+export interface WorkflowExecution {
+  id: string
+  workflow_id: string
+  workspace_id: string
+  lead_id: string | null
+  trigger_data: Record<string, unknown>
+  status: 'running' | 'completed' | 'failed' | 'waiting'
+  current_step: number
+  error_message: string | null
+  started_at: string
+  completed_at: string | null
+  resume_at: string | null
+}
+
+export interface WorkflowExecutionLog {
+  id: string
+  execution_id: string
+  step_id: string | null
+  step_order: number
+  step_type: string
+  action_type: string | null
+  status: 'success' | 'failed' | 'skipped'
+  result: Record<string, unknown>
+  error_message: string | null
+  executed_at: string
 }
 
 // ─── Integration ─────────────────────────────────────────────────────────────
