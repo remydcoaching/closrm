@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClosRM — Checklist Etat du Projet</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0e0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:20px 20px 80px}
+h1{text-align:center;font-size:1.8rem;margin-bottom:4px;color:#fff}
+.subtitle{text-align:center;color:#888;margin-bottom:24px;font-size:.95rem}
+.counters{display:flex;justify-content:center;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+.counter{padding:8px 18px;border-radius:8px;font-weight:600;font-size:.95rem}
+.counter.ok{background:#1b4332;color:#38a169}
+.counter.ko{background:#4a1a1a;color:#e53e3e}
+.counter.pending{background:#3a2e00;color:#d69e2e}
+.section{background:#141418;border:1px solid #262630;border-radius:12px;margin-bottom:16px;overflow:hidden}
+.section-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;cursor:pointer;user-select:none}
+.section-header:hover{background:#1a1a22}
+.section-title{font-weight:700;font-size:1.05rem;color:#fff}
+.section-badge{padding:4px 12px;border-radius:6px;font-size:.8rem;font-weight:600}
+.badge-pending{background:#3a2e00;color:#d69e2e}
+.badge-progress{background:#1a2a4a;color:#5b9bf5}
+.badge-ok{background:#1b4332;color:#38a169}
+.badge-ko{background:#4a1a1a;color:#e53e3e}
+.section-body{padding:0 18px 14px}
+.item{padding:10px 0;border-bottom:1px solid #1e1e28}
+.item:last-child{border-bottom:none}
+.item-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.item-text{flex:1;font-size:.93rem;line-height:1.4}
+.item-buttons{display:flex;gap:6px;flex-shrink:0}
+.item-buttons button{padding:5px 14px;border:none;border-radius:6px;font-weight:600;font-size:.82rem;cursor:pointer;transition:opacity .15s}
+.item-buttons button:hover{opacity:.85}
+.btn-ok{background:#1b4332;color:#38a169}
+.btn-ok.active{background:#38a169;color:#fff}
+.btn-ko{background:#4a1a1a;color:#e53e3e}
+.btn-ko.active{background:#e53e3e;color:#fff}
+.note-area{margin-top:8px}
+.note-area textarea{width:100%;background:#1a1a22;border:1px solid #333;border-radius:6px;color:#e0e0e0;padding:8px;font-size:.88rem;resize:vertical;min-height:50px}
+.export-bar{position:fixed;bottom:0;left:0;right:0;background:#141418;border-top:1px solid #262630;padding:14px;display:flex;justify-content:center;gap:12px}
+.export-bar button{padding:10px 28px;border:none;border-radius:8px;font-weight:700;font-size:.95rem;cursor:pointer}
+.btn-export{background:#00C853;color:#000}
+.btn-export:hover{background:#00e676}
+.btn-reset{background:#333;color:#e0e0e0}
+.btn-reset:hover{background:#444}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#38a169;color:#fff;padding:10px 24px;border-radius:8px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<h1>ClosRM — Etat du Projet V1</h1>
+<p class="subtitle">Checklist de revue Pierre + Remy — 30 mars 2026</p>
+
+<div class="counters" id="counters"></div>
+<div id="sections"></div>
+
+<div class="export-bar">
+  <button class="btn-reset" id="resetBtn">Reset</button>
+  <button class="btn-export" id="exportBtn">Copier le rapport</button>
+</div>
+
+<div class="toast" id="toast">Rapport copie !</div>
+
+<script>
+const data = [
+  {
+    id: 1,
+    title: "Setup projet (Next.js + Supabase + Auth + Layout)",
+    responsible: "Remy",
+    items: [
+      "Next.js 16 (App Router + TypeScript) configure",
+      "Tailwind CSS v4 configure",
+      "Supabase connecte (client browser + serveur + middleware)",
+      "Schema SQL complet (7 tables + RLS + trigger auto-creation workspace)",
+      "Types TypeScript complets",
+      "Design system vert (#00C853) + noir (#09090b)",
+      "Sidebar navigation (collapsible)"
+    ]
+  },
+  {
+    id: 2,
+    title: "Auth — Login, Register, Reset, Middleware (T-002)",
+    responsible: "Pierre",
+    items: [
+      "Login avec validation Zod + messages d'erreur generiques",
+      "Register avec validation Zod + mapping erreurs",
+      "Reset password (demande + update + auth callback)",
+      "Middleware protege TOUTES les routes (whitelist publique)",
+      "Hook useUser() cote client",
+      "Helper getWorkspaceId() cote serveur",
+      "Try-catch sur getUser() dans middleware"
+    ]
+  },
+  {
+    id: 3,
+    title: "Landing Page + Refonte Visuelle (T-002)",
+    responsible: "Pierre",
+    items: [
+      "Landing page (hero + particules + features + pricing + social proof + CTA + footer)",
+      "Pages auth refaites (glass card, glow, icones dans inputs)"
+    ]
+  },
+  {
+    id: 4,
+    title: "Module Leads — API + Liste + Fiche lead (T-004)",
+    responsible: "Remy",
+    items: [
+      "API GET /api/leads (liste paginee + filtres)",
+      "API POST /api/leads (creation lead)",
+      "API GET /api/leads/[id] (detail + calls + follow_ups)",
+      "API PATCH /api/leads/[id] (modifier statut, infos, tags, notes)",
+      "API DELETE /api/leads/[id] (soft delete)",
+      "Page liste /leads (tableau dense, filtres, pagination, toggle joint, actions)",
+      "Fiche lead /leads/[id] (infos, statut, tags, notes, timeline, actions)",
+      "Composants : StatusBadge, SourceBadge, LeadFilters, LeadForm, CallScheduleModal, LeadDetail",
+      "LeadSidePanel au clic lead (dashboard + liste leads)"
+    ]
+  },
+  {
+    id: 5,
+    title: "Dashboard d'accueil (T-003)",
+    responsible: "Remy",
+    items: [
+      "KPI cards branchees Supabase (nouveaux leads, appels planifies, deals closes, taux closing)",
+      "Selecteur de periode 7j/30j/90j",
+      "Prochains appels (en retard + aujourd'hui + 7j a venir)",
+      "Follow-ups en retard",
+      "Activite recente (leads crees + appels logges)",
+      "Message de bienvenue avec prenom du coach"
+    ]
+  },
+  {
+    id: 6,
+    title: "Module Closing — API + Frontend (T-007)",
+    responsible: "Pierre",
+    items: [
+      "API GET /api/calls (liste avec filtres type, outcome, date range, lead_id)",
+      "API POST /api/calls (planifier un appel)",
+      "API GET /api/calls/[id] (detail)",
+      "API PATCH /api/calls/[id] (modifier outcome, notes, reached, duration)",
+      "API DELETE /api/calls/[id] (supprimer)",
+      "Logique metier : changement statut lead auto selon outcome",
+      "Page /closing — 4 onglets (A venir / A actualiser / Traites / Annules-Absents)",
+      "Toggle vue Liste / Calendrier",
+      "Actions : Appeler, Reprogrammer, Marquer resultat, Voir fiche",
+      "Modale reprogrammer un appel"
+    ]
+  },
+  {
+    id: 7,
+    title: "Module Follow-ups — API + Frontend (T-008)",
+    responsible: "Pierre",
+    items: [
+      "API GET /api/follow-ups (liste avec filtres status, channel, lead_id, date range)",
+      "API POST /api/follow-ups (creer)",
+      "API PATCH /api/follow-ups/[id] (modifier statut, notes, date)",
+      "API DELETE /api/follow-ups/[id] (supprimer)",
+      "Page /follow-ups (tableau, filtres, tri par date)",
+      "Bouton Creer un follow-up + modale",
+      "Actions : Marquer fait, Reprogrammer, Annuler, Voir fiche lead",
+      "FollowUpActionModal (marquer fait/annuler avec notes)"
+    ]
+  },
+  {
+    id: 8,
+    title: "Module Statistiques (T-011)",
+    responsible: "Remy",
+    items: [
+      "Page /statistiques branchee Supabase (vraies donnees)",
+      "5 KPIs : leads totaux, calls bookes, taux de booking, deals closes, win rate",
+      "Selecteur periode 7j / 30j / 90j / Tout",
+      "Graphique leads par jour (Recharts BarChart)",
+      "Funnel de conversion 4 etapes (Recharts BarChart)",
+      "Repartition par source (Recharts PieChart donut + legende)",
+      "Section Meta Ads (banner si non connecte, metriques si connecte)"
+    ]
+  },
+  {
+    id: 9,
+    title: "Base de donnees — Vue globale (T-012)",
+    responsible: "Remy",
+    items: [
+      "API GET /api/contacts (recherche + filtres)",
+      "Page /base-de-donnees (tableau complet)",
+      "Recherche full-text (nom, email, phone)",
+      "Filtres avances : statut, source, tags, date range",
+      "Export CSV (telecharger fichier)",
+      "DatabaseFilters + DatabaseTable + ExportModal"
+    ]
+  },
+  {
+    id: 10,
+    title: "Module Automations (T-014)",
+    responsible: "Pierre",
+    items: [
+      "API CRUD /api/automations",
+      "Liste des automations avec toggle actif/inactif",
+      "Builder : selection trigger + config + action + config",
+      "Config dynamique selon trigger et action selectionnes",
+      "Templates messages avec variables ({{prenom}}, {{date_rdv}}, etc.)"
+    ]
+  },
+  {
+    id: 11,
+    title: "Integration Meta Ads (T-013)",
+    responsible: "Pierre",
+    items: [
+      "OAuth Meta Business (bouton Connecter dans Parametres)",
+      "Webhook /api/webhooks/meta pour recevoir leads temps reel",
+      "Mapping Meta lead vers table leads",
+      "Stocker credentials chiffres dans table integrations",
+      "Client Meta Marketing API",
+      "Endpoint stats campagnes (budget, depense, CPL)"
+    ]
+  },
+  {
+    id: 12,
+    title: "Integration Google Agenda (T-015)",
+    responsible: "Remy",
+    items: [
+      "OAuth Google (bouton dans Parametres)",
+      "Call planifie dans ClosRM → creer evenement Google Agenda",
+      "Call reprogramme/annule → update/delete evenement",
+      "Lire events Google pour afficher dans calendrier (optionnel)"
+    ]
+  },
+  {
+    id: 13,
+    title: "Notifications WhatsApp + Telegram (T-016)",
+    responsible: "Pierre",
+    items: [
+      "Client WhatsApp Meta Cloud API",
+      "Client Telegram Bot API",
+      "API route envoi WhatsApp",
+      "API route envoi Telegram",
+      "Templates messages avec variables dynamiques"
+    ]
+  },
+  {
+    id: 14,
+    title: "Parametres — Reglages (T-018)",
+    responsible: "Pierre",
+    items: [
+      "API PATCH /api/user/profile (modifier profil)",
+      "API PATCH /api/workspaces (modifier workspace)",
+      "API DELETE /api/user/account (supprimer compte)",
+      "Formulaire profil (nom, email, photo — upload Supabase Storage)",
+      "Formulaire workspace (nom, fuseau horaire)",
+      "Section suppression compte avec confirmation"
+    ]
+  },
+  {
+    id: 15,
+    title: "Parametres — Page Integrations (T-019)",
+    responsible: "Pierre",
+    items: [
+      "Card par service : Google Agenda, Meta, WhatsApp, Stripe (V2), Telegram",
+      "Chaque card : icone, nom, description, statut, date connexion, bouton action",
+      "Boutons Connecter/Deconnecter fonctionnels"
+    ]
+  },
+  {
+    id: 16,
+    title: "Module Publicites — Dashboard Meta Ads (T-017)",
+    responsible: "Remy",
+    items: [
+      "Budget pub du mois + depense",
+      "Leads generes + cout par lead",
+      "Performance par plateforme (Facebook / Instagram)",
+      "Performance par Campagne / Ad Set / Ad (tableau drill-down)",
+      "Graphique leads/jour",
+      "Funnel marketing visuel"
+    ]
+  }
+];
+
+function createEl(tag, attrs, children) {
+  const el = document.createElement(tag);
+  if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+    if (k === 'className') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'textContent') el.textContent = v;
+    else el.setAttribute(k, v);
+  });
+  if (children) (Array.isArray(children) ? children : [children]).forEach(c => {
+    if (typeof c === 'string') el.appendChild(document.createTextNode(c));
+    else if (c) el.appendChild(c);
+  });
+  return el;
+}
+
+const state = {};
+data.forEach(s => s.items.forEach((_, i) => { state[s.id + '-' + i] = { status: null, note: '' }; }));
+
+function updateCounters() {
+  const vals = Object.values(state);
+  const ok = vals.filter(v => v.status === 'ok').length;
+  const ko = vals.filter(v => v.status === 'ko').length;
+  const pending = vals.filter(v => v.status === null).length;
+  const c = document.getElementById('counters');
+  c.replaceChildren(
+    createEl('span', { className: 'counter ok', textContent: 'OK : ' + ok }),
+    createEl('span', { className: 'counter ko', textContent: 'KO : ' + ko }),
+    createEl('span', { className: 'counter pending', textContent: 'A verifier : ' + pending })
+  );
+}
+
+function getSectionBadge(section) {
+  const items = section.items.map((_, i) => state[section.id + '-' + i]);
+  const statuses = items.map(i => i.status);
+  if (statuses.every(s => s === null)) return { text: 'A verifier', cls: 'badge-pending' };
+  if (statuses.some(s => s === 'ko')) return { text: 'KO', cls: 'badge-ko' };
+  if (statuses.every(s => s === 'ok')) return { text: 'OK', cls: 'badge-ok' };
+  return { text: 'En cours', cls: 'badge-progress' };
+}
+
+function render() {
+  const container = document.getElementById('sections');
+  container.replaceChildren();
+  data.forEach(section => {
+    const badge = getSectionBadge(section);
+    const badgeEl = createEl('span', { className: 'section-badge ' + badge.cls, textContent: badge.text });
+    const responsible = section.responsible ? ' (' + section.responsible + ')' : '';
+    const header = createEl('div', { className: 'section-header' }, [
+      createEl('span', { className: 'section-title', textContent: section.title + responsible }),
+      badgeEl
+    ]);
+    const body = createEl('div', { className: 'section-body', style: 'display:none' });
+    section.items.forEach((item, i) => {
+      const key = section.id + '-' + i;
+      const s = state[key];
+      const btnOk = createEl('button', {
+        className: 'btn-ok' + (s.status === 'ok' ? ' active' : ''),
+        textContent: 'OK',
+        onClick: () => { s.status = s.status === 'ok' ? null : 'ok'; render(); updateCounters(); }
+      });
+      const btnKo = createEl('button', {
+        className: 'btn-ko' + (s.status === 'ko' ? ' active' : ''),
+        textContent: 'KO',
+        onClick: () => { s.status = s.status === 'ko' ? null : 'ko'; render(); updateCounters(); }
+      });
+      const row = createEl('div', { className: 'item-row' }, [
+        createEl('span', { className: 'item-text', textContent: item }),
+        createEl('div', { className: 'item-buttons' }, [btnOk, btnKo])
+      ]);
+      const itemEl = createEl('div', { className: 'item' }, [row]);
+      if (s.status === 'ko') {
+        const ta = createEl('textarea', { placeholder: 'Note sur le probleme...', value: s.note || '' });
+        ta.value = s.note || '';
+        ta.addEventListener('input', e => { s.note = e.target.value; });
+        itemEl.appendChild(createEl('div', { className: 'note-area' }, [ta]));
+      }
+      body.appendChild(itemEl);
+    });
+    header.addEventListener('click', () => {
+      body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    });
+    container.appendChild(createEl('div', { className: 'section' }, [header, body]));
+  });
+}
+
+function exportResults() {
+  const lines = ['# Rapport Etat Projet ClosRM — ' + new Date().toLocaleDateString('fr-FR'), ''];
+  const vals = Object.values(state);
+  const ok = vals.filter(v => v.status === 'ok').length;
+  const ko = vals.filter(v => v.status === 'ko').length;
+  const pending = vals.filter(v => v.status === null).length;
+  lines.push('## Resume');
+  lines.push('- OK : ' + ok);
+  lines.push('- KO : ' + ko);
+  lines.push('- A verifier : ' + pending);
+  lines.push('');
+  data.forEach(section => {
+    const responsible = section.responsible ? ' (' + section.responsible + ')' : '';
+    const badge = getSectionBadge(section);
+    lines.push('## ' + section.title + responsible + ' [' + badge.text + ']');
+    section.items.forEach((item, i) => {
+      const s = state[section.id + '-' + i];
+      const icon = s.status === 'ok' ? '✅' : s.status === 'ko' ? '❌' : '⬜';
+      lines.push('- ' + icon + ' ' + item);
+      if (s.status === 'ko' && s.note) lines.push('  > Note : ' + s.note);
+    });
+    lines.push('');
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  });
+}
+
+document.getElementById('exportBtn').addEventListener('click', exportResults);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  Object.keys(state).forEach(k => { state[k] = { status: null, note: '' }; });
+  render();
+  updateCounters();
+});
+
+render();
+updateCounters();
+</script>
+</body>
+</html>
