@@ -1,7 +1,9 @@
 const GRAPH_URL = 'https://graph.facebook.com/v18.0'
 
 function appId(): string {
-  return process.env.META_APP_ID!
+  const id = process.env.META_APP_ID
+  if (!id) throw new Error('META_APP_ID not set')
+  return id
 }
 
 function appSecret(): string {
@@ -11,7 +13,9 @@ function appSecret(): string {
 }
 
 function callbackUrl(): string {
-  return `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/meta/callback`
+  const base = process.env.NEXT_PUBLIC_APP_URL
+  if (!base) throw new Error('NEXT_PUBLIC_APP_URL not set')
+  return `${base}/api/integrations/meta/callback`
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -207,7 +211,11 @@ export function parseLeadFields(fields: MetaLeadField[]): ParsedLead {
 
     const mapped = FIELD_ALIASES[key]
     if (mapped) {
-      result[mapped] = value || null
+      if (mapped === 'email') {
+        result.email = value || null
+      } else if (value) {
+        result[mapped] = value
+      }
     }
   }
 
