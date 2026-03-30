@@ -32,7 +32,7 @@
 | Module Automations | Pierre | ⬜ Non démarré | T-014 |
 | Intégration Google Agenda | Rémy | ⬜ Non démarré | — |
 | Module Publicités (Meta Ads dashboard) | Rémy | ⬜ Non démarré | — |
-| Base de données (vue globale) | Rémy/Pierre | ⬜ Non démarré | — |
+| Base de données (vue globale) | Rémy | ✅ Terminé | T-012 |
 | Paramètres Réglages | Pierre | ⬜ Non démarré | T-018 |
 | Paramètres Intégrations | Pierre | ⬜ Non démarré | T-019 |
 | Notifications WhatsApp/Telegram | Pierre | ⬜ Non démarré | T-016 |
@@ -124,6 +124,7 @@
 | 2026-03-28 | Pierre | T-007 — Module Closing + Follow-ups (en cours) | `feature/pierre-closing` |
 | 2026-03-28 | Rémy | T-003 — Dashboard d'accueil avec vraies données Supabase | `feature/remy-dashboard` |
 | 2026-03-28 | Rémy | T-011 — Module Statistiques (page + queries + 6 composants) | `feature/remy-dashboard` |
+| 2026-03-28 | Rémy | T-012 — Base de données (vue globale) | `feature/remy-database` |
 
 ---
 

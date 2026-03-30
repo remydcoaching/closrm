@@ -129,3 +129,24 @@ export interface Integration {
   connected_at: string | null
   is_active: boolean
 }
+
+// ─── Database / Contacts ─────────────────────────────────────────────────────
+
+export interface ContactRow extends Lead {
+  // Agrégats JOIN calls
+  nb_calls: number
+  last_call_at: string | null
+}
+
+export type ContactGroupBy = 'status' | 'source'
+
+export interface ContactFilters {
+  search: string
+  statuses: LeadStatus[]
+  sources: LeadSource[]
+  tags: string[]
+  date_from: string
+  date_to: string
+  reached: 'all' | 'true' | 'false'
+  group_by: ContactGroupBy | ''
+}
