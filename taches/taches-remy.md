@@ -60,21 +60,21 @@
 
 ---
 
-### 5. T-013 · Intégration Meta Ads
+### 5. T-013 · Intégration Meta Ads — Bloc A (OAuth + Webhook Leads)
 **Priorité :** Haute
 **Statut :** ⬜ Non démarré
 
-- [ ] OAuth Meta Business (bouton Connecter dans Paramètres)
-- [ ] Webhook /api/webhooks/meta pour recevoir leads temps réel
-- [ ] Mapping Meta lead → table leads
-- [ ] Stocker credentials chiffrés dans table integrations
-- [ ] Client Meta Marketing API
-- [ ] Endpoint stats campagnes (budget, dépensé, CPL)
+- [ ] OAuth Meta Business (bouton Connecter dans Paramètres > Intégrations)
+- [ ] Callback OAuth → stocker access_token chiffré dans table integrations
+- [ ] Webhook /api/webhooks/meta — vérification token (GET) + réception leads (POST)
+- [ ] Mapping Meta lead form → table leads (source: facebook_ads / instagram_ads)
+- [ ] Page Paramètres > Intégrations : statut Meta connecté/déconnecté + bouton
 
 **Fichiers à créer :**
-- `src/app/api/webhooks/meta/route.ts`
-- `src/app/api/integrations/meta/route.ts`
-- `src/lib/meta/client.ts`
+- `src/app/api/integrations/meta/route.ts` (OAuth callback)
+- `src/app/api/webhooks/meta/route.ts` (webhook leads)
+- `src/lib/meta/client.ts` (helpers Meta API)
+- `src/app/(dashboard)/parametres/integrations/page.tsx` (page intégrations)
 
 ---
 
@@ -93,16 +93,18 @@
 
 ---
 
-### 7. T-017 · Module Publicités (dashboard Meta Ads)
+### 7. T-017 · Module Publicités (dashboard Meta Ads) — Bloc B Meta
 **Priorité :** Moyenne (dépend de T-013)
 **Statut :** ⬜ Non démarré
 
+- [ ] Client Meta Marketing API (lib/meta/client.ts — partagé avec T-013)
+- [ ] Endpoint stats campagnes (budget, dépensé, CPL, leads générés)
 - [ ] Budget pub du mois + dépensé
-- [ ] Leads générés + coût par lead
 - [ ] Performance par plateforme (Facebook / Instagram)
 - [ ] Performance par Campagne / Ad Set / Ad (tableau drill-down)
-- [ ] Graphique leads/jour
+- [ ] Graphique leads/jour Meta
 - [ ] Funnel marketing visuel
+- [ ] Brancher section Meta Ads dans /statistiques (MetaStats avec vraies données)
 
 ---
 

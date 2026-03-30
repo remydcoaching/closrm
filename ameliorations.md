@@ -129,6 +129,30 @@ Chaque amélioration suit ce format :
 
 ---
 
+## T-013 Meta Ads Bloc A — Améliorations identifiées
+
+### A-013-01 · Token Meta : rafraîchissement automatique avant expiration (60 jours)
+**Priorité :** Haute
+**Contexte :** Le token long-lived Meta expire après 60 jours. Actuellement aucun mécanisme de renouvellement automatique.
+**Proposition :** Ajouter une cron job (Vercel Cron ou Supabase Edge Function) qui vérifie les tokens expirés sous 7 jours et les rafraîchit via l'endpoint `fb_exchange_token`.
+
+### A-013-02 · Sélection de page Meta : permettre plusieurs pages par workspace
+**Priorité :** Basse
+**Contexte :** La V1 prend automatiquement `pages[0]`. Un coach peut avoir plusieurs pages Facebook.
+**Proposition :** Après l'OAuth, si l'utilisateur a plusieurs pages, afficher un sélecteur dans `/parametres/integrations` pour choisir quelle page connecter.
+
+### A-013-03 · Source lead : détecter Facebook vs Instagram depuis l'ad_id
+**Priorité :** Moyenne
+**Contexte :** Le webhook insère tous les leads avec `source: 'facebook_ads'`. L'API Meta ne retourne pas directement la plateforme (FB vs IG) dans le webhook payload.
+**Proposition :** Appeler `GET /{ad_id}?fields=effective_object_story_spec` pour détecter si l'annonce est Instagram et mettre `source: 'instagram_ads'` dans ce cas.
+
+### A-013-04 · Lint baseline : 8 erreurs pré-existantes non liées à T-013
+**Priorité :** Haute
+**Contexte :** `closing/page.tsx`, `follow-ups/page.tsx`, `LeadSidePanel.tsx` ont des erreurs ESLint pré-existantes. Bloque la vérification propre de "0 erreurs" sur les nouvelles tâches.
+**Proposition :** Corriger ces erreurs dans une tâche dédiée avant la prochaine PR majeure.
+
+---
+
 ## T-011 Statistiques — Améliorations identifiées
 
 ### A-011-01 · Queries stats : agrégation côté serveur via RPC Supabase
