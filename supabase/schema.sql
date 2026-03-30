@@ -153,6 +153,7 @@ create table integrations (
   workspace_id uuid not null references workspaces(id) on delete cascade,
   type text not null check (type in ('google_calendar', 'meta', 'whatsapp', 'stripe', 'telegram')),
   credentials_encrypted text,
+  meta_page_id text,
   connected_at timestamptz,
   is_active boolean not null default false,
   unique(workspace_id, type)

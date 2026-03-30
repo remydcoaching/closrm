@@ -126,6 +126,8 @@ export interface Integration {
   id: string
   workspace_id: string
   type: IntegrationType
+  credentials_encrypted: string | null
+  meta_page_id: string | null
   connected_at: string | null
   is_active: boolean
 }
