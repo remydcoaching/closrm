@@ -8,13 +8,13 @@ LAST_MSG=$(git log -1 --pretty=format:'%s')
 FILES=$(git diff-tree --no-commit-id -r --name-only HEAD | head -10 | tr '\n' ', ')
 
 if [[ "$BRANCH" == feature/* ]]; then
-  EMOJI="🌿"
+  EMOJI=":seedling:"
 elif [[ "$BRANCH" == "develop" ]]; then
-  EMOJI="🔧"
+  EMOJI=":wrench:"
 else
-  EMOJI="🚀"
+  EMOJI=":rocket:"
 fi
 
 curl -s -H "Content-Type: application/json" \
-  -d "{\"content\": \"$EMOJI **$AUTHOR** vient de push sur \`$BRANCH\`\n📝 $LAST_MSG\n📁 \`$FILES\`\"}" \
+  -d "{\"content\": \"$EMOJI **$AUTHOR** vient de push sur \`$BRANCH\`\n:notepad_spiral: $LAST_MSG\n:file_folder: \`$FILES\`\"}" \
   "$WEBHOOK_URL"
