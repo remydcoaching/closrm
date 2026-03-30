@@ -206,6 +206,80 @@ export interface Integration {
   is_active: boolean
 }
 
+// ── Booking Calendar ─────────────────────────────────────────────────────────
+
+export type FormFieldType = 'text' | 'tel' | 'email' | 'textarea' | 'select'
+
+export interface FormField {
+  key: string
+  label: string
+  type: FormFieldType
+  required: boolean
+  options?: string[]
+}
+
+export interface TimeSlot {
+  start: string  // "09:00"
+  end: string    // "12:00"
+}
+
+export interface WeekAvailability {
+  monday: TimeSlot[]
+  tuesday: TimeSlot[]
+  wednesday: TimeSlot[]
+  thursday: TimeSlot[]
+  friday: TimeSlot[]
+  saturday: TimeSlot[]
+  sunday: TimeSlot[]
+}
+
+export type DayOfWeek = keyof WeekAvailability
+
+export interface BookingCalendar {
+  id: string
+  workspace_id: string
+  name: string
+  slug: string
+  description: string | null
+  duration_minutes: number
+  location: string | null
+  color: string
+  form_fields: FormField[]
+  availability: WeekAvailability
+  buffer_minutes: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// ── Booking ──────────────────────────────────────────────────────────────────
+
+export type BookingStatus = 'confirmed' | 'cancelled' | 'no_show' | 'completed'
+export type BookingSource = 'booking_page' | 'manual' | 'google_sync'
+
+export interface Booking {
+  id: string
+  workspace_id: string
+  calendar_id: string | null
+  lead_id: string | null
+  call_id: string | null
+  title: string
+  scheduled_at: string
+  duration_minutes: number
+  status: BookingStatus
+  source: BookingSource
+  form_data: Record<string, string>
+  notes: string | null
+  google_event_id: string | null
+  is_personal: boolean
+  created_at: string
+}
+
+export interface BookingWithCalendar extends Booking {
+  booking_calendar: Pick<BookingCalendar, 'name' | 'color' | 'location'> | null
+  lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email'> | null
+}
+
 // ─── Database / Contacts ─────────────────────────────────────────────────────
 
 export interface ContactRow extends Lead {
