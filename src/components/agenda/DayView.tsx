@@ -24,8 +24,8 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
           fontWeight: 'bold',
           fontSize: 14,
           textTransform: 'capitalize',
-          borderBottom: '1px solid #262626',
-          color: '#ffffff',
+          borderBottom: '1px solid var(--border-secondary)',
+          color: 'var(--text-primary)',
         }}
       >
         {dayLabel}
@@ -47,7 +47,7 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
               style={{
                 display: 'flex',
                 minHeight: 48,
-                borderBottom: '1px solid #1a1a1a',
+                borderBottom: '1px solid var(--bg-input)',
               }}
             >
               {/* Hour label */}
@@ -57,10 +57,10 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
                   flexShrink: 0,
                   padding: '4px 8px',
                   fontSize: 11,
-                  color: '#a0a0a0',
+                  color: 'var(--text-secondary)',
                   textAlign: 'right',
                   userSelect: 'none',
-                  borderRight: '1px solid #262626',
+                  borderRight: '1px solid var(--border-secondary)',
                 }}
               >
                 {String(hour).padStart(2, '0')}:00

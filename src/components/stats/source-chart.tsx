@@ -37,7 +37,7 @@ export default function SourceChart({ data }: SourceChartProps) {
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{ background: '#141416', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
+            contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
             formatter={(value) => {
               const n = value as number
               return [`${n} (${Math.round((n / total) * 100)}%)`, '']
@@ -50,8 +50,8 @@ export default function SourceChart({ data }: SourceChartProps) {
         {data.map((entry) => (
           <div key={entry.source} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: '#888', flex: 1 }}>{entry.label}</span>
-            <span style={{ fontSize: 11, color: '#fff', fontWeight: 600 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flex: 1 }}>{entry.label}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-primary)', fontWeight: 600 }}>
               {Math.round((entry.count / total) * 100)}%
             </span>
           </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import ProfileForm from '@/components/settings/ProfileForm'
 import WorkspaceForm from '@/components/settings/WorkspaceForm'
+import BrandingForm from '@/components/settings/BrandingForm'
 import DeleteAccount from '@/components/settings/DeleteAccount'
 
 interface UserData {
@@ -16,6 +17,8 @@ interface WorkspaceData {
   id: string
   name: string
   timezone: string
+  accent_color: string
+  logo_url: string | null
 }
 
 export default function ReglagesPage() {
@@ -45,7 +48,7 @@ export default function ReglagesPage() {
   if (loading) {
     return (
       <div style={{ padding: 32 }}>
-        <p style={{ color: '#888', fontSize: 14 }}>Chargement...</p>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Chargement...</p>
       </div>
     )
   }
@@ -64,7 +67,7 @@ export default function ReglagesPage() {
         style={{
           fontSize: 22,
           fontWeight: 700,
-          color: '#fff',
+          color: 'var(--text-primary)',
           marginBottom: 32,
         }}
       >
@@ -73,8 +76,8 @@ export default function ReglagesPage() {
 
       <div
         style={{
-          background: '#141416',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-primary)',
           borderRadius: 10,
           padding: 24,
         }}
@@ -84,15 +87,15 @@ export default function ReglagesPage() {
 
       <div
         style={{
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '1px solid var(--border-primary)',
           margin: '32px 0',
         }}
       />
 
       <div
         style={{
-          background: '#141416',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-primary)',
           borderRadius: 10,
           padding: 24,
         }}
@@ -102,7 +105,29 @@ export default function ReglagesPage() {
 
       <div
         style={{
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '1px solid var(--border-primary)',
+          margin: '32px 0',
+        }}
+      />
+
+      <div
+        style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-primary)',
+          borderRadius: 10,
+          padding: 24,
+        }}
+      >
+        <BrandingForm
+          accentColor={workspace.accent_color ?? '#00C853'}
+          logoUrl={workspace.logo_url ?? null}
+          onSave={fetchData}
+        />
+      </div>
+
+      <div
+        style={{
+          borderTop: '1px solid var(--border-primary)',
           margin: '32px 0',
         }}
       />

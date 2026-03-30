@@ -14,10 +14,10 @@ import Link from 'next/link'
 interface LeadWithRelations extends Lead { calls: Call[]; follow_ups: FollowUp[] }
 interface Props { leadId: string; onClose: () => void }
 
-const card: React.CSSProperties = { background: '#0f0f11', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 16, marginBottom: 14 }
-const sectionTitle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: '#444', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 12 }
-const inputS: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', background: '#09090b', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none' }
-const smallBtn: React.CSSProperties = { background: 'none', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26 }
+const card: React.CSSProperties = { background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 12, padding: 16, marginBottom: 14 }
+const sectionTitle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 12 }
+const inputS: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none' }
+const smallBtn: React.CSSProperties = { background: 'none', border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26 }
 
 export default function LeadSidePanel({ leadId, onClose }: Props) {
   const [lead, setLead] = useState<LeadWithRelations | null>(null)
@@ -89,13 +89,13 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.4)' }} />
 
-      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 460, zIndex: 151, background: '#0c0c0e', borderLeft: '1px solid rgba(255,255,255,0.06)', overflowY: 'auto', boxShadow: '-10px 0 40px rgba(0,0,0,0.5)' }}>
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 460, zIndex: 151, background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-primary)', overflowY: 'auto', boxShadow: '-10px 0 40px rgba(0,0,0,0.5)' }}>
         {/* Header */}
-        <div style={{ position: 'sticky', top: 0, background: '#0c0c0e', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Profil du lead</span>
+        <div style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Profil du lead</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {lead && <Link href={`/leads/${lead.id}`} style={{ fontSize: 11, color: '#888', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}><ExternalLink size={12} />Page complète</Link>}
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}><X size={18} /></button>
+            {lead && <Link href={`/leads/${lead.id}`} style={{ fontSize: 11, color: 'var(--text-tertiary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}><ExternalLink size={12} />Page complète</Link>}
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
           </div>
         </div>
 
@@ -107,11 +107,11 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
           <div style={{ padding: 20 }}>
             {/* Identity */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#00C853', flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0 }}>
                 {lead.first_name[0]}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>{lead.first_name} {lead.last_name}</div>
+                <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>{lead.first_name} {lead.last_name}</div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                   <SourceBadge source={lead.source} />
                 </div>
@@ -128,8 +128,8 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   return (
                     <button key={s} onClick={() => patchLead({ status: s })} style={{
                       padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer',
-                      border: active ? `2px solid ${cfg.color}` : '1px solid rgba(255,255,255,0.06)',
-                      background: active ? cfg.bg : 'transparent', color: active ? cfg.color : '#666',
+                      border: active ? `2px solid ${cfg.color}` : '1px solid var(--border-primary)',
+                      background: active ? cfg.bg : 'transparent', color: active ? cfg.color : 'var(--text-muted)',
                     }}>
                       {cfg.label}
                     </button>
@@ -153,7 +153,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                     {editing ? (
                       <>
                         <input value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveEdit(f.field)} style={{ ...inputS, flex: 1 }} autoFocus />
-                        <button onClick={() => saveEdit(f.field)} style={smallBtn}><Check size={12} color="#00C853" /></button>
+                        <button onClick={() => saveEdit(f.field)} style={smallBtn}><Check size={12} color="var(--color-primary)" /></button>
                       </>
                     ) : (
                       <>
@@ -171,15 +171,15 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               <div style={sectionTitle}>Tags</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: lead.tags.length > 0 ? 10 : 0 }}>
                 {lead.tags.map((tag) => (
-                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, fontSize: 11, background: 'rgba(255,255,255,0.04)', color: '#ccc', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, fontSize: 11, background: 'var(--bg-hover)', color: '#ccc', border: '1px solid var(--border-primary)' }}>
                     {tag}
-                    <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', padding: 0, display: 'flex' }}><X size={10} /></button>
+                    <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}><X size={10} /></button>
                   </span>
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTag()} placeholder="Ajouter un tag" style={{ ...inputS, flex: 1 }} />
-                <button onClick={addTag} style={{ ...smallBtn, width: 32 }}><Plus size={12} color="#00C853" /></button>
+                <button onClick={addTag} style={{ ...smallBtn, width: 32 }}><Plus size={12} color="var(--color-primary)" /></button>
               </div>
             </div>
 
@@ -235,13 +235,13 @@ function CallRow({ call, onPatch }: { call: Call; onPatch: (patch: Partial<Call>
 
   const outcomes: { value: 'pending' | 'done' | 'cancelled' | 'no_show'; label: string; color: string }[] = [
     { value: 'pending', label: 'En attente', color: '#f59e0b' },
-    { value: 'done', label: 'Fait', color: '#00C853' },
+    { value: 'done', label: 'Fait', color: 'var(--color-primary)' },
     { value: 'cancelled', label: 'Annulé', color: '#ef4444' },
     { value: 'no_show', label: 'Absent', color: '#f97316' },
   ]
 
   return (
-    <div style={{ padding: '10px 12px', background: '#09090b', borderRadius: 8, border: '1px solid rgba(255,255,255,0.04)' }}>
+    <div style={{ padding: '10px 12px', background: 'var(--bg-input)', borderRadius: 8, border: '1px solid var(--border-primary)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <CallTypeBadge type={call.type} />
         <button onClick={() => setEditing(!editing)} style={smallBtn}><Edit3 size={11} color="#666" /></button>
@@ -254,7 +254,7 @@ function CallRow({ call, onPatch }: { call: Call; onPatch: (patch: Partial<Call>
           return (
             <button key={o.value} onClick={() => onPatch({ outcome: o.value })} style={{
               padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer',
-              border: active ? `1px solid ${o.color}` : '1px solid rgba(255,255,255,0.04)',
+              border: active ? `1px solid ${o.color}` : '1px solid var(--border-primary)',
               background: active ? o.color + '15' : 'transparent',
               color: active ? o.color : '#555',
             }}>
@@ -268,10 +268,10 @@ function CallRow({ call, onPatch }: { call: Call; onPatch: (patch: Partial<Call>
         <div style={{ display: 'flex', gap: 6 }}>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...inputS, flex: 1, colorScheme: 'dark', fontSize: 11 }} />
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ ...inputS, width: 90, colorScheme: 'dark', fontSize: 11 }} />
-          <button onClick={saveDate} style={smallBtn}><Check size={12} color="#00C853" /></button>
+          <button onClick={saveDate} style={smallBtn}><Check size={12} color="var(--color-primary)" /></button>
         </div>
       ) : (
-        <div style={{ fontSize: 11, color: '#888' }}>
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
           <Calendar size={10} style={{ marginRight: 4 }} />
           {format(new Date(call.scheduled_at), "dd MMM yyyy 'à' HH'h'mm", { locale: fr })}
         </div>
@@ -292,12 +292,12 @@ function FollowUpRow({ followUp, onPatch }: { followUp: FollowUp; onPatch: (patc
 
   const statuses: { value: 'en_attente' | 'fait' | 'annule'; label: string; color: string }[] = [
     { value: 'en_attente', label: 'En attente', color: '#f59e0b' },
-    { value: 'fait', label: 'Fait', color: '#00C853' },
+    { value: 'fait', label: 'Fait', color: 'var(--color-primary)' },
     { value: 'annule', label: 'Annulé', color: '#ef4444' },
   ]
 
   return (
-    <div style={{ padding: '10px 12px', background: '#09090b', borderRadius: 8, border: '1px solid rgba(255,255,255,0.04)' }}>
+    <div style={{ padding: '10px 12px', background: 'var(--bg-input)', borderRadius: 8, border: '1px solid var(--border-primary)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <span style={{ fontSize: 12, color: '#ccc' }}>{followUp.reason}</span>
         <button onClick={() => setEditing(!editing)} style={smallBtn}><Edit3 size={11} color="#666" /></button>
@@ -310,7 +310,7 @@ function FollowUpRow({ followUp, onPatch }: { followUp: FollowUp; onPatch: (patc
           return (
             <button key={s.value} onClick={() => onPatch({ status: s.value })} style={{
               padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, cursor: 'pointer',
-              border: active ? `1px solid ${s.color}` : '1px solid rgba(255,255,255,0.04)',
+              border: active ? `1px solid ${s.color}` : '1px solid var(--border-primary)',
               background: active ? s.color + '15' : 'transparent',
               color: active ? s.color : '#555',
             }}>
@@ -324,10 +324,10 @@ function FollowUpRow({ followUp, onPatch }: { followUp: FollowUp; onPatch: (patc
         <div style={{ display: 'flex', gap: 6 }}>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...inputS, flex: 1, colorScheme: 'dark', fontSize: 11 }} />
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ ...inputS, width: 90, colorScheme: 'dark', fontSize: 11 }} />
-          <button onClick={saveDate} style={smallBtn}><Check size={12} color="#00C853" /></button>
+          <button onClick={saveDate} style={smallBtn}><Check size={12} color="var(--color-primary)" /></button>
         </div>
       ) : (
-        <div style={{ fontSize: 11, color: '#888' }}>
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
           <Calendar size={10} style={{ marginRight: 4 }} />
           {format(new Date(followUp.scheduled_at), "dd MMM yyyy 'à' HH'h'mm", { locale: fr })}
         </div>

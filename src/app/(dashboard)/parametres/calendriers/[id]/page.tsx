@@ -102,7 +102,7 @@ export default function EditCalendarPage() {
   if (loading) {
     return (
       <div style={{ padding: 32 }}>
-        <p style={{ color: '#888', fontSize: 14 }}>Chargement...</p>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Chargement...</p>
       </div>
     )
   }
@@ -125,7 +125,7 @@ export default function EditCalendarPage() {
           alignItems: 'center',
           gap: 6,
           fontSize: 13,
-          color: '#A0A0A0',
+          color: 'var(--text-secondary)',
           textDecoration: 'none',
           marginBottom: 24,
         }}
@@ -142,7 +142,7 @@ export default function EditCalendarPage() {
           marginBottom: 32,
         }}
       >
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 }}>{name || 'Calendrier'}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{name || 'Calendrier'}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {saveSuccess && (
             <span style={{ fontSize: 13, color: '#38A169' }}>Enregistré</span>
@@ -160,7 +160,7 @@ export default function EditCalendarPage() {
               padding: '9px 20px',
               fontSize: 14,
               fontWeight: 600,
-              color: '#fff',
+              color: 'var(--text-primary)',
               cursor: saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.6 : 1,
             }}
@@ -176,18 +176,18 @@ export default function EditCalendarPage() {
           style={{
             fontSize: 15,
             fontWeight: 600,
-            color: '#fff',
+            color: 'var(--text-primary)',
             margin: '0 0 16px',
             paddingBottom: 10,
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid var(--border-primary)',
           }}
         >
           Général
         </h2>
         <div
           style={{
-            background: '#141416',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 10,
             padding: 24,
             display: 'flex',
@@ -197,7 +197,7 @@ export default function EditCalendarPage() {
         >
           {/* Name */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, color: '#A0A0A0', fontWeight: 500 }}>Nom</label>
+            <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Nom</label>
             <input
               type="text"
               value={name}
@@ -208,7 +208,7 @@ export default function EditCalendarPage() {
 
           {/* Slug */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, color: '#A0A0A0', fontWeight: 500 }}>
+            <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
               Slug (URL)
             </label>
             <input
@@ -217,15 +217,15 @@ export default function EditCalendarPage() {
               onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
               style={inputStyle}
             />
-            <span style={{ fontSize: 11, color: '#666' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
               Lettres minuscules, chiffres et tirets uniquement
             </span>
           </div>
 
           {/* Description */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, color: '#A0A0A0', fontWeight: 500 }}>
-              Description <span style={{ fontWeight: 400, color: '#666' }}>(optionnel)</span>
+            <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+              Description <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optionnel)</span>
             </label>
             <textarea
               value={description}
@@ -238,7 +238,7 @@ export default function EditCalendarPage() {
           {/* Duration + Buffer */}
           <div style={{ display: 'flex', gap: 16 }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 13, color: '#A0A0A0', fontWeight: 500 }}>
+              <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
                 Durée (minutes)
               </label>
               <input
@@ -251,7 +251,7 @@ export default function EditCalendarPage() {
               />
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 13, color: '#A0A0A0', fontWeight: 500 }}>
+              <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
                 Tampon (minutes)
               </label>
               <input
@@ -267,7 +267,7 @@ export default function EditCalendarPage() {
 
           {/* Color */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, color: '#A0A0A0', fontWeight: 500 }}>Couleur</label>
+            <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Couleur</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <input
                 type="color"
@@ -276,7 +276,7 @@ export default function EditCalendarPage() {
                 style={{
                   width: 36,
                   height: 36,
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid var(--border-primary)',
                   borderRadius: 6,
                   background: 'none',
                   cursor: 'pointer',
@@ -294,8 +294,8 @@ export default function EditCalendarPage() {
 
           {/* Location */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, color: '#A0A0A0', fontWeight: 500 }}>
-              Lieu / Lien visio <span style={{ fontWeight: 400, color: '#666' }}>(optionnel)</span>
+            <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+              Lieu / Lien visio <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optionnel)</span>
             </label>
             <input
               type="text"
@@ -314,18 +314,18 @@ export default function EditCalendarPage() {
           style={{
             fontSize: 15,
             fontWeight: 600,
-            color: '#fff',
+            color: 'var(--text-primary)',
             margin: '0 0 16px',
             paddingBottom: 10,
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid var(--border-primary)',
           }}
         >
           Disponibilités
         </h2>
         <div
           style={{
-            background: '#141416',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 10,
             padding: 24,
           }}
@@ -340,18 +340,18 @@ export default function EditCalendarPage() {
           style={{
             fontSize: 15,
             fontWeight: 600,
-            color: '#fff',
+            color: 'var(--text-primary)',
             margin: '0 0 16px',
             paddingBottom: 10,
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid var(--border-primary)',
           }}
         >
           Formulaire de réservation
         </h2>
         <div
           style={{
-            background: '#141416',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 10,
             padding: 24,
           }}
@@ -364,12 +364,12 @@ export default function EditCalendarPage() {
 }
 
 const inputStyle: React.CSSProperties = {
-  background: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border-primary)',
   borderRadius: 8,
   padding: '8px 12px',
   fontSize: 14,
-  color: '#fff',
+  color: 'var(--text-primary)',
   outline: 'none',
   width: '100%',
   boxSizing: 'border-box',

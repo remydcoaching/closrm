@@ -18,15 +18,15 @@ type FUWithLead = FollowUp & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name
 type Tab = 'today' | 'overdue' | 'upcoming' | 'done' | 'all'
 
 const TAB_CONFIG: Record<Tab, { label: string; color: string }> = {
-  today: { label: "Aujourd'hui", color: '#00C853' },
+  today: { label: "Aujourd'hui", color: 'var(--color-primary)' },
   overdue: { label: 'En retard', color: '#ef4444' },
   upcoming: { label: 'À venir', color: '#3b82f6' },
-  done: { label: 'Terminés', color: '#888' },
-  all: { label: 'Tous', color: '#666' },
+  done: { label: 'Terminés', color: 'var(--text-tertiary)' },
+  all: { label: 'Tous', color: 'var(--text-muted)' },
 }
 
-const th: React.CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 10, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.15em', borderBottom: '1px solid rgba(255,255,255,0.06)' }
-const td: React.CSSProperties = { padding: '12px', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.04)', verticalAlign: 'middle' }
+const th: React.CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: '0.15em', borderBottom: '1px solid var(--border-primary)' }
+const td: React.CSSProperties = { padding: '12px', fontSize: 13, borderBottom: '1px solid var(--bg-hover)', verticalAlign: 'middle' }
 
 export default function FollowUpsPage() {
   const [followUps, setFollowUps] = useState<FUWithLead[]>([])
@@ -129,30 +129,30 @@ export default function FollowUpsPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>Follow-ups</h1>
-          <p style={{ fontSize: 13, color: '#666', marginTop: 4 }}>Gestion de vos relances</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Follow-ups</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Gestion de vos relances</p>
         </div>
         <button onClick={() => setShowAdd(true)} style={{
           display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10,
-          background: '#00C853', border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          background: 'var(--color-primary)', border: 'none', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
         }}>
           <Plus size={15} />Créer un follow-up
         </button>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border-primary)' }}>
         {(Object.keys(TAB_CONFIG) as Tab[]).map((t) => {
           const active = tab === t; const c = TAB_CONFIG[t]; const count = counts[t]
           return (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '10px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none',
               borderBottom: active ? `2px solid ${c.color}` : '2px solid transparent',
-              background: active ? 'rgba(255,255,255,0.02)' : 'transparent', color: active ? '#fff' : '#888',
+              background: active ? 'rgba(255,255,255,0.02)' : 'transparent', color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
               {c.label}
-              {count > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99, background: t === 'overdue' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)', color: t === 'overdue' ? '#ef4444' : '#888' }}>{count}</span>}
+              {count > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99, background: t === 'overdue' ? 'rgba(239,68,68,0.15)' : 'var(--border-primary)', color: t === 'overdue' ? '#ef4444' : 'var(--text-tertiary)' }}>{count}</span>}
             </button>
           )
         })}
@@ -160,17 +160,17 @@ export default function FollowUpsPage() {
 
       {/* Search */}
       <div style={{ position: 'relative', maxWidth: 300, marginBottom: 20 }}>
-        <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#555' }} />
+        <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-label)' }} />
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un lead..."
-          style={{ width: '100%', background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px 12px 8px 34px', color: '#fff', fontSize: 12, outline: 'none' }} />
+          style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: '8px 12px 8px 34px', color: 'var(--text-primary)', fontSize: 12, outline: 'none' }} />
       </div>
 
       {/* Table */}
-      <div style={{ background: '#0f0f11', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 14, overflow: 'hidden' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#555' }}>Chargement...</div>
+          <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-label)' }}>Chargement...</div>
         ) : followUps.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#555', fontSize: 13 }}>Aucun follow-up dans cette catégorie</div>
+          <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-label)', fontSize: 13 }}>Aucun follow-up dans cette catégorie</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -194,16 +194,16 @@ export default function FollowUpsPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           {overdue && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />}
                           <div>
-                            <div style={{ color: overdue ? '#ef4444' : '#fff', fontWeight: 500 }}>{format(scheduled, 'dd MMM yyyy', { locale: fr })}</div>
-                            <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>{format(scheduled, "HH'h'mm", { locale: fr })}</div>
+                            <div style={{ color: overdue ? '#ef4444' : 'var(--text-primary)', fontWeight: 500 }}>{format(scheduled, 'dd MMM yyyy', { locale: fr })}</div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 2 }}>{format(scheduled, "HH'h'mm", { locale: fr })}</div>
                           </div>
                         </div>
                       </td>
                       <td style={td}>
-                        <div style={{ color: '#fff', fontWeight: 500 }}>{fu.lead.first_name} {fu.lead.last_name}</div>
-                        <div style={{ color: '#666', fontSize: 11, marginTop: 2 }}>{fu.lead.phone || fu.lead.email || '—'}</div>
+                        <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{fu.lead.first_name} {fu.lead.last_name}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 2 }}>{fu.lead.phone || fu.lead.email || '—'}</div>
                       </td>
-                      <td style={{ ...td, color: '#ccc', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fu.reason}</td>
+                      <td style={{ ...td, color: 'var(--text-primary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fu.reason}</td>
                       <td style={td}><ChannelBadge channel={fu.channel} /></td>
                       <td style={td}><FollowUpStatusBadge status={fu.status} /></td>
                       <td style={{ ...td, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
@@ -213,12 +213,12 @@ export default function FollowUpsPage() {
                               height: 30, paddingLeft: 10, paddingRight: 10, borderRadius: 8,
                               border: '1px solid rgba(0,200,83,0.2)', background: 'rgba(0,200,83,0.06)',
                               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                              color: '#00C853', fontSize: 11, fontWeight: 600,
+                              color: 'var(--color-primary)', fontSize: 11, fontWeight: 600,
                             }}>
                               <Zap size={12} />Traiter
                             </button>
                           )}
-                          <button onClick={() => setDeleteTarget(fu)} title="Supprimer" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <button onClick={() => setDeleteTarget(fu)} title="Supprimer" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Trash2 size={14} color="#ef4444" />
                           </button>
                         </div>
@@ -235,9 +235,9 @@ export default function FollowUpsPage() {
       {/* Pagination */}
       {meta.total_pages > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 16 }}>
-          <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', color: page <= 1 ? '#444' : '#ccc', cursor: page <= 1 ? 'default' : 'pointer', fontSize: 12 }}>Précédent</button>
-          <span style={{ fontSize: 12, color: '#888' }}>Page {meta.page} sur {meta.total_pages}</span>
-          <button onClick={() => setPage(Math.min(meta.total_pages, page + 1))} disabled={page >= meta.total_pages} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', color: page >= meta.total_pages ? '#444' : '#ccc', cursor: page >= meta.total_pages ? 'default' : 'pointer', fontSize: 12 }}>Suivant</button>
+          <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', color: page <= 1 ? 'var(--text-label)' : 'var(--text-primary)', cursor: page <= 1 ? 'default' : 'pointer', fontSize: 12 }}>Précédent</button>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Page {meta.page} sur {meta.total_pages}</span>
+          <button onClick={() => setPage(Math.min(meta.total_pages, page + 1))} disabled={page >= meta.total_pages} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', color: page >= meta.total_pages ? 'var(--text-label)' : 'var(--text-primary)', cursor: page >= meta.total_pages ? 'default' : 'pointer', fontSize: 12 }}>Suivant</button>
         </div>
       )}
 

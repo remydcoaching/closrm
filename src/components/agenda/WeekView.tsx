@@ -23,15 +23,15 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
         style={{
           display: 'grid',
           gridTemplateColumns: '60px repeat(7, 1fr)',
-          borderBottom: '1px solid #262626',
+          borderBottom: '1px solid var(--border-secondary)',
           position: 'sticky',
           top: 0,
-          background: '#141414',
+          background: 'var(--bg-elevated)',
           zIndex: 10,
         }}
       >
         {/* Empty corner */}
-        <div style={{ borderRight: '1px solid #262626' }} />
+        <div style={{ borderRight: '1px solid var(--border-secondary)' }} />
         {days.map((day) => {
           const today = isToday(day)
           return (
@@ -40,8 +40,8 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
               style={{
                 padding: '8px 4px',
                 textAlign: 'center',
-                borderRight: '1px solid #262626',
-                color: today ? '#E53E3E' : '#A0A0A0',
+                borderRight: '1px solid var(--border-secondary)',
+                color: today ? '#E53E3E' : 'var(--text-secondary)',
                 fontWeight: today ? 700 : 400,
               }}
             >
@@ -52,7 +52,7 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
                 style={{
                   fontSize: 18,
                   fontWeight: 600,
-                  color: today ? '#ffffff' : '#ffffff',
+                  color: today ? 'var(--text-primary)' : 'var(--text-primary)',
                   background: today ? '#E53E3E' : 'transparent',
                   borderRadius: '50%',
                   width: 32,
@@ -76,17 +76,17 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
             style={{
               display: 'grid',
               gridTemplateColumns: '60px repeat(7, 1fr)',
-              borderBottom: '1px solid #262626',
+              borderBottom: '1px solid var(--border-secondary)',
             }}
           >
             {/* Hour label */}
             <div
               style={{
                 fontSize: 11,
-                color: '#A0A0A0',
+                color: 'var(--text-secondary)',
                 padding: '4px 8px',
                 textAlign: 'right',
-                borderRight: '1px solid #262626',
+                borderRight: '1px solid var(--border-secondary)',
                 userSelect: 'none',
               }}
             >
@@ -111,7 +111,7 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
                   }}
                   style={{
                     minHeight: 40,
-                    borderRight: '1px solid #262626',
+                    borderRight: '1px solid var(--border-secondary)',
                     padding: '2px 3px',
                     display: 'flex',
                     flexDirection: 'column',

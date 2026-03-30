@@ -52,9 +52,9 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
 
   const inputS: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
-    padding: '10px 12px 10px 38px', background: '#0a0a0c',
-    border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10,
-    color: '#fff', fontSize: 13, outline: 'none', colorScheme: 'dark',
+    padding: '10px 12px 10px 38px', background: 'var(--bg-input)',
+    border: '1px solid var(--border-primary)', borderRadius: 10,
+    color: 'var(--text-primary)', fontSize: 13, outline: 'none', colorScheme: 'dark',
   }
 
   return (
@@ -63,15 +63,15 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
       background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
       <div style={{
-        background: '#0f0f11', border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
         borderRadius: 14, padding: 28, width: '100%', maxWidth: 420,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <div>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#fff', margin: 0 }}>Planifier un appel</h2>
-            <p style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{lead.first_name} {lead.last_name}</p>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Planifier un appel</h2>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{lead.first_name} {lead.last_name}</p>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
             <X size={18} />
           </button>
         </div>
@@ -79,14 +79,14 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
         <form onSubmit={handleSubmit}>
           {/* Type */}
           <div style={{ marginBottom: 18 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Type d&apos;appel</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Type d&apos;appel</label>
             <div style={{ display: 'flex', gap: 8 }}>
               {(['setting', 'closing'] as const).map((t) => (
                 <button key={t} type="button" onClick={() => setType(t)} style={{
                   flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  border: type === t ? `2px solid ${t === 'setting' ? '#3b82f6' : '#a855f7'}` : '1px solid rgba(255,255,255,0.06)',
+                  border: type === t ? `2px solid ${t === 'setting' ? '#3b82f6' : '#a855f7'}` : '1px solid var(--border-primary)',
                   background: type === t ? (t === 'setting' ? 'rgba(59,130,246,0.08)' : 'rgba(168,85,247,0.08)') : 'transparent',
-                  color: type === t ? (t === 'setting' ? '#3b82f6' : '#a855f7') : '#666',
+                  color: type === t ? (t === 'setting' ? '#3b82f6' : '#a855f7') : 'var(--text-muted)',
                   textTransform: 'capitalize' as const,
                 }}>
                   {t}
@@ -98,16 +98,16 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
           {/* Date + Time side by side */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Date *</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Date *</label>
               <div style={{ position: 'relative' }}>
-                <Calendar size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#555', pointerEvents: 'none' }} />
+                <Calendar size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-label)', pointerEvents: 'none' }} />
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputS} />
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Heure *</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Heure *</label>
               <div style={{ position: 'relative' }}>
-                <Clock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#555', pointerEvents: 'none' }} />
+                <Clock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-label)', pointerEvents: 'none' }} />
                 <input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={inputS} />
               </div>
             </div>
@@ -115,9 +115,9 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
 
           {/* Notes */}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Notes</label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>Notes</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Notes sur cet appel..."
-              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, color: '#fff', fontSize: 13, outline: 'none', resize: 'vertical' as const }} />
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 10, color: 'var(--text-primary)', fontSize: 13, outline: 'none', resize: 'vertical' as const }} />
           </div>
 
           {error && (
@@ -129,14 +129,14 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose} style={{
               padding: '10px 20px', borderRadius: 10, fontSize: 13,
-              border: '1px solid rgba(255,255,255,0.08)', background: 'transparent',
-              color: '#888', cursor: 'pointer',
+              border: '1px solid var(--border-primary)', background: 'transparent',
+              color: 'var(--text-tertiary)', cursor: 'pointer',
             }}>
               Annuler
             </button>
             <button type="submit" disabled={loading} style={{
               padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600,
-              background: '#00C853', border: 'none', color: '#fff', cursor: loading ? 'not-allowed' : 'pointer',
+              background: 'var(--color-primary)', border: 'none', color: 'var(--text-primary)', cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6,
             }}>
               {loading && <Loader2 size={14} />}

@@ -203,8 +203,8 @@ export default function AgendaPage() {
             alignItems: 'center',
             gap: 12,
             padding: '12px 20px',
-            borderBottom: '1px solid #262626',
-            background: '#0A0A0A',
+            borderBottom: '1px solid var(--border-secondary)',
+            background: 'var(--bg-primary)',
             flexShrink: 0,
           }}
         >
@@ -212,8 +212,8 @@ export default function AgendaPage() {
           <div
             style={{
               display: 'flex',
-              background: '#141414',
-              border: '1px solid #262626',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-secondary)',
               borderRadius: 8,
               padding: 3,
               gap: 2,
@@ -229,8 +229,8 @@ export default function AgendaPage() {
                     padding: '5px 12px',
                     borderRadius: 6,
                     border: 'none',
-                    background: active ? '#262626' : 'transparent',
-                    color: active ? '#FFFFFF' : '#A0A0A0',
+                    background: active ? 'var(--border-secondary)' : 'transparent',
+                    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
                     fontSize: 12,
                     fontWeight: active ? 600 : 400,
                     cursor: 'pointer',
@@ -248,10 +248,10 @@ export default function AgendaPage() {
             onClick={navigatePrev}
             style={{
               background: 'none',
-              border: '1px solid #262626',
+              border: '1px solid var(--border-secondary)',
               borderRadius: 6,
               cursor: 'pointer',
-              color: '#A0A0A0',
+              color: 'var(--text-secondary)',
               display: 'flex',
               alignItems: 'center',
               padding: '5px 6px',
@@ -266,9 +266,9 @@ export default function AgendaPage() {
             style={{
               padding: '5px 12px',
               borderRadius: 6,
-              border: '1px solid #262626',
+              border: '1px solid var(--border-secondary)',
               background: 'transparent',
-              color: '#A0A0A0',
+              color: 'var(--text-secondary)',
               fontSize: 12,
               cursor: 'pointer',
             }}
@@ -280,10 +280,10 @@ export default function AgendaPage() {
             onClick={navigateNext}
             style={{
               background: 'none',
-              border: '1px solid #262626',
+              border: '1px solid var(--border-secondary)',
               borderRadius: 6,
               cursor: 'pointer',
-              color: '#A0A0A0',
+              color: 'var(--text-secondary)',
               display: 'flex',
               alignItems: 'center',
               padding: '5px 6px',
@@ -298,7 +298,7 @@ export default function AgendaPage() {
             style={{
               fontSize: 15,
               fontWeight: 600,
-              color: '#FFFFFF',
+              color: 'var(--text-primary)',
               textTransform: 'capitalize',
               flex: 1,
             }}
@@ -320,7 +320,7 @@ export default function AgendaPage() {
               borderRadius: 8,
               border: 'none',
               background: '#E53E3E',
-              color: '#FFFFFF',
+              color: 'var(--text-primary)',
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',

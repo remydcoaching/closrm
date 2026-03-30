@@ -40,7 +40,7 @@ const NAV = [
   },
 ]
 
-export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: boolean; onToggle: () => void; logoUrl?: string | null }) {
   const pathname = usePathname()
   const router = useRouter()
   const W = collapsed ? 64 : 220
@@ -65,8 +65,16 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
         padding: '0 16px', borderBottom: '1px solid var(--border-primary)', flexShrink: 0,
       }}>
         {!collapsed && (
-          <Link href="/dashboard" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', textDecoration: 'none' }}>
-            Clos<span style={{ color: '#00C853' }}>RM</span>
+          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', textDecoration: 'none' }}>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
+            ) : null}
+            Clos<span style={{ color: 'var(--color-primary)' }}>RM</span>
+          </Link>
+        )}
+        {collapsed && logoUrl && (
+          <Link href="/dashboard" style={{ textDecoration: 'none' }}>
+            <img src={logoUrl} alt="Logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
           </Link>
         )}
         <button onClick={onToggle} style={{
@@ -95,7 +103,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
                   display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '8px 0' : '7px 10px',
                   justifyContent: collapsed ? 'center' : 'flex-start',
                   borderRadius: 8, fontSize: 13, textDecoration: 'none', marginBottom: 2,
-                  color: active ? '#00C853' : 'var(--text-tertiary)',
+                  color: active ? 'var(--color-primary)' : 'var(--text-tertiary)',
                   background: active ? 'var(--bg-active)' : 'transparent',
                   transition: 'all 0.15s ease',
                 }}>

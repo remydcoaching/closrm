@@ -77,21 +77,21 @@ export default function WorkspaceForm({ workspace, onSave }: Props) {
     width: '100%',
     padding: '8px 12px',
     fontSize: 14,
-    color: '#fff',
-    background: '#0f0f11',
-    border: '1px solid rgba(255,255,255,0.10)',
+    color: 'var(--text-primary)',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border-primary)',
     borderRadius: 6,
     outline: 'none',
   }
 
   return (
     <form onSubmit={handleSubmit}>
-      <h2 style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 20 }}>
+      <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 20 }}>
         Workspace
       </h2>
 
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 6 }}>
+        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6 }}>
           Nom du workspace
         </label>
         <input
@@ -103,7 +103,7 @@ export default function WorkspaceForm({ workspace, onSave }: Props) {
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 6 }}>
+        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6 }}>
           Fuseau horaire
         </label>
         <select
@@ -130,7 +130,7 @@ export default function WorkspaceForm({ workspace, onSave }: Props) {
         <p style={{ fontSize: 13, color: '#ef4444', marginBottom: 12 }}>{error}</p>
       )}
       {success && (
-        <p style={{ fontSize: 13, color: '#00C853', marginBottom: 12 }}>Workspace mis à jour.</p>
+        <p style={{ fontSize: 13, color: 'var(--color-primary)', marginBottom: 12 }}>Workspace mis à jour.</p>
       )}
 
       <button
@@ -140,8 +140,8 @@ export default function WorkspaceForm({ workspace, onSave }: Props) {
           padding: '8px 20px',
           fontSize: 14,
           fontWeight: 500,
-          color: '#fff',
-          background: '#00C853',
+          color: 'var(--text-primary)',
+          background: 'var(--color-primary)',
           border: 'none',
           borderRadius: 6,
           cursor: saving ? 'not-allowed' : 'pointer',

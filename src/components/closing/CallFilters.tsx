@@ -35,9 +35,9 @@ export default function CallFilters({ onFiltersChange }: Props) {
     return (
       <button key={label} onClick={() => setType(value)} style={{
         padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer',
-        border: active ? '1px solid rgba(0,200,83,0.3)' : '1px solid rgba(255,255,255,0.06)',
+        border: active ? '1px solid rgba(0,200,83,0.3)' : '1px solid var(--border-primary)',
         background: active ? 'rgba(0,200,83,0.08)' : 'transparent',
-        color: active ? '#00C853' : '#888',
+        color: active ? 'var(--color-primary)' : 'var(--text-tertiary)',
       }}>
         {label}
       </button>
@@ -45,8 +45,8 @@ export default function CallFilters({ onFiltersChange }: Props) {
   }
 
   const dateInput: React.CSSProperties = {
-    background: 'rgba(9,9,11,0.8)', border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: 8, padding: '6px 10px', color: '#fff', fontSize: 12, outline: 'none',
+    background: 'var(--bg-input)', border: '1px solid var(--border-primary)',
+    borderRadius: 8, padding: '6px 10px', color: 'var(--text-primary)', fontSize: 12, outline: 'none',
     colorScheme: 'dark',
   }
 
@@ -54,11 +54,11 @@ export default function CallFilters({ onFiltersChange }: Props) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
       {/* Search */}
       <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 180 }}>
-        <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#555' }} />
+        <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-label)' }} />
         <input
           value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher un lead..."
-          style={{ width: '100%', background: 'rgba(9,9,11,0.8)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px 12px 8px 34px', color: '#fff', fontSize: 12, outline: 'none' }}
+          style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: '8px 12px 8px 34px', color: 'var(--text-primary)', fontSize: 12, outline: 'none' }}
         />
       </div>
 
@@ -72,7 +72,7 @@ export default function CallFilters({ onFiltersChange }: Props) {
       {/* Date range */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} style={dateInput} />
-        <span style={{ color: '#555', fontSize: 12 }}>→</span>
+        <span style={{ color: 'var(--text-label)', fontSize: 12 }}>→</span>
         <input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} style={dateInput} />
       </div>
     </div>

@@ -34,7 +34,7 @@ export default function FunnelChart({ data }: FunnelChartProps) {
           allowDecimals={false}
         />
         <Tooltip
-          contentStyle={{ background: '#141416', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: '#aaa' }}
           cursor={{ fill: 'rgba(255,255,255,0.03)' }}
           formatter={(value, _name, props) => [
@@ -47,7 +47,7 @@ export default function FunnelChart({ data }: FunnelChartProps) {
             dataKey="pct"
             position="top"
             formatter={(v) => (v as number) > 0 ? `${v}%` : ''}
-            style={{ fontSize: 10, fill: '#888' }}
+            style={{ fontSize: 10, fill: 'var(--text-tertiary)' }}
           />
           {data.map((entry) => (
             <Cell key={entry.label} fill={entry.color} fillOpacity={0.85} />

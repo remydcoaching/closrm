@@ -5,6 +5,8 @@ export interface Workspace {
   name: string
   owner_id: string
   timezone: string
+  accent_color: string
+  logo_url: string | null
   created_at: string
 }
 

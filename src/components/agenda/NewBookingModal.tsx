@@ -14,10 +14,10 @@ interface NewBookingModalProps {
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  background: '#1a1a1c',
-  border: '1px solid #262626',
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border-secondary)',
   borderRadius: 8,
-  color: '#FFFFFF',
+  color: 'var(--text-primary)',
   padding: '8px 12px',
   fontSize: 14,
   outline: 'none',
@@ -26,7 +26,7 @@ const inputStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
-  color: '#A0A0A0',
+  color: 'var(--text-secondary)',
   fontSize: 12,
   marginBottom: 6,
 }
@@ -164,8 +164,8 @@ export default function NewBookingModal({
     >
       <div
         style={{
-          background: '#141416',
-          border: '1px solid #262626',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-secondary)',
           borderRadius: 12,
           width: 460,
           maxWidth: 'calc(100vw - 32px)',
@@ -183,7 +183,7 @@ export default function NewBookingModal({
             marginBottom: 20,
           }}
         >
-          <span style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 600 }}>
+          <span style={{ color: 'var(--text-primary)', fontSize: 16, fontWeight: 600 }}>
             Nouveau rendez-vous
           </span>
           <button
@@ -192,7 +192,7 @@ export default function NewBookingModal({
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: '#A0A0A0',
+              color: 'var(--text-secondary)',
               display: 'flex',
               alignItems: 'center',
               padding: 2,
@@ -208,8 +208,8 @@ export default function NewBookingModal({
           style={{
             display: 'flex',
             gap: 4,
-            background: '#1a1a1c',
-            border: '1px solid #262626',
+            background: 'var(--bg-input)',
+            border: '1px solid var(--border-secondary)',
             borderRadius: 8,
             padding: 4,
             marginBottom: 20,
@@ -224,10 +224,10 @@ export default function NewBookingModal({
                 onClick={() => setIsPersonal(i === 1)}
                 style={{
                   flex: 1,
-                  background: active ? '#262626' : 'transparent',
+                  background: active ? 'var(--border-secondary)' : 'transparent',
                   border: 'none',
                   borderRadius: 6,
-                  color: active ? '#FFFFFF' : '#A0A0A0',
+                  color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
                   fontSize: 13,
                   fontWeight: active ? 600 : 400,
                   padding: '6px 0',
@@ -286,7 +286,7 @@ export default function NewBookingModal({
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          color: '#A0A0A0',
+                          color: 'var(--text-secondary)',
                           display: 'flex',
                           alignItems: 'center',
                           padding: 0,
@@ -312,8 +312,8 @@ export default function NewBookingModal({
                             top: '100%',
                             left: 0,
                             right: 0,
-                            background: '#1a1a1c',
-                            border: '1px solid #262626',
+                            background: 'var(--bg-input)',
+                            border: '1px solid var(--border-secondary)',
                             borderRadius: 8,
                             marginTop: 4,
                             zIndex: 10,
@@ -335,13 +335,13 @@ export default function NewBookingModal({
                                 background: 'none',
                                 border: 'none',
                                 cursor: 'pointer',
-                                color: '#FFFFFF',
+                                color: 'var(--text-primary)',
                                 fontSize: 13,
                                 padding: '8px 12px',
                                 textAlign: 'left',
                               }}
                               onMouseEnter={(e) => {
-                                (e.currentTarget as HTMLButtonElement).style.background = '#262626'
+                                (e.currentTarget as HTMLButtonElement).style.background = 'var(--border-secondary)'
                               }}
                               onMouseLeave={(e) => {
                                 (e.currentTarget as HTMLButtonElement).style.background = 'none'
@@ -349,7 +349,7 @@ export default function NewBookingModal({
                             >
                               {lead.first_name} {lead.last_name}
                               {lead.phone && (
-                                <span style={{ color: '#A0A0A0', marginLeft: 8, fontSize: 12 }}>
+                                <span style={{ color: 'var(--text-secondary)', marginLeft: 8, fontSize: 12 }}>
                                   {lead.phone}
                                 </span>
                               )}
@@ -451,9 +451,9 @@ export default function NewBookingModal({
                 onClick={onClose}
                 style={{
                   background: 'none',
-                  border: '1px solid #262626',
+                  border: '1px solid var(--border-secondary)',
                   borderRadius: 8,
-                  color: '#A0A0A0',
+                  color: 'var(--text-secondary)',
                   fontSize: 14,
                   padding: '8px 16px',
                   cursor: 'pointer',
@@ -468,7 +468,7 @@ export default function NewBookingModal({
                   background: loading ? '#8b2020' : '#E53E3E',
                   border: 'none',
                   borderRadius: 8,
-                  color: '#FFFFFF',
+                  color: 'var(--text-primary)',
                   fontSize: 14,
                   fontWeight: 600,
                   padding: '8px 20px',

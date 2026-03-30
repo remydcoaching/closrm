@@ -28,8 +28,8 @@ export default function CalendarCard({
   return (
     <div
       style={{
-        background: '#141416',
-        border: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-primary)',
         borderRadius: 10,
         padding: 20,
         display: 'flex',
@@ -49,7 +49,7 @@ export default function CalendarCard({
               flexShrink: 0,
             }}
           />
-          <span style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{calendar.name}</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>{calendar.name}</span>
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
           <input
@@ -58,7 +58,7 @@ export default function CalendarCard({
             onChange={e => onToggleActive(calendar.id, e.target.checked)}
             style={{ accentColor: '#E53E3E', width: 14, height: 14, cursor: 'pointer' }}
           />
-          <span style={{ fontSize: 12, color: calendar.is_active ? '#38A169' : '#A0A0A0' }}>
+          <span style={{ fontSize: 12, color: calendar.is_active ? '#38A169' : 'var(--text-secondary)' }}>
             {calendar.is_active ? 'Actif' : 'Inactif'}
           </span>
         </label>
@@ -66,7 +66,7 @@ export default function CalendarCard({
 
       {/* Description */}
       {calendar.description && (
-        <p style={{ fontSize: 13, color: '#A0A0A0', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
           {calendar.description}
         </p>
       )}
@@ -75,20 +75,20 @@ export default function CalendarCard({
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {/* Clock icon */}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A0A0A0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
-          <span style={{ fontSize: 13, color: '#A0A0A0' }}>{calendar.duration_minutes} min</span>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{calendar.duration_minutes} min</span>
         </div>
         {calendar.location && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {/* MapPin icon */}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A0A0A0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
               <circle cx="12" cy="10" r="3" />
             </svg>
-            <span style={{ fontSize: 13, color: '#A0A0A0' }}>{calendar.location}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{calendar.location}</span>
           </div>
         )}
       </div>
@@ -100,8 +100,8 @@ export default function CalendarCard({
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--bg-hover)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 6,
             padding: '6px 10px',
           }}
@@ -109,7 +109,7 @@ export default function CalendarCard({
           <span
             style={{
               fontSize: 12,
-              color: '#A0A0A0',
+              color: 'var(--text-secondary)',
               flex: 1,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -122,11 +122,11 @@ export default function CalendarCard({
             onClick={handleCopyUrl}
             style={{
               background: 'none',
-              border: '1px solid rgba(255,255,255,0.12)',
+              border: '1px solid var(--border-primary)',
               borderRadius: 4,
               padding: '2px 8px',
               fontSize: 11,
-              color: '#A0A0A0',
+              color: 'var(--text-secondary)',
               cursor: 'pointer',
               flexShrink: 0,
             }}
@@ -142,10 +142,10 @@ export default function CalendarCard({
           href={`/parametres/calendriers/${calendar.id}`}
           style={{
             fontSize: 13,
-            color: '#A0A0A0',
+            color: 'var(--text-secondary)',
             textDecoration: 'none',
             padding: '5px 12px',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 6,
           }}
         >

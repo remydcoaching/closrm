@@ -80,7 +80,7 @@ export default function ProfileForm({ user, onSave }: Props) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <h2 style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 20 }}>
+      <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 20 }}>
         Profil
       </h2>
 
@@ -91,8 +91,8 @@ export default function ProfileForm({ user, onSave }: Props) {
             width: 64,
             height: 64,
             borderRadius: '50%',
-            background: '#0f0f11',
-            border: '1px solid rgba(255,255,255,0.10)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -121,9 +121,9 @@ export default function ProfileForm({ user, onSave }: Props) {
               gap: 6,
               padding: '6px 12px',
               fontSize: 13,
-              color: '#fff',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.10)',
+              color: 'var(--text-primary)',
+              background: 'var(--bg-hover)',
+              border: '1px solid var(--border-primary)',
               borderRadius: 6,
               cursor: uploading ? 'not-allowed' : 'pointer',
               opacity: uploading ? 0.5 : 1,
@@ -139,7 +139,7 @@ export default function ProfileForm({ user, onSave }: Props) {
             onChange={handleAvatarChange}
             style={{ display: 'none' }}
           />
-          <p style={{ fontSize: 11, color: '#555', marginTop: 4 }}>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
             JPG, PNG ou WebP. Max 2 Mo.
           </p>
         </div>
@@ -147,7 +147,7 @@ export default function ProfileForm({ user, onSave }: Props) {
 
       {/* Full name */}
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 6 }}>
+        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6 }}>
           Nom complet
         </label>
         <input
@@ -158,9 +158,9 @@ export default function ProfileForm({ user, onSave }: Props) {
             width: '100%',
             padding: '8px 12px',
             fontSize: 14,
-            color: '#fff',
-            background: '#0f0f11',
-            border: '1px solid rgba(255,255,255,0.10)',
+            color: 'var(--text-primary)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 6,
             outline: 'none',
           }}
@@ -169,7 +169,7 @@ export default function ProfileForm({ user, onSave }: Props) {
 
       {/* Email (read-only) */}
       <div style={{ marginBottom: 20 }}>
-        <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 6 }}>
+        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6 }}>
           Email
         </label>
         <input
@@ -180,9 +180,9 @@ export default function ProfileForm({ user, onSave }: Props) {
             width: '100%',
             padding: '8px 12px',
             fontSize: 14,
-            color: '#555',
-            background: '#0c0c0e',
-            border: '1px solid rgba(255,255,255,0.06)',
+            color: 'var(--text-muted)',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 6,
             cursor: 'not-allowed',
           }}
@@ -193,7 +193,7 @@ export default function ProfileForm({ user, onSave }: Props) {
         <p style={{ fontSize: 13, color: '#ef4444', marginBottom: 12 }}>{error}</p>
       )}
       {success && (
-        <p style={{ fontSize: 13, color: '#00C853', marginBottom: 12 }}>Profil mis à jour.</p>
+        <p style={{ fontSize: 13, color: 'var(--color-primary)', marginBottom: 12 }}>Profil mis à jour.</p>
       )}
 
       <button
@@ -203,8 +203,8 @@ export default function ProfileForm({ user, onSave }: Props) {
           padding: '8px 20px',
           fontSize: 14,
           fontWeight: 500,
-          color: '#fff',
-          background: '#00C853',
+          color: 'var(--text-primary)',
+          background: 'var(--color-primary)',
           border: 'none',
           borderRadius: 6,
           cursor: saving ? 'not-allowed' : 'pointer',

@@ -177,7 +177,7 @@ export default function PublicBookingPage() {
 
   if (loading && !calendar) {
     return (
-      <div style={{ color: '#A0A0A0', fontSize: '14px', textAlign: 'center', padding: '40px' }}>
+      <div style={{ color: 'var(--text-secondary)', fontSize: '14px', textAlign: 'center', padding: '40px' }}>
         Chargement…
       </div>
     )
@@ -214,7 +214,7 @@ export default function PublicBookingPage() {
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: '#A0A0A0',
+            color: 'var(--text-secondary)',
             fontSize: '14px',
             display: 'flex',
             alignItems: 'center',
@@ -230,25 +230,25 @@ export default function PublicBookingPage() {
         {/* Recap */}
         <div
           style={{
-            background: '#141414',
-            border: '1px solid #262626',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-secondary)',
             borderRadius: '12px',
             padding: '16px',
             marginBottom: '24px',
           }}
         >
-          <div style={{ color: '#FFFFFF', fontWeight: 600, fontSize: '15px', marginBottom: '8px' }}>
+          <div style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '15px', marginBottom: '8px' }}>
             {calendar.name}
           </div>
-          <div style={{ color: '#A0A0A0', fontSize: '13px', textTransform: 'capitalize' }}>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '13px', textTransform: 'capitalize' }}>
             {dateLabel} à {selectedTime}
           </div>
           <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
-            <span style={{ color: '#A0A0A0', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Clock size={12} /> {calendar.duration_minutes} min
             </span>
             {calendar.location && (
-              <span style={{ color: '#A0A0A0', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <MapPin size={12} /> {calendar.location}
               </span>
             )}
@@ -265,7 +265,7 @@ export default function PublicBookingPage() {
                   style={{
                     display: 'block',
                     fontSize: '13px',
-                    color: '#FFFFFF',
+                    color: 'var(--text-primary)',
                     marginBottom: '6px',
                     fontWeight: 500,
                   }}
@@ -287,11 +287,11 @@ export default function PublicBookingPage() {
                     rows={3}
                     style={{
                       width: '100%',
-                      background: '#141414',
-                      border: '1px solid #262626',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-secondary)',
                       borderRadius: '8px',
                       padding: '10px 12px',
-                      color: '#FFFFFF',
+                      color: 'var(--text-primary)',
                       fontSize: '14px',
                       resize: 'vertical',
                       outline: 'none',
@@ -308,11 +308,11 @@ export default function PublicBookingPage() {
                     }
                     style={{
                       width: '100%',
-                      background: '#141414',
-                      border: '1px solid #262626',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-secondary)',
                       borderRadius: '8px',
                       padding: '10px 12px',
-                      color: formData[field.key] ? '#FFFFFF' : '#A0A0A0',
+                      color: formData[field.key] ? 'var(--text-primary)' : 'var(--text-secondary)',
                       fontSize: '14px',
                       outline: 'none',
                       boxSizing: 'border-box',
@@ -334,11 +334,11 @@ export default function PublicBookingPage() {
                     }
                     style={{
                       width: '100%',
-                      background: '#141414',
-                      border: '1px solid #262626',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-secondary)',
                       borderRadius: '8px',
                       padding: '10px 12px',
-                      color: '#FFFFFF',
+                      color: 'var(--text-primary)',
                       fontSize: '14px',
                       outline: 'none',
                       boxSizing: 'border-box',
@@ -362,7 +362,7 @@ export default function PublicBookingPage() {
               width: '100%',
               marginTop: '24px',
               padding: '14px',
-              background: submitting ? '#555' : accent,
+              background: submitting ? 'var(--text-muted)' : accent,
               color: '#FFFFFF',
               border: 'none',
               borderRadius: '8px',
@@ -436,18 +436,18 @@ export default function PublicBookingPage() {
           </div>
         )}
         <div>
-          <div style={{ color: '#A0A0A0', fontSize: '13px' }}>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
             {workspace.name}
           </div>
-          <div style={{ color: '#FFFFFF', fontWeight: 700, fontSize: '20px' }}>
+          <div style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '20px' }}>
             {calendar.name}
           </div>
           <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
-            <span style={{ color: '#A0A0A0', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Clock size={12} /> {calendar.duration_minutes} min
             </span>
             {calendar.location && (
-              <span style={{ color: '#A0A0A0', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <MapPin size={12} /> {calendar.location}
               </span>
             )}
@@ -461,14 +461,14 @@ export default function PublicBookingPage() {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '24px',
-          background: '#141414',
-          border: '1px solid #262626',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-secondary)',
           borderRadius: '16px',
           overflow: 'hidden',
         }}
       >
         {/* Left: monthly calendar */}
-        <div style={{ padding: '24px', borderRight: '1px solid #262626' }}>
+        <div style={{ padding: '24px', borderRight: '1px solid var(--border-secondary)' }}>
           {/* Month navigation */}
           <div
             style={{
@@ -484,7 +484,7 @@ export default function PublicBookingPage() {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                color: '#A0A0A0',
+                color: 'var(--text-secondary)',
                 padding: '4px',
                 display: 'flex',
                 alignItems: 'center',
@@ -495,7 +495,7 @@ export default function PublicBookingPage() {
             </button>
             <span
               style={{
-                color: '#FFFFFF',
+                color: 'var(--text-primary)',
                 fontSize: '15px',
                 fontWeight: 600,
                 textTransform: 'capitalize',
@@ -509,7 +509,7 @@ export default function PublicBookingPage() {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                color: '#A0A0A0',
+                color: 'var(--text-secondary)',
                 padding: '4px',
                 display: 'flex',
                 alignItems: 'center',
@@ -534,7 +534,7 @@ export default function PublicBookingPage() {
                 style={{
                   textAlign: 'center',
                   fontSize: '12px',
-                  color: '#A0A0A0',
+                  color: 'var(--text-secondary)',
                   padding: '4px 0',
                   fontWeight: 500,
                 }}
@@ -560,21 +560,21 @@ export default function PublicBookingPage() {
               const isClickable = inMonth && !isPastDay && hasSlots
 
               let background = 'transparent'
-              let color = '#333333'
+              let color = 'var(--text-muted)'
               let cursor = 'default'
 
               if (!inMonth) {
-                color = '#222222'
+                color = 'var(--text-muted)'
               } else if (isSelected) {
                 background = accent
                 color = '#FFFFFF'
                 cursor = 'pointer'
               } else if (isPastDay) {
-                color = '#333333'
+                color = 'var(--text-muted)'
               } else if (!hasSlots) {
-                color = '#444444'
+                color = 'var(--text-label)'
               } else {
-                color = '#FFFFFF'
+                color = 'var(--text-primary)'
                 cursor = 'pointer'
               }
 
@@ -602,7 +602,7 @@ export default function PublicBookingPage() {
                   }}
                   onMouseEnter={(e) => {
                     if (isClickable && !isSelected) {
-                      ;(e.currentTarget as HTMLButtonElement).style.background = '#2a2a2a'
+                      ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -629,7 +629,7 @@ export default function PublicBookingPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#A0A0A0',
+                color: 'var(--text-secondary)',
                 fontSize: '14px',
                 textAlign: 'center',
               }}
@@ -640,7 +640,7 @@ export default function PublicBookingPage() {
             <>
               <div
                 style={{
-                  color: '#FFFFFF',
+                  color: 'var(--text-primary)',
                   fontWeight: 600,
                   fontSize: '14px',
                   marginBottom: '16px',
@@ -651,9 +651,9 @@ export default function PublicBookingPage() {
               </div>
 
               {loading ? (
-                <div style={{ color: '#A0A0A0', fontSize: '13px' }}>Chargement…</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Chargement…</div>
               ) : timeSlotsForDay.length === 0 ? (
-                <div style={{ color: '#A0A0A0', fontSize: '13px' }}>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
                   Aucun créneau disponible ce jour.
                 </div>
               ) : (
@@ -677,10 +677,10 @@ export default function PublicBookingPage() {
                         }}
                         style={{
                           padding: '12px 16px',
-                          background: isSelectedTime ? accent : '#0a0a0c',
-                          border: `1px solid ${isSelectedTime ? accent : '#262626'}`,
+                          background: isSelectedTime ? accent : 'var(--bg-input)',
+                          border: `1px solid ${isSelectedTime ? accent : 'var(--border-secondary)'}`,
                           borderRadius: '8px',
-                          color: '#FFFFFF',
+                          color: 'var(--text-primary)',
                           fontSize: '14px',
                           fontWeight: 500,
                           cursor: 'pointer',
@@ -689,14 +689,14 @@ export default function PublicBookingPage() {
                         }}
                         onMouseEnter={(e) => {
                           if (!isSelectedTime) {
-                            ;(e.currentTarget as HTMLButtonElement).style.background = '#1f1f1f'
-                            ;(e.currentTarget as HTMLButtonElement).style.borderColor = '#444'
+                            ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-input)'
+                            ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--text-label)'
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (!isSelectedTime) {
-                            ;(e.currentTarget as HTMLButtonElement).style.background = '#0a0a0c'
-                            ;(e.currentTarget as HTMLButtonElement).style.borderColor = '#262626'
+                            ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-input)'
+                            ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-secondary)'
                           }
                         }}
                       >

@@ -27,8 +27,8 @@ export function AgendaSidebar({
       style={{
         width: 220,
         flexShrink: 0,
-        background: '#141414',
-        borderRight: '1px solid #262626',
+        background: 'var(--bg-elevated)',
+        borderRight: '1px solid var(--border-secondary)',
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',
@@ -38,7 +38,7 @@ export function AgendaSidebar({
       <MiniCalendar selectedDate={selectedDate} onDateSelect={onDateSelect} />
 
       {/* Divider */}
-      <div style={{ height: 1, background: '#262626', margin: '0 12px' }} />
+      <div style={{ height: 1, background: 'var(--border-secondary)', margin: '0 12px' }} />
 
       {/* Calendars section */}
       <div style={{ padding: '16px 12px' }}>
@@ -46,7 +46,7 @@ export function AgendaSidebar({
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: '#A0A0A0',
+            color: 'var(--text-secondary)',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             marginBottom: 8,
@@ -87,7 +87,7 @@ export function AgendaSidebar({
               <span
                 style={{
                   fontSize: 13,
-                  color: visible ? '#FFFFFF' : '#666',
+                  color: visible ? 'var(--text-primary)' : 'var(--text-muted)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -128,7 +128,7 @@ export function AgendaSidebar({
           <span
             style={{
               fontSize: 13,
-              color: showPersonal ? '#FFFFFF' : '#666',
+              color: showPersonal ? 'var(--text-primary)' : 'var(--text-muted)',
             }}
           >
             Événements personnels

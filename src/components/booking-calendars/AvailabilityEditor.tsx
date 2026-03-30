@@ -47,7 +47,7 @@ export default function AvailabilityEditor({ availability, onChange }: Availabil
                 flexShrink: 0,
                 paddingTop: slots.length > 0 ? 8 : 0,
                 fontSize: 13,
-                color: '#fff',
+                color: 'var(--text-primary)',
                 fontWeight: 500,
               }}
             >
@@ -57,7 +57,7 @@ export default function AvailabilityEditor({ availability, onChange }: Availabil
             {/* Slots column */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {slots.length === 0 && (
-                <span style={{ fontSize: 13, color: '#666', paddingTop: 1 }}>Fermé</span>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)', paddingTop: 1 }}>Fermé</span>
               )}
               {slots.map((slot, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -66,27 +66,27 @@ export default function AvailabilityEditor({ availability, onChange }: Availabil
                     value={slot.start}
                     onChange={e => updateSlot(key, idx, 'start', e.target.value)}
                     style={{
-                      background: '#1a1a1a',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'var(--bg-input)',
+                      border: '1px solid var(--border-primary)',
                       borderRadius: 6,
                       padding: '5px 10px',
                       fontSize: 13,
-                      color: '#fff',
+                      color: 'var(--text-primary)',
                       outline: 'none',
                     }}
                   />
-                  <span style={{ color: '#666', fontSize: 13 }}>→</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>→</span>
                   <input
                     type="time"
                     value={slot.end}
                     onChange={e => updateSlot(key, idx, 'end', e.target.value)}
                     style={{
-                      background: '#1a1a1a',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'var(--bg-input)',
+                      border: '1px solid var(--border-primary)',
                       borderRadius: 6,
                       padding: '5px 10px',
                       fontSize: 13,
-                      color: '#fff',
+                      color: 'var(--text-primary)',
                       outline: 'none',
                     }}
                   />
@@ -95,7 +95,7 @@ export default function AvailabilityEditor({ availability, onChange }: Availabil
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#666',
+                      color: 'var(--text-muted)',
                       cursor: 'pointer',
                       fontSize: 16,
                       lineHeight: 1,
@@ -112,11 +112,11 @@ export default function AvailabilityEditor({ availability, onChange }: Availabil
                 onClick={() => addSlot(key)}
                 style={{
                   background: 'none',
-                  border: '1px dashed rgba(255,255,255,0.15)',
+                  border: '1px dashed var(--border-primary)',
                   borderRadius: 6,
                   padding: '4px 10px',
                   fontSize: 12,
-                  color: '#A0A0A0',
+                  color: 'var(--text-secondary)',
                   cursor: 'pointer',
                   alignSelf: 'flex-start',
                 }}

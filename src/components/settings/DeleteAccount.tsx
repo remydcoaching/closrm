@@ -50,7 +50,7 @@ export default function DeleteAccount({ workspaceName }: Props) {
     <>
       <div
         style={{
-          background: '#141416',
+          background: 'var(--bg-elevated)',
           border: '1px solid rgba(239,68,68,0.3)',
           borderRadius: 10,
           padding: 24,
@@ -59,7 +59,7 @@ export default function DeleteAccount({ workspaceName }: Props) {
         <h2 style={{ fontSize: 16, fontWeight: 600, color: '#ef4444', marginBottom: 8 }}>
           Zone dangereuse
         </h2>
-        <p style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>
+        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 16 }}>
           La suppression de votre compte est irréversible. Toutes vos données seront définitivement supprimées.
         </p>
         <button
@@ -69,7 +69,7 @@ export default function DeleteAccount({ workspaceName }: Props) {
             padding: '8px 16px',
             fontSize: 13,
             fontWeight: 500,
-            color: '#fff',
+            color: 'var(--text-primary)',
             background: '#ef4444',
             border: 'none',
             borderRadius: 6,
@@ -96,8 +96,8 @@ export default function DeleteAccount({ workspaceName }: Props) {
         >
           <div
             style={{
-              background: '#141416',
-              border: '1px solid rgba(255,255,255,0.10)',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-primary)',
               borderRadius: 12,
               padding: 28,
               width: 440,
@@ -107,19 +107,19 @@ export default function DeleteAccount({ workspaceName }: Props) {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <AlertTriangle size={20} color="#ef4444" />
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
                 Supprimer votre compte
               </h3>
             </div>
 
-            <p style={{ fontSize: 13, color: '#888', marginBottom: 20, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 20, lineHeight: 1.5 }}>
               Cette action est <strong style={{ color: '#ef4444' }}>irréversible</strong>.
               Toutes vos données (leads, appels, follow-ups, workflows, intégrations) seront
               définitivement supprimées.
             </p>
 
-            <p style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
-              Tapez <strong style={{ color: '#fff' }}>{workspaceName}</strong> pour confirmer :
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+              Tapez <strong style={{ color: 'var(--text-primary)' }}>{workspaceName}</strong> pour confirmer :
             </p>
 
             <input
@@ -132,9 +132,9 @@ export default function DeleteAccount({ workspaceName }: Props) {
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: 14,
-                color: '#fff',
-                background: '#0f0f11',
-                border: '1px solid rgba(255,255,255,0.10)',
+                color: 'var(--text-primary)',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-primary)',
                 borderRadius: 6,
                 outline: 'none',
                 marginBottom: 16,
@@ -153,9 +153,9 @@ export default function DeleteAccount({ workspaceName }: Props) {
                 style={{
                   padding: '8px 16px',
                   fontSize: 13,
-                  color: '#888',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.10)',
+                  color: 'var(--text-tertiary)',
+                  background: 'var(--bg-hover)',
+                  border: '1px solid var(--border-primary)',
                   borderRadius: 6,
                   cursor: 'pointer',
                 }}
@@ -170,7 +170,7 @@ export default function DeleteAccount({ workspaceName }: Props) {
                   padding: '8px 16px',
                   fontSize: 13,
                   fontWeight: 500,
-                  color: '#fff',
+                  color: 'var(--text-primary)',
                   background: isMatch ? '#ef4444' : '#333',
                   border: 'none',
                   borderRadius: 6,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { publicBookingSchema } from '@/lib/validations/bookings'
 import { getAvailableSlots } from '@/lib/bookings/availability'
 import { startOfMonth, endOfMonth, parseISO, addMinutes } from 'date-fns'
@@ -267,6 +268,16 @@ export async function POST(
 
   if (bookingError || !booking) {
     return NextResponse.json({ error: 'Erreur lors de la création de la réservation.' }, { status: 500 })
+  }
+
+  // Fire workflow trigger (non-blocking)
+  if (leadId) {
+    fireTriggersForEvent(calendar.workspace_id, 'booking_created', {
+      lead_id: leadId,
+      booking_id: booking.id,
+      calendar_name: calendar.name,
+      scheduled_at: booking.scheduled_at,
+    }).catch(() => {})
   }
 
   return NextResponse.json({ booking }, { status: 201 })

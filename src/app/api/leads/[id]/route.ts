@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateLeadSchema } from '@/lib/validations/leads'
+import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 
 export async function GET(
   _request: NextRequest,
@@ -70,6 +71,14 @@ export async function PATCH(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
 
+    // Fetch old lead data for trigger comparison
+    const { data: oldLead } = await supabase
+      .from('leads')
+      .select('status, tags')
+      .eq('id', id)
+      .eq('workspace_id', workspaceId)
+      .single()
+
     const { data, error } = await supabase
       .from('leads')
       .update(parsed.data)
@@ -80,6 +89,32 @@ export async function PATCH(
 
     if (error || !data) {
       return NextResponse.json({ error: 'Lead introuvable ou non autorisé' }, { status: 404 })
+    }
+
+    // Fire workflow triggers (non-blocking)
+    if (oldLead && parsed.data.status && parsed.data.status !== oldLead.status) {
+      fireTriggersForEvent(workspaceId, 'lead_status_changed', {
+        lead_id: id,
+        old_status: oldLead.status,
+        new_status: parsed.data.status,
+      }).catch(() => {})
+
+      if (parsed.data.status === 'clos') {
+        fireTriggersForEvent(workspaceId, 'deal_won', { lead_id: id }).catch(() => {})
+      }
+    }
+
+    if (oldLead && parsed.data.tags) {
+      const oldTags = oldLead.tags || []
+      const newTags = parsed.data.tags || []
+      const added = newTags.filter((t: string) => !oldTags.includes(t))
+      const removed = oldTags.filter((t: string) => !newTags.includes(t))
+      for (const tag of added) {
+        fireTriggersForEvent(workspaceId, 'tag_added', { lead_id: id, tag }).catch(() => {})
+      }
+      for (const tag of removed) {
+        fireTriggersForEvent(workspaceId, 'tag_removed', { lead_id: id, tag }).catch(() => {})
+      }
     }
 
     return NextResponse.json({ data })

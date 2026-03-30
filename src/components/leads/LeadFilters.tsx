@@ -10,7 +10,7 @@ const STATUSES: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'no_show_setting', label: 'No-show Setting', color: '#f59e0b' },
   { value: 'closing_planifie', label: 'Closing planifié', color: '#a855f7' },
   { value: 'no_show_closing', label: 'No-show Closing', color: '#f97316' },
-  { value: 'clos', label: 'Closé ✅', color: '#00C853' },
+  { value: 'clos', label: 'Closé ✅', color: 'var(--color-primary)' },
   { value: 'dead', label: 'Dead ❌', color: '#ef4444' },
 ]
 
@@ -89,8 +89,8 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
           style={{
             width: '100%', boxSizing: 'border-box',
             padding: '7px 10px 7px 32px',
-            background: '#0f0f11', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none',
+            background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+            borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none',
           }}
         />
       </div>
@@ -104,11 +104,11 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
             padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
             border: panelOpen || activeCount > 0
               ? '1px solid rgba(0,200,83,0.4)'
-              : '1px solid rgba(255,255,255,0.08)',
+              : '1px solid var(--border-primary)',
             background: panelOpen || activeCount > 0
               ? 'rgba(0,200,83,0.08)'
-              : '#0f0f11',
-            color: activeCount > 0 ? '#00C853' : '#888',
+              : 'var(--bg-elevated)',
+            color: activeCount > 0 ? 'var(--color-primary)' : 'var(--text-tertiary)',
             cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap',
           }}
         >
@@ -118,7 +118,7 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
             <span style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 18, height: 18, borderRadius: '50%', fontSize: 10, fontWeight: 700,
-              background: '#00C853', color: '#000',
+              background: 'var(--color-primary)', color: '#000',
             }}>
               {activeCount}
             </span>
@@ -129,13 +129,13 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
         {panelOpen && (
           <div style={{
             position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50,
-            background: '#141416', border: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
             borderRadius: 12, padding: 20, minWidth: 320,
             boxShadow: '0 12px 40px rgba(0,0,0,0.7)',
           }}>
             {/* Header panneau */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Filtres</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Filtres</span>
               {activeCount > 0 && (
                 <button onClick={clearAll} style={{
                   display: 'flex', alignItems: 'center', gap: 4,
@@ -161,7 +161,7 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
                   return (
                     <button key={s.value} onClick={() => toggleStatus(s.value)} style={{
                       padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                      border: active ? `1px solid ${s.color}40` : '1px solid rgba(255,255,255,0.08)',
+                      border: active ? `1px solid ${s.color}40` : '1px solid var(--border-primary)',
                       background: active ? `${s.color}18` : 'transparent',
                       color: active ? s.color : '#777',
                       cursor: 'pointer', transition: 'all 0.15s ease',
@@ -187,7 +187,7 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
                   return (
                     <button key={s.value} onClick={() => toggleSource(s.value)} style={{
                       padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                      border: active ? `1px solid ${s.color}40` : '1px solid rgba(255,255,255,0.08)',
+                      border: active ? `1px solid ${s.color}40` : '1px solid var(--border-primary)',
                       background: active ? `${s.color}18` : 'transparent',
                       color: active ? s.color : '#777',
                       cursor: 'pointer', transition: 'all 0.15s ease',
@@ -203,7 +203,7 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
             {activeCount > 0 && (
               <div style={{
                 marginTop: 16, paddingTop: 14,
-                borderTop: '1px solid rgba(255,255,255,0.06)',
+                borderTop: '1px solid var(--border-primary)',
                 display: 'flex', flexWrap: 'wrap', gap: 6,
               }}>
                 {selectedStatuses.map(s => {

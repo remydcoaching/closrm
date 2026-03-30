@@ -10,7 +10,7 @@ const STATUSES: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'no_show_setting', label: 'No-show Setting', color: '#f59e0b' },
   { value: 'closing_planifie', label: 'Closing planifié', color: '#a855f7' },
   { value: 'no_show_closing', label: 'No-show Closing', color: '#f97316' },
-  { value: 'clos', label: 'Closé', color: '#00C853' },
+  { value: 'clos', label: 'Closé', color: 'var(--color-primary)' },
   { value: 'dead', label: 'Dead', color: '#ef4444' },
 ]
 
@@ -42,13 +42,13 @@ type DropdownType = 'status' | 'source' | 'date' | 'reached' | 'group'
 const dropdownBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 5,
   padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-  color: '#888', cursor: 'pointer', whiteSpace: 'nowrap',
+  background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-primary)',
+  color: 'var(--text-tertiary)', cursor: 'pointer', whiteSpace: 'nowrap',
 }
 
 const dropdownPanel: React.CSSProperties = {
   position: 'fixed', zIndex: 9999,
-  background: '#1a1a1c', border: '1px solid rgba(255,255,255,0.10)',
+  background: '#1a1a1c', border: '1px solid var(--border-primary)',
   borderRadius: 10, padding: 8,
   boxShadow: '0 8px 32px rgba(0,0,0,0.8)', minWidth: 180,
 }
@@ -112,7 +112,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
       {/* Recherche */}
       <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
-        <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#555' }} />
+        <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -120,8 +120,8 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
           style={{
             width: '100%', boxSizing: 'border-box',
             padding: '7px 10px 7px 30px', borderRadius: 8, fontSize: 12,
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-            color: '#fff', outline: 'none',
+            background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
+            color: 'var(--text-primary)', outline: 'none',
           }}
         />
       </div>
@@ -129,7 +129,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
       {/* Statut */}
       <button onClick={e => openDd(e, 'status')} style={{
         ...dropdownBtn,
-        ...(statuses.length > 0 ? { borderColor: 'rgba(0,200,83,0.4)', color: '#00C853' } : {}),
+        ...(statuses.length > 0 ? { borderColor: 'rgba(0,200,83,0.4)', color: 'var(--color-primary)' } : {}),
       }}>
         Statut {statuses.length > 0 && `(${statuses.length})`} <ChevronDown size={11} />
       </button>
@@ -137,7 +137,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
       {/* Source */}
       <button onClick={e => openDd(e, 'source')} style={{
         ...dropdownBtn,
-        ...(sources.length > 0 ? { borderColor: 'rgba(0,200,83,0.4)', color: '#00C853' } : {}),
+        ...(sources.length > 0 ? { borderColor: 'rgba(0,200,83,0.4)', color: 'var(--color-primary)' } : {}),
       }}>
         Source {sources.length > 0 && `(${sources.length})`} <ChevronDown size={11} />
       </button>
@@ -145,7 +145,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
       {/* Date */}
       <button onClick={e => openDd(e, 'date')} style={{
         ...dropdownBtn,
-        ...((dateFrom || dateTo) ? { borderColor: 'rgba(0,200,83,0.4)', color: '#00C853' } : {}),
+        ...((dateFrom || dateTo) ? { borderColor: 'rgba(0,200,83,0.4)', color: 'var(--color-primary)' } : {}),
       }}>
         Date de création {(dateFrom || dateTo) ? '●' : ''} <ChevronDown size={11} />
       </button>
@@ -153,7 +153,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
       {/* Joint */}
       <button onClick={e => openDd(e, 'reached')} style={{
         ...dropdownBtn,
-        ...(reached !== 'all' ? { borderColor: 'rgba(0,200,83,0.4)', color: '#00C853' } : {}),
+        ...(reached !== 'all' ? { borderColor: 'rgba(0,200,83,0.4)', color: 'var(--color-primary)' } : {}),
       }}>
         {reached === 'all' ? 'Joint' : reached === 'true' ? 'Joint (oui)' : 'Non joint'} <ChevronDown size={11} />
       </button>
@@ -161,7 +161,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
       {/* Grouper par */}
       <button onClick={e => openDd(e, 'group')} style={{
         ...dropdownBtn,
-        ...(groupBy ? { borderColor: 'rgba(0,200,83,0.4)', color: '#00C853' } : {}),
+        ...(groupBy ? { borderColor: 'rgba(0,200,83,0.4)', color: 'var(--color-primary)' } : {}),
       }}>
         {groupBy ? `Groupé: ${GROUP_OPTIONS.find(o => o.value === groupBy)?.label}` : 'Grouper par'} <ChevronDown size={11} />
       </button>
@@ -200,7 +200,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
               padding: '6px 10px', borderRadius: 7, fontSize: 12, fontWeight: 500,
               border: 'none', textAlign: 'left', cursor: 'pointer',
               background: sources.includes(s.value) ? 'rgba(0,200,83,0.12)' : 'transparent',
-              color: sources.includes(s.value) ? '#00C853' : '#aaa',
+              color: sources.includes(s.value) ? 'var(--color-primary)' : '#aaa',
             }}>
               {s.label}
             </button>
@@ -208,22 +208,22 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
 
           {openDropdown.type === 'date' && (
             <div style={{ padding: '4px 2px', minWidth: 220 }}>
-              <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, padding: '0 4px' }}>Plage de dates</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, padding: '0 4px' }}>Plage de dates</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: '#666', marginBottom: 3 }}>Depuis</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Depuis</div>
                   <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{
                     width: '100%', boxSizing: 'border-box', padding: '5px 8px',
-                    background: '#09090b', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 6, color: '#fff', fontSize: 11, outline: 'none',
+                    background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                    borderRadius: 6, color: 'var(--text-primary)', fontSize: 11, outline: 'none',
                   }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: '#666', marginBottom: 3 }}>Jusqu'au</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Jusqu'au</div>
                   <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{
                     width: '100%', boxSizing: 'border-box', padding: '5px 8px',
-                    background: '#09090b', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 6, color: '#fff', fontSize: 11, outline: 'none',
+                    background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                    borderRadius: 6, color: 'var(--text-primary)', fontSize: 11, outline: 'none',
                   }} />
                 </div>
                 {(dateFrom || dateTo) && (
@@ -242,7 +242,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
               display: 'block', width: '100%', padding: '6px 10px', borderRadius: 7,
               fontSize: 12, fontWeight: 500, border: 'none', textAlign: 'left', cursor: 'pointer',
               background: reached === o.value ? 'rgba(0,200,83,0.12)' : 'transparent',
-              color: reached === o.value ? '#00C853' : '#aaa',
+              color: reached === o.value ? 'var(--color-primary)' : '#aaa',
             }}>
               {o.label}
             </button>
@@ -253,7 +253,7 @@ export default function DatabaseFilters({ onFiltersChange }: Props) {
               display: 'block', width: '100%', padding: '6px 10px', borderRadius: 7,
               fontSize: 12, fontWeight: 500, border: 'none', textAlign: 'left', cursor: 'pointer',
               background: groupBy === o.value ? 'rgba(0,200,83,0.12)' : 'transparent',
-              color: groupBy === o.value ? '#00C853' : '#aaa',
+              color: groupBy === o.value ? 'var(--color-primary)' : '#aaa',
             }}>
               {o.label}
             </button>

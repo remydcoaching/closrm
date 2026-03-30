@@ -43,7 +43,7 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(7, 1fr)',
-          borderBottom: '1px solid #262626',
+          borderBottom: '1px solid var(--border-secondary)',
         }}
       >
         {DAY_LABELS.map((label) => (
@@ -53,7 +53,7 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
               padding: '8px 0',
               textAlign: 'center',
               fontSize: 12,
-              color: '#A0A0A0',
+              color: 'var(--text-secondary)',
               fontWeight: 600,
               textTransform: 'uppercase',
             }}
@@ -84,7 +84,7 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
               key={day.toISOString()}
               onClick={() => onDayClick(day)}
               style={{
-                border: '1px solid #262626',
+                border: '1px solid var(--border-secondary)',
                 padding: '4px 6px',
                 cursor: 'pointer',
                 opacity: inMonth ? 1 : 0.3,
@@ -101,7 +101,7 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
                 style={{
                   fontSize: 12,
                   fontWeight: today ? 700 : 400,
-                  color: today ? '#E53E3E' : '#FFFFFF',
+                  color: today ? '#E53E3E' : 'var(--text-primary)',
                   marginBottom: 2,
                   lineHeight: 1,
                 }}
@@ -127,7 +127,7 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
                 <div
                   style={{
                     fontSize: 10,
-                    color: '#A0A0A0',
+                    color: 'var(--text-secondary)',
                     marginTop: 1,
                   }}
                 >

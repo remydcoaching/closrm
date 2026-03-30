@@ -35,7 +35,7 @@ export default function BookingConfirmationPage() {
 
       <h1
         style={{
-          color: '#FFFFFF',
+          color: 'var(--text-primary)',
           fontSize: '24px',
           fontWeight: 700,
           marginBottom: '16px',
@@ -47,7 +47,7 @@ export default function BookingConfirmationPage() {
       {dateLabel && timeParam && (
         <p
           style={{
-            color: '#A0A0A0',
+            color: 'var(--text-secondary)',
             fontSize: '16px',
             marginBottom: '12px',
             textTransform: 'capitalize',
@@ -57,7 +57,7 @@ export default function BookingConfirmationPage() {
         </p>
       )}
 
-      <p style={{ color: '#A0A0A0', fontSize: '14px' }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
         Vous recevrez un email de confirmation avec les détails de votre rendez-vous.
       </p>
     </div>

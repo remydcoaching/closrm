@@ -98,7 +98,7 @@ export default function CalendriersPage() {
   if (loading) {
     return (
       <div style={{ padding: 32 }}>
-        <p style={{ color: '#888', fontSize: 14 }}>Chargement...</p>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>Chargement...</p>
       </div>
     )
   }
@@ -122,7 +122,7 @@ export default function CalendriersPage() {
           marginBottom: 32,
         }}
       >
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
           Calendriers de réservation
         </h1>
         <button
@@ -148,14 +148,14 @@ export default function CalendriersPage() {
       {calendars.length === 0 && (
         <div
           style={{
-            background: '#141416',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 10,
             padding: 40,
             textAlign: 'center',
           }}
         >
-          <p style={{ color: '#A0A0A0', fontSize: 14, margin: 0 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0 }}>
             Aucun calendrier de réservation. Créez-en un pour commencer.
           </p>
         </div>

@@ -47,13 +47,13 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
             alignItems: 'center',
             gap: 10,
             background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 8,
             padding: '8px 12px',
           }}
         >
           {/* Grip icon */}
-          <div style={{ color: '#555', cursor: 'grab', flexShrink: 0 }} title="Réorganiser">
+          <div style={{ color: 'var(--text-muted)', cursor: 'grab', flexShrink: 0 }} title="Réorganiser">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="9" cy="5" r="1" fill="currentColor" />
               <circle cx="9" cy="12" r="1" fill="currentColor" />
@@ -72,12 +72,12 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
             onChange={e => updateField(idx, { label: e.target.value })}
             style={{
               flex: 1,
-              background: '#1a1a1a',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border-primary)',
               borderRadius: 6,
               padding: '5px 10px',
               fontSize: 13,
-              color: '#fff',
+              color: 'var(--text-primary)',
               outline: 'none',
               minWidth: 0,
             }}
@@ -88,12 +88,12 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
             value={field.type}
             onChange={e => updateField(idx, { type: e.target.value as FormFieldType })}
             style={{
-              background: '#1a1a1a',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border-primary)',
               borderRadius: 6,
               padding: '5px 10px',
               fontSize: 13,
-              color: '#fff',
+              color: 'var(--text-primary)',
               outline: 'none',
               cursor: 'pointer',
             }}
@@ -111,7 +111,7 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
               onChange={e => updateField(idx, { required: e.target.checked })}
               style={{ accentColor: '#E53E3E', width: 13, height: 13, cursor: 'pointer' }}
             />
-            <span style={{ fontSize: 12, color: '#A0A0A0', whiteSpace: 'nowrap' }}>Requis</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Requis</span>
           </label>
 
           {/* Remove button */}
@@ -120,7 +120,7 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
             style={{
               background: 'none',
               border: 'none',
-              color: '#666',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               fontSize: 18,
               lineHeight: 1,
@@ -138,11 +138,11 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
         onClick={addField}
         style={{
           background: 'none',
-          border: '1px dashed rgba(255,255,255,0.15)',
+          border: '1px dashed var(--border-primary)',
           borderRadius: 8,
           padding: '8px 16px',
           fontSize: 13,
-          color: '#A0A0A0',
+          color: 'var(--text-secondary)',
           cursor: 'pointer',
           alignSelf: 'flex-start',
           marginTop: 4,

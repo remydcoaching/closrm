@@ -43,8 +43,8 @@ export function BookingDetailPanel({
         top: 0,
         bottom: 0,
         width: 360,
-        background: '#141416',
-        borderLeft: '1px solid #262626',
+        background: 'var(--bg-elevated)',
+        borderLeft: '1px solid var(--border-secondary)',
         zIndex: 40,
         padding: 24,
         display: 'flex',
@@ -69,7 +69,7 @@ export function BookingDetailPanel({
             style={{
               fontSize: 16,
               fontWeight: 700,
-              color: '#FFFFFF',
+              color: 'var(--text-primary)',
               lineHeight: 1.3,
               wordBreak: 'break-word',
             }}
@@ -83,7 +83,7 @@ export function BookingDetailPanel({
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: '#A0A0A0',
+            color: 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             padding: 2,
@@ -118,11 +118,11 @@ export function BookingDetailPanel({
         {booking.lead && (
           <DetailRow icon={<User size={15} />} label="Lead">
             <div>
-              <div style={{ color: '#FFFFFF', fontSize: 13 }}>
+              <div style={{ color: 'var(--text-primary)', fontSize: 13 }}>
                 {booking.lead.first_name} {booking.lead.last_name}
               </div>
               {booking.lead.phone && (
-                <div style={{ color: '#A0A0A0', fontSize: 12, marginTop: 2 }}>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>
                   {booking.lead.phone}
                 </div>
               )}
@@ -157,15 +157,15 @@ export function BookingDetailPanel({
         {/* Notes */}
         {booking.notes && (
           <div>
-            <div style={{ fontSize: 12, color: '#A0A0A0', marginBottom: 6 }}>Notes</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Notes</div>
             <div
               style={{
-                background: '#1a1a1c',
-                border: '1px solid #262626',
+                background: 'var(--bg-input)',
+                border: '1px solid var(--border-secondary)',
                 borderRadius: 8,
                 padding: '10px 12px',
                 fontSize: 13,
-                color: '#A0A0A0',
+                color: 'var(--text-secondary)',
                 lineHeight: 1.5,
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
@@ -178,7 +178,7 @@ export function BookingDetailPanel({
 
         {/* Status buttons */}
         <div>
-          <div style={{ fontSize: 12, color: '#A0A0A0', marginBottom: 8 }}>Statut</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Statut</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             {(Object.entries(STATUS_CONFIG) as [BookingStatus, typeof STATUS_CONFIG[BookingStatus]][]).map(
               ([status, cfg]) => {
@@ -190,9 +190,9 @@ export function BookingDetailPanel({
                     style={{
                       padding: '7px 10px',
                       borderRadius: 8,
-                      border: `1px solid ${active ? cfg.color : '#262626'}`,
+                      border: `1px solid ${active ? cfg.color : 'var(--border-secondary)'}`,
                       background: active ? cfg.bg : 'transparent',
-                      color: active ? cfg.color : '#A0A0A0',
+                      color: active ? cfg.color : 'var(--text-secondary)',
                       fontSize: 12,
                       fontWeight: active ? 600 : 400,
                       cursor: 'pointer',
@@ -209,7 +209,7 @@ export function BookingDetailPanel({
       </div>
 
       {/* Delete button */}
-      <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #262626' }}>
+      <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-secondary)' }}>
         <button
           onClick={() => onDelete(booking.id)}
           style={{
@@ -256,10 +256,10 @@ function DetailRow({
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-      <div style={{ color: '#A0A0A0', marginTop: 1, flexShrink: 0 }}>{icon}</div>
+      <div style={{ color: 'var(--text-secondary)', marginTop: 1, flexShrink: 0 }}>{icon}</div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 13, color: '#FFFFFF' }}>{children}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{children}</div>
       </div>
     </div>
   )

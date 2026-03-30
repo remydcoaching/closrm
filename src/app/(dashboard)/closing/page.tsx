@@ -15,10 +15,10 @@ type CallWithLead = Call & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name' 
 type Tab = 'today' | 'upcoming' | 'overdue' | 'done' | 'cancelled'
 
 const TAB_CONFIG: Record<Tab, { label: string; color: string }> = {
-  today: { label: "Aujourd'hui", color: '#00C853' },
+  today: { label: "Aujourd'hui", color: 'var(--color-primary)' },
   upcoming: { label: 'À venir', color: '#3b82f6' },
   overdue: { label: 'À actualiser', color: '#ef4444' },
-  done: { label: 'Traités', color: '#888' },
+  done: { label: 'Traités', color: 'var(--text-tertiary)' },
   cancelled: { label: 'Annulés / Absents', color: '#f97316' },
 }
 
@@ -87,8 +87,8 @@ export default function ClosingPage() {
     <div style={{ padding: 32 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>Closing</h1>
-          <p style={{ fontSize: 13, color: '#666', marginTop: 4 }}>Gestion de vos appels de setting et closing</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Closing</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Gestion de vos appels de setting et closing</p>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           {(['list', 'calendar'] as const).map((m) => {
@@ -97,10 +97,10 @@ export default function ClosingPage() {
             return (
               <button key={m} onClick={() => setView(m)} style={{
                 width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                border: active ? '1px solid rgba(0,200,83,0.3)' : '1px solid rgba(255,255,255,0.06)',
+                border: active ? '1px solid rgba(0,200,83,0.3)' : '1px solid var(--border-primary)',
                 background: active ? 'rgba(0,200,83,0.08)' : 'transparent',
               }}>
-                <Icon size={16} color={active ? '#00C853' : '#888'} />
+                <Icon size={16} color={active ? 'var(--color-primary)' : 'var(--text-tertiary)'} />
               </button>
             )
           })}
@@ -108,18 +108,18 @@ export default function ClosingPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border-primary)' }}>
         {(Object.keys(TAB_CONFIG) as Tab[]).map((t) => {
           const active = tab === t; const c = TAB_CONFIG[t]; const count = counts[t]
           return (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '10px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none',
               borderBottom: active ? `2px solid ${c.color}` : '2px solid transparent',
-              background: active ? 'rgba(255,255,255,0.02)' : 'transparent', color: active ? '#fff' : '#888',
+              background: active ? 'rgba(255,255,255,0.02)' : 'transparent', color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
               {c.label}
-              {count > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99, background: t === 'overdue' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)', color: t === 'overdue' ? '#ef4444' : '#888' }}>{count}</span>}
+              {count > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99, background: t === 'overdue' ? 'rgba(239,68,68,0.15)' : 'var(--border-primary)', color: t === 'overdue' ? '#ef4444' : 'var(--text-tertiary)' }}>{count}</span>}
             </button>
           )
         })}
@@ -127,7 +127,7 @@ export default function ClosingPage() {
 
       <div style={{ marginBottom: 20 }}><CallFilters onFiltersChange={setFilters} /></div>
 
-      <div style={{ background: '#0f0f11', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 14, overflow: 'hidden' }}>
         {view === 'list' ? (
           <CallTable calls={calls} loading={loading} onOutcome={setOutcomeTarget} onReschedule={setRescheduleTarget} onDelete={setDeleteTarget} onLeadClick={setSidePanelLeadId} />
         ) : (
@@ -137,9 +137,9 @@ export default function ClosingPage() {
 
       {view === 'list' && meta.total_pages > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 16 }}>
-          <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', color: page <= 1 ? '#444' : '#ccc', cursor: page <= 1 ? 'default' : 'pointer', fontSize: 12 }}>Précédent</button>
-          <span style={{ fontSize: 12, color: '#888' }}>Page {meta.page} sur {meta.total_pages}</span>
-          <button onClick={() => setPage(Math.min(meta.total_pages, page + 1))} disabled={page >= meta.total_pages} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', color: page >= meta.total_pages ? '#444' : '#ccc', cursor: page >= meta.total_pages ? 'default' : 'pointer', fontSize: 12 }}>Suivant</button>
+          <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', color: page <= 1 ? 'var(--text-label)' : 'var(--text-primary)', cursor: page <= 1 ? 'default' : 'pointer', fontSize: 12 }}>Précédent</button>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Page {meta.page} sur {meta.total_pages}</span>
+          <button onClick={() => setPage(Math.min(meta.total_pages, page + 1))} disabled={page >= meta.total_pages} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', color: page >= meta.total_pages ? 'var(--text-label)' : 'var(--text-primary)', cursor: page >= meta.total_pages ? 'default' : 'pointer', fontSize: 12 }}>Suivant</button>
         </div>
       )}
 

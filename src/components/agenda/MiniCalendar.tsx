@@ -52,7 +52,7 @@ export default function MiniCalendar({ selectedDate, onDateSelect }: MiniCalenda
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: '#A0A0A0',
+            color: 'var(--text-secondary)',
             padding: '2px',
             display: 'flex',
             alignItems: 'center',
@@ -64,7 +64,7 @@ export default function MiniCalendar({ selectedDate, onDateSelect }: MiniCalenda
 
         <span
           style={{
-            color: '#FFFFFF',
+            color: 'var(--text-primary)',
             fontSize: '13px',
             fontWeight: 600,
             textTransform: 'capitalize',
@@ -79,7 +79,7 @@ export default function MiniCalendar({ selectedDate, onDateSelect }: MiniCalenda
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: '#A0A0A0',
+            color: 'var(--text-secondary)',
             padding: '2px',
             display: 'flex',
             alignItems: 'center',
@@ -104,7 +104,7 @@ export default function MiniCalendar({ selectedDate, onDateSelect }: MiniCalenda
             style={{
               textAlign: 'center',
               fontSize: '11px',
-              color: '#A0A0A0',
+              color: 'var(--text-secondary)',
               padding: '2px 0',
             }}
           >
@@ -127,16 +127,16 @@ export default function MiniCalendar({ selectedDate, onDateSelect }: MiniCalenda
           const isTodayDay = isToday(day)
 
           let background = 'transparent'
-          let color = inMonth ? '#FFFFFF' : '#333333'
+          let color = inMonth ? 'var(--text-primary)' : 'var(--text-label)'
           let border = 'none'
           let outline = 'none'
 
           if (isSelected) {
             background = '#E53E3E'
-            color = '#FFFFFF'
+            color = 'var(--text-primary)'
           } else if (isTodayDay) {
             border = '1.5px solid #E53E3E'
-            color = inMonth ? '#FFFFFF' : '#555555'
+            color = inMonth ? 'var(--text-primary)' : 'var(--text-muted)'
           }
 
           return (
@@ -161,7 +161,7 @@ export default function MiniCalendar({ selectedDate, onDateSelect }: MiniCalenda
               }}
               onMouseEnter={(e) => {
                 if (!isSelected) {
-                  ;(e.currentTarget as HTMLButtonElement).style.background = '#1f1f1f'
+                  ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'
                 }
               }}
               onMouseLeave={(e) => {

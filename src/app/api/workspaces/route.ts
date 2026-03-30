@@ -15,12 +15,15 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
 
+    // Build update object with only provided fields
+    const updateFields: Record<string, string> = {}
+    if (parsed.data.name !== undefined) updateFields.name = parsed.data.name
+    if (parsed.data.timezone !== undefined) updateFields.timezone = parsed.data.timezone
+    if (parsed.data.accent_color !== undefined) updateFields.accent_color = parsed.data.accent_color
+
     const { data, error } = await supabase
       .from('workspaces')
-      .update({
-        name: parsed.data.name,
-        timezone: parsed.data.timezone,
-      })
+      .update(updateFields)
       .eq('id', workspaceId)
       .select()
       .single()

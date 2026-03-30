@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createLeadSchema, leadFiltersSchema } from '@/lib/validations/leads'
+import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -105,6 +106,12 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // Fire workflow triggers (non-blocking)
+    fireTriggersForEvent(workspaceId, 'new_lead', {
+      lead_id: data.id,
+      source: data.source,
+    }).catch(() => {})
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {

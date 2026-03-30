@@ -14,8 +14,8 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 const card: React.CSSProperties = {
-  background: '#0f0f11',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-primary)',
   borderRadius: 14,
 }
 
@@ -187,15 +187,15 @@ export default function LeadsPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 }}>Leads</h1>
-          <p style={{ fontSize: 13, color: '#666', marginTop: 4 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Leads</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
             {loading ? '...' : `${meta.total} lead${meta.total > 1 ? 's' : ''} au total`}
           </p>
         </div>
         <button onClick={() => setShowForm(true)} style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-          background: '#00C853', border: 'none', color: '#000', cursor: 'pointer',
+          background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
         }}>
           <Plus size={15} />
           Ajouter un lead
@@ -212,11 +212,11 @@ export default function LeadsPage() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
                 {['Date', 'Nom', 'Téléphone', 'Email', 'Source', 'Tentatives', 'Joint', 'Statut', 'Tags', 'Actions'].map(h => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
-                    fontSize: 11, fontWeight: 600, color: '#555',
+                    fontSize: 11, fontWeight: 600, color: 'var(--text-label)',
                     textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap',
                   }}>{h}</th>
                 ))}
@@ -225,42 +225,42 @@ export default function LeadsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={10} style={{ padding: '48px 16px', textAlign: 'center', color: '#555' }}>
+                  <td colSpan={10} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-label)' }}>
                     Chargement...
                   </td>
                 </tr>
               ) : leads.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ padding: '48px 16px', textAlign: 'center', color: '#555' }}>
+                  <td colSpan={10} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-label)' }}>
                     Aucun lead trouvé
                   </td>
                 </tr>
               ) : leads.map((lead, i) => (
                 <tr key={lead.id} style={{
-                  borderBottom: i < leads.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  borderBottom: i < leads.length - 1 ? '1px solid var(--bg-hover)' : 'none',
                   transition: 'background 0.1s',
                 }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   {/* Date */}
-                  <td style={{ padding: '12px 16px', color: '#666', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                     {format(new Date(lead.created_at), 'dd MMM yyyy', { locale: fr })}
                   </td>
 
                   {/* Nom */}
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                     {lead.first_name} {lead.last_name}
                   </td>
 
                   {/* Téléphone */}
-                  <td style={{ padding: '12px 16px', color: '#aaa', whiteSpace: 'nowrap' }}>
-                    {lead.phone || <span style={{ color: '#444' }}>—</span>}
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    {lead.phone || <span style={{ color: 'var(--text-label)' }}>—</span>}
                   </td>
 
                   {/* Email */}
-                  <td style={{ padding: '12px 16px', color: '#aaa', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {lead.email || <span style={{ color: '#444' }}>—</span>}
+                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {lead.email || <span style={{ color: 'var(--text-label)' }}>—</span>}
                   </td>
 
                   {/* Source */}
@@ -275,16 +275,16 @@ export default function LeadsPage() {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        border: '1px solid var(--border-primary)',
                         background: dropdown?.id === lead.id && dropdown?.type === 'attempts'
-                          ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
-                        color: lead.call_attempts > 0 ? '#fff' : '#555',
+                          ? 'var(--border-primary)' : 'rgba(255,255,255,0.03)',
+                        color: lead.call_attempts > 0 ? 'var(--text-primary)' : 'var(--text-label)',
                         cursor: 'pointer', whiteSpace: 'nowrap',
                       }}
                     >
-                      <Phone size={11} color={lead.call_attempts > 0 ? '#3b82f6' : '#444'} />
+                      <Phone size={11} color={lead.call_attempts > 0 ? '#3b82f6' : 'var(--text-label)'} />
                       {attemptsLabel(lead.call_attempts)}
-                      <ChevronDown size={10} color="#555" />
+                      <ChevronDown size={10} color="var(--text-label)" />
                     </button>
                   </td>
 
@@ -294,7 +294,7 @@ export default function LeadsPage() {
                       onClick={() => toggleReached(lead)}
                       style={{
                         width: 36, height: 20, borderRadius: 99, border: 'none', cursor: 'pointer',
-                        background: lead.reached ? '#00C853' : 'rgba(255,255,255,0.08)',
+                        background: lead.reached ? 'var(--color-primary)' : 'var(--border-primary)',
                         position: 'relative', transition: 'background 0.2s', flexShrink: 0,
                       }}
                       title={lead.reached ? 'Joint' : 'Non joint'}
@@ -317,7 +317,7 @@ export default function LeadsPage() {
                       }}
                     >
                       <StatusBadge status={lead.status} />
-                      <ChevronDown size={10} color="#555" />
+                      <ChevronDown size={10} color="var(--text-label)" />
                     </button>
                   </td>
 
@@ -327,22 +327,22 @@ export default function LeadsPage() {
                       {lead.tags.slice(0, 3).map(tag => (
                         <span key={tag} style={{
                           padding: '2px 7px', borderRadius: 99, fontSize: 10, fontWeight: 600,
-                          background: 'rgba(255,255,255,0.06)', color: '#777',
+                          background: 'var(--border-primary)', color: 'var(--text-tertiary)',
                         }}>
                           {tag}
                         </span>
                       ))}
                       {lead.tags.length > 3 && (
-                        <span style={{ fontSize: 10, color: '#555' }}>+{lead.tags.length - 3}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-label)' }}>+{lead.tags.length - 3}</span>
                       )}
                       <button
                         onClick={e => openDropdown(e, lead.id, 'tags')}
                         title="Gérer les tags"
                         style={{
-                          width: 18, height: 18, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.12)',
+                          width: 18, height: 18, borderRadius: '50%', border: '1px solid var(--border-primary)',
                           background: dropdown?.id === lead.id && dropdown?.type === 'tags'
-                            ? 'rgba(255,255,255,0.10)' : 'transparent',
-                          color: '#555', cursor: 'pointer',
+                            ? 'var(--border-primary)' : 'transparent',
+                          color: 'var(--text-label)', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           flexShrink: 0,
                         }}
@@ -367,23 +367,23 @@ export default function LeadsPage() {
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '5px 9px', borderRadius: 6, fontSize: 11, fontWeight: 600,
                         background: 'rgba(0,200,83,0.10)', border: '1px solid rgba(0,200,83,0.20)',
-                        color: '#00C853', cursor: 'pointer', whiteSpace: 'nowrap',
+                        color: 'var(--color-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
                       }}>
                         <Calendar size={11} /> Planifier
                       </button>
                       <button onClick={() => setSidePanelLeadId(lead.id)} title="Voir le profil" style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)',
-                        color: '#ccc', cursor: 'pointer', whiteSpace: 'nowrap',
+                        background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
+                        color: 'var(--text-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
                       }}>
                         <ExternalLink size={11} /> Voir
                       </button>
                       <button onClick={() => archiveLead(lead)} title="Archiver" style={{
                         display: 'inline-flex', alignItems: 'center',
                         padding: '5px 7px', borderRadius: 6,
-                        background: 'transparent', border: '1px solid rgba(255,255,255,0.06)',
-                        color: '#555', cursor: 'pointer',
+                        background: 'transparent', border: '1px solid var(--border-primary)',
+                        color: 'var(--text-label)', cursor: 'pointer',
                       }}>
                         <Archive size={11} />
                       </button>
@@ -399,24 +399,24 @@ export default function LeadsPage() {
         {meta.total_pages > 1 && (
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)',
+            padding: '12px 16px', borderTop: '1px solid var(--border-primary)',
           }}>
-            <span style={{ fontSize: 12, color: '#555' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-label)' }}>
               Page {meta.page} sur {meta.total_pages} — {meta.total} résultats
             </span>
             <div style={{ display: 'flex', gap: 6 }}>
               <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={{
                 padding: '5px 10px', borderRadius: 6, fontSize: 12,
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                color: page <= 1 ? '#333' : '#888', cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
+                color: page <= 1 ? '#333' : 'var(--text-tertiary)', cursor: page <= 1 ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}>
                 <ChevronLeft size={13} /> Préc.
               </button>
               <button disabled={page >= meta.total_pages} onClick={() => setPage(p => p + 1)} style={{
                 padding: '5px 10px', borderRadius: 6, fontSize: 12,
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                color: page >= meta.total_pages ? '#333' : '#888',
+                background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
+                color: page >= meta.total_pages ? '#333' : 'var(--text-tertiary)',
                 cursor: page >= meta.total_pages ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}>
@@ -436,8 +436,8 @@ export default function LeadsPage() {
             top: dropdown.top,
             left: dropdown.left,
             zIndex: 9999,
-            background: '#1a1a1c',
-            border: '1px solid rgba(255,255,255,0.10)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
             borderRadius: 10,
             padding: 5,
             boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
@@ -450,12 +450,12 @@ export default function LeadsPage() {
               padding: '7px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
               border: 'none', textAlign: 'left',
               background: activeLead.call_attempts === opt.value ? 'rgba(59,130,246,0.15)' : 'transparent',
-              color: activeLead.call_attempts === opt.value ? '#3b82f6' : '#aaa',
+              color: activeLead.call_attempts === opt.value ? '#3b82f6' : 'var(--text-secondary)',
               cursor: 'pointer',
             }}>
               {opt.value === 0
-                ? <X size={12} color={activeLead.call_attempts === 0 ? '#3b82f6' : '#555'} />
-                : <Phone size={12} color={activeLead.call_attempts === opt.value ? '#3b82f6' : '#555'} />
+                ? <X size={12} color={activeLead.call_attempts === 0 ? '#3b82f6' : 'var(--text-label)'} />
+                : <Phone size={12} color={activeLead.call_attempts === opt.value ? '#3b82f6' : 'var(--text-label)'} />
               }
               {opt.label}
             </button>
@@ -470,12 +470,12 @@ export default function LeadsPage() {
                     <span key={tag} style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       padding: '3px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                      background: 'rgba(255,255,255,0.06)', color: '#888',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'var(--border-primary)', color: 'var(--text-tertiary)',
+                      border: '1px solid var(--border-primary)',
                     }}>
                       {tag}
                       <button onClick={() => removeTag(activeLead, tag)} style={{
-                        background: 'none', border: 'none', cursor: 'pointer', color: '#555', padding: 0, lineHeight: 1,
+                        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-label)', padding: 0, lineHeight: 1,
                       }}>
                         <X size={9} />
                       </button>
@@ -493,13 +493,13 @@ export default function LeadsPage() {
                   placeholder="Nouveau tag..."
                   style={{
                     flex: 1, padding: '6px 9px',
-                    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none',
+                    background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
+                    borderRadius: 7, color: 'var(--text-primary)', fontSize: 12, outline: 'none',
                   }}
                 />
                 <button onClick={() => addTag(activeLead)} style={{
-                  padding: '6px 9px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.08)',
-                  background: 'rgba(0,200,83,0.10)', color: '#00C853', cursor: 'pointer',
+                  padding: '6px 9px', borderRadius: 7, border: '1px solid var(--border-primary)',
+                  background: 'rgba(0,200,83,0.10)', color: 'var(--color-primary)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center',
                 }}>
                   <Plus size={13} />
@@ -514,7 +514,7 @@ export default function LeadsPage() {
               padding: '7px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
               border: 'none',
               background: activeLead.status === value ? `${cfg.color}18` : 'transparent',
-              color: activeLead.status === value ? cfg.color : '#aaa',
+              color: activeLead.status === value ? cfg.color : 'var(--text-secondary)',
               cursor: 'pointer',
             }}>
               {cfg.label}
