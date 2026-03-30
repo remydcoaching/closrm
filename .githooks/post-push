@@ -1,0 +1,20 @@
+#!/bin/bash
+
+WEBHOOK_URL="https://discord.com/api/webhooks/1488221559997988954/GJkgaF33lAjsu5Nn2PZ1Wi32Rl9rWHMrEdZRf5NHqq5EBLuOvsZzTYrLaliZw6IhwonA"
+
+AUTHOR=$(git config user.name)
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+LAST_MSG=$(git log -1 --pretty=format:'%s')
+FILES=$(git diff-tree --no-commit-id -r --name-only HEAD | head -10 | tr '\n' ', ')
+
+if [[ "$BRANCH" == feature/* ]]; then
+  EMOJI="🌿"
+elif [[ "$BRANCH" == "develop" ]]; then
+  EMOJI="🔧"
+else
+  EMOJI="🚀"
+fi
+
+curl -s -H "Content-Type: application/json" \
+  -d "{\"content\": \"$EMOJI **$AUTHOR** vient de push sur \`$BRANCH\`\n📝 $LAST_MSG\n📁 \`$FILES\`\"}" \
+  "$WEBHOOK_URL"
