@@ -46,24 +46,33 @@ export function BookingDetailPanel({
     else if (diff > 0) setActiveTab('rdv')
   }
 
-  // Trackpad swipe (horizontal scroll)
+  // Trackpad swipe (horizontal scroll) — native listener to allow preventDefault
   const swipeAccum = useRef(0)
   const swipeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
 
-  function handleWheel(e: React.WheelEvent) {
-    // Only respond to horizontal scroll (trackpad swipe)
-    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return
-    swipeAccum.current += e.deltaX
-    if (swipeTimeout.current) clearTimeout(swipeTimeout.current)
-    swipeTimeout.current = setTimeout(() => { swipeAccum.current = 0 }, 200)
-    if (swipeAccum.current > 80 && hasLead) {
-      setActiveTab('prospect')
-      swipeAccum.current = 0
-    } else if (swipeAccum.current < -80) {
-      setActiveTab('rdv')
-      swipeAccum.current = 0
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+
+    function onWheel(e: WheelEvent) {
+      if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return
+      e.preventDefault()
+      swipeAccum.current += e.deltaX
+      if (swipeTimeout.current) clearTimeout(swipeTimeout.current)
+      swipeTimeout.current = setTimeout(() => { swipeAccum.current = 0 }, 200)
+      if (swipeAccum.current > 80 && hasLead) {
+        setActiveTab('prospect')
+        swipeAccum.current = 0
+      } else if (swipeAccum.current < -80) {
+        setActiveTab('rdv')
+        swipeAccum.current = 0
+      }
     }
-  }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [hasLead])
 
   const color = booking.booking_calendar?.color ?? '#6b7280'
   const startDate = parseISO(booking.scheduled_at)
@@ -133,10 +142,10 @@ export function BookingDetailPanel({
 
       {/* Tab content — swipeable */}
       <div
+        ref={contentRef}
         style={{ padding: 20, flex: 1 }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        onWheel={handleWheel}
       >
         {activeTab === 'rdv' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
