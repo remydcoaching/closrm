@@ -26,7 +26,6 @@ export async function GET(
       .from('workflow_steps')
       .select('*')
       .eq('workflow_id', id)
-      .eq('workspace_id', workspaceId)
       .order('step_order', { ascending: true })
 
     // Count executions
@@ -34,7 +33,6 @@ export async function GET(
       .from('workflow_executions')
       .select('*', { count: 'exact', head: true })
       .eq('workflow_id', id)
-      .eq('workspace_id', workspaceId)
 
     return NextResponse.json({
       data: {

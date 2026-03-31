@@ -53,6 +53,8 @@ export interface Lead {
   meta_campaign_id: string | null
   meta_adset_id: string | null
   meta_ad_id: string | null
+  email_unsubscribed: boolean
+  email_unsubscribed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -130,8 +132,19 @@ export type WorkflowActionType =
   | 'remove_tag'
   | 'send_notification'
   | 'facebook_conversions_api'
+  | 'enroll_in_sequence'
+  | 'add_note'
+  | 'set_reached'
+  | 'schedule_call'
+  | 'webhook'
 
-export type WorkflowStepType = 'action' | 'delay' | 'condition'
+export type WorkflowStepType = 'action' | 'delay' | 'condition' | 'wait_for_event'
+
+export type WaitForEventType =
+  | 'before_call'      // X heures avant un appel planifié
+  | 'before_booking'   // X heures avant un booking
+  | 'lead_status_is'   // Attendre que le lead ait un certain statut
+  | 'tag_present'      // Attendre qu'un tag soit présent
 
 export type DelayUnit = 'minutes' | 'hours' | 'days'
 
@@ -166,6 +179,8 @@ export interface WorkflowStep {
   condition_value: string | null
   on_true_step: number | null
   on_false_step: number | null
+  parent_step_id: string | null
+  branch: 'main' | 'true' | 'false' | null
   created_at: string
 }
 
@@ -322,6 +337,161 @@ export interface ContactRow extends Lead {
   nb_calls: number
   last_call_at: string | null
 }
+
+// ─── Email Module ───────────────────────────────────────────────────────────
+
+export type EmailDomainStatus = 'pending' | 'verified' | 'failed'
+
+export interface EmailDomain {
+  id: string
+  workspace_id: string
+  domain: string
+  resend_domain_id: string | null
+  status: EmailDomainStatus
+  dns_records: ResendDnsRecord[] | null
+  default_from_email: string | null
+  default_from_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ResendDnsRecord {
+  type: string      // "MX" | "TXT" | "CNAME"
+  name: string
+  value: string
+  priority?: number
+  status: string    // "verified" | "not_started" | "pending"
+}
+
+// ── Email Template Blocks ───────────────────────────────────────────────────
+
+export type EmailBlockType = 'header' | 'text' | 'image' | 'button' | 'divider' | 'footer'
+
+export interface HeaderBlockConfig {
+  logoUrl?: string
+  title: string
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface TextBlockConfig {
+  content: string  // HTML from TipTap
+}
+
+export interface ImageBlockConfig {
+  src: string
+  alt: string
+  width?: number
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface ButtonBlockConfig {
+  text: string
+  url: string
+  color: string
+  textColor?: string
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface DividerBlockConfig {
+  color?: string
+  spacing?: number
+}
+
+export interface FooterBlockConfig {
+  text: string  // Legal text, unsubscribe link auto-appended
+}
+
+export type EmailBlockConfig =
+  | HeaderBlockConfig
+  | TextBlockConfig
+  | ImageBlockConfig
+  | ButtonBlockConfig
+  | DividerBlockConfig
+  | FooterBlockConfig
+
+export interface EmailBlock {
+  id: string
+  type: EmailBlockType
+  config: EmailBlockConfig
+}
+
+export interface EmailTemplate {
+  id: string
+  workspace_id: string
+  name: string
+  subject: string
+  blocks: EmailBlock[]
+  preview_text: string | null
+  thumbnail_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ── Email Broadcasts ────────────────────────────────────────────────────────
+
+export type EmailBroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed'
+
+export interface EmailBroadcastFilters {
+  statuses?: LeadStatus[]
+  sources?: LeadSource[]
+  tags?: string[]
+  date_from?: string
+  date_to?: string
+  reached?: 'all' | 'true' | 'false'
+}
+
+export interface EmailBroadcast {
+  id: string
+  workspace_id: string
+  name: string
+  template_id: string | null
+  subject: string | null
+  filters: EmailBroadcastFilters
+  status: EmailBroadcastStatus
+  scheduled_at: string | null
+  sent_count: number
+  total_count: number
+  sent_at: string | null
+  created_at: string
+}
+
+// ── Email Sends (log) ───────────────────────────────────────────────────────
+
+export type EmailSendStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained'
+
+export interface EmailSend {
+  id: string
+  workspace_id: string
+  lead_id: string
+  broadcast_id: string | null
+  sequence_id: string | null
+  template_id: string | null
+  resend_email_id: string | null
+  status: EmailSendStatus
+  subject: string | null
+  from_email: string | null
+  opened_at: string | null
+  clicked_at: string | null
+  bounced_at: string | null
+  sent_at: string
+}
+
+// ── Email Sequence Enrollments ──────────────────────────────────────────────
+
+export type EmailEnrollmentStatus = 'active' | 'completed' | 'paused' | 'unsubscribed'
+
+export interface EmailSequenceEnrollment {
+  id: string
+  workspace_id: string
+  sequence_id: string
+  lead_id: string
+  status: EmailEnrollmentStatus
+  current_step: number
+  enrolled_at: string
+  completed_at: string | null
+}
+
+// ─── Database / Contacts ─────────────────────────────────────────────────────
 
 export type ContactGroupBy = 'status' | 'source'
 

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
-  Zap, Megaphone, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
+  Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
   CalendarDays, CalendarRange,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -27,6 +27,7 @@ const NAV = [
     title: 'ACQUISITION',
     items: [
       { label: 'Automations', href: '/acquisition/automations', icon: Zap },
+      { label: 'Emails', href: '/acquisition/emails', icon: Mail },
       { label: 'Publicités', href: '/acquisition/publicites', icon: Megaphone },
     ],
   },
