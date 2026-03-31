@@ -185,7 +185,7 @@ export async function getLeadData(
   pageToken: string
 ): Promise<MetaLeadData> {
   const res = await fetch(
-    `${GRAPH_URL}/${leadgenId}?fields=field_data,created_time,ad_id,adset_id,campaign_id,page_id&access_token=${pageToken}`
+    `${GRAPH_URL}/${leadgenId}?fields=field_data,created_time,ad_id,adset_id,campaign_id&access_token=${pageToken}`
   )
   if (!res.ok) {
     const err = await res.json()
