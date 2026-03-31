@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { X, MapPin, Clock, Calendar, User, Trash2, Phone, Mail, Tag } from 'lucide-react'
@@ -31,6 +31,39 @@ export function BookingDetailPanel({
   const [activeTab, setActiveTab] = useState<TabKey>('rdv')
   const [lead, setLead] = useState<Lead | null>(null)
   const [loadingLead, setLoadingLead] = useState(false)
+  const touchStartX = useRef(0)
+
+  const hasLead = !!booking.lead_id
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const diff = e.changedTouches[0].clientX - touchStartX.current
+    if (Math.abs(diff) < 50) return
+    if (diff < 0 && hasLead) setActiveTab('prospect')
+    else if (diff > 0) setActiveTab('rdv')
+  }
+
+  // Trackpad swipe (horizontal scroll)
+  const swipeAccum = useRef(0)
+  const swipeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleWheel(e: React.WheelEvent) {
+    // Only respond to horizontal scroll (trackpad swipe)
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return
+    swipeAccum.current += e.deltaX
+    if (swipeTimeout.current) clearTimeout(swipeTimeout.current)
+    swipeTimeout.current = setTimeout(() => { swipeAccum.current = 0 }, 200)
+    if (swipeAccum.current > 80 && hasLead) {
+      setActiveTab('prospect')
+      swipeAccum.current = 0
+    } else if (swipeAccum.current < -80) {
+      setActiveTab('rdv')
+      swipeAccum.current = 0
+    }
+  }
 
   const color = booking.booking_calendar?.color ?? '#6b7280'
   const startDate = parseISO(booking.scheduled_at)
@@ -39,8 +72,6 @@ export function BookingDetailPanel({
   const displayTitle = booking.lead
     ? `${booking.lead.first_name} ${booking.lead.last_name}`.trim()
     : booking.title
-
-  const hasLead = !!booking.lead_id
 
   // Fetch full lead details when prospect tab is opened
   useEffect(() => {
@@ -100,8 +131,13 @@ export function BookingDetailPanel({
         </div>
       </div>
 
-      {/* Tab content */}
-      <div style={{ padding: 20, flex: 1 }}>
+      {/* Tab content — swipeable */}
+      <div
+        style={{ padding: 20, flex: 1 }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onWheel={handleWheel}
+      >
         {activeTab === 'rdv' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <DetailRow icon={<Calendar size={15} />} label="Date">
