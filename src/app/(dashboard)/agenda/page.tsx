@@ -238,11 +238,17 @@ export default function AgendaPage() {
     const realId = isCall ? moveConfirm.bookingId.replace('call-', '') : moveConfirm.bookingId
     const url = isCall ? `/api/calls/${realId}` : `/api/bookings/${realId}`
 
-    await fetch(url, {
+    const res = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scheduled_at }),
     })
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => null)
+      console.error('[Move] Failed:', res.status, json)
+      alert(`Erreur: ${typeof json?.error === 'string' ? json.error : 'Impossible de déplacer le RDV'}`)
+    }
 
     // TODO: send email notification if sendEmail is true
     setMoveConfirm(null)
