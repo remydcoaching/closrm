@@ -14,9 +14,10 @@ import {
   format,
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { BookingWithCalendar, BookingCalendar } from '@/types'
+import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal } from 'lucide-react'
+import { BookingWithCalendar, BookingCalendar, BookingLocation } from '@/types'
 import { AgendaSidebar } from '@/components/agenda/AgendaSidebar'
+import { FilterPanel } from '@/components/agenda/FilterPanel'
 import { DayView } from '@/components/agenda/DayView'
 import { WeekView } from '@/components/agenda/WeekView'
 import { MonthView } from '@/components/agenda/MonthView'
@@ -73,6 +74,9 @@ export default function AgendaPage() {
   const [showNewModal, setShowNewModal] = useState(false)
   const [modalPrefill, setModalPrefill] = useState({ date: '', time: '' })
   const [selectedBooking, setSelectedBooking] = useState<BookingWithCalendar | null>(null)
+  const [showFilterPanel, setShowFilterPanel] = useState(false)
+  const [filterType, setFilterType] = useState<'all' | 'bookings' | 'blocked'>('all')
+  const [locations, setLocations] = useState<BookingLocation[]>([])
 
   // Fetch calendars once on mount
   const fetchCalendars = useCallback(async () => {
@@ -82,6 +86,11 @@ export default function AgendaPage() {
       const data: BookingCalendar[] = json.data ?? []
       setCalendars(data)
       setVisibleCalendarIds(new Set(data.map((c) => c.id)))
+    }
+    const locRes = await fetch('/api/booking-locations')
+    if (locRes.ok) {
+      const locJson = await locRes.json()
+      setLocations(locJson.data || [])
     }
   }, [])
 
@@ -169,8 +178,10 @@ export default function AgendaPage() {
     }
   }
 
-  // Filter bookings based on visibility settings
+  // Filter bookings based on visibility settings and filter type
   const filteredBookings = bookings.filter((b) => {
+    if (filterType === 'bookings' && b.is_personal) return false
+    if (filterType === 'blocked' && !b.is_personal) return false
     if (b.is_personal) return showPersonal
     if (b.calendar_id) return visibleCalendarIds.has(b.calendar_id)
     return true
@@ -183,15 +194,7 @@ export default function AgendaPage() {
       {/* Sidebar */}
       <AgendaSidebar
         selectedDate={currentDate}
-        onDateSelect={(d) => {
-          setCurrentDate(d)
-          setViewMode('day')
-        }}
-        calendars={calendars}
-        visibleCalendarIds={visibleCalendarIds}
-        onToggleCalendar={toggleCalendar}
-        showPersonal={showPersonal}
-        onTogglePersonal={() => setShowPersonal((v) => !v)}
+        onDateSelect={(d) => { setCurrentDate(d); setViewMode('day') }}
       />
 
       {/* Main content */}
@@ -306,6 +309,20 @@ export default function AgendaPage() {
             {headerDateLabel}
           </span>
 
+          {/* Filter panel toggle */}
+          <button
+            onClick={() => setShowFilterPanel(!showFilterPanel)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+              background: showFilterPanel ? 'rgba(229,62,62,0.1)' : 'var(--bg-secondary)',
+              color: showFilterPanel ? '#E53E3E' : 'var(--text-secondary)',
+              border: `1px solid ${showFilterPanel ? '#E53E3E' : 'var(--border-secondary)'}`,
+              borderRadius: 8, fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            <SlidersHorizontal size={14} /> Gérer l&apos;affichage
+          </button>
+
           {/* New booking button */}
           <button
             onClick={() => {
@@ -379,6 +396,19 @@ export default function AgendaPage() {
         </div>
       </div>
 
+      {/* Filter panel */}
+      <FilterPanel
+        isOpen={showFilterPanel}
+        onClose={() => setShowFilterPanel(false)}
+        filterType={filterType}
+        onFilterTypeChange={setFilterType}
+        calendars={calendars}
+        visibleCalendarIds={visibleCalendarIds}
+        onToggleCalendar={toggleCalendar}
+        showPersonal={showPersonal}
+        onTogglePersonal={() => setShowPersonal((p) => !p)}
+      />
+
       {/* Detail panel */}
       {selectedBooking && (
         <BookingDetailPanel
@@ -393,6 +423,7 @@ export default function AgendaPage() {
       {showNewModal && (
         <NewBookingModal
           calendars={calendars}
+          locations={locations}
           prefillDate={modalPrefill.date}
           prefillTime={modalPrefill.time}
           onClose={() => setShowNewModal(false)}

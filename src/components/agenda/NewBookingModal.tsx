@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { X } from 'lucide-react'
-import { BookingCalendar, Lead } from '@/types'
+import { BookingCalendar, Lead, BookingLocation } from '@/types'
 
 interface NewBookingModalProps {
   calendars: BookingCalendar[]
+  locations: BookingLocation[]
   prefillDate: string   // "2026-04-01"
   prefillTime: string   // "14:00"
   onClose: () => void
@@ -33,17 +34,19 @@ const labelStyle: React.CSSProperties = {
 
 export default function NewBookingModal({
   calendars,
+  locations,
   prefillDate,
   prefillTime,
   onClose,
   onCreated,
 }: NewBookingModalProps) {
-  const [isPersonal, setIsPersonal] = useState(false)
+  const [activeTab, setActiveTab] = useState<'booking' | 'blocked'>('booking')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Calendar mode
   const [calendarId, setCalendarId] = useState<string>(calendars[0]?.id ?? '')
+  const [locationId, setLocationId] = useState<string>('')
   const [leadSearch, setLeadSearch] = useState('')
   const [leadResults, setLeadResults] = useState<Lead[]>([])
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
@@ -61,6 +64,11 @@ export default function NewBookingModal({
 
   const overlayRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const selectedCalendar = calendars.find((c) => c.id === calendarId)
+  const availableLocations = locations.filter(
+    (l) => l.is_active && selectedCalendar?.location_ids?.includes(l.id)
+  )
 
   // Update duration when calendar changes
   useEffect(() => {
@@ -109,7 +117,7 @@ export default function NewBookingModal({
     try {
       const scheduledAt = `${date}T${time}:00`
 
-      const body = isPersonal
+      const body = activeTab === 'blocked'
         ? {
             is_personal: true,
             title,
@@ -121,6 +129,7 @@ export default function NewBookingModal({
             is_personal: false,
             calendar_id: calendarId || null,
             lead_id: selectedLead?.id ?? null,
+            location_id: locationId || null,
             title: selectedLead
               ? `${selectedLead.first_name} ${selectedLead.last_name}`.trim()
               : 'Rendez-vous',
@@ -203,48 +212,33 @@ export default function NewBookingModal({
           </button>
         </div>
 
-        {/* Mode toggle */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 4,
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border-secondary)',
-            borderRadius: 8,
-            padding: 4,
-            marginBottom: 20,
-          }}
-        >
-          {(['Calendrier', 'Événement perso'] as const).map((label, i) => {
-            const active = i === 0 ? !isPersonal : isPersonal
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setIsPersonal(i === 1)}
-                style={{
-                  flex: 1,
-                  background: active ? 'var(--border-secondary)' : 'transparent',
-                  border: 'none',
-                  borderRadius: 6,
-                  color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  fontSize: 13,
-                  fontWeight: active ? 600 : 400,
-                  padding: '6px 0',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {label}
-              </button>
-            )
-          })}
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '2px solid var(--border-secondary)', marginBottom: 16 }}>
+          {[
+            { key: 'booking' as const, label: 'Rendez-vous' },
+            { key: 'blocked' as const, label: 'Horaire bloqué' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '10px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                background: 'none', border: 'none',
+                color: activeTab === tab.key ? '#E53E3E' : 'var(--text-muted)',
+                borderBottom: activeTab === tab.key ? '2px solid #E53E3E' : '2px solid transparent',
+                marginBottom: -2,
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Calendar mode */}
-            {!isPersonal && (
+            {/* Booking tab */}
+            {activeTab === 'booking' && (
               <>
                 {/* Calendar picker */}
                 {calendars.length > 0 && (
@@ -360,11 +354,28 @@ export default function NewBookingModal({
                     </div>
                   )}
                 </div>
+
+                {/* Location dropdown */}
+                {availableLocations.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={labelStyle}>Lieu de la réunion</label>
+                    <select
+                      value={locationId}
+                      onChange={(e) => setLocationId(e.target.value)}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      <option value="">Sélectionnez un lieu</option>
+                      {availableLocations.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </>
             )}
 
-            {/* Personal mode */}
-            {isPersonal && (
+            {/* Blocked tab */}
+            {activeTab === 'blocked' && (
               <div>
                 <label style={labelStyle}>Titre</label>
                 <input
@@ -476,7 +487,7 @@ export default function NewBookingModal({
                   transition: 'background 0.15s',
                 }}
               >
-                {loading ? 'Création...' : 'Créer'}
+                {loading ? 'Création...' : activeTab === 'blocked' ? 'Bloquer le créneau' : 'Prendre rendez-vous'}
               </button>
             </div>
           </div>
