@@ -119,21 +119,27 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
               {days.map((day) => (
                 <div
                   key={`${day.toISOString()}-${hour}`}
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    const ratio = (e.clientY - rect.top) / rect.height
-                    const minutes = ratio < 0.5 ? 0 : 30
-                    onSlotClick(day, hour + minutes / 60)
-                  }}
                   style={{
                     height: CELL_HEIGHT, position: 'relative', cursor: 'pointer',
                     borderRight: GRID_BORDER,
                     borderBottom: GRID_BORDER,
-                    background: 'transparent',
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-                />
+                >
+                  {/* Top half — :00 */}
+                  <div
+                    onClick={() => onSlotClick(day, hour)}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                    style={{ height: '50%', borderBottom: '1px dashed rgba(128,128,128,0.08)' }}
+                  />
+                  {/* Bottom half — :30 */}
+                  <div
+                    onClick={() => onSlotClick(day, hour + 0.5)}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                    style={{ height: '50%' }}
+                  />
+                </div>
               ))}
             </div>
           ))}

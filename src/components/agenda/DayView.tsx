@@ -50,18 +50,10 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
         {HOURS.map((hour) => (
           <div
             key={hour}
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              const ratio = (e.clientY - rect.top) / rect.height
-              const minutes = ratio < 0.5 ? 0 : 30
-              onSlotClick(date, hour + minutes / 60)
-            }}
             style={{
               display: 'flex', height: CELL_HEIGHT, cursor: 'pointer',
               borderBottom: GRID_BORDER,
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
           >
             <div style={{
               width: HOUR_COL_WIDTH, flexShrink: 0, textAlign: 'right', paddingRight: 10, paddingTop: 4,
@@ -70,7 +62,20 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
             }}>
               {String(hour).padStart(2, '0')}:00
             </div>
-            <div style={{ flex: 1 }} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div
+                onClick={() => onSlotClick(date, hour)}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                style={{ height: '50%', borderBottom: '1px dashed rgba(128,128,128,0.08)' }}
+              />
+              <div
+                onClick={() => onSlotClick(date, hour + 0.5)}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                style={{ height: '50%' }}
+              />
+            </div>
           </div>
         ))}
 
