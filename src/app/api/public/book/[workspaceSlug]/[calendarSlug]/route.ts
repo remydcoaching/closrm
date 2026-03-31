@@ -13,7 +13,7 @@ interface CalendarRow {
   name: string
   description: string | null
   duration_minutes: number
-  location: string | null
+  location_ids: string[]
   color: string
   form_fields: unknown
   availability: unknown
@@ -39,7 +39,7 @@ async function getCalendarBySlug(
   const { data: calendar, error: calError } = await supabase
     .from('booking_calendars')
     .select(
-      'id, workspace_id, name, description, duration_minutes, location, color, form_fields, availability, buffer_minutes',
+      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes',
     )
     .eq('workspace_id', slugRow.workspace_id)
     .eq('slug', calendarSlug)
@@ -121,7 +121,7 @@ export async function GET(
       name: calendar.name,
       description: calendar.description,
       duration_minutes: calendar.duration_minutes,
-      location: calendar.location,
+      location_ids: calendar.location_ids,
       color: calendar.color,
       form_fields: calendar.form_fields,
     },

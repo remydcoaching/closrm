@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Plus, Calendar, AlertTriangle } from 'lucide-react'
 import { BookingCalendar } from '@/types'
 import CalendarCard from '@/components/booking-calendars/CalendarCard'
 import ConfirmModal from '@/components/shared/ConfirmModal'
@@ -72,7 +73,7 @@ export default function CalendriersPage() {
           name: 'Nouveau calendrier',
           slug,
           duration_minutes: 30,
-          color: '#E53E3E',
+          color: '#3b82f6',
           availability: {
             monday: [{ start: '09:00', end: '17:00' }],
             tuesday: [{ start: '09:00', end: '17:00' }],
@@ -112,35 +113,38 @@ export default function CalendriersPage() {
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 900 }}>
+    <div style={{ padding: '28px 32px', maxWidth: 960 }}>
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 32,
-        }}
-      >
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-          Calendriers de réservation
-        </h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+            Calendriers de réservation
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
+            Gérez vos types de rendez-vous et liens de réservation
+          </p>
+        </div>
         <button
           onClick={handleCreate}
           disabled={creating}
           style={{
-            background: '#E53E3E',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'var(--color-primary)',
             border: 'none',
             borderRadius: 8,
-            padding: '9px 18px',
-            fontSize: 14,
+            padding: '9px 16px',
+            fontSize: 13,
             fontWeight: 600,
             color: '#fff',
             cursor: creating ? 'not-allowed' : 'pointer',
             opacity: creating ? 0.6 : 1,
+            transition: 'opacity 0.15s ease',
           }}
         >
-          {creating ? 'Création...' : '+ Nouveau calendrier'}
+          <Plus size={15} strokeWidth={2.5} />
+          {creating ? 'Création...' : 'Nouveau calendrier'}
         </button>
       </div>
 
@@ -148,10 +152,10 @@ export default function CalendriersPage() {
       {!workspaceSlug && (
         <div
           style={{
-            background: 'rgba(214,158,46,0.1)',
-            border: '1px solid rgba(214,158,46,0.3)',
+            background: 'rgba(214,158,46,0.06)',
+            border: '1px solid rgba(214,158,46,0.2)',
             borderRadius: 8,
-            padding: '12px 16px',
+            padding: '10px 14px',
             marginBottom: 20,
             display: 'flex',
             alignItems: 'center',
@@ -160,13 +164,13 @@ export default function CalendriersPage() {
             color: '#D69E2E',
           }}
         >
-          <span style={{ fontSize: 18 }}>⚠</span>
+          <AlertTriangle size={15} />
           <span>
             Configurez votre <strong>slug public</strong> dans{' '}
             <a href="/parametres/reglages" style={{ color: '#D69E2E', textDecoration: 'underline' }}>
               Paramètres &gt; Réglages
             </a>{' '}
-            pour que vos liens de réservation fonctionnent.
+            pour activer vos liens de réservation.
           </span>
         </div>
       )}
@@ -177,14 +181,49 @@ export default function CalendriersPage() {
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 10,
-            padding: 40,
+            borderRadius: 12,
+            padding: '56px 32px',
             textAlign: 'center',
           }}
         >
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0 }}>
-            Aucun calendrier de réservation. Créez-en un pour commencer.
+          <div style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            background: 'var(--bg-active)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+          }}>
+            <Calendar size={22} style={{ color: 'var(--color-primary)' }} />
+          </div>
+          <p style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>
+            Aucun calendrier
           </p>
+          <p style={{ color: 'var(--text-tertiary)', fontSize: 13, margin: '0 0 20px', maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
+            Créez votre premier calendrier de réservation pour permettre à vos leads de prendre rendez-vous.
+          </p>
+          <button
+            onClick={handleCreate}
+            disabled={creating}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'var(--color-primary)',
+              border: 'none',
+              borderRadius: 8,
+              padding: '9px 18px',
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#fff',
+              cursor: creating ? 'not-allowed' : 'pointer',
+            }}
+          >
+            <Plus size={15} strokeWidth={2.5} />
+            Créer un calendrier
+          </button>
         </div>
       )}
 
@@ -193,8 +232,8 @@ export default function CalendriersPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: 16,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gap: 14,
           }}
         >
           {calendars.map(calendar => (

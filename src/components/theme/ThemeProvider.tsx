@@ -20,23 +20,13 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     const saved = localStorage.getItem('closrm-theme') as Theme | null
     if (saved === 'light' || saved === 'dark') {
       setThemeState(saved)
-      applyTheme(saved)
-    } else {
-      applyTheme('dark')
+      document.documentElement.setAttribute('data-theme', saved)
     }
   }, [])
 
-  function applyTheme(t: Theme) {
-    if (t === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }
-
   function setTheme(t: Theme) {
     setThemeState(t)
-    applyTheme(t)
+    document.documentElement.setAttribute('data-theme', t)
     localStorage.setItem('closrm-theme', t)
   }
 

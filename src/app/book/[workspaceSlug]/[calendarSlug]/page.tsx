@@ -26,7 +26,7 @@ interface CalendarInfo {
   name: string
   description: string | null
   duration_minutes: number
-  location: string | null
+  location_ids: string[]
   color: string
   form_fields: FormField[]
 }
@@ -247,9 +247,9 @@ export default function PublicBookingPage() {
             <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Clock size={12} /> {calendar.duration_minutes} min
             </span>
-            {calendar.location && (
+            {calendar.location_ids && calendar.location_ids.length > 0 && (
               <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <MapPin size={12} /> {calendar.location}
+                <MapPin size={12} /> Présentiel
               </span>
             )}
           </div>
@@ -446,9 +446,9 @@ export default function PublicBookingPage() {
             <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Clock size={12} /> {calendar.duration_minutes} min
             </span>
-            {calendar.location && (
+            {calendar.location_ids && calendar.location_ids.length > 0 && (
               <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <MapPin size={12} /> {calendar.location}
+                <MapPin size={12} /> Présentiel
               </span>
             )}
           </div>
