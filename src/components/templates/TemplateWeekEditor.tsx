@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { TemplateBlock, DayOfWeek } from '@/types'
 import BlockModal from './BlockModal'
 
@@ -64,11 +64,20 @@ interface EditState {
 interface AddState {
   day: DayOfWeek
   start: string
+  end?: string
+}
+
+interface DragState {
+  day: DayOfWeek
+  startSlot: number
+  currentSlot: number
 }
 
 export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEditorProps) {
   const [editState, setEditState] = useState<EditState | null>(null)
   const [addState, setAddState] = useState<AddState | null>(null)
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const isDragging = useRef(false)
 
   function handleBlockClick(e: React.MouseEvent, block: TemplateBlock, index: number) {
     e.stopPropagation()
@@ -76,7 +85,7 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
     setAddState(null)
   }
 
-  function handleCellClick(day: DayOfWeek, slotIndex: number) {
+  function handleCellMouseDown(day: DayOfWeek, slotIndex: number) {
     // Check if there's already a block at this slot
     const slotTime = slotIndexToTime(slotIndex)
     const slotMin = timeToMinutes(slotTime)
@@ -88,8 +97,37 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
     })
     if (hasBlock) return
 
-    setAddState({ day, start: slotTime })
+    isDragging.current = true
+    setDrag({ day, startSlot: slotIndex, currentSlot: slotIndex })
+  }
+
+  const handleCellMouseEnter = useCallback((day: DayOfWeek, slotIndex: number) => {
+    if (!isDragging.current || !drag) return
+    if (day !== drag.day) return
+    setDrag(prev => prev ? { ...prev, currentSlot: slotIndex } : null)
+  }, [drag])
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDragging.current || !drag) {
+      isDragging.current = false
+      setDrag(null)
+      return
+    }
+    isDragging.current = false
+    const startSlot = Math.min(drag.startSlot, drag.currentSlot)
+    const endSlot = Math.max(drag.startSlot, drag.currentSlot) + 1 // +1 because end is exclusive (next slot)
+    const startTime = slotIndexToTime(startSlot)
+    const endTime = slotIndexToTime(endSlot)
+    setDrag(null)
+    setAddState({ day: drag.day, start: startTime, end: endTime })
     setEditState(null)
+  }, [drag])
+
+  function isSlotInDrag(day: DayOfWeek, slotIndex: number): boolean {
+    if (!drag || day !== drag.day) return false
+    const start = Math.min(drag.startSlot, drag.currentSlot)
+    const end = Math.max(drag.startSlot, drag.currentSlot)
+    return slotIndex >= start && slotIndex <= end
   }
 
   function handleSaveEdit(updated: TemplateBlock) {
@@ -121,7 +159,11 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
   const slots = Array.from({ length: SLOTS_COUNT }, (_, i) => i)
 
   return (
-    <div style={{ overflowX: 'auto', userSelect: 'none' }}>
+    <div
+      style={{ overflowX: 'auto', userSelect: 'none' }}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={() => { if (isDragging.current) handleMouseUp() }}
+    >
       <div style={{ minWidth: 700 }}>
         {/* Day headers */}
         <div style={{
@@ -191,13 +233,18 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
                   {DAY_KEYS.map(day => (
                     <div
                       key={`${day}-${slotIdx}`}
-                      onClick={() => handleCellClick(day, slotIdx)}
+                      onMouseDown={() => handleCellMouseDown(day, slotIdx)}
+                      onMouseEnter={() => handleCellMouseEnter(day, slotIdx)}
                       style={{
                         height: CELL_HEIGHT,
                         borderRight: GRID_BORDER,
                         borderBottom,
                         cursor: 'pointer',
                         boxSizing: 'border-box',
+                        background: isSlotInDrag(day, slotIdx)
+                          ? 'rgba(229,62,62,0.15)'
+                          : 'transparent',
+                        transition: 'background 0.05s',
                       }}
                     />
                   ))}
@@ -293,6 +340,7 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
           block={null}
           day={addState.day}
           defaultStart={addState.start}
+          defaultEnd={addState.end}
           onSave={handleSaveAdd}
           onClose={closeModal}
         />

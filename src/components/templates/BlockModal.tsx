@@ -8,6 +8,7 @@ interface BlockModalProps {
   block: TemplateBlock | null  // null = adding new
   day: DayOfWeek
   defaultStart?: string  // used when adding from a clicked slot
+  defaultEnd?: string    // used when drag-selecting a range
   onSave: (block: TemplateBlock) => void
   onDelete?: () => void  // only when editing
   onClose: () => void
@@ -56,7 +57,7 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 }
 
-export default function BlockModal({ block, day, defaultStart, onSave, onDelete, onClose }: BlockModalProps) {
+export default function BlockModal({ block, day, defaultStart, defaultEnd, onSave, onDelete, onClose }: BlockModalProps) {
   const initialStart = block?.start ?? defaultStart ?? '09:00'
   // Default end = start + 1 hour
   const computeDefaultEnd = (s: string) => {
@@ -67,7 +68,7 @@ export default function BlockModal({ block, day, defaultStart, onSave, onDelete,
 
   const [title, setTitle] = useState(block?.title ?? '')
   const [start, setStart] = useState(initialStart)
-  const [end, setEnd] = useState(block?.end ?? computeDefaultEnd(initialStart))
+  const [end, setEnd] = useState(block?.end ?? defaultEnd ?? computeDefaultEnd(initialStart))
   const [color, setColor] = useState(block?.color ?? PRESET_COLORS[0])
   const [customHex, setCustomHex] = useState('')
 
@@ -81,8 +82,7 @@ export default function BlockModal({ block, day, defaultStart, onSave, onDelete,
     [onClose]
   )
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = () => {
     if (!title.trim()) return
     onSave({ day, title: title.trim(), start, end, color })
   }
@@ -140,7 +140,7 @@ export default function BlockModal({ block, day, defaultStart, onSave, onDelete,
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Activity presets */}
             <div>
@@ -305,7 +305,8 @@ export default function BlockModal({ block, day, defaultStart, onSave, onDelete,
                   Annuler
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmit}
                   style={{
                     background: 'var(--color-primary)',
                     border: 'none',
@@ -323,7 +324,7 @@ export default function BlockModal({ block, day, defaultStart, onSave, onDelete,
               </div>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )

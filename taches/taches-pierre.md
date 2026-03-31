@@ -1,7 +1,7 @@
 # Tâches Pierre — ClosRM V1
 
 > Toutes les tâches de Pierre, dans l'ordre. Chaque module = API + Frontend, autonome.
-> Dernière mise à jour : 2026-03-31
+> Dernière mise à jour : 2026-03-31 (soir)
 
 ---
 
@@ -147,7 +147,7 @@
 - [x] `BrandingForm` — presets couleurs (12 couleurs) + hex custom + preview live
 - [x] Refactor global : couleurs hardcodées → CSS variables `var(--color-primary)`
 - [x] Logo affiché dans la sidebar si configuré
-- [ ] **⚠️ Migration non exécutée dans Supabase** (section à ajouter dans `sql-a-executer.md`)
+- [x] ~~Migration exécutée dans Supabase~~ ✅
 
 **Fichiers :** `src/lib/branding/BrandingInjector.tsx`, `src/lib/branding/utils.ts`, `src/components/settings/BrandingForm.tsx`, `supabase/migrations/003_branding.sql`
 **Spec :** `docs/superpowers/specs/2026-03-31-branding-customization-design.md`
@@ -170,12 +170,12 @@
 
 ### 8. T-022 · Module Calendrier / Booking (type Calendly)
 **Priorité :** Haute
-**Statut :** 🔄 En cours — code implémenté, migration SQL en attente
+**Statut :** 🔄 En cours — code implémenté, migrations SQL ✅, tests E2E restants
 **Spec :** `docs/superpowers/specs/2026-03-30-agenda-booking-design.md`
 
 **Base de données :**
 - [x] Migration SQL : tables `workspace_slugs`, `booking_calendars`, `bookings`
-- [ ] **⚠️ Migration non exécutée dans Supabase** (Rémy doit run section 3 de `sql-a-executer.md`)
+- [x] ~~Migration exécutée dans Supabase~~ ✅
 
 **API :**
 - [x] CRUD `/api/booking-calendars`
@@ -192,6 +192,7 @@
 - [x] Sidebar : mini-calendrier + filtres calendriers
 - [x] Modale nouveau RDV (calendrier ou événement perso)
 - [x] Panel détails avec statut + suppression
+- [x] Affichage événements Google Calendar dans l'agenda (lecture seule, badge "Google")
 
 **Frontend — Paramètres Calendriers (`/parametres/calendriers`) :**
 - [x] Liste calendriers avec cards
@@ -205,6 +206,61 @@
 - [ ] Exécuter migration SQL dans Supabase
 - [ ] Tester end-to-end
 - [ ] Ajouter champ slug workspace dans page Réglages (A-022-01)
+
+---
+
+### 8b. Intégration Google Calendar
+**Statut :** ✅ Terminé (2026-03-31)
+
+**API :**
+- [x] `GET /api/integrations/google/authorize` — initie le flow OAuth Google
+- [x] `GET /api/integrations/google/callback` — récupère les tokens + sauvegarde intégration
+- [x] `POST /api/integrations/google/sync` — sync événements Google Calendar → bookings
+
+**Backend (`src/lib/google/calendar.ts`) :**
+- [x] `getGoogleAuthUrl()` — génération URL OAuth avec scopes calendar
+- [x] `getGoogleTokens()` — échange code → tokens
+- [x] `refreshGoogleToken()` — refresh automatique token expiré
+- [x] `listCalendarEvents()` — récupère événements depuis Google Calendar
+- [x] `syncGoogleCalendarEvents()` — sync complète (upsert bookings type `google_event`)
+
+**Frontend :**
+- [x] Card Google Calendar sur page intégrations (`google-card.tsx`) avec statut connecté/non connecté
+- [x] Bouton "Connecter Google Calendar" → OAuth flow
+- [x] Bouton "Synchroniser" + "Déconnecter" quand connecté
+
+---
+
+### 8c. Planning Templates (modèles de semaine type)
+**Statut :** ✅ Terminé (2026-03-31)
+**Spec :** `docs/superpowers/specs/2026-03-31-planning-templates-design.md`
+
+**API (`/api/planning-templates`) :**
+- [x] `GET /api/planning-templates` — liste des templates du workspace
+- [x] `POST /api/planning-templates` — créer un template
+- [x] `GET /api/planning-templates/[id]` — détail
+- [x] `PATCH /api/planning-templates/[id]` — modifier (nom, blocs)
+- [x] `DELETE /api/planning-templates/[id]` — supprimer
+- [x] `POST /api/planning-templates/[id]/import` — importer les blocs d'un template sur une semaine donnée (crée les bookings)
+
+**Base de données :**
+- [x] Migration SQL : table `planning_templates` (`supabase/migrations/005_planning_templates.sql`)
+- [x] ~~Migration exécutée dans Supabase~~ ✅
+
+**Frontend — Liste templates (`/agenda/templates`) :**
+- [x] Cards templates avec aperçu visuel (nb blocs, calendriers associés)
+- [x] Bouton créer un template
+- [x] Actions : éditer, dupliquer, supprimer, appliquer à une semaine
+
+**Frontend — Éditeur template (`/agenda/templates/[id]`) :**
+- [x] Éditeur hebdomadaire style Google Sheets (grille 7 jours × créneaux horaires)
+- [x] Blocs drag & click sur la grille
+- [x] Modale ajout/édition de bloc (titre, calendrier, heure début/fin, jours)
+- [x] Composants : `TemplateWeekEditor`, `BlockModal`, `TemplateCard`
+
+**Frontend — Import dans l'agenda :**
+- [x] Bouton "Appliquer un template" depuis la page agenda
+- [x] Sélection template + semaine cible → création automatique des bookings
 
 ---
 
@@ -231,12 +287,14 @@
 | 5 | Notifications WhatsApp/Telegram (T-016) | Moyenne | ✅ |
 | 6 | Paramètres Réglages (T-018) | Basse | ✅ |
 | 6b | Dark/Light Mode | — | ✅ |
-| 6c | Branding dynamique | — | ✅ (attente migration SQL) |
+| 6c | Branding dynamique | — | ✅ |
 | 7 | Paramètres Intégrations (T-019) | Basse | ✅ |
-| 8 | Calendrier/Booking (T-022) | Haute | 🔄 (attente migration SQL) |
+| 8 | Calendrier/Booking (T-022) | Haute | 🔄 (tests E2E restants) |
+| 8b | Google Calendar sync | — | ✅ |
+| 8c | Planning Templates | — | ✅ |
 | 9 | Instagram Automations (T-021) | Moyenne | ⬜ |
 
-**Score : 9/11 terminées · 2 en attente migration SQL · 1 non démarrée**
+**Score : 12/13 terminées · 1 non démarrée (T-021 Instagram)**
 
 ---
 
