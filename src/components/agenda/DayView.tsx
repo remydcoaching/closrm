@@ -50,7 +50,12 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
         {HOURS.map((hour) => (
           <div
             key={hour}
-            onClick={() => onSlotClick(date, hour)}
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              const clickY = e.clientY - rect.top
+              const minutes = clickY < CELL_HEIGHT / 2 ? 0 : 30
+              onSlotClick(date, hour + minutes / 60)
+            }}
             style={{
               display: 'flex', height: CELL_HEIGHT, cursor: 'pointer',
               borderBottom: GRID_BORDER,

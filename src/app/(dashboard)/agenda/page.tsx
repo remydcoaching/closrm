@@ -148,9 +148,11 @@ export default function AgendaPage() {
 
   // Slot click → open modal with prefill
   function handleSlotClick(date: Date, hour: number) {
+    const h = Math.floor(hour)
+    const m = Math.round((hour - h) * 60)
     setModalPrefill({
       date: format(date, 'yyyy-MM-dd'),
-      time: `${String(hour).padStart(2, '0')}:00`,
+      time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
     })
     setShowNewModal(true)
   }
