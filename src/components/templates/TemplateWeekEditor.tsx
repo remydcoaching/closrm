@@ -9,46 +9,51 @@ interface TemplateWeekEditorProps {
   onChange: (blocks: TemplateBlock[]) => void
 }
 
-const CELL_HEIGHT = 48
-const START_HOUR = 7
-const END_HOUR = 21
-const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR)
-const TOTAL_HEIGHT = HOURS.length * CELL_HEIGHT
-const HOUR_COL_WIDTH = 60
+const CELL_HEIGHT = 28
+const START_HOUR = 6
+const END_HOUR = 23
+const SLOTS_COUNT = (END_HOUR - START_HOUR) * 2 // 34 half-hour slots
+const TOTAL_HEIGHT = SLOTS_COUNT * CELL_HEIGHT
+const HOUR_COL_WIDTH = 52
 
 const DAY_KEYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_LABELS: Record<DayOfWeek, string> = {
-  monday: 'Lun',
-  tuesday: 'Mar',
-  wednesday: 'Mer',
-  thursday: 'Jeu',
-  friday: 'Ven',
-  saturday: 'Sam',
-  sunday: 'Dim',
+  monday: 'LUNDI',
+  tuesday: 'MARDI',
+  wednesday: 'MERCREDI',
+  thursday: 'JEUDI',
+  friday: 'VENDREDI',
+  saturday: 'SAMEDI',
+  sunday: 'DIMANCHE',
 }
 
-const GRID_BORDER = '1px solid var(--agenda-grid-border, rgba(128,128,128,0.15))'
+const GRID_BORDER = '1px solid rgba(128,128,128,0.25)'
+const GRID_BORDER_DASHED = '1px dashed rgba(128,128,128,0.12)'
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number)
   return h * 60 + m
 }
 
+function minutesToSlotIndex(minutes: number): number {
+  return (minutes - START_HOUR * 60) / 30
+}
+
+function slotIndexToTime(index: number): string {
+  const totalMinutes = index * 30 + START_HOUR * 60
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 function getBlockPosition(block: TemplateBlock) {
   const startMin = timeToMinutes(block.start)
   const endMin = timeToMinutes(block.end)
-  const top = (startMin - START_HOUR * 60) / 60 * CELL_HEIGHT
-  const height = Math.max((endMin - startMin) / 60 * CELL_HEIGHT, 16)
+  const topSlot = minutesToSlotIndex(startMin)
+  const bottomSlot = minutesToSlotIndex(endMin)
+  const top = topSlot * CELL_HEIGHT
+  const height = Math.max((bottomSlot - topSlot) * CELL_HEIGHT, CELL_HEIGHT)
   return { top, height }
-}
-
-// Round a pixel offset to the nearest 30-min slot time string
-function slotFromOffset(offsetY: number): string {
-  const totalMinutesFromStart = Math.floor(offsetY / (CELL_HEIGHT / 2)) * 30
-  const h = Math.floor(totalMinutesFromStart / 60) + START_HOUR
-  const m = totalMinutesFromStart % 60
-  const clampedH = Math.max(START_HOUR, Math.min(END_HOUR - 1, h))
-  return `${String(clampedH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
 interface EditState {
@@ -71,11 +76,19 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
     setAddState(null)
   }
 
-  function handleCellClick(e: React.MouseEvent, day: DayOfWeek) {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const offsetY = e.clientY - rect.top
-    const start = slotFromOffset(offsetY)
-    setAddState({ day, start })
+  function handleCellClick(day: DayOfWeek, slotIndex: number) {
+    // Check if there's already a block at this slot
+    const slotTime = slotIndexToTime(slotIndex)
+    const slotMin = timeToMinutes(slotTime)
+    const hasBlock = blocks.some(b => {
+      if (b.day !== day) return false
+      const bStart = timeToMinutes(b.start)
+      const bEnd = timeToMinutes(b.end)
+      return slotMin >= bStart && slotMin < bEnd
+    })
+    if (hasBlock) return
+
+    setAddState({ day, start: slotTime })
     setEditState(null)
   }
 
@@ -104,32 +117,39 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
     setAddState(null)
   }
 
+  // Build slot array: 0 = 06:00, 1 = 06:30, ... 33 = 22:30
+  const slots = Array.from({ length: SLOTS_COUNT }, (_, i) => i)
+
   return (
     <div style={{ overflowX: 'auto', userSelect: 'none' }}>
-      <div style={{ minWidth: 560 }}>
+      <div style={{ minWidth: 700 }}>
         {/* Day headers */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: `${HOUR_COL_WIDTH}px repeat(7, 1fr)`,
-          borderBottom: '2px solid var(--border-secondary)',
+          borderBottom: '2px solid rgba(128,128,128,0.35)',
           position: 'sticky',
           top: 0,
-          zIndex: 5,
-          background: 'var(--bg-primary)',
+          zIndex: 10,
+          background: '#111111',
         }}>
-          <div style={{ borderRight: GRID_BORDER }} />
+          <div style={{
+            borderRight: GRID_BORDER,
+            padding: '6px 0',
+          }} />
           {DAY_KEYS.map(day => (
             <div
               key={day}
               style={{
                 textAlign: 'center',
-                padding: '8px 0',
+                padding: '6px 0',
                 borderRight: GRID_BORDER,
-                fontSize: 12,
-                fontWeight: 600,
+                fontSize: 10,
+                fontWeight: 700,
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                color: 'var(--text-secondary)',
+                letterSpacing: '0.08em',
+                color: '#fff',
+                background: '#111111',
               }}
             >
               {DAY_LABELS[day]}
@@ -139,48 +159,51 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
 
         {/* Time grid + blocks overlay */}
         <div style={{ position: 'relative' }}>
-          {/* Grid lines */}
-          <div style={{ display: 'grid', gridTemplateColumns: `${HOUR_COL_WIDTH}px repeat(7, 1fr)` }}>
-            {HOURS.map(hour => (
-              <div key={hour} style={{ display: 'contents' }}>
-                {/* Hour label */}
-                <div style={{
-                  height: CELL_HEIGHT,
-                  padding: '0 8px 0 0',
-                  textAlign: 'right',
-                  fontSize: 10,
-                  fontWeight: 500,
-                  color: 'var(--text-secondary)',
-                  borderRight: GRID_BORDER,
-                  borderBottom: GRID_BORDER,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'flex-end',
-                  paddingTop: 3,
-                }}>
-                  {String(hour).padStart(2, '0')}:00
-                </div>
-                {/* Day cells */}
-                {DAY_KEYS.map(day => (
-                  <div
-                    key={`${day}-${hour}`}
-                    style={{
-                      height: CELL_HEIGHT,
-                      position: 'relative',
-                      cursor: 'pointer',
-                      borderRight: GRID_BORDER,
-                      borderBottom: GRID_BORDER,
-                    }}
-                    onClick={e => handleCellClick(e, day)}
-                  >
-                    <div style={{
-                      height: '50%',
-                      borderBottom: '1px dashed rgba(128,128,128,0.08)',
-                    }} />
+          {/* Grid rows */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `${HOUR_COL_WIDTH}px repeat(7, 1fr)`,
+          }}>
+            {slots.map(slotIdx => {
+              const isFullHour = slotIdx % 2 === 0
+              const hour = Math.floor(slotIdx / 2) + START_HOUR
+              const borderBottom = isFullHour ? GRID_BORDER : GRID_BORDER_DASHED
+
+              return (
+                <div key={slotIdx} style={{ display: 'contents' }}>
+                  {/* Hour label — only on full hours */}
+                  <div style={{
+                    height: CELL_HEIGHT,
+                    borderRight: GRID_BORDER,
+                    borderBottom,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingRight: 6,
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: isFullHour ? 'var(--text-secondary)' : 'transparent',
+                    fontFamily: 'monospace',
+                  }}>
+                    {isFullHour ? `${String(hour).padStart(2, '0')}:00` : ''}
                   </div>
-                ))}
-              </div>
-            ))}
+                  {/* Day cells */}
+                  {DAY_KEYS.map(day => (
+                    <div
+                      key={`${day}-${slotIdx}`}
+                      onClick={() => handleCellClick(day, slotIdx)}
+                      style={{
+                        height: CELL_HEIGHT,
+                        borderRight: GRID_BORDER,
+                        borderBottom,
+                        cursor: 'pointer',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  ))}
+                </div>
+              )
+            })}
           </div>
 
           {/* Blocks overlay */}
@@ -210,37 +233,38 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
                             position: 'absolute',
                             top: pos.top,
                             height: pos.height,
-                            left: 2,
-                            right: 2,
+                            left: 0,
+                            right: 0,
                             background: b.color,
-                            borderRadius: 4,
                             cursor: 'pointer',
                             pointerEvents: 'all',
-                            overflow: 'hidden',
-                            padding: '3px 5px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderBottom: '1px solid rgba(0,0,0,0.15)',
+                            borderTop: '1px solid rgba(255,255,255,0.1)',
                             boxSizing: 'border-box',
-                            opacity: 0.9,
-                            transition: 'opacity 0.1s',
+                            transition: 'filter 0.1s',
                           }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '0.9' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1.15)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'none' }}
                         >
-                          <div style={{
+                          <span style={{
                             fontSize: 10,
-                            fontWeight: 700,
+                            fontWeight: 800,
                             color: '#fff',
-                            whiteSpace: 'nowrap',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            textAlign: 'center',
+                            lineHeight: 1.2,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            lineHeight: 1.3,
+                            whiteSpace: pos.height <= CELL_HEIGHT ? 'nowrap' : 'normal',
+                            padding: '0 4px',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.3)',
                           }}>
                             {b.title}
-                          </div>
-                          {pos.height >= 30 && (
-                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', lineHeight: 1.3 }}>
-                              {b.start}–{b.end}
-                            </div>
-                          )}
+                          </span>
                         </div>
                       )
                     })}
@@ -268,6 +292,7 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
         <BlockModal
           block={null}
           day={addState.day}
+          defaultStart={addState.start}
           onSave={handleSaveAdd}
           onClose={closeModal}
         />

@@ -121,7 +121,7 @@ export default function TemplateEditorPage() {
   }
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+    <div style={{ padding: '20px 24px' }}>
       {/* Back link */}
       <button
         onClick={() => router.push('/agenda/templates')}
@@ -146,14 +146,23 @@ export default function TemplateEditorPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Name */}
           <div>
-            <label style={{ ...labelStyle, fontSize: 11 }}>Nom du template</label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               required
               placeholder="Ex: Semaine type intense"
-              style={{ ...inputStyle, fontSize: 18, fontWeight: 700, padding: '10px 14px' }}
+              style={{
+                ...inputStyle,
+                fontSize: 24,
+                fontWeight: 800,
+                padding: '12px 16px',
+                border: 'none',
+                borderBottom: '2px solid var(--border-secondary)',
+                borderRadius: 0,
+                background: 'transparent',
+                letterSpacing: '-0.02em',
+              }}
             />
           </div>
 
@@ -176,9 +185,9 @@ export default function TemplateEditorPage() {
               Cliquez sur un créneau pour ajouter un bloc. Cliquez sur un bloc pour le modifier.
             </p>
             <div style={{
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-primary)',
-              borderRadius: 12,
+              background: '#0d0d0d',
+              border: '1px solid rgba(128,128,128,0.25)',
+              borderRadius: 4,
               overflow: 'hidden',
             }}>
               <TemplateWeekEditor blocks={blocks} onChange={setBlocks} />

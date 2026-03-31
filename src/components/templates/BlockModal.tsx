@@ -7,15 +7,32 @@ import { TemplateBlock, DayOfWeek } from '@/types'
 interface BlockModalProps {
   block: TemplateBlock | null  // null = adding new
   day: DayOfWeek
+  defaultStart?: string  // used when adding from a clicked slot
   onSave: (block: TemplateBlock) => void
   onDelete?: () => void  // only when editing
   onClose: () => void
 }
 
-const PRESET_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#6b7280']
+// ── Preset activity types with default colors ──────────────────────────────
+const ACTIVITY_PRESETS: { label: string; color: string }[] = [
+  { label: 'ORGANISATION', color: '#22c55e' },
+  { label: 'PROSPECTION', color: '#eab308' },
+  { label: 'CONTENU', color: '#3b82f6' },
+  { label: 'WHATSAPP', color: '#25D366' },
+  { label: 'REPAS', color: '#f97316' },
+  { label: 'BILAN', color: '#8b5cf6' },
+  { label: 'TRAINING', color: '#ef4444' },
+  { label: 'MENTORING/FORMATION', color: '#06b6d4' },
+  { label: 'STORY', color: '#ec4899' },
+  { label: 'CRÉATION PROGRAMME', color: '#14b8a6' },
+  { label: 'TO DO LIST', color: '#6b7280' },
+]
 
-const TIME_OPTIONS = Array.from({ length: (21 - 7) * 2 + 1 }, (_, i) => {
-  const h = Math.floor(i / 2) + 7
+const PRESET_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#6b7280', '#eab308', '#14b8a6', '#f97316', '#25D366']
+
+// Time options from 06:00 to 23:00 in 30-min steps
+const TIME_OPTIONS = Array.from({ length: (23 - 6) * 2 + 1 }, (_, i) => {
+  const h = Math.floor(i / 2) + 6
   const m = (i % 2) * 30
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 })
@@ -39,10 +56,18 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 6,
 }
 
-export default function BlockModal({ block, day, onSave, onDelete, onClose }: BlockModalProps) {
+export default function BlockModal({ block, day, defaultStart, onSave, onDelete, onClose }: BlockModalProps) {
+  const initialStart = block?.start ?? defaultStart ?? '09:00'
+  // Default end = start + 1 hour
+  const computeDefaultEnd = (s: string) => {
+    const [h, m] = s.split(':').map(Number)
+    const endH = Math.min(h + 1, 23)
+    return `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
   const [title, setTitle] = useState(block?.title ?? '')
-  const [start, setStart] = useState(block?.start ?? '09:00')
-  const [end, setEnd] = useState(block?.end ?? '10:00')
+  const [start, setStart] = useState(initialStart)
+  const [end, setEnd] = useState(block?.end ?? computeDefaultEnd(initialStart))
   const [color, setColor] = useState(block?.color ?? PRESET_COLORS[0])
   const [customHex, setCustomHex] = useState('')
 
@@ -69,6 +94,12 @@ export default function BlockModal({ block, day, onSave, onDelete, onClose }: Bl
     }
   }
 
+  const handlePresetClick = (preset: { label: string; color: string }) => {
+    setTitle(preset.label)
+    setColor(preset.color)
+    setCustomHex('')
+  }
+
   return (
     <div
       ref={overlayRef}
@@ -88,7 +119,7 @@ export default function BlockModal({ block, day, onSave, onDelete, onClose }: Bl
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border-secondary)',
           borderRadius: 12,
-          width: 400,
+          width: 480,
           maxWidth: 'calc(100vw - 32px)',
           maxHeight: 'calc(100vh - 64px)',
           overflowY: 'auto',
@@ -111,9 +142,38 @@ export default function BlockModal({ block, day, onSave, onDelete, onClose }: Bl
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Activity presets */}
+            <div>
+              <label style={labelStyle}>Type d&apos;activit&eacute; (raccourcis)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {ACTIVITY_PRESETS.map(preset => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => handlePresetClick(preset)}
+                    style={{
+                      background: title === preset.label ? preset.color : 'transparent',
+                      border: `1px solid ${preset.color}`,
+                      borderRadius: 6,
+                      color: title === preset.label ? '#fff' : preset.color,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '4px 8px',
+                      cursor: 'pointer',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.03em',
+                      transition: 'all 0.1s',
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Title */}
             <div>
-              <label style={labelStyle}>Titre</label>
+              <label style={labelStyle}>Titre personnalis&eacute;</label>
               <input
                 type="text"
                 placeholder="Ex: Appels clients, Prospection..."
@@ -128,7 +188,7 @@ export default function BlockModal({ block, day, onSave, onDelete, onClose }: Bl
             {/* Start / End */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={labelStyle}>Début</label>
+                <label style={labelStyle}>D&eacute;but</label>
                 <select
                   value={start}
                   onChange={e => setStart(e.target.value)}
@@ -156,15 +216,15 @@ export default function BlockModal({ block, day, onSave, onDelete, onClose }: Bl
             {/* Color picker */}
             <div>
               <label style={labelStyle}>Couleur</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {PRESET_COLORS.map(c => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => { setColor(c); setCustomHex('') }}
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 24,
+                      height: 24,
                       borderRadius: '50%',
                       background: c,
                       border: color === c ? '3px solid var(--text-primary)' : '2px solid transparent',
@@ -186,15 +246,15 @@ export default function BlockModal({ block, day, onSave, onDelete, onClose }: Bl
                   maxLength={7}
                   style={{
                     ...inputStyle,
-                    width: 90,
-                    fontSize: 12,
-                    padding: '6px 8px',
+                    width: 80,
+                    fontSize: 11,
+                    padding: '4px 6px',
                     fontFamily: 'monospace',
                   }}
                 />
               </div>
               {/* Color preview */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                 <div style={{
                   width: 32, height: 12, borderRadius: 4, background: color,
                   border: '1px solid rgba(255,255,255,0.1)',
