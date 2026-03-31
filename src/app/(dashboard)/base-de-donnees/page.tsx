@@ -75,8 +75,8 @@ export default function BaseDeDonneesPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 }}>Base de données</h1>
-          <p style={{ fontSize: 13, color: '#555', marginTop: 4 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Base de données</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-label)', marginTop: 4 }}>
             {loading ? '...' : `${meta.total} contact${meta.total > 1 ? 's' : ''} au total`}
           </p>
         </div>
@@ -86,7 +86,7 @@ export default function BaseDeDonneesPage() {
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
             background: 'rgba(0,200,83,0.12)', border: '1px solid rgba(0,200,83,0.3)',
-            color: '#00C853', cursor: 'pointer',
+            color: 'var(--color-primary)', cursor: 'pointer',
           }}
         >
           <Download size={14} />
@@ -124,7 +124,7 @@ export default function BaseDeDonneesPage() {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           marginTop: 12,
         }}>
-          <span style={{ fontSize: 12, color: '#444' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-label)' }}>
             Page {meta.page} sur {meta.total_pages} — {meta.total} résultats
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -133,8 +133,8 @@ export default function BaseDeDonneesPage() {
               onClick={() => setPage(p => p - 1)}
               style={{
                 padding: '5px 10px', borderRadius: 6, fontSize: 12,
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                color: page <= 1 ? '#333' : '#888', cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
+                color: page <= 1 ? '#333' : 'var(--text-tertiary)', cursor: page <= 1 ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}
             >
@@ -145,8 +145,8 @@ export default function BaseDeDonneesPage() {
               onClick={() => setPage(p => p + 1)}
               style={{
                 padding: '5px 10px', borderRadius: 6, fontSize: 12,
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                color: page >= meta.total_pages ? '#333' : '#888',
+                background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
+                color: page >= meta.total_pages ? '#333' : 'var(--text-tertiary)',
                 cursor: page >= meta.total_pages ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}

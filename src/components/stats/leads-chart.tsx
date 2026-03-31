@@ -17,7 +17,7 @@ function formatDate(dateStr: string): string {
 export default function LeadsChart({ data }: LeadsChartProps) {
   if (data.length === 0) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: '#555', fontSize: 13 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: 'var(--text-muted)', fontSize: 13 }}>
         Aucune donnée sur cette période
       </div>
     )
@@ -42,17 +42,18 @@ export default function LeadsChart({ data }: LeadsChartProps) {
           allowDecimals={false}
         />
         <Tooltip
-          contentStyle={{ background: '#141416', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: '#aaa' }}
-          itemStyle={{ color: '#00C853' }}
-          cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+          contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
+          labelStyle={{ color: 'var(--text-tertiary)' }}
+          itemStyle={{ color: 'var(--color-primary)' }}
+          cursor={{ fill: 'var(--bg-subtle)' }}
         />
         <Bar dataKey="count" name="Leads" radius={[4, 4, 0, 0]}>
           {formatted.map((entry, index) => (
             <Cell
               key={entry.date}
-              fill={index === formatted.length - 1 ? '#00C85380' : '#00C85330'}
-              stroke="#00C853"
+              fill="var(--color-primary)"
+              fillOpacity={index === formatted.length - 1 ? 0.5 : 0.19}
+              stroke="var(--color-primary)"
               strokeWidth={1}
             />
           ))}

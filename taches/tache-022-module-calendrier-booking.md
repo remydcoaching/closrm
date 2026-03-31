@@ -1,155 +1,124 @@
 # T-022 — Module Calendrier / Booking (type Calendly)
 
-> **Priorité :** Post-V1 (après toutes les implémentations en cours)
-> **Statut :** ⬜ Non démarré
-> **Responsable :** À assigner
-> **Dépendances :** T-015 (Google Agenda), T-020 (Emails), T-014 (Automations)
+> **Priorité :** V1
+> **Statut :** 🔄 En cours — code implémenté, migration SQL en attente d'exécution
+> **Responsable :** Pierre
+> **Branche :** `feature/pierre-automations`
+
+---
+
+## Spec
+
+Fichier spec : `docs/superpowers/specs/2026-03-30-agenda-booking-design.md`
+
+Décisions clés :
+- Séparation `calls` (pipeline vente) vs `bookings` (RDV au sens large)
+- Module Agenda dédié séparé de Closing
+- Page de booking publique style Calendly (2 colonnes : calendrier + créneaux)
+- Branding coach sur la page publique
+
+## Plan d'implémentation
+
+Fichier plan : `docs/superpowers/plans/2026-03-30-agenda-booking.md`
 
 ---
 
 ## Objectif
 
-Remplacer Calendly par un module intégré à ClosRM. Le coach crée des créneaux de disponibilité, génère un lien public, et les prospects/clients réservent eux-mêmes un RDV en choisissant date, heure et lieu.
+1. **Vue Agenda unifiée** dans le CRM (jour/semaine/mois) avec tous les RDV
+2. **Système de booking type Calendly** — le coach crée des calendriers (types de prestation), chacun avec son propre lien public de prise de RDV
 
 ---
 
-## Fonctionnalités
+## Ce qui a été implémenté (2026-03-31)
 
-### 1. Configuration côté coach
+### Base de données
+- [x] Migration SQL : tables `workspace_slugs`, `booking_calendars`, `bookings` avec RLS
+- [ ] **⚠️ BLOQUANT : Migration non exécutée dans Supabase** — Rémy doit exécuter la section 3 de `docs/sql-a-executer.md`
 
-- **Créneaux de disponibilité** : définir ses plages horaires par jour de la semaine (ex : lundi 9h-12h, 14h-18h)
-- **Durée des RDV** : configurable (30min, 45min, 1h, etc.)
-- **Buffer entre RDV** : temps de pause entre deux bookings (ex : 15min)
-- **Délai minimum de réservation** : ex. pas de booking à moins de 2h
-- **Délai maximum** : ex. pas de booking à plus de 30 jours
+### Backend (API routes)
+- [x] CRUD `/api/booking-calendars` (GET, POST, PATCH, DELETE)
+- [x] CRUD `/api/bookings` (GET avec filtres, POST, PATCH, DELETE)
+- [x] API publique `/api/public/book/[workspaceSlug]/[calendarSlug]` (GET créneaux + POST réservation)
+- [x] API `/api/workspaces/slug` (GET + PUT pour le slug public)
+- [x] Trigger workflow `booking_created` dans les deux routes (interne + public)
 
-### 2. Gestion des lieux
+### Logique métier
+- [x] Calcul de créneaux disponibles (`src/lib/bookings/availability.ts`)
+- [x] Anti-double-booking (vérification overlap)
+- [x] Création automatique de lead depuis la page de booking publique
+- [x] Validations Zod complètes
 
-- **Créer plusieurs lieux** : nom + adresse (ex : "Fitness Park Bastille", "Fitness Park Nation", "Fitness Park Bercy")
-- **Associer des lieux à un type de RDV** : le coach choisit quels lieux sont proposés pour quel créneau
-- **Le prospect choisit le lieu** lors de la réservation
-- **Lieu affiché dans l'agenda** du coach automatiquement
+### Frontend — Page Agenda (`/agenda`)
+- [x] Vue Jour / Semaine / Mois avec toggle
+- [x] Sidebar : mini-calendrier + légende des calendriers avec toggles
+- [x] Navigation par date (◀ Aujourd'hui ▶)
+- [x] Blocs RDV colorés par calendrier
+- [x] Modale "Nouveau RDV" (calendrier ou événement perso)
+- [x] Side panel détails avec changement de statut + suppression
+- [x] Click sur créneau vide → nouveau RDV pré-rempli
 
-### 3. Page de réservation publique (lien partageable)
+### Frontend — Paramètres Calendriers (`/parametres/calendriers`)
+- [x] Liste des calendriers avec cards (nom, durée, lieu, lien, toggle actif)
+- [x] Éditeur de calendrier : général, disponibilités hebdo, champs formulaire
+- [x] Lien de booking copiable
 
-- **URL unique par coach** : ex. `app.closrm.com/book/pierre-dupont` ou lien avec token
-- **Étapes pour le prospect :**
-  1. Choisir le type de RDV (si plusieurs configurés)
-  2. Choisir le lieu (si plusieurs lieux disponibles)
-  3. Choisir la date (calendrier avec jours disponibles)
-  4. Choisir l'heure (créneaux libres ce jour-là)
-  5. Remplir ses infos (prénom, nom, email, téléphone)
-  6. Confirmation
-- **Responsive** (mobile-first, les prospects viennent souvent des ads sur mobile)
-- **Design brandé** : couleurs du coach / nom du workspace
+### Frontend — Page de booking publique (`/book/[slug]/[slug]`)
+- [x] Page Calendly-style : branding coach + calendrier + créneaux
+- [x] Formulaire dynamique (champs configurables)
+- [x] Page de confirmation
+- [x] Layout séparé (pas de sidebar/auth)
 
-### 4. Intégrations automatiques
-
-- **Google Agenda (T-015)** : le RDV apparaît automatiquement dans l'agenda du coach
-- **Création lead automatique** : si le prospect n'existe pas dans la base → créé comme nouveau lead
-- **Si lead existant** : rattacher le RDV au lead existant (match par email ou téléphone)
-- **Emails de confirmation (T-020)** : email auto au prospect avec détails du RDV
-- **Rappels automatiques (T-014)** : déclencher les automations de rappel RDV (WhatsApp/Email)
-- **Statut lead** : passe automatiquement en `setting_planifie` ou `closing_planifie`
-
-### 5. Gestion des réservations
-
-- **Vue liste des bookings** dans le CRM (à venir, passés, annulés)
-- **Annulation par le prospect** : lien dans l'email de confirmation
-- **Reprogrammation** : le prospect peut changer de créneau
-- **Notification au coach** : notification temps réel quand quelqu'un réserve (WhatsApp/Telegram)
+### Navigation
+- [x] Sidebar : "Agenda" dans VENTES, "Calendriers" dans COMPTE
 
 ---
 
-## Tables Supabase (à créer)
+## Ce qui reste à faire
 
-```sql
--- Lieux de coaching
-booking_locations (
-  id UUID PRIMARY KEY,
-  workspace_id UUID REFERENCES workspaces(id),
-  name TEXT NOT NULL,           -- "Fitness Park Bastille"
-  address TEXT,                 -- adresse complète
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ
-)
-
--- Types de RDV configurés par le coach
-booking_types (
-  id UUID PRIMARY KEY,
-  workspace_id UUID REFERENCES workspaces(id),
-  name TEXT NOT NULL,           -- "Appel découverte", "Séance coaching"
-  duration_minutes INT NOT NULL, -- 30, 45, 60
-  buffer_minutes INT DEFAULT 0,
-  min_notice_hours INT DEFAULT 2,
-  max_advance_days INT DEFAULT 30,
-  location_ids UUID[],          -- lieux disponibles pour ce type
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ
-)
-
--- Disponibilités hebdomadaires
-booking_availability (
-  id UUID PRIMARY KEY,
-  workspace_id UUID REFERENCES workspaces(id),
-  booking_type_id UUID REFERENCES booking_types(id),
-  day_of_week INT NOT NULL,     -- 0=dimanche, 1=lundi, ...
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL
-)
-
--- Réservations
-bookings (
-  id UUID PRIMARY KEY,
-  workspace_id UUID REFERENCES workspaces(id),
-  booking_type_id UUID REFERENCES booking_types(id),
-  location_id UUID REFERENCES booking_locations(id),
-  lead_id UUID REFERENCES leads(id),
-  guest_name TEXT NOT NULL,
-  guest_email TEXT NOT NULL,
-  guest_phone TEXT,
-  scheduled_at TIMESTAMPTZ NOT NULL,
-  status TEXT DEFAULT 'confirmed', -- confirmed, cancelled, rescheduled, completed
-  cancel_token UUID DEFAULT gen_random_uuid(),
-  google_event_id TEXT,
-  notes TEXT,
-  created_at TIMESTAMPTZ
-)
-```
+1. **⚠️ Exécuter la migration SQL dans Supabase** — BLOQUANT pour tester
+2. Tester end-to-end une fois la migration exécutée
+3. Configurer le slug du workspace dans les réglages (champ à ajouter dans la page réglages)
+4. Connexion Google Agenda (V2 — dépend de T-015)
 
 ---
 
-## Routes
+## Fichiers créés/modifiés
 
-```
-app/
-├── book/
-│   └── [slug]/page.tsx         # Page publique de réservation (pas de layout dashboard)
-├── (dashboard)/
-│   ├── calendrier/
-│   │   ├── page.tsx            # Vue des bookings + config
-│   │   └── disponibilites/     # Config créneaux + lieux
-└── api/
-    ├── bookings/
-    │   ├── route.ts            # GET (liste) + POST (créer depuis page publique)
-    │   └── [id]/route.ts       # PATCH (modifier) + DELETE (annuler)
-    ├── booking-types/
-    │   └── route.ts            # CRUD types de RDV
-    ├── booking-locations/
-    │   └── route.ts            # CRUD lieux
-    └── booking-availability/
-        └── route.ts            # CRUD disponibilités
-```
+### Nouveaux fichiers (27)
+- `supabase/migrations/002_booking_calendars.sql`
+- `src/lib/validations/booking-calendars.ts`
+- `src/lib/validations/bookings.ts`
+- `src/lib/bookings/availability.ts`
+- `src/app/api/booking-calendars/route.ts`
+- `src/app/api/booking-calendars/[id]/route.ts`
+- `src/app/api/bookings/route.ts`
+- `src/app/api/bookings/[id]/route.ts`
+- `src/app/api/public/book/[workspaceSlug]/[calendarSlug]/route.ts`
+- `src/app/api/workspaces/slug/route.ts`
+- `src/app/(dashboard)/agenda/page.tsx`
+- `src/components/agenda/MiniCalendar.tsx`
+- `src/components/agenda/AgendaSidebar.tsx`
+- `src/components/agenda/DayView.tsx`
+- `src/components/agenda/WeekView.tsx`
+- `src/components/agenda/MonthView.tsx`
+- `src/components/agenda/BookingBlock.tsx`
+- `src/components/agenda/NewBookingModal.tsx`
+- `src/components/agenda/BookingDetailPanel.tsx`
+- `src/app/(dashboard)/parametres/calendriers/page.tsx`
+- `src/app/(dashboard)/parametres/calendriers/[id]/page.tsx`
+- `src/components/booking-calendars/CalendarCard.tsx`
+- `src/components/booking-calendars/AvailabilityEditor.tsx`
+- `src/components/booking-calendars/FormFieldsEditor.tsx`
+- `src/app/book/layout.tsx`
+- `src/app/book/[workspaceSlug]/[calendarSlug]/page.tsx`
+- `src/app/book/[workspaceSlug]/[calendarSlug]/confirmation/page.tsx`
+
+### Fichiers modifiés (3)
+- `src/types/index.ts` — types BookingCalendar, Booking, etc.
+- `src/components/layout/Sidebar.tsx` — ajout Agenda + Calendriers
+- `src/lib/workflows/trigger.ts` — ajout trigger booking_created
 
 ---
 
-## Notes
-
-- Ce module arrive **après** toutes les tâches V1 en cours
-- Dépend fortement de Google Agenda (T-015), Emails (T-020) et Automations (T-014)
-- La page publique `/book/[slug]` est hors du layout dashboard (accessible sans auth)
-- RLS : les bookings sont liés au workspace_id du coach, la page publique utilise une API route avec le service role key
-
----
-
-*Créé le 2026-03-30 — ClosRM*
+*Mis à jour le 2026-03-31 — Pierre via Claude Code*

@@ -2,7 +2,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#09090b', padding: 20, position: 'relative', overflow: 'hidden',
+      background: 'var(--bg-primary)', padding: 20, position: 'relative', overflow: 'hidden',
     }}>
       {/* Glow */}
       <div style={{
@@ -14,7 +14,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* Grid */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)',
         backgroundSize: '50px 50px',
       }} />
 
@@ -27,10 +27,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           }}>
             <span style={{ fontSize: 22, fontWeight: 900, color: '#00C853' }}>C</span>
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>
             Clos<span style={{ color: '#00C853' }}>RM</span>
           </h1>
-          <p style={{ fontSize: 13, color: '#888', marginTop: 6 }}>CRM pour coachs indépendants</p>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 6 }}>CRM pour coachs indépendants</p>
         </div>
         {children}
       </div>

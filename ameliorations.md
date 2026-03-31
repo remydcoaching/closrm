@@ -188,4 +188,38 @@ Chaque amélioration suit ce format :
 
 ---
 
-*Mis à jour par Claude Code — ClosRM*
+## T-022 — Calendrier / Booking
+
+### A-022-01 · Champ slug workspace dans la page Réglages
+**Priorité :** Haute
+**Contexte :** Identifié pendant T-022 (booking)
+**Description :** La page de booking publique utilise un slug workspace (`/book/pierre-rebmann/...`), mais il n'y a pas d'endroit dans l'UI pour le configurer. Ajouter un champ "Slug public" dans Paramètres > Réglages.
+**Proposition :** Ajouter un input dans la page réglages qui appelle `PUT /api/workspaces/slug`.
+
+### A-022-02 · Annulation/reprogrammation par le client
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-022 (booking)
+**Description :** Actuellement le client ne peut pas annuler ou reprogrammer son RDV après réservation. Ajouter un lien dans l'email de confirmation + page publique d'annulation.
+**Proposition :** Ajouter un `cancel_token` au booking + route publique `/book/cancel/[token]`.
+
+### A-022-03 · Email de confirmation automatique après booking
+**Priorité :** Haute
+**Contexte :** Identifié pendant T-022 (booking)
+**Description :** La page de confirmation dit "Vous recevrez un email de confirmation" mais aucun email n'est envoyé. Le workflow trigger `booking_created` existe — il suffit de créer un workflow template "Confirmation de RDV" avec action `send_email`.
+**Proposition :** Ajouter un template workflow pré-configuré dans `src/lib/workflows/templates.ts`.
+
+### A-022-04 · Notification coach quand quelqu'un réserve
+**Priorité :** Haute
+**Contexte :** Identifié pendant T-022 (booking)
+**Description :** Quand un prospect réserve via la page publique, le coach n'est pas notifié. Utiliser le trigger `booking_created` pour envoyer une notification Telegram/WhatsApp.
+**Proposition :** Ajouter un template workflow "Notification nouveau booking" avec action `send_notification`.
+
+### A-022-05 · Supabase CLI pour les migrations
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-022 — blocage récurrent
+**Description :** Pierre n'a pas accès au compte Supabase, donc il ne peut pas exécuter les migrations. Le CLI Supabase est installé mais non linkable sans les credentials.
+**Proposition :** Demander à Rémy de partager l'accès Supabase (invite membre) ou de configurer un access token partagé.
+
+---
+
+*Mis à jour le 2026-03-31 par Claude Code — ClosRM*

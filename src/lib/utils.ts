@@ -51,7 +51,7 @@ export const CALL_OUTCOME_LABELS: Record<CallOutcome, string> = {
 
 export const CALL_OUTCOME_COLORS: Record<CallOutcome, { color: string; bg: string }> = {
   pending: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  done: { color: '#00C853', bg: 'rgba(0,200,83,0.12)' },
+  done: { color: 'var(--color-primary)', bg: 'rgba(0,200,83,0.12)' },
   cancelled: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
   no_show: { color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
 }

@@ -18,14 +18,14 @@ function formatRelativeTime(isoDate: string): string {
 }
 
 const TYPE_CONFIG = {
-  new_lead:    { label: 'Nouveau lead', color: '#00C853' },
+  new_lead:    { label: 'Nouveau lead', color: 'var(--color-primary)' },
   call_logged: { label: 'Appel logué',  color: '#3b82f6' },
 }
 
 export default function RecentActivity({ events }: RecentActivityProps) {
   const card: React.CSSProperties = {
-    background: '#0f0f11',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border-primary)',
     borderRadius: 14,
     padding: 20,
   }
@@ -33,13 +33,13 @@ export default function RecentActivity({ events }: RecentActivityProps) {
   return (
     <div style={card}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <Activity size={14} color="#888" />
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Activité récente</span>
+        <Activity size={14} color="var(--text-tertiary)" />
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Activité récente</span>
       </div>
 
       {events.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '28px 0' }}>
-          <p style={{ fontSize: 13, color: '#888' }}>Aucune activité pour le moment</p>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Aucune activité pour le moment</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -51,7 +51,7 @@ export default function RecentActivity({ events }: RecentActivityProps) {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   fontSize: 12, padding: '7px 0',
-                  borderBottom: i < events.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  borderBottom: i < events.length - 1 ? '1px solid var(--border-primary)' : 'none',
                 }}
               >
                 <span style={{
@@ -61,7 +61,7 @@ export default function RecentActivity({ events }: RecentActivityProps) {
                   {cfg.label}
                 </span>
                 <span style={{ color: '#ccc', flex: 1 }}>{event.description}</span>
-                <span style={{ color: '#444', fontSize: 11, flexShrink: 0 }}>
+                <span style={{ color: 'var(--text-label)', fontSize: 11, flexShrink: 0 }}>
                   {formatRelativeTime(event.created_at)}
                 </span>
               </div>

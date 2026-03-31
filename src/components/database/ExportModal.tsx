@@ -150,17 +150,17 @@ export default function ExportModal({ filters, total, onClose }: Props) {
       background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
     }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div style={{
-        background: '#141414', border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
         borderRadius: 14, padding: 24, width: 400, maxWidth: '90vw',
       }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Exporter en CSV</div>
-            <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>Sélectionne les champs à inclure</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Exporter en CSV</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Sélectionne les champs à inclure</div>
           </div>
           <button onClick={onClose} style={{
-            background: 'none', border: 'none', color: '#555', cursor: 'pointer',
+            background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
             display: 'flex', alignItems: 'center',
           }}>
             <X size={16} />
@@ -177,21 +177,21 @@ export default function ExportModal({ filters, total, onClose }: Props) {
                   onClick={() => toggleField(field.key)}
                   style={{
                     width: 15, height: 15, borderRadius: 4, flexShrink: 0,
-                    background: checked ? '#00C853' : 'rgba(255,255,255,0.05)',
-                    border: checked ? '1px solid #00C853' : '1px solid rgba(255,255,255,0.12)',
+                    background: checked ? '#00C853' : 'var(--bg-hover)',
+                    border: checked ? '1px solid #00C853' : '1px solid var(--border-primary)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
                   {checked && <span style={{ color: '#000', fontSize: 9, fontWeight: 900, lineHeight: 1 }}>✓</span>}
                 </div>
-                <span style={{ fontSize: 12, color: checked ? '#ccc' : '#666' }}>{field.label}</span>
+                <span style={{ fontSize: 12, color: checked ? '#ccc' : 'var(--text-muted)' }}>{field.label}</span>
               </label>
             )
           })}
         </div>
 
         {/* Info export */}
-        <div style={{ fontSize: 11, color: '#444', marginBottom: exportCapped ? 6 : 14 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: exportCapped ? 6 : 14 }}>
           Export appliqué aux filtres actifs · {Math.min(total, 1000)} contacts
         </div>
         {exportCapped && (
@@ -210,8 +210,8 @@ export default function ExportModal({ filters, total, onClose }: Props) {
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={onClose} style={{
             flex: 1, padding: '9px', borderRadius: 8, fontSize: 12,
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-            color: '#666', cursor: 'pointer',
+            background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
+            color: 'var(--text-muted)', cursor: 'pointer',
           }}>
             Annuler
           </button>
@@ -220,9 +220,9 @@ export default function ExportModal({ filters, total, onClose }: Props) {
             disabled={loading || selectedFields.size === 0}
             style={{
               flex: 1, padding: '9px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-              background: selectedFields.size === 0 ? 'rgba(255,255,255,0.05)' : '#00C853',
+              background: selectedFields.size === 0 ? 'var(--bg-hover)' : '#00C853',
               border: 'none',
-              color: selectedFields.size === 0 ? '#444' : '#000',
+              color: selectedFields.size === 0 ? 'var(--text-label)' : '#000',
               cursor: selectedFields.size === 0 ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             }}

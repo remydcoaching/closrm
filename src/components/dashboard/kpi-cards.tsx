@@ -24,7 +24,7 @@ const CARDS = [
     key: 'closedDeals' as const,
     label: 'Deals closés',
     icon: Target,
-    color: '#00C853',
+    color: 'var(--color-primary)',
     format: (v: number | null) => v ?? 0,
   },
   {
@@ -46,8 +46,8 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
     }}>
       {CARDS.map(({ key, label, icon: Icon, color, format }) => (
         <div key={key} style={{
-          background: '#0f0f11',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-primary)',
           borderRadius: 14,
           padding: 20,
         }}>
@@ -59,10 +59,10 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
           }}>
             <Icon size={16} color={color} />
           </div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#fff' }}>
+          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)' }}>
             {format(kpis[key] as number | null)}
           </div>
-          <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{label}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>{label}</div>
         </div>
       ))}
     </div>

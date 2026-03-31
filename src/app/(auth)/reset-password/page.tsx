@@ -52,15 +52,15 @@ export default function ResetPasswordPage() {
 
   if (sent) {
     return (
-      <div className="bg-[#141414] border border-[#262626] rounded-xl p-8">
-        <h2 className="text-xl font-semibold text-white mb-4">Email envoyé</h2>
-        <p className="text-sm text-[#A0A0A0] mb-6">
+      <div className="bg-[var(--bg-elevated)] border border-[var(--border-secondary)] rounded-xl p-8">
+        <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4">Email envoyé</h2>
+        <p className="text-sm text-[var(--text-secondary)] mb-6">
           Si un compte existe avec cet email, vous recevrez un lien de réinitialisation.
           Vérifiez votre boîte de réception et vos spams.
         </p>
         <Link
           href="/login"
-          className="block w-full text-center bg-[#141414] border border-[#262626] hover:border-[#00C853] text-white font-medium py-2.5 rounded-lg transition-colors text-sm"
+          className="block w-full text-center bg-[var(--bg-elevated)] border border-[var(--border-secondary)] hover:border-[#00C853] text-[var(--text-primary)] font-medium py-2.5 rounded-lg transition-colors text-sm"
         >
           Retour à la connexion
         </Link>
@@ -69,20 +69,20 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="bg-[#141414] border border-[#262626] rounded-xl p-8">
-      <h2 className="text-xl font-semibold text-white mb-2">Mot de passe oublié</h2>
-      <p className="text-sm text-[#A0A0A0] mb-6">
+    <div className="bg-[var(--bg-elevated)] border border-[var(--border-secondary)] rounded-xl p-8">
+      <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">Mot de passe oublié</h2>
+      <p className="text-sm text-[var(--text-secondary)] mb-6">
         Entrez votre email pour recevoir un lien de réinitialisation.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm text-[#A0A0A0] mb-1.5">Email</label>
+          <label className="block text-sm text-[var(--text-secondary)] mb-1.5">Email</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-[#0A0A0A] border border-[#262626] rounded-lg px-3 py-2.5 text-white text-sm placeholder-[#A0A0A0] focus:outline-none focus:border-[#00C853] transition-colors"
+            className="w-full bg-[var(--bg-primary)] border border-[var(--border-secondary)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm placeholder-[var(--text-secondary)] focus:outline-none focus:border-[#00C853] transition-colors"
             placeholder="coach@example.com"
           />
           {errors.email && (
@@ -99,13 +99,13 @@ export default function ResetPasswordPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#00C853] hover:bg-[#00A844] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition-colors text-sm"
+          className="w-full bg-[#00C853] hover:bg-[#00A844] disabled:opacity-50 disabled:cursor-not-allowed text-[var(--text-primary)] font-medium py-2.5 rounded-lg transition-colors text-sm"
         >
           {loading ? 'Envoi…' : 'Envoyer le lien'}
         </button>
       </form>
 
-      <p className="text-center text-sm text-[#A0A0A0] mt-6">
+      <p className="text-center text-sm text-[var(--text-secondary)] mt-6">
         <Link href="/login" className="text-[#00C853] hover:underline">
           Retour à la connexion
         </Link>

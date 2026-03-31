@@ -1,0 +1,42 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { getWorkspaceId } from '@/lib/supabase/get-workspace'
+import { updateWorkspaceSchema } from '@/lib/validations/settings'
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const { workspaceId } = await getWorkspaceId()
+    const supabase = await createClient()
+
+    const body = await request.json()
+    const parsed = updateWorkspaceSchema.safeParse(body)
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    }
+
+    // Build update object with only provided fields
+    const updateFields: Record<string, string> = {}
+    if (parsed.data.name !== undefined) updateFields.name = parsed.data.name
+    if (parsed.data.timezone !== undefined) updateFields.timezone = parsed.data.timezone
+    if (parsed.data.accent_color !== undefined) updateFields.accent_color = parsed.data.accent_color
+
+    const { data, error } = await supabase
+      .from('workspaces')
+      .update(updateFields)
+      .eq('id', workspaceId)
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ data })
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Not authenticated') {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+  }
+}

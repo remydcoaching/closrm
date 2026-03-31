@@ -13,11 +13,11 @@ interface LeadFormProps {
 const inputStyle = {
   width: '100%', boxSizing: 'border-box' as const,
   padding: '8px 12px',
-  background: '#0f0f11', border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none',
+  background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+  borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none',
 }
 
-const labelStyle = { fontSize: 12, color: '#888', marginBottom: 5, display: 'block' }
+const labelStyle = { fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 5, display: 'block' }
 
 export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
   const [loading, setLoading] = useState(false)
@@ -87,13 +87,13 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
       background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
     }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div style={{
-        background: '#0f0f11', border: '1px solid rgba(255,255,255,0.08)',
+        background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
         borderRadius: 14, padding: 28, width: '100%', maxWidth: 480,
         maxHeight: '90vh', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: 0 }}>Ajouter un lead</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Ajouter un lead</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
             <X size={18} />
           </button>
         </div>
@@ -102,7 +102,7 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Prénom *</label>
-              <input style={{ ...inputStyle, borderColor: errors.first_name ? '#ef4444' : 'rgba(255,255,255,0.08)' }}
+              <input style={{ ...inputStyle, borderColor: errors.first_name ? '#ef4444' : 'var(--border-primary)' }}
                 value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="Jean" />
               {errors.first_name && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.first_name}</p>}
             </div>
@@ -119,7 +119,7 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
 
           <div>
             <label style={labelStyle}>Email</label>
-            <input style={{ ...inputStyle, borderColor: errors.email ? '#ef4444' : 'rgba(255,255,255,0.08)' }}
+            <input style={{ ...inputStyle, borderColor: errors.email ? '#ef4444' : 'var(--border-primary)' }}
               type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="jean@exemple.fr" />
             {errors.email && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.email}</p>}
           </div>
@@ -142,10 +142,10 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
                 <span key={tag} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '3px 8px', borderRadius: 99, fontSize: 11,
-                  background: 'rgba(0,200,83,0.10)', color: '#00C853', border: '1px solid rgba(0,200,83,0.20)',
+                  background: 'rgba(0,200,83,0.10)', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.20)',
                 }}>
                   {tag}
-                  <button type="button" onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#00C853', padding: 0, lineHeight: 1 }}>
+                  <button type="button" onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: 0, lineHeight: 1 }}>
                     <X size={10} />
                   </button>
                 </span>
@@ -157,9 +157,9 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
                 placeholder="chaud, vip, referral..." />
               <button type="button" onClick={addTag} style={{
-                padding: '8px 12px', background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8,
-                color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                padding: '8px 12px', background: 'var(--border-primary)',
+                border: '1px solid var(--border-primary)', borderRadius: 8,
+                color: 'var(--text-tertiary)', cursor: 'pointer', display: 'flex', alignItems: 'center',
               }}>
                 <Plus size={14} />
               </button>
@@ -182,14 +182,14 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8 }}>
             <button type="button" onClick={onClose} style={{
               padding: '8px 18px', borderRadius: 8, fontSize: 13,
-              border: '1px solid rgba(255,255,255,0.10)', background: 'transparent',
-              color: '#888', cursor: 'pointer',
+              border: '1px solid var(--border-primary)', background: 'transparent',
+              color: 'var(--text-tertiary)', cursor: 'pointer',
             }}>
               Annuler
             </button>
             <button type="submit" disabled={loading} style={{
               padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              background: loading ? 'rgba(0,200,83,0.5)' : '#00C853', border: 'none',
+              background: loading ? 'rgba(0,200,83,0.5)' : 'var(--color-primary)', border: 'none',
               color: '#000', cursor: loading ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>

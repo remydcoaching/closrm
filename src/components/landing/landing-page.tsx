@@ -7,13 +7,13 @@ import ParticlesCanvas from './particles-canvas'
 import FadeIn from './fade-in'
 
 const W: React.CSSProperties = { maxWidth: 1100, margin: '0 auto', padding: '0 32px' }
-const card: React.CSSProperties = { background: '#111113', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 28, overflow: 'hidden' }
+const card: React.CSSProperties = { background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 16, padding: 28, overflow: 'hidden' }
 const greenBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 32px', background: '#00C853', color: '#fff', fontWeight: 600, fontSize: 15, borderRadius: 12, textDecoration: 'none', boxShadow: '0 4px 30px rgba(0,200,83,0.25)' }
-const ghostBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 32px', border: '1px solid rgba(255,255,255,0.1)', color: '#ccc', fontSize: 15, borderRadius: 12, textDecoration: 'none' }
+const ghostBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 32px', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', fontSize: 15, borderRadius: 12, textDecoration: 'none' }
 
 export default function LandingPage() {
   return (
-    <div style={{ minHeight: '100vh', background: '#09090b', color: '#f5f5f7', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: "'Inter', sans-serif" }}>
       <LandingNavbar />
 
       {/* ── HERO ── */}
@@ -22,7 +22,7 @@ export default function LandingPage() {
         <div style={{ position: 'absolute', top: '20%', left: '20%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,200,83,0.06), transparent 70%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', maxWidth: 800 }}>
           <FadeIn>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 18px', borderRadius: 99, border: '1px solid rgba(0,200,83,0.2)', background: 'rgba(0,200,83,0.05)', fontSize: 13, color: '#ccc', marginBottom: 32 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 18px', borderRadius: 99, border: '1px solid rgba(0,200,83,0.2)', background: 'rgba(0,200,83,0.05)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 32 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C853' }} /> Plateforme tout-en-un pour coachs
             </div>
           </FadeIn>
@@ -32,7 +32,7 @@ export default function LandingPage() {
             </h1>
           </FadeIn>
           <FadeIn delay={0.2}>
-            <p style={{ fontSize: 17, color: '#888', maxWidth: 560, margin: '0 auto 40px', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 17, color: 'var(--text-tertiary)', maxWidth: 560, margin: '0 auto 40px', lineHeight: 1.6 }}>
               Le CRM conçu pour les coachs qui gèrent leurs leads via Meta Ads. Centralisez vos appels, automatisez vos follow-ups et closez plus de deals.
             </p>
           </FadeIn>
@@ -43,11 +43,11 @@ export default function LandingPage() {
             </div>
           </FadeIn>
           <FadeIn delay={0.4}>
-            <div style={{ display: 'inline-flex', gap: 32, padding: '18px 36px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
+            <div style={{ display: 'inline-flex', gap: 32, padding: '18px 36px', borderRadius: 16, border: '1px solid var(--border-primary)', background: 'var(--bg-subtle)' }}>
               {[{ v: '14 jours', l: 'Essai gratuit' }, { v: '2 min', l: 'Pour démarrer' }, { v: '0€', l: 'Sans carte bancaire' }].map((s, i) => (
                 <div key={i} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{s.v}</div>
-                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{s.l}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{s.v}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{s.l}</div>
                 </div>
               ))}
             </div>
@@ -60,9 +60,9 @@ export default function LandingPage() {
         <div style={W}>
           <FadeIn>
             <div style={{ textAlign: 'center', marginBottom: 60 }}>
-              <div style={{ fontSize: 11, color: '#888', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12 }}>FONCTIONNALITÉS</div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12 }}>FONCTIONNALITÉS</div>
               <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, marginBottom: 16 }}>Tout ce dont vous avez besoin</h2>
-              <p style={{ fontSize: 16, color: '#888', maxWidth: 500, margin: '0 auto' }}>Un outil complet pour gérer tout votre cycle de vente.</p>
+              <p style={{ fontSize: 16, color: 'var(--text-tertiary)', maxWidth: 500, margin: '0 auto' }}>Un outil complet pour gérer tout votre cycle de vente.</p>
             </div>
           </FadeIn>
 
@@ -85,7 +85,7 @@ export default function LandingPage() {
                       <I size={18} color={f.color} />
                     </div>
                     <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{f.title}</h3>
-                    <p style={{ fontSize: 13, color: '#888', lineHeight: 1.6 }}>{f.desc}</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>{f.desc}</p>
                   </div>
                 </FadeIn>
               )
@@ -95,13 +95,13 @@ export default function LandingPage() {
       </section>
 
       {/* ── COMMENT ÇA MARCHE ── */}
-      <section style={{ padding: '100px 0', background: '#0c0c0e' }}>
+      <section style={{ padding: '100px 0', background: 'var(--bg-secondary)' }}>
         <div style={W}>
           <FadeIn>
             <div style={{ textAlign: 'center', marginBottom: 60 }}>
-              <div style={{ fontSize: 11, color: '#888', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12 }}>COMMENT ÇA MARCHE</div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12 }}>COMMENT ÇA MARCHE</div>
               <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, marginBottom: 16 }}>Prêt en 3 étapes</h2>
-              <p style={{ fontSize: 16, color: '#888' }}>De l&apos;inscription à votre premier deal closé.</p>
+              <p style={{ fontSize: 16, color: 'var(--text-tertiary)' }}>De l&apos;inscription à votre premier deal closé.</p>
             </div>
           </FadeIn>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
@@ -115,9 +115,9 @@ export default function LandingPage() {
                 <FadeIn key={s.n} delay={i * 0.1}>
                   <div style={{ ...card, textAlign: 'center', position: 'relative', paddingTop: 40 }}>
                     <div style={{ position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)', width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,200,83,0.1)', border: '1px solid rgba(0,200,83,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#00C853' }}>{s.n}</div>
-                    <I size={24} color="#888" style={{ marginBottom: 16 }} />
+                    <I size={24} color="var(--text-tertiary)" style={{ marginBottom: 16 }} />
                     <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 10 }}>{s.title}</h3>
-                    <p style={{ fontSize: 13, color: '#888', lineHeight: 1.6 }}>{s.desc}</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>{s.desc}</p>
                   </div>
                 </FadeIn>
               )
@@ -131,9 +131,9 @@ export default function LandingPage() {
         <div style={W}>
           <FadeIn>
             <div style={{ textAlign: 'center', marginBottom: 60 }}>
-              <div style={{ fontSize: 11, color: '#888', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12 }}>TARIFS</div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12 }}>TARIFS</div>
               <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, marginBottom: 16 }}>Tarifs simples et transparents</h2>
-              <p style={{ fontSize: 16, color: '#888' }}>Commencez gratuitement, évoluez à votre rythme.</p>
+              <p style={{ fontSize: 16, color: 'var(--text-tertiary)' }}>Commencez gratuitement, évoluez à votre rythme.</p>
             </div>
           </FadeIn>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
@@ -146,21 +146,21 @@ export default function LandingPage() {
                 <div style={{ ...card, border: p.featured ? '2px solid rgba(0,200,83,0.3)' : card.border, boxShadow: p.featured ? '0 0 50px rgba(0,200,83,0.06)' : 'none', position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}>
                   {p.featured && <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', padding: '4px 16px', background: '#00C853', borderRadius: 99, fontSize: 11, fontWeight: 700, color: '#fff' }}>Recommandé</div>}
                   <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{p.name}</h3>
-                  <p style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>{p.desc}</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 24 }}>{p.desc}</p>
                   <div style={{ marginBottom: 24 }}>
                     <span style={{ fontSize: 42, fontWeight: 800 }}>{p.price}</span>
-                    <span style={{ fontSize: 13, color: '#888' }}>/mois</span>
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>/mois</span>
                   </div>
                   <ul style={{ listStyle: 'none', padding: 0, marginBottom: 24, flex: 1 }}>
                     {p.features.map((f) => (
-                      <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#ccc', marginBottom: 12 }}>
-                        <Check size={14} color={p.featured ? '#00C853' : '#666'} />{f}
+                      <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                        <Check size={14} color={p.featured ? '#00C853' : 'var(--text-muted)'} />{f}
                       </li>
                     ))}
                   </ul>
                   <Link href="/register" style={{
                     display: 'block', textAlign: 'center', padding: '12px 0', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none',
-                    ...(p.featured ? { background: '#00C853', color: '#fff', boxShadow: '0 4px 20px rgba(0,200,83,0.2)' } : { border: '1px solid rgba(255,255,255,0.08)', color: '#ccc' }),
+                    ...(p.featured ? { background: '#00C853', color: '#fff', boxShadow: '0 4px 20px rgba(0,200,83,0.2)' } : { border: '1px solid var(--border-primary)', color: 'var(--text-secondary)' }),
                   }}>{p.cta}</Link>
                 </div>
               </FadeIn>
@@ -170,14 +170,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── SOCIAL PROOF ── */}
-      <section style={{ padding: '100px 0', background: '#0c0c0e' }}>
+      <section style={{ padding: '100px 0', background: 'var(--bg-secondary)' }}>
         <div style={W}>
           <FadeIn>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 24, textAlign: 'center', marginBottom: 60 }}>
               {[{ v: '500+', l: 'Coachs actifs' }, { v: '50k+', l: 'Leads gérés' }, { v: '98%', l: 'Satisfaction' }, { v: '3x', l: 'Plus de deals closés' }].map((s) => (
                 <div key={s.l}>
-                  <div style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 800, color: '#fff' }}>{s.v}</div>
-                  <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>{s.l}</div>
+                  <div style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 800, color: 'var(--text-primary)' }}>{s.v}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>{s.l}</div>
                 </div>
               ))}
             </div>
@@ -191,12 +191,12 @@ export default function LandingPage() {
               ].map((t) => (
                 <div key={t.name} style={card}>
                   <div style={{ display: 'flex', gap: 2, marginBottom: 16 }}>{Array.from({ length: 5 }).map((_, i) => <Star key={i} size={14} color="#facc15" fill="#facc15" />)}</div>
-                  <p style={{ fontSize: 13, color: '#ccc', lineHeight: 1.7, marginBottom: 18 }}>&ldquo;{t.text}&rdquo;</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 18 }}>&ldquo;{t.text}&rdquo;</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#00C853' }}>{t.name[0]}</div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</div>
-                      <div style={{ fontSize: 11, color: '#888' }}>{t.role}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{t.role}</div>
                     </div>
                   </div>
                 </div>
@@ -211,7 +211,7 @@ export default function LandingPage() {
         <div style={{ ...W, textAlign: 'center' }}>
           <FadeIn>
             <h2 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 700, marginBottom: 16 }}>Prêt à closer plus de deals ?</h2>
-            <p style={{ fontSize: 16, color: '#888', maxWidth: 500, margin: '0 auto 40px' }}>Rejoignez les coachs qui utilisent ClosRM pour transformer leurs leads en clients.</p>
+            <p style={{ fontSize: 16, color: 'var(--text-tertiary)', maxWidth: 500, margin: '0 auto 40px' }}>Rejoignez les coachs qui utilisent ClosRM pour transformer leurs leads en clients.</p>
             <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/register" style={greenBtn}>Commencer gratuitement <ArrowRight size={16} /></Link>
               <a href="mailto:contact@closrm.com" style={ghostBtn}>Nous contacter</a>
@@ -221,15 +221,15 @@ export default function LandingPage() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '40px 0' }}>
+      <footer style={{ borderTop: '1px solid var(--border-primary)', padding: '40px 0' }}>
         <div style={{ ...W, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>Clos<span style={{ color: '#00C853' }}>RM</span></div>
-          <div style={{ display: 'flex', gap: 24, fontSize: 13, color: '#888' }}>
-            <a href="#features" style={{ color: '#888', textDecoration: 'none' }}>Fonctionnalités</a>
-            <a href="#pricing" style={{ color: '#888', textDecoration: 'none' }}>Tarifs</a>
-            <a href="mailto:contact@closrm.com" style={{ color: '#888', textDecoration: 'none' }}>Contact</a>
+          <div style={{ display: 'flex', gap: 24, fontSize: 13, color: 'var(--text-tertiary)' }}>
+            <a href="#features" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Fonctionnalités</a>
+            <a href="#pricing" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Tarifs</a>
+            <a href="mailto:contact@closrm.com" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Contact</a>
           </div>
-          <div style={{ fontSize: 12, color: '#555' }}>© {new Date().getFullYear()} ClosRM. Tous droits réservés.</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>© {new Date().getFullYear()} ClosRM. Tous droits réservés.</div>
         </div>
       </footer>
     </div>
