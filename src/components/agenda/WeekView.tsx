@@ -63,46 +63,56 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
   const weekStart = startOfWeek(date, { weekStartsOn: 1 })
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
+  const GRID_BORDER = '1px solid var(--agenda-grid-border, rgba(128,128,128,0.15))'
+  const HOUR_COL_WIDTH = 72
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto', position: 'relative' }}>
       {/* Sticky header */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)',
-        borderBottom: '1px solid var(--border-secondary)', position: 'sticky', top: 0,
+        display: 'grid', gridTemplateColumns: `${HOUR_COL_WIDTH}px repeat(7, 1fr)`,
+        borderBottom: '2px solid var(--border-secondary)', position: 'sticky', top: 0,
         zIndex: 5, background: 'var(--bg-primary)',
       }}>
-        <div style={{ borderRight: '1px solid var(--border-secondary)' }} />
-        {days.map((day) => (
-          <div key={day.toISOString()} style={{
-            textAlign: 'center', padding: '8px 0',
-            borderRight: '1px solid var(--border-secondary)',
-          }}>
-            <div style={{ fontSize: 11, textTransform: 'uppercase', color: isToday(day) ? '#E53E3E' : 'var(--text-muted)' }}>
-              {format(day, 'EEE', { locale: fr })}
-            </div>
-            <div style={{
-              width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '2px auto 0', fontSize: 15, fontWeight: 600,
-              background: isToday(day) ? '#E53E3E' : 'transparent',
-              color: isToday(day) ? '#fff' : 'var(--text-primary)',
+        <div style={{ borderRight: GRID_BORDER }} />
+        {days.map((day) => {
+          const today = isToday(day)
+          return (
+            <div key={day.toISOString()} style={{
+              textAlign: 'center', padding: '10px 0 8px',
+              borderRight: GRID_BORDER,
+              background: today ? 'rgba(229,62,62,0.06)' : 'transparent',
             }}>
-              {format(day, 'd')}
+              <div style={{
+                fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em',
+                color: today ? '#E53E3E' : 'var(--text-secondary)',
+              }}>
+                {format(day, 'EEE', { locale: fr })}
+              </div>
+              <div style={{
+                width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '4px auto 0', fontSize: 16, fontWeight: 600,
+                background: today ? '#E53E3E' : 'transparent',
+                color: today ? '#fff' : 'var(--text-primary)',
+              }}>
+                {format(day, 'd')}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Time grid + bookings overlay */}
       <div style={{ position: 'relative' }}>
         {/* Grid lines */}
-        <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `${HOUR_COL_WIDTH}px repeat(7, 1fr)` }}>
           {HOURS.map((hour) => (
             <div key={hour} style={{ display: 'contents' }}>
               <div style={{
-                height: CELL_HEIGHT, padding: '0 8px 0 0', textAlign: 'right', fontSize: 10,
-                color: 'var(--text-muted)', borderRight: '1px solid var(--border-secondary)',
-                borderBottom: '1px solid var(--border-secondary)',
-                display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingTop: 2,
+                height: CELL_HEIGHT, padding: '0 10px 0 0', textAlign: 'right', fontSize: 11, fontWeight: 500,
+                color: 'var(--text-secondary)', borderRight: GRID_BORDER,
+                borderBottom: GRID_BORDER,
+                display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingTop: 4,
               }}>
                 {String(hour).padStart(2, '0')}:00
               </div>
@@ -112,10 +122,12 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
                   onClick={() => onSlotClick(day, hour)}
                   style={{
                     height: CELL_HEIGHT, position: 'relative', cursor: 'pointer',
-                    borderRight: '1px solid var(--border-secondary)',
-                    borderBottom: '1px solid var(--border-secondary)',
-                    background: isToday(day) ? 'rgba(229,62,62,0.02)' : 'transparent',
+                    borderRight: GRID_BORDER,
+                    borderBottom: GRID_BORDER,
+                    background: 'transparent',
                   }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                 />
               ))}
             </div>
@@ -124,7 +136,7 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
 
         {/* Bookings overlay */}
         <div style={{
-          position: 'absolute', top: 0, left: 60, right: 0, bottom: 0,
+          position: 'absolute', top: 0, left: HOUR_COL_WIDTH, right: 0, bottom: 0,
           pointerEvents: 'none', height: TOTAL_HEIGHT,
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', height: '100%' }}>

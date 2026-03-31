@@ -30,12 +30,15 @@ function getBookingPosition(booking: BookingWithCalendar) {
 export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayViewProps) {
   const dayBookings = bookings.filter((b) => isSameDay(parseISO(b.scheduled_at), date))
 
+  const GRID_BORDER = '1px solid var(--agenda-grid-border, rgba(128,128,128,0.15))'
+  const HOUR_COL_WIDTH = 72
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto' }}>
       {/* Day header */}
       <div style={{
-        textAlign: 'center', padding: '12px 0', fontSize: 14, fontWeight: 600,
-        color: 'var(--text-primary)', borderBottom: '1px solid var(--border-secondary)',
+        textAlign: 'center', padding: '14px 0', fontSize: 15, fontWeight: 600,
+        color: 'var(--text-primary)', borderBottom: '2px solid var(--border-secondary)',
         textTransform: 'capitalize', position: 'sticky', top: 0, zIndex: 5,
         background: 'var(--bg-primary)',
       }}>
@@ -50,13 +53,15 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
             onClick={() => onSlotClick(date, hour)}
             style={{
               display: 'flex', height: CELL_HEIGHT, cursor: 'pointer',
-              borderBottom: '1px solid var(--border-secondary)',
+              borderBottom: GRID_BORDER,
             }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
           >
             <div style={{
-              width: 60, flexShrink: 0, textAlign: 'right', paddingRight: 8, paddingTop: 2,
-              fontSize: 10, color: 'var(--text-muted)',
-              borderRight: '1px solid var(--border-secondary)',
+              width: HOUR_COL_WIDTH, flexShrink: 0, textAlign: 'right', paddingRight: 10, paddingTop: 4,
+              fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)',
+              borderRight: GRID_BORDER,
             }}>
               {String(hour).padStart(2, '0')}:00
             </div>
@@ -65,7 +70,7 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
         ))}
 
         {/* Bookings overlay */}
-        <div style={{ position: 'absolute', top: 0, left: 60, right: 0, height: TOTAL_HEIGHT, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', top: 0, left: HOUR_COL_WIDTH, right: 0, height: TOTAL_HEIGHT, pointerEvents: 'none' }}>
           <div style={{ position: 'relative', height: '100%', pointerEvents: 'auto' }}>
             {dayBookings.map((b) => {
               const pos = getBookingPosition(b)

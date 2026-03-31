@@ -54,14 +54,13 @@ export function BookingBlock({ booking, onClick, style }: BookingBlockProps) {
       }}>
         {displayTitle}
       </div>
-      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
+      <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 1 }}>
         {startTime} - {endTime}
       </div>
       {(calendarName || locationName) && (
         <div style={{
-          fontSize: 9, color: 'var(--text-muted)', marginTop: 2,
+          fontSize: 9, color: 'var(--text-tertiary)', marginTop: 2,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          opacity: 0.7,
         }}>
           {calendarName}{calendarName && locationName ? ' · ' : ''}{locationName}
         </div>
