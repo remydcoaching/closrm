@@ -12,7 +12,9 @@ export async function POST() {
     const timeMin = new Date().toISOString()
     const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
+    console.log('[Google Sync] Fetching events for workspace:', workspaceId)
     const events = await getGoogleCalendarEvents(workspaceId, timeMin, timeMax)
+    console.log('[Google Sync] Found', events.length, 'events from Google')
 
     if (events.length === 0) {
       return NextResponse.json({ synced: 0 })
