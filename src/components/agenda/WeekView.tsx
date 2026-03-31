@@ -125,7 +125,6 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
                       key={booking.id}
                       booking={booking}
                       onClick={onBookingClick}
-                      compact
                     />
                   ))}
                 </div>

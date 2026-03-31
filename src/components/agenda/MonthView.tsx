@@ -118,7 +118,6 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
                     // stop click from bubbling to day cell
                     onBookingClick(b)
                   }}
-                  compact
                 />
               ))}
 

@@ -1,66 +1,69 @@
-import { format, parseISO } from 'date-fns'
-import { fr } from 'date-fns/locale'
-import { MapPin } from 'lucide-react'
+'use client'
+
+import { format, parseISO, addMinutes } from 'date-fns'
 import { BookingWithCalendar } from '@/types'
 
 interface BookingBlockProps {
   booking: BookingWithCalendar
   onClick: (booking: BookingWithCalendar) => void
-  compact?: boolean
+  style?: React.CSSProperties
 }
 
-export function BookingBlock({ booking, onClick, compact = false }: BookingBlockProps) {
-  const color = booking.booking_calendar?.color ?? '#6b7280'
+export function BookingBlock({ booking, onClick, style }: BookingBlockProps) {
+  const color = booking.is_personal
+    ? '#6b7280'
+    : booking.booking_calendar?.color || '#3b82f6'
 
-  const displayTitle = booking.lead
+  const leadName = booking.lead
     ? `${booking.lead.first_name} ${booking.lead.last_name}`.trim()
-    : booking.title
+    : null
 
-  const startTime = format(parseISO(booking.scheduled_at), 'HH:mm', { locale: fr })
+  const displayTitle = booking.is_personal
+    ? booking.title
+    : leadName || booking.title
 
-  if (compact) {
-    return (
-      <div
-        onClick={() => onClick(booking)}
-        style={{
-          background: color,
-          color: '#ffffff',
-          padding: '2px 6px',
-          borderRadius: 3,
-          fontSize: 10,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          cursor: 'pointer',
-        }}
-        title={displayTitle}
-      >
-        {startTime} {displayTitle}
-      </div>
-    )
-  }
+  const startTime = format(parseISO(booking.scheduled_at), 'HH:mm')
+  const endTime = format(addMinutes(parseISO(booking.scheduled_at), booking.duration_minutes), 'HH:mm')
+
+  const calendarName = booking.booking_calendar?.name || null
+  const locationName = booking.location?.name || null
 
   return (
     <div
-      onClick={() => onClick(booking)}
+      onClick={(e) => { e.stopPropagation(); onClick(booking) }}
       style={{
-        background: `${color}22`,
+        position: 'absolute',
+        left: 2,
+        right: 2,
+        background: `${color}26`,
         borderLeft: `3px solid ${color}`,
-        color: '#ffffff',
-        padding: '4px 8px',
+        borderRadius: 4,
+        padding: '4px 6px',
         cursor: 'pointer',
+        overflow: 'hidden',
+        zIndex: 1,
+        transition: 'opacity 0.1s',
+        ...style,
       }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.85' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
     >
-      <div style={{ fontWeight: 'bold', fontSize: 13 }}>{displayTitle}</div>
-      {booking.booking_calendar?.name && (
-        <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-          {booking.booking_calendar.name}
-        </div>
-      )}
-      {booking.location?.name && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-          <MapPin size={10} />
-          {booking.location.name}
+      <div style={{
+        fontSize: 12, fontWeight: 600, color: 'var(--text-primary)',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {displayTitle}
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
+        {startTime} - {endTime}
+      </div>
+      {(calendarName || locationName) && (
+        <div style={{
+          fontSize: 9, color: 'var(--text-muted)', marginTop: 2,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          opacity: 0.7,
+        }}>
+          {calendarName}{calendarName && locationName ? ' · ' : ''}{locationName}
         </div>
       )}
     </div>
