@@ -353,4 +353,62 @@ SELECT id FROM storage.buckets WHERE id = 'workspace-logos';
 
 ---
 
+## 5. Migration Booking Locations
+
+Ajoute la table `booking_locations` pour gérer les lieux de rendez-vous, migre `booking_calendars` de `location text` vers `location_ids uuid[]`, et ajoute `location_id` aux réservations.
+
+```sql
+-- Migration 004: Booking locations + calendar location_ids + booking location_id
+
+-- ─── Booking Locations ───────────────────────────────────────────────────────
+create table booking_locations (
+  id uuid primary key default uuid_generate_v4(),
+  workspace_id uuid not null references workspaces(id) on delete cascade,
+  name text not null,
+  address text,
+  is_active boolean not null default true,
+  created_at timestamptz default now()
+);
+
+alter table booking_locations enable row level security;
+create policy "Workspace booking_locations" on booking_locations
+  for all using (
+    workspace_id in (select id from workspaces where owner_id = auth.uid())
+  );
+
+-- ─── Migrate booking_calendars: location text → location_ids uuid[] ─────────
+alter table booking_calendars add column location_ids uuid[] not null default '{}';
+alter table booking_calendars drop column if exists location;
+
+-- ─── Add location_id to bookings ────────────────────────────────────────────
+alter table bookings add column location_id uuid references booking_locations(id) on delete set null;
+```
+
+### Vérification
+
+```sql
+-- Vérifier que la table booking_locations existe
+select table_name from information_schema.tables
+where table_schema = 'public'
+  and table_name = 'booking_locations';
+
+-- Vérifier que location_ids existe sur booking_calendars et que location a été supprimé
+select column_name from information_schema.columns
+where table_name = 'booking_calendars'
+  and column_name in ('location_ids', 'location');
+
+-- Vérifier que location_id existe sur bookings
+select column_name from information_schema.columns
+where table_name = 'bookings'
+  and column_name = 'location_id';
+```
+
+Tu dois voir :
+- `booking_locations` ← nouveau
+- `location_ids` sur `booking_calendars` ← nouveau
+- `location` sur `booking_calendars` ← ne doit plus apparaître
+- `location_id` sur `bookings` ← nouveau
+
+---
+
 *Généré le 2026-03-31 — ClosRM*
