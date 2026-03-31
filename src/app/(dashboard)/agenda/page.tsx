@@ -98,6 +98,11 @@ export default function AgendaPage() {
     fetchCalendars()
   }, [fetchCalendars])
 
+  // Trigger Google Calendar sync in background (fire-and-forget, once on mount)
+  useEffect(() => {
+    fetch('/api/integrations/google/sync', { method: 'POST' }).catch(() => {})
+  }, [])
+
   // Fetch bookings + calls when viewMode or currentDate changes
   const fetchBookings = useCallback(async () => {
     setLoading(true)
