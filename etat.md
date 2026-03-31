@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-03-31 (T-022 Calendrier/Booking — Pierre)
+> Dernière mise à jour : 2026-03-31 (T-013 Meta Ads Bloc A — Rémy)
 
 ---
 
@@ -35,7 +35,7 @@
 | Paramètres Intégrations | Pierre | ✅ Terminé | T-019 |
 | Dark/Light Mode | Pierre | ✅ Terminé | — |
 | Branding dynamique (couleur + logo) | Pierre | ✅ Terminé (attente migration SQL) | — |
-| Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | 🔄 En cours (code complet, en attente tests Vercel) | T-013 |
+| Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | ✅ Terminé (webhook Meta non livré en mode Dev) | T-013 |
 | Intégration Google Agenda | Rémy | ⬜ Non démarré | T-015 |
 | Module Publicités (Meta Ads dashboard) | Rémy | ⬜ Non démarré | T-017 |
 | Module Emails (séquences + broadcast) | Rémy | ⬜ Non démarré | T-020 |
