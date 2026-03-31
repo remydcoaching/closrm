@@ -121,8 +121,8 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
                   key={`${day.toISOString()}-${hour}`}
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect()
-                    const clickY = e.clientY - rect.top
-                    const minutes = clickY < CELL_HEIGHT / 2 ? 0 : 30
+                    const ratio = (e.clientY - rect.top) / rect.height
+                    const minutes = ratio < 0.5 ? 0 : 30
                     onSlotClick(day, hour + minutes / 60)
                   }}
                   style={{
