@@ -293,6 +293,26 @@ export interface BookingWithCalendar extends Booking {
   location: Pick<BookingLocation, 'id' | 'name' | 'address'> | null
 }
 
+// ── Planning Template ────────────────────────────────────────────────────────
+
+export interface TemplateBlock {
+  day: DayOfWeek
+  start: string  // "07:00"
+  end: string    // "08:00"
+  title: string
+  color: string
+}
+
+export interface PlanningTemplate {
+  id: string
+  workspace_id: string
+  name: string
+  description: string | null
+  blocks: TemplateBlock[]
+  created_at: string
+  updated_at: string
+}
+
 // ─── Database / Contacts ─────────────────────────────────────────────────────
 
 export interface ContactRow extends Lead {
