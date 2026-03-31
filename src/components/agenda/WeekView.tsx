@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useCallback, useRef } from 'react'
 import { startOfWeek, addDays, isSameDay, isToday, parseISO, format, getHours, getMinutes } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { BookingWithCalendar } from '@/types'
@@ -9,7 +10,7 @@ interface WeekViewProps {
   date: Date
   bookings: BookingWithCalendar[]
   onBookingClick: (booking: BookingWithCalendar) => void
-  onSlotClick: (date: Date, hour: number) => void
+  onSlotSelect: (date: Date, startHour: number, endHour: number) => void
 }
 
 const CELL_HEIGHT = 60
@@ -17,6 +18,7 @@ const START_HOUR = 7
 const END_HOUR = 21
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR)
 const TOTAL_HEIGHT = HOURS.length * CELL_HEIGHT
+const HALF_SLOTS = HOURS.flatMap((h) => [h, h + 0.5])
 
 function getBookingPosition(booking: BookingWithCalendar) {
   const d = parseISO(booking.scheduled_at)
@@ -59,15 +61,59 @@ function resolveOverlaps(bookings: BookingWithCalendar[]): (BookingWithCalendar 
   return result
 }
 
-export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekViewProps) {
+interface DragState {
+  dayIdx: number
+  startSlot: number // e.g. 10, 10.5, 11
+  currentSlot: number
+}
+
+export function WeekView({ date, bookings, onBookingClick, onSlotSelect }: WeekViewProps) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 })
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const isDragging = useRef(false)
 
   const GRID_BORDER = '1px solid var(--agenda-grid-border, rgba(128,128,128,0.15))'
   const HOUR_COL_WIDTH = 72
 
+  const handleMouseDown = useCallback((dayIdx: number, slot: number) => {
+    isDragging.current = true
+    setDrag({ dayIdx, startSlot: slot, currentSlot: slot })
+  }, [])
+
+  const handleMouseEnter = useCallback((dayIdx: number, slot: number) => {
+    if (!isDragging.current || !drag) return
+    if (dayIdx !== drag.dayIdx) return // only drag within same day
+    setDrag((prev) => prev ? { ...prev, currentSlot: slot } : null)
+  }, [drag])
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDragging.current || !drag) {
+      isDragging.current = false
+      setDrag(null)
+      return
+    }
+    isDragging.current = false
+    const start = Math.min(drag.startSlot, drag.currentSlot)
+    const end = Math.max(drag.startSlot, drag.currentSlot) + 0.5 // end is exclusive, add 30min
+    setDrag(null)
+    onSlotSelect(days[drag.dayIdx], start, end)
+  }, [drag, days, onSlotSelect])
+
+  // Check if a half-slot is within the drag selection
+  function isSlotInDrag(dayIdx: number, slot: number): boolean {
+    if (!drag || dayIdx !== drag.dayIdx) return false
+    const start = Math.min(drag.startSlot, drag.currentSlot)
+    const end = Math.max(drag.startSlot, drag.currentSlot)
+    return slot >= start && slot <= end
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto', position: 'relative' }}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto', position: 'relative', userSelect: 'none' }}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={() => { if (isDragging.current) handleMouseUp() }}
+    >
       {/* Sticky header */}
       <div style={{
         display: 'grid', gridTemplateColumns: `${HOUR_COL_WIDTH}px repeat(7, 1fr)`,
@@ -116,7 +162,7 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
               }}>
                 {String(hour).padStart(2, '0')}:00
               </div>
-              {days.map((day) => (
+              {days.map((day, dayIdx) => (
                 <div
                   key={`${day.toISOString()}-${hour}`}
                   style={{
@@ -127,17 +173,28 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
                 >
                   {/* Top half — :00 */}
                   <div
-                    onClick={() => onSlotClick(day, hour)}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-                    style={{ height: '50%', borderBottom: '1px dashed rgba(128,128,128,0.08)' }}
+                    onMouseDown={() => handleMouseDown(dayIdx, hour)}
+                    onMouseEnter={() => handleMouseEnter(dayIdx, hour)}
+                    style={{
+                      height: '50%',
+                      borderBottom: '1px dashed rgba(128,128,128,0.08)',
+                      background: isSlotInDrag(dayIdx, hour)
+                        ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
+                        : 'transparent',
+                      transition: 'background 0.05s',
+                    }}
                   />
                   {/* Bottom half — :30 */}
                   <div
-                    onClick={() => onSlotClick(day, hour + 0.5)}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-                    style={{ height: '50%' }}
+                    onMouseDown={() => handleMouseDown(dayIdx, hour + 0.5)}
+                    onMouseEnter={() => handleMouseEnter(dayIdx, hour + 0.5)}
+                    style={{
+                      height: '50%',
+                      background: isSlotInDrag(dayIdx, hour + 0.5)
+                        ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
+                        : 'transparent',
+                      transition: 'background 0.05s',
+                    }}
                   />
                 </div>
               ))}

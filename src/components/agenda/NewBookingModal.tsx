@@ -9,6 +9,7 @@ interface NewBookingModalProps {
   locations: BookingLocation[]
   prefillDate: string   // "2026-04-01"
   prefillTime: string   // "14:00"
+  prefillDuration?: number // minutes, from drag selection
   onClose: () => void
   onCreated: () => void
 }
@@ -37,6 +38,7 @@ export default function NewBookingModal({
   locations,
   prefillDate,
   prefillTime,
+  prefillDuration,
   onClose,
   onCreated,
 }: NewBookingModalProps) {
@@ -61,8 +63,9 @@ export default function NewBookingModal({
   // Sync prefill when props change (modal reopened with new slot)
   useEffect(() => { setDate(prefillDate) }, [prefillDate])
   useEffect(() => { setTime(prefillTime) }, [prefillTime])
+  useEffect(() => { if (prefillDuration) setDuration(prefillDuration) }, [prefillDuration])
   const [duration, setDuration] = useState<number>(
-    calendars[0]?.duration_minutes ?? 60
+    prefillDuration ?? calendars[0]?.duration_minutes ?? 60
   )
   const [notes, setNotes] = useState('')
 
@@ -393,43 +396,60 @@ export default function NewBookingModal({
               </div>
             )}
 
-            {/* Date + Time */}
+            {/* Date */}
+            <div>
+              <label style={labelStyle}>Date</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                style={{ ...inputStyle, colorScheme: 'dark' }}
+              />
+            </div>
+
+            {/* Time start + end */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={labelStyle}>Date</label>
+                <label style={labelStyle}>Heure de début</label>
                 <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  type="time"
+                  value={time}
+                  onChange={(e) => {
+                    setTime(e.target.value)
+                  }}
                   required
                   style={{ ...inputStyle, colorScheme: 'dark' }}
                 />
               </div>
               <div>
-                <label style={labelStyle}>Heure</label>
+                <label style={labelStyle}>Heure de fin</label>
                 <input
                   type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
+                  value={(() => {
+                    if (!time) return ''
+                    const [h, m] = time.split(':').map(Number)
+                    const totalMin = h * 60 + m + duration
+                    const endH = Math.floor(totalMin / 60) % 24
+                    const endM = totalMin % 60
+                    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+                  })()}
+                  onChange={(e) => {
+                    if (!time || !e.target.value) return
+                    const [sh, sm] = time.split(':').map(Number)
+                    const [eh, em] = e.target.value.split(':').map(Number)
+                    const diff = (eh * 60 + em) - (sh * 60 + sm)
+                    if (diff > 0) setDuration(diff)
+                  }}
                   required
                   style={{ ...inputStyle, colorScheme: 'dark' }}
                 />
               </div>
             </div>
 
-            {/* Duration */}
-            <div>
-              <label style={labelStyle}>Durée (minutes)</label>
-              <input
-                type="number"
-                min={5}
-                max={480}
-                step={5}
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                required
-                style={inputStyle}
-              />
+            {/* Duration display */}
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: -4 }}>
+              Durée : {duration >= 60 ? `${Math.floor(duration / 60)}h${duration % 60 > 0 ? String(duration % 60).padStart(2, '0') : ''}` : `${duration} min`}
             </div>
 
             {/* Notes */}

@@ -72,7 +72,7 @@ export default function AgendaPage() {
   const [visibleCalendarIds, setVisibleCalendarIds] = useState<Set<string>>(new Set())
   const [showPersonal, setShowPersonal] = useState(true)
   const [showNewModal, setShowNewModal] = useState(false)
-  const [modalPrefill, setModalPrefill] = useState({ date: '', time: '' })
+  const [modalPrefill, setModalPrefill] = useState({ date: '', time: '', duration: 60 })
   const [selectedBooking, setSelectedBooking] = useState<BookingWithCalendar | null>(null)
   const [showFilterPanel, setShowFilterPanel] = useState(false)
   const [filterType, setFilterType] = useState<'all' | 'bookings' | 'blocked'>('all')
@@ -147,12 +147,14 @@ export default function AgendaPage() {
   }
 
   // Slot click → open modal with prefill
-  function handleSlotClick(date: Date, hour: number) {
-    const h = Math.floor(hour)
-    const m = Math.round((hour - h) * 60)
+  function handleSlotSelect(date: Date, startHour: number, endHour: number) {
+    const h = Math.floor(startHour)
+    const m = Math.round((startHour - h) * 60)
+    const durationMinutes = Math.round((endHour - startHour) * 60)
     setModalPrefill({
       date: format(date, 'yyyy-MM-dd'),
       time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+      duration: durationMinutes > 0 ? durationMinutes : 30,
     })
     setShowNewModal(true)
   }
@@ -322,7 +324,7 @@ export default function AgendaPage() {
           {/* New booking button */}
           <button
             onClick={() => {
-              setModalPrefill({ date: format(currentDate, 'yyyy-MM-dd'), time: '09:00' })
+              setModalPrefill({ date: format(currentDate, 'yyyy-MM-dd'), time: '09:00', duration: 60 })
               setShowNewModal(true)
             }}
             style={{
@@ -365,7 +367,7 @@ export default function AgendaPage() {
               date={currentDate}
               bookings={filteredBookings}
               onBookingClick={setSelectedBooking}
-              onSlotClick={handleSlotClick}
+              onSlotSelect={handleSlotSelect}
             />
           )}
 
@@ -374,7 +376,7 @@ export default function AgendaPage() {
               date={currentDate}
               bookings={filteredBookings}
               onBookingClick={setSelectedBooking}
-              onSlotClick={handleSlotClick}
+              onSlotSelect={handleSlotSelect}
             />
           )}
 
@@ -422,6 +424,7 @@ export default function AgendaPage() {
           locations={locations}
           prefillDate={modalPrefill.date}
           prefillTime={modalPrefill.time}
+          prefillDuration={modalPrefill.duration}
           onClose={() => setShowNewModal(false)}
           onCreated={() => {
             setShowNewModal(false)

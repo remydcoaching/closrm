@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useCallback, useRef } from 'react'
 import { isSameDay, parseISO, format, getHours, getMinutes } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { BookingWithCalendar } from '@/types'
@@ -9,7 +10,7 @@ interface DayViewProps {
   date: Date
   bookings: BookingWithCalendar[]
   onBookingClick: (booking: BookingWithCalendar) => void
-  onSlotClick: (date: Date, hour: number) => void
+  onSlotSelect: (date: Date, startHour: number, endHour: number) => void
 }
 
 const CELL_HEIGHT = 60
@@ -27,17 +28,58 @@ function getBookingPosition(booking: BookingWithCalendar) {
   return { top, height }
 }
 
-export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayViewProps) {
+interface DragState {
+  startSlot: number
+  currentSlot: number
+}
+
+export function DayView({ date, bookings, onBookingClick, onSlotSelect }: DayViewProps) {
   const dayBookings = bookings.filter((b) => isSameDay(parseISO(b.scheduled_at), date))
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const isDragging = useRef(false)
 
   const GRID_BORDER = '1px solid var(--agenda-grid-border, rgba(128,128,128,0.15))'
   const HOUR_COL_WIDTH = 72
 
+  const handleMouseDown = useCallback((slot: number) => {
+    isDragging.current = true
+    setDrag({ startSlot: slot, currentSlot: slot })
+  }, [])
+
+  const handleMouseEnter = useCallback((slot: number) => {
+    if (!isDragging.current) return
+    setDrag((prev) => prev ? { ...prev, currentSlot: slot } : null)
+  }, [])
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDragging.current || !drag) {
+      isDragging.current = false
+      setDrag(null)
+      return
+    }
+    isDragging.current = false
+    const start = Math.min(drag.startSlot, drag.currentSlot)
+    const end = Math.max(drag.startSlot, drag.currentSlot) + 0.5
+    setDrag(null)
+    onSlotSelect(date, start, end)
+  }, [drag, date, onSlotSelect])
+
+  function isSlotInDrag(slot: number): boolean {
+    if (!drag) return false
+    const start = Math.min(drag.startSlot, drag.currentSlot)
+    const end = Math.max(drag.startSlot, drag.currentSlot)
+    return slot >= start && slot <= end
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto' }}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto', userSelect: 'none' }}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={() => { if (isDragging.current) handleMouseUp() }}
+    >
       {/* Day header */}
       <div style={{
-        textAlign: 'center', padding: '14px 0', fontSize: 15, fontWeight: 600,
+        textAlign: 'center', padding: '12px 0', fontSize: 14, fontWeight: 600,
         color: 'var(--text-primary)', borderBottom: '2px solid var(--border-secondary)',
         textTransform: 'capitalize', position: 'sticky', top: 0, zIndex: 5,
         background: 'var(--bg-primary)',
@@ -64,16 +106,27 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div
-                onClick={() => onSlotClick(date, hour)}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-                style={{ height: '50%', borderBottom: '1px dashed rgba(128,128,128,0.08)' }}
+                onMouseDown={() => handleMouseDown(hour)}
+                onMouseEnter={() => handleMouseEnter(hour)}
+                style={{
+                  height: '50%',
+                  borderBottom: '1px dashed rgba(128,128,128,0.08)',
+                  background: isSlotInDrag(hour)
+                    ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
+                    : 'transparent',
+                  transition: 'background 0.05s',
+                }}
               />
               <div
-                onClick={() => onSlotClick(date, hour + 0.5)}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-                style={{ height: '50%' }}
+                onMouseDown={() => handleMouseDown(hour + 0.5)}
+                onMouseEnter={() => handleMouseEnter(hour + 0.5)}
+                style={{
+                  height: '50%',
+                  background: isSlotInDrag(hour + 0.5)
+                    ? 'color-mix(in srgb, var(--color-primary) 15%, transparent)'
+                    : 'transparent',
+                  transition: 'background 0.05s',
+                }}
               />
             </div>
           </div>
@@ -81,7 +134,7 @@ export function DayView({ date, bookings, onBookingClick, onSlotClick }: DayView
 
         {/* Bookings overlay */}
         <div style={{ position: 'absolute', top: 0, left: HOUR_COL_WIDTH, right: 0, height: TOTAL_HEIGHT, pointerEvents: 'none' }}>
-          <div style={{ position: 'relative', height: '100%', pointerEvents: 'auto' }}>
+          <div style={{ position: 'relative', height: '100%', pointerEvents: 'none' }}>
             {dayBookings.map((b) => {
               const pos = getBookingPosition(b)
               return (
