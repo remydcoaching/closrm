@@ -78,6 +78,7 @@ export default function AgendaPage() {
   const [filterType, setFilterType] = useState<'all' | 'bookings' | 'blocked'>('all')
   const [locations, setLocations] = useState<BookingLocation[]>([])
   const [templates, setTemplates] = useState<PlanningTemplate[]>([])
+  const [moveConfirm, setMoveConfirm] = useState<{ bookingId: string; booking: BookingWithCalendar | null; newDate: string; newTime: string } | null>(null)
   const [showImportDropdown, setShowImportDropdown] = useState(false)
 
   // Fetch calendars once on mount
@@ -216,6 +217,36 @@ export default function AgendaPage() {
       duration: durationMinutes > 0 ? durationMinutes : 30,
     })
     setShowNewModal(true)
+  }
+
+  // Drag & drop — booking move
+  function handleBookingDrop(bookingId: string, newDate: Date, newHour: number) {
+    const h = Math.floor(newHour)
+    const m = Math.round((newHour - h) * 60)
+    const newTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+    const newDateStr = format(newDate, 'yyyy-MM-dd')
+    const booking = bookings.find(b => b.id === bookingId) || null
+    setMoveConfirm({ bookingId, booking, newDate: newDateStr, newTime })
+  }
+
+  async function confirmMove(sendEmail: boolean) {
+    if (!moveConfirm) return
+    const scheduled_at = new Date(`${moveConfirm.newDate}T${moveConfirm.newTime}:00`).toISOString()
+
+    // Check if it's a call (id starts with "call-")
+    const isCall = moveConfirm.bookingId.startsWith('call-')
+    const realId = isCall ? moveConfirm.bookingId.replace('call-', '') : moveConfirm.bookingId
+    const url = isCall ? `/api/calls/${realId}` : `/api/bookings/${realId}`
+
+    await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduled_at }),
+    })
+
+    // TODO: send email notification if sendEmail is true
+    setMoveConfirm(null)
+    fetchBookings()
   }
 
   // Import template
@@ -504,6 +535,7 @@ export default function AgendaPage() {
               bookings={filteredBookings}
               onBookingClick={setSelectedBooking}
               onSlotSelect={handleSlotSelect}
+              onBookingDrop={handleBookingDrop}
             />
           )}
 
@@ -513,6 +545,7 @@ export default function AgendaPage() {
               bookings={filteredBookings}
               onBookingClick={setSelectedBooking}
               onSlotSelect={handleSlotSelect}
+              onBookingDrop={handleBookingDrop}
             />
           )}
 
@@ -567,6 +600,76 @@ export default function AgendaPage() {
             fetchBookings()
           }}
         />
+      )}
+
+      {/* Move confirmation popup */}
+      {moveConfirm && (
+        <div
+          onClick={() => setMoveConfirm(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-secondary)',
+              borderRadius: 12, padding: 24, width: 400, maxWidth: '90vw',
+            }}
+          >
+            <h3 style={{ color: 'var(--text-primary)', fontSize: 16, fontWeight: 600, marginBottom: 12 }}>
+              Déplacer le rendez-vous ?
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 6 }}>
+              <strong>{moveConfirm.booking?.title || 'Ce RDV'}</strong>
+            </p>
+            <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: 20 }}>
+              Nouvelle heure : {moveConfirm.newDate} à {moveConfirm.newTime}
+            </p>
+
+            {moveConfirm.booking?.lead && (
+              <p style={{ color: 'var(--text-secondary)', fontSize: 12, marginBottom: 20 }}>
+                Voulez-vous envoyer un email à {moveConfirm.booking.lead.first_name} pour le prévenir du changement ?
+              </p>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setMoveConfirm(null)}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, fontSize: 13,
+                  background: 'transparent', border: '1px solid var(--border-secondary)',
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                }}
+              >
+                Annuler
+              </button>
+              {moveConfirm.booking?.lead && (
+                <button
+                  onClick={() => confirmMove(true)}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border-secondary)',
+                    color: 'var(--text-primary)', cursor: 'pointer',
+                  }}
+                >
+                  Déplacer + envoyer email
+                </button>
+              )}
+              <button
+                onClick={() => confirmMove(false)}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  background: 'var(--color-primary, #E53E3E)', border: 'none',
+                  color: '#fff', cursor: 'pointer',
+                }}
+              >
+                {moveConfirm.booking?.lead ? 'Déplacer sans email' : 'Déplacer'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

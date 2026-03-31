@@ -7,9 +7,10 @@ interface BookingBlockProps {
   booking: BookingWithCalendar
   onClick: (booking: BookingWithCalendar) => void
   style?: React.CSSProperties
+  draggable?: boolean
 }
 
-export function BookingBlock({ booking, onClick, style }: BookingBlockProps) {
+export function BookingBlock({ booking, onClick, style, draggable = true }: BookingBlockProps) {
   const color = booking.is_personal
     ? '#6b7280'
     : booking.booking_calendar?.color || '#3b82f6'
@@ -33,6 +34,12 @@ export function BookingBlock({ booking, onClick, style }: BookingBlockProps) {
 
   return (
     <div
+      draggable={draggable}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('bookingId', booking.id)
+        e.dataTransfer.setData('duration', String(booking.duration_minutes))
+        e.dataTransfer.effectAllowed = 'move'
+      }}
       onClick={(e) => { e.stopPropagation(); onClick(booking) }}
       style={{
         position: 'absolute',
