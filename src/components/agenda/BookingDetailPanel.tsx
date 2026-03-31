@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { X, MapPin, Clock, Calendar, User, Trash2, Phone, Mail, Tag } from 'lucide-react'
-import { BookingWithCalendar, BookingStatus, Lead } from '@/types'
+import { X, MapPin, Clock, Calendar, User, Trash2, Phone, Mail, Tag, PhoneCall, Bell } from 'lucide-react'
+import { BookingWithCalendar, BookingStatus, Lead, Call, FollowUp } from '@/types'
 
 interface BookingDetailPanelProps {
   booking: BookingWithCalendar
@@ -29,7 +29,7 @@ export function BookingDetailPanel({
   onStatusChange,
 }: BookingDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('rdv')
-  const [lead, setLead] = useState<Lead | null>(null)
+  const [lead, setLead] = useState<(Lead & { calls?: Call[]; follow_ups?: FollowUp[] }) | null>(null)
   const [loadingLead, setLoadingLead] = useState(false)
   const touchStartX = useRef(0)
 
@@ -300,6 +300,95 @@ export function BookingDetailPanel({
                       color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap',
                     }}>
                       {lead.notes}
+                    </div>
+                  </div>
+                )}
+
+                {/* Call history */}
+                {lead.calls && lead.calls.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <PhoneCall size={13} /> Historique d&apos;appels ({lead.calls.length})
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {lead.calls.map((call: Call) => {
+                        const outcomeColors: Record<string, string> = {
+                          done: '#38A169', pending: '#3b82f6', cancelled: '#E53E3E', no_show: '#D69E2E',
+                        }
+                        const outcomeLabels: Record<string, string> = {
+                          done: 'Fait', pending: 'En attente', cancelled: 'Annulé', no_show: 'Absent',
+                        }
+                        return (
+                          <div key={call.id} style={{
+                            background: 'var(--bg-input)', border: '1px solid var(--border-secondary)',
+                            borderRadius: 8, padding: '8px 10px', fontSize: 12,
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                                {call.type}
+                              </span>
+                              <span style={{
+                                fontSize: 10, padding: '2px 6px', borderRadius: 4,
+                                background: `${outcomeColors[call.outcome] || '#666'}22`,
+                                color: outcomeColors[call.outcome] || '#666',
+                                fontWeight: 600,
+                              }}>
+                                {outcomeLabels[call.outcome] || call.outcome}
+                              </span>
+                            </div>
+                            <div style={{ color: 'var(--text-tertiary)', fontSize: 11, marginTop: 3 }}>
+                              {format(parseISO(call.scheduled_at), 'd MMM yyyy · HH:mm', { locale: fr })}
+                              {call.duration_seconds ? ` · ${Math.ceil(call.duration_seconds / 60)} min` : ''}
+                            </div>
+                            {call.notes && (
+                              <div style={{ color: 'var(--text-secondary)', fontSize: 11, marginTop: 4, fontStyle: 'italic' }}>
+                                {call.notes.length > 80 ? call.notes.slice(0, 80) + '...' : call.notes}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Follow-ups */}
+                {lead.follow_ups && lead.follow_ups.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Bell size={13} /> Follow-ups ({lead.follow_ups.length})
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {lead.follow_ups.map((fu: FollowUp) => {
+                        const statusColors: Record<string, string> = {
+                          pending: '#3b82f6', done: '#38A169', cancelled: '#E53E3E',
+                        }
+                        const statusLabels: Record<string, string> = {
+                          pending: 'En attente', done: 'Fait', cancelled: 'Annulé',
+                        }
+                        return (
+                          <div key={fu.id} style={{
+                            background: 'var(--bg-input)', border: '1px solid var(--border-secondary)',
+                            borderRadius: 8, padding: '8px 10px', fontSize: 12,
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: 'var(--text-primary)' }}>{fu.reason || 'Relance'}</span>
+                              <span style={{
+                                fontSize: 10, padding: '2px 6px', borderRadius: 4,
+                                background: `${statusColors[fu.status] || '#666'}22`,
+                                color: statusColors[fu.status] || '#666',
+                                fontWeight: 600,
+                              }}>
+                                {statusLabels[fu.status] || fu.status}
+                              </span>
+                            </div>
+                            <div style={{ color: 'var(--text-tertiary)', fontSize: 11, marginTop: 3 }}>
+                              {format(parseISO(fu.scheduled_at), 'd MMM yyyy · HH:mm', { locale: fr })}
+                              {fu.channel ? ` · ${fu.channel}` : ''}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}

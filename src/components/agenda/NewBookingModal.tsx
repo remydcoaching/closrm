@@ -404,7 +404,7 @@ export default function NewBookingModal({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                style={{ ...inputStyle, colorScheme: 'dark' }}
+                style={inputStyle}
               />
             </div>
 
@@ -412,20 +412,26 @@ export default function NewBookingModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={labelStyle}>Heure de début</label>
-                <input
-                  type="time"
+                <select
                   value={time}
                   onChange={(e) => {
-                    setTime(e.target.value)
+                    const newTime = e.target.value
+                    // Keep same duration, shift end time
+                    setTime(newTime)
                   }}
-                  required
-                  style={{ ...inputStyle, colorScheme: 'dark' }}
-                />
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  {Array.from({ length: (21 - 7) * 2 }, (_, i) => {
+                    const h = Math.floor(i / 2) + 7
+                    const m = (i % 2) * 30
+                    const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+                    return <option key={val} value={val}>{val}</option>
+                  })}
+                </select>
               </div>
               <div>
                 <label style={labelStyle}>Heure de fin</label>
-                <input
-                  type="time"
+                <select
                   value={(() => {
                     if (!time) return ''
                     const [h, m] = time.split(':').map(Number)
@@ -441,9 +447,15 @@ export default function NewBookingModal({
                     const diff = (eh * 60 + em) - (sh * 60 + sm)
                     if (diff > 0) setDuration(diff)
                   }}
-                  required
-                  style={{ ...inputStyle, colorScheme: 'dark' }}
-                />
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  {Array.from({ length: (22 - 7) * 2 }, (_, i) => {
+                    const h = Math.floor(i / 2) + 7
+                    const m = (i % 2) * 30
+                    const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+                    return <option key={val} value={val}>{val}</option>
+                  })}
+                </select>
               </div>
             </div>
 
