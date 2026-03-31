@@ -35,7 +35,7 @@
 | Paramètres Intégrations | Pierre | ✅ Terminé | T-019 |
 | Dark/Light Mode | Pierre | ✅ Terminé | — |
 | Branding dynamique (couleur + logo) | Pierre | ✅ Terminé | — |
-| Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | 🔄 En cours | T-013 |
+| Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | ✅ Terminé (webhook Meta non livré en mode Dev) | T-013 |
 | Intégration Google Calendar | Pierre | ✅ Terminé | T-022 |
 | Module Publicités (Meta Ads dashboard) | Rémy | ⬜ Non démarré | T-017 |
 | **Module Emails (séquences + broadcast)** | **Pierre** | **🔄 En cours (code complet, tests restants)** | **T-020** |
