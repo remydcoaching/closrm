@@ -36,7 +36,10 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
 
       if (!res.ok) {
         const json = await res.json().catch(() => null)
-        const msg = typeof json?.error === 'string' ? json.error : 'Erreur lors de la planification.'
+        let msg = 'Erreur lors de la planification.'
+        if (typeof json?.error === 'string') msg = json.error
+        else if (json?.error?.formErrors) msg = json.error.formErrors.join(', ') || msg
+        else if (json?.details) msg = JSON.stringify(json.details)
         setError(msg)
         setLoading(false)
         return
