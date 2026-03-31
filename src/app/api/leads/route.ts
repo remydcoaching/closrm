@@ -33,9 +33,13 @@ export async function GET(request: NextRequest) {
     // Recherche texte (prénom, nom, email, téléphone)
     if (filters.search) {
       const s = filters.search.trim()
-      query = query.or(
-        `first_name.ilike.%${s}%,last_name.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`
-      )
+      if (s) {
+        // Escape special PostgREST characters in search term
+        const escaped = s.replace(/[%_]/g, '\\$&')
+        query = query.or(
+          `first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%`
+        )
+      }
     }
 
     // Filtre par tags (au moins un des tags listés)
@@ -54,6 +58,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
 
     if (error) {
+      console.error('[API /leads] Supabase error:', error.message, '| filters:', JSON.stringify(filters))
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 

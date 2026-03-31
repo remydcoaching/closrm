@@ -53,9 +53,6 @@ export default function LeadsPage() {
   const [meta, setMeta] = useState<Meta>({ total: 0, page: 1, per_page: 25, total_pages: 1 })
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [filters, setFilters] = useState<{ search: string; statuses: LeadStatus[]; sources: LeadSource[] }>({
-    search: '', statuses: [], sources: [],
-  })
   const [page, setPage] = useState(1)
   const [dropdown, setDropdown] = useState<DropdownState | null>(null)
   const [tagInput, setTagInput] = useState('')
@@ -64,6 +61,24 @@ export default function LeadsPage() {
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
   const dropdownPanelRef = useRef<HTMLDivElement>(null)
   const tagInputRef = useRef<HTMLInputElement>(null)
+
+  // Search & filters — valeurs primitives/stables pour que useEffect se déclenche correctement
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [statuses, setStatuses] = useState<LeadStatus[]>([])
+  const [sources, setSources] = useState<LeadSource[]>([])
+  const [refreshKey, setRefreshKey] = useState(0)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Callback pour LeadFilters
+  const handleFiltersChange = useCallback((f: { search: string; statuses: LeadStatus[]; sources: LeadSource[] }) => {
+    setStatuses(f.statuses)
+    setSources(f.sources)
+    // Debounce uniquement sur le search
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(f.search)
+    }, 300)
+  }, [])
 
   // Fermer le dropdown si clic en dehors
   useEffect(() => {
@@ -76,29 +91,35 @@ export default function LeadsPage() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [dropdown])
 
-  const fetchLeads = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('page', String(page))
-      params.set('per_page', '25')
-      if (filters.search) params.set('search', filters.search)
-      if (filters.statuses.length > 0) params.set('status', filters.statuses.join(','))
-      if (filters.sources.length > 0) params.set('source', filters.sources.join(','))
+  // Fetch leads — dépend de valeurs primitives, pas d'objets
+  useEffect(() => {
+    let cancelled = false
+    async function doFetch() {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams()
+        params.set('page', String(page))
+        params.set('per_page', '25')
+        if (debouncedSearch) params.set('search', debouncedSearch)
+        if (statuses.length > 0) params.set('status', statuses.join(','))
+        if (sources.length > 0) params.set('source', sources.join(','))
 
-      const res = await fetch(`/api/leads?${params.toString()}`)
-      const json = await res.json()
-      if (res.ok) {
-        setLeads(json.data)
-        setMeta(json.meta)
+        const res = await fetch(`/api/leads?${params.toString()}`)
+        const json = await res.json()
+        if (!cancelled && res.ok) {
+          setLeads(json.data)
+          setMeta(json.meta)
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-    } finally {
-      setLoading(false)
     }
-  }, [page, filters])
+    doFetch()
+    return () => { cancelled = true }
+  }, [page, debouncedSearch, statuses, sources, refreshKey])
 
-  useEffect(() => { fetchLeads() }, [fetchLeads])
-  useEffect(() => { setPage(1) }, [filters])
+  // Reset page quand les filtres changent
+  useEffect(() => { setPage(1) }, [debouncedSearch, statuses, sources])
 
   function patchLead(id: string, patch: Partial<Lead>) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
@@ -204,7 +225,7 @@ export default function LeadsPage() {
 
       {/* Filtres */}
       <div style={{ marginBottom: 16 }}>
-        <LeadFilters onFiltersChange={setFilters} />
+        <LeadFilters onFiltersChange={handleFiltersChange} />
       </div>
 
       {/* Tableau */}
@@ -533,7 +554,7 @@ export default function LeadsPage() {
         <CallScheduleModal
           lead={scheduleTarget}
           onClose={() => setScheduleTarget(null)}
-          onScheduled={() => { setScheduleTarget(null); fetchLeads() }}
+          onScheduled={() => { setScheduleTarget(null); setRefreshKey(k => k + 1) }}
         />
       )}
 

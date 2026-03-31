@@ -80,7 +80,7 @@ export default function NewBookingModal({
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
-    if (leadSearch.length < 2) {
+    if (leadSearch.length < 1) {
       setLeadResults([])
       return
     }
@@ -89,8 +89,8 @@ export default function NewBookingModal({
       try {
         const res = await fetch(`/api/leads?search=${encodeURIComponent(leadSearch)}&per_page=5`)
         if (res.ok) {
-          const data = await res.json()
-          setLeadResults(data.leads ?? [])
+          const json = await res.json()
+          setLeadResults(json.data ?? [])
         }
       } catch {
         // silently ignore search errors

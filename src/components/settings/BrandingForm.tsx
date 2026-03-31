@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { ACCENT_PRESETS, isValidHex } from '@/lib/branding/utils'
+import { useState, useRef, useEffect } from 'react'
+import { ACCENT_PRESETS, isValidHex, darkenHex, hexToRgb } from '@/lib/branding/utils'
 import { Upload, X, Check } from 'lucide-react'
 
 interface Props {
@@ -10,8 +10,20 @@ interface Props {
   onSave: () => void
 }
 
+/** Inject accent color into CSS custom properties on :root */
+function injectAccentColor(hex: string) {
+  const root = document.documentElement
+  root.style.setProperty('--color-primary', hex)
+  root.style.setProperty('--color-primary-hover', darkenHex(hex, 15))
+  const rgb = hexToRgb(hex)
+  if (rgb) {
+    root.style.setProperty('--bg-active', `rgba(${rgb.r},${rgb.g},${rgb.b},0.08)`)
+  }
+}
+
 export default function BrandingForm({ accentColor, logoUrl, onSave }: Props) {
   const [color, setColor] = useState(accentColor)
+  const [savedColor, setSavedColor] = useState(accentColor)
   const [hexInput, setHexInput] = useState(accentColor)
   const [logo, setLogo] = useState<string | null>(logoUrl)
   const [saving, setSaving] = useState(false)
@@ -19,8 +31,14 @@ export default function BrandingForm({ accentColor, logoUrl, onSave }: Props) {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const colorChanged = color !== accentColor
-  const isDirty = colorChanged
+  const isDirty = color !== savedColor
+
+  // Live preview: inject CSS vars whenever selected color changes
+  useEffect(() => {
+    if (isValidHex(color)) {
+      injectAccentColor(color)
+    }
+  }, [color])
 
   function handlePresetClick(hex: string) {
     setColor(hex)
@@ -48,6 +66,8 @@ export default function BrandingForm({ accentColor, logoUrl, onSave }: Props) {
         const json = await res.json()
         throw new Error(json.error || 'Erreur')
       }
+      setSavedColor(color)
+      injectAccentColor(color)
       setMessage({ type: 'success', text: 'Couleur enregistrée.' })
       onSave()
     } catch (err) {
@@ -139,7 +159,7 @@ export default function BrandingForm({ accentColor, logoUrl, onSave }: Props) {
                 transition: 'border-color 0.15s ease',
               }}
             >
-              {color === preset.hex && <Check size={14} color={preset.hex === '#000000' ? '#fff' : '#fff'} strokeWidth={3} />}
+              {color === preset.hex && <Check size={14} color="#fff" strokeWidth={3} />}
             </button>
           ))}
         </div>
@@ -320,7 +340,7 @@ export default function BrandingForm({ accentColor, logoUrl, onSave }: Props) {
         <p style={{
           marginTop: 14,
           fontSize: 13,
-          color: message.type === 'success' ? 'var(--color-primary)' : '#ef4444',
+          color: message.type === 'success' ? color : '#ef4444',
         }}>
           {message.text}
         </p>

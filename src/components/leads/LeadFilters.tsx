@@ -30,10 +30,9 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
   const [selectedStatuses, setSelectedStatuses] = useState<LeadStatus[]>([])
   const [selectedSources, setSelectedSources] = useState<LeadSource[]>([])
   const [panelOpen, setPanelOpen] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
-  const onFiltersChangeRef = useRef(onFiltersChange)
-  onFiltersChangeRef.current = onFiltersChange
+  const onChangeRef = useRef(onFiltersChange)
+  onChangeRef.current = onFiltersChange
 
   // Fermer le panneau si clic en dehors
   useEffect(() => {
@@ -46,13 +45,9 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [panelOpen])
 
-  // Debounce sur la recherche + changements de filtres
+  // Notifier le parent immédiatement à chaque changement (le parent gère le debounce)
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      onFiltersChangeRef.current({ search, statuses: selectedStatuses, sources: selectedSources })
-    }, 300)
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+    onChangeRef.current({ search, statuses: selectedStatuses, sources: selectedSources })
   }, [search, selectedStatuses, selectedSources])
 
   function toggleStatus(s: LeadStatus) {
