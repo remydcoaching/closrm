@@ -79,18 +79,37 @@ export async function GET(request: NextRequest) {
     // Upsert into integrations table using service client (no user session in OAuth callback)
     const supabase = createServiceClient()
 
-    const { error: upsertError } = await supabase
+    // Try update first, then insert if not exists
+    const { data: existing } = await supabase
       .from('integrations')
-      .upsert(
-        {
+      .select('id')
+      .eq('workspace_id', state)
+      .eq('type', 'google_calendar')
+      .maybeSingle()
+
+    let upsertError
+    if (existing) {
+      const { error } = await supabase
+        .from('integrations')
+        .update({
+          credentials_encrypted: credentialsEncrypted,
+          is_active: true,
+          connected_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+      upsertError = error
+    } else {
+      const { error } = await supabase
+        .from('integrations')
+        .insert({
           workspace_id: state,
           type: 'google_calendar',
           credentials_encrypted: credentialsEncrypted,
           is_active: true,
           connected_at: new Date().toISOString(),
-        },
-        { onConflict: 'workspace_id,type' }
-      )
+        })
+      upsertError = error
+    }
 
     if (upsertError) {
       console.error('Failed to save Google credentials:', upsertError)
