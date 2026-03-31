@@ -28,6 +28,9 @@ export function BookingBlock({ booking, onClick, style }: BookingBlockProps) {
   const calendarName = booking.booking_calendar?.name || null
   const locationName = booking.location?.name || null
 
+  // Short blocks (<=30min) → single line
+  const isShort = booking.duration_minutes <= 30
+
   return (
     <div
       onClick={(e) => { e.stopPropagation(); onClick(booking) }}
@@ -39,32 +42,56 @@ export function BookingBlock({ booking, onClick, style }: BookingBlockProps) {
         background: `${color}26`,
         borderLeft: `3px solid ${color}`,
         borderRadius: 4,
-        padding: '4px 6px',
+        padding: isShort ? '2px 6px' : '4px 6px',
         cursor: 'pointer',
         overflow: 'hidden',
         zIndex: 1,
         transition: 'opacity 0.1s',
+        display: 'flex',
+        flexDirection: isShort ? 'row' : 'column',
+        alignItems: isShort ? 'center' : 'flex-start',
+        gap: isShort ? 6 : 0,
         ...style,
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.85' }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
     >
-      <div style={{
-        fontSize: 12, fontWeight: 600, color: 'var(--text-primary)',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {displayTitle}
-      </div>
-      <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 1 }}>
-        {startTime} - {endTime}
-      </div>
-      {(calendarName || locationName) && (
-        <div style={{
-          fontSize: 9, color: 'var(--text-tertiary)', marginTop: 2,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {calendarName}{calendarName && locationName ? ' · ' : ''}{locationName}
-        </div>
+      {isShort ? (
+        /* Single line: "10:00 - 10:30  Antoine Roux" */
+        <>
+          <span style={{ fontSize: 10, color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            {startTime} - {endTime}
+          </span>
+          <span style={{
+            fontSize: 11, fontWeight: 600, color: 'var(--text-primary)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {displayTitle}
+          </span>
+        </>
+      ) : (
+        /* Multi-line for longer blocks */
+        <>
+          <div style={{
+            fontSize: 12, fontWeight: 600, color: 'var(--text-primary)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            width: '100%',
+          }}>
+            {displayTitle}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 1 }}>
+            {startTime} - {endTime}
+          </div>
+          {(calendarName || locationName) && (
+            <div style={{
+              fontSize: 9, color: 'var(--text-tertiary)', marginTop: 2,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              width: '100%',
+            }}>
+              {calendarName}{calendarName && locationName ? ' · ' : ''}{locationName}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
