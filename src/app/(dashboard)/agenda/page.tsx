@@ -14,8 +14,8 @@ import {
   format,
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal } from 'lucide-react'
-import { BookingWithCalendar, BookingCalendar, BookingLocation } from '@/types'
+import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal, LayoutTemplate } from 'lucide-react'
+import { BookingWithCalendar, BookingCalendar, BookingLocation, PlanningTemplate } from '@/types'
 import { AgendaSidebar } from '@/components/agenda/AgendaSidebar'
 import { FilterPanel } from '@/components/agenda/FilterPanel'
 import { DayView } from '@/components/agenda/DayView'
@@ -77,6 +77,8 @@ export default function AgendaPage() {
   const [showFilterPanel, setShowFilterPanel] = useState(false)
   const [filterType, setFilterType] = useState<'all' | 'bookings' | 'blocked'>('all')
   const [locations, setLocations] = useState<BookingLocation[]>([])
+  const [templates, setTemplates] = useState<PlanningTemplate[]>([])
+  const [showImportDropdown, setShowImportDropdown] = useState(false)
 
   // Fetch calendars once on mount
   const fetchCalendars = useCallback(async () => {
@@ -91,6 +93,11 @@ export default function AgendaPage() {
     if (locRes.ok) {
       const locJson = await locRes.json()
       setLocations(locJson.data || [])
+    }
+    const tplRes = await fetch('/api/planning-templates')
+    if (tplRes.ok) {
+      const tplJson = await tplRes.json()
+      setTemplates(tplJson.data || [])
     }
   }, [])
 
@@ -211,6 +218,20 @@ export default function AgendaPage() {
     setShowNewModal(true)
   }
 
+  // Import template
+  async function handleImportTemplate(templateId: string) {
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
+    const res = await fetch(`/api/planning-templates/${templateId}/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ week_start: format(weekStart, 'yyyy-MM-dd') }),
+    })
+    if (res.ok) {
+      fetchBookings()
+    }
+    setShowImportDropdown(false)
+  }
+
   // Delete booking
   async function handleDeleteBooking(id: string) {
     await fetch(`/api/bookings/${id}`, { method: 'DELETE' })
@@ -246,7 +267,7 @@ export default function AgendaPage() {
   const headerDateLabel = formatHeaderDate(viewMode, currentDate)
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }} onClick={() => setShowImportDropdown(false)}>
       {/* Main content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header bar */}
@@ -358,6 +379,69 @@ export default function AgendaPage() {
           >
             {headerDateLabel}
           </span>
+
+          {/* Templates link */}
+          <a
+            href="/agenda/templates"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+              background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
+              border: '1px solid var(--border-secondary)', borderRadius: 8,
+              fontSize: 13, textDecoration: 'none', cursor: 'pointer',
+            }}
+          >
+            <LayoutTemplate size={14} /> Templates
+          </a>
+
+          {/* Import template dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowImportDropdown(!showImportDropdown) }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                background: showImportDropdown ? 'rgba(229,62,62,0.1)' : 'var(--bg-secondary)',
+                color: showImportDropdown ? '#E53E3E' : 'var(--text-secondary)',
+                border: `1px solid ${showImportDropdown ? '#E53E3E' : 'var(--border-secondary)'}`,
+                borderRadius: 8, fontSize: 13, cursor: 'pointer',
+              }}
+            >
+              <LayoutTemplate size={14} /> Importer
+            </button>
+            {showImportDropdown && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 240,
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border-secondary)',
+                  borderRadius: 8, padding: 4, zIndex: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                }}
+              >
+                {templates.length === 0 && (
+                  <div style={{ padding: '12px 10px', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+                    Aucun template. <a href="/agenda/templates" style={{ color: 'var(--color-primary, #E53E3E)' }}>Créer un template</a>
+                  </div>
+                )}
+                {templates.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => handleImportTemplate(t.id)}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px',
+                      background: 'transparent', border: 'none', borderRadius: 6,
+                      color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                  >
+                    <div style={{ fontWeight: 500 }}>{t.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {t.blocks.length} blocs
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Filter panel toggle */}
           <button
