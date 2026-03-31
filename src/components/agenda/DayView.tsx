@@ -11,6 +11,7 @@ interface DayViewProps {
   bookings: BookingWithCalendar[]
   onBookingClick: (booking: BookingWithCalendar) => void
   onSlotSelect: (date: Date, startHour: number, endHour: number) => void
+  onBookingDrop?: (bookingId: string, newDate: Date, newHour: number) => void
 }
 
 const CELL_HEIGHT = 60
@@ -33,7 +34,7 @@ interface DragState {
   currentSlot: number
 }
 
-export function DayView({ date, bookings, onBookingClick, onSlotSelect }: DayViewProps) {
+export function DayView({ date, bookings, onBookingClick, onSlotSelect, onBookingDrop }: DayViewProps) {
   const dayBookings = bookings.filter((b) => isSameDay(parseISO(b.scheduled_at), date))
   const [drag, setDrag] = useState<DragState | null>(null)
   const isDragging = useRef(false)
@@ -108,6 +109,12 @@ export function DayView({ date, bookings, onBookingClick, onSlotSelect }: DayVie
               <div
                 onMouseDown={() => handleMouseDown(hour)}
                 onMouseEnter={() => handleMouseEnter(hour)}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const bookingId = e.dataTransfer.getData('bookingId')
+                  if (bookingId && onBookingDrop) onBookingDrop(bookingId, date, hour)
+                }}
                 style={{
                   height: '50%',
                   borderBottom: '1px dashed rgba(128,128,128,0.08)',
@@ -120,6 +127,12 @@ export function DayView({ date, bookings, onBookingClick, onSlotSelect }: DayVie
               <div
                 onMouseDown={() => handleMouseDown(hour + 0.5)}
                 onMouseEnter={() => handleMouseEnter(hour + 0.5)}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const bookingId = e.dataTransfer.getData('bookingId')
+                  if (bookingId && onBookingDrop) onBookingDrop(bookingId, date, hour + 0.5)
+                }}
                 style={{
                   height: '50%',
                   background: isSlotInDrag(hour + 0.5)

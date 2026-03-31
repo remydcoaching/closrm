@@ -28,6 +28,11 @@ const workflowActionTypes = [
   'remove_tag',
   'send_notification',
   'facebook_conversions_api',
+  'enroll_in_sequence',
+  'add_note',
+  'set_reached',
+  'schedule_call',
+  'webhook',
 ] as const
 
 export const createWorkflowSchema = z.object({
@@ -56,7 +61,8 @@ export const workflowFiltersSchema = z.object({
 })
 
 export const createStepSchema = z.object({
-  step_type: z.enum(['action', 'delay', 'condition'], { message: 'Type d\'étape invalide.' }),
+  insert_after: z.number().int().min(0).optional(),
+  step_type: z.enum(['action', 'delay', 'condition', 'wait_for_event'], { message: 'Type d\'étape invalide.' }),
   action_type: z.enum(workflowActionTypes).optional(),
   action_config: z.record(z.string(), z.unknown()).optional().default({}),
   delay_value: z.number().int().min(1).optional(),
@@ -66,10 +72,12 @@ export const createStepSchema = z.object({
   condition_value: z.string().max(500).optional(),
   on_true_step: z.number().int().min(1).optional(),
   on_false_step: z.number().int().min(1).optional(),
+  parent_step_id: z.string().uuid().optional(),
+  branch: z.enum(['main', 'true', 'false']).optional(),
 })
 
 export const updateStepSchema = z.object({
-  step_type: z.enum(['action', 'delay', 'condition']).optional(),
+  step_type: z.enum(['action', 'delay', 'condition', 'wait_for_event']).optional(),
   action_type: z.enum(workflowActionTypes).optional().nullable(),
   action_config: z.record(z.string(), z.unknown()).optional(),
   delay_value: z.number().int().min(1).optional().nullable(),

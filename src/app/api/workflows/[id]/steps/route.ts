@@ -21,7 +21,6 @@ export async function GET(
       .from('workflow_steps')
       .select('*')
       .eq('workflow_id', id)
-      .eq('workspace_id', workspaceId)
       .order('step_order', { ascending: true })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -53,29 +52,51 @@ export async function POST(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
 
-    // Auto-calculate step_order as max + 1
-    const { data: lastStep } = await supabase
-      .from('workflow_steps')
-      .select('step_order')
-      .eq('workflow_id', id)
-      .eq('workspace_id', workspaceId)
-      .order('step_order', { ascending: false })
-      .limit(1)
-      .single()
+    // Calculate insertion position
+    const insertAfter = parsed.data.insert_after ?? null
 
-    const nextOrder = (lastStep?.step_order ?? 0) + 1
+    if (insertAfter !== null) {
+      // Shift all steps after the insertion point
+      const { data: stepsToShift } = await supabase
+        .from('workflow_steps')
+        .select('id, step_order')
+        .eq('workflow_id', id)
+        .gt('step_order', insertAfter)
+        .order('step_order', { ascending: false })
+
+      if (stepsToShift?.length) {
+        for (const s of stepsToShift) {
+          await supabase
+            .from('workflow_steps')
+            .update({ step_order: s.step_order + 1 })
+            .eq('id', s.id)
+        }
+      }
+    }
+
+    const newOrder = insertAfter !== null
+      ? insertAfter + 1
+      : ((await supabase
+          .from('workflow_steps')
+          .select('step_order')
+          .eq('workflow_id', id)
+          .order('step_order', { ascending: false })
+          .limit(1)
+          .single()
+        ).data?.step_order ?? 0) + 1
 
     const { data, error } = await supabase
       .from('workflow_steps')
       .insert({
-        workspace_id: workspaceId,
         workflow_id: id,
-        step_order: nextOrder,
+        step_order: newOrder,
         step_type: parsed.data.step_type,
         action_type: parsed.data.action_type || null,
         action_config: parsed.data.action_config || {},
         delay_value: parsed.data.delay_value || null,
         delay_unit: parsed.data.delay_unit || null,
+        parent_step_id: parsed.data.parent_step_id || null,
+        branch: parsed.data.branch || 'main',
         condition_field: parsed.data.condition_field || null,
         condition_operator: parsed.data.condition_operator || null,
         condition_value: parsed.data.condition_value || null,
@@ -121,7 +142,6 @@ export async function PUT(
         .update({ step_order: item.step_order })
         .eq('id', item.id)
         .eq('workflow_id', id)
-        .eq('workspace_id', workspaceId)
     )
 
     const results = await Promise.all(updates)
@@ -133,7 +153,6 @@ export async function PUT(
       .from('workflow_steps')
       .select('*')
       .eq('workflow_id', id)
-      .eq('workspace_id', workspaceId)
       .order('step_order', { ascending: true })
 
     return NextResponse.json({ data: steps ?? [] })

@@ -11,6 +11,7 @@ interface WeekViewProps {
   bookings: BookingWithCalendar[]
   onBookingClick: (booking: BookingWithCalendar) => void
   onSlotSelect: (date: Date, startHour: number, endHour: number) => void
+  onBookingDrop?: (bookingId: string, newDate: Date, newHour: number) => void
 }
 
 const CELL_HEIGHT = 60
@@ -67,7 +68,7 @@ interface DragState {
   currentSlot: number
 }
 
-export function WeekView({ date, bookings, onBookingClick, onSlotSelect }: WeekViewProps) {
+export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBookingDrop }: WeekViewProps) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 })
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -175,6 +176,12 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect }: WeekV
                   <div
                     onMouseDown={() => handleMouseDown(dayIdx, hour)}
                     onMouseEnter={() => handleMouseEnter(dayIdx, hour)}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const bookingId = e.dataTransfer.getData('bookingId')
+                      if (bookingId && onBookingDrop) onBookingDrop(bookingId, days[dayIdx], hour)
+                    }}
                     style={{
                       height: '50%',
                       borderBottom: '1px dashed rgba(128,128,128,0.08)',
@@ -188,6 +195,12 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect }: WeekV
                   <div
                     onMouseDown={() => handleMouseDown(dayIdx, hour + 0.5)}
                     onMouseEnter={() => handleMouseEnter(dayIdx, hour + 0.5)}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const bookingId = e.dataTransfer.getData('bookingId')
+                      if (bookingId && onBookingDrop) onBookingDrop(bookingId, days[dayIdx], hour + 0.5)
+                    }}
                     style={{
                       height: '50%',
                       background: isSlotInDrag(dayIdx, hour + 0.5)

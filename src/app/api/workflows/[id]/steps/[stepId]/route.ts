@@ -23,7 +23,7 @@ export async function PATCH(
 
     const { data: existing } = await supabase
       .from('workflow_steps').select('*')
-      .eq('id', stepId).eq('workflow_id', id).eq('workspace_id', workspaceId).single()
+      .eq('id', stepId).eq('workflow_id', id).single()
     if (!existing) return NextResponse.json({ error: 'Étape non trouvée' }, { status: 404 })
 
     const { data, error } = await supabase
@@ -31,7 +31,6 @@ export async function PATCH(
       .update(parsed.data)
       .eq('id', stepId)
       .eq('workflow_id', id)
-      .eq('workspace_id', workspaceId)
       .select()
       .single()
 
@@ -60,7 +59,7 @@ export async function DELETE(
 
     const { data: deleted, error } = await supabase
       .from('workflow_steps').delete()
-      .eq('id', stepId).eq('workflow_id', id).eq('workspace_id', workspaceId)
+      .eq('id', stepId).eq('workflow_id', id)
       .select().single()
     if (error || !deleted) return NextResponse.json({ error: 'Étape non trouvée' }, { status: 404 })
 
@@ -69,7 +68,6 @@ export async function DELETE(
       .from('workflow_steps')
       .select('id, step_order')
       .eq('workflow_id', id)
-      .eq('workspace_id', workspaceId)
       .order('step_order', { ascending: true })
 
     if (remainingSteps && remainingSteps.length > 0) {
@@ -78,7 +76,6 @@ export async function DELETE(
           .from('workflow_steps')
           .update({ step_order: index + 1 })
           .eq('id', step.id)
-          .eq('workspace_id', workspaceId)
       )
       await Promise.all(reorderUpdates)
     }

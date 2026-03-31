@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import MetaIntegrationCard from './meta-card'
 import GoogleCalendarCard from './google-card'
+import DomainSetup from '@/components/emails/DomainSetup'
 
 interface PageProps {
   searchParams: Promise<{ success?: string; error?: string }>
@@ -75,6 +76,9 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
 
         {/* Google Agenda */}
         <GoogleCalendarCard integration={googleIntegration ?? null} />
+
+        {/* Domaine Email */}
+        <DomainSetup />
 
         {/* WhatsApp Business */}
         <PlaceholderCard
