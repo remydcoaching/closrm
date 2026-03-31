@@ -98,7 +98,7 @@ export default function AgendaPage() {
     fetchCalendars()
   }, [fetchCalendars])
 
-  // Fetch bookings when viewMode or currentDate changes
+  // Fetch bookings + calls when viewMode or currentDate changes
   const fetchBookings = useCallback(async () => {
     setLoading(true)
     const { start, end } = getDateRange(viewMode, currentDate)
@@ -107,11 +107,58 @@ export default function AgendaPage() {
       date_end: end.toISOString(),
       per_page: '100',
     })
-    const res = await fetch(`/api/bookings?${params.toString()}`)
-    if (res.ok) {
-      const json = await res.json()
-      setBookings(json.data ?? [])
+
+    const [bookingsRes, callsRes] = await Promise.all([
+      fetch(`/api/bookings?${params.toString()}`),
+      fetch(`/api/calls?scheduled_after=${start.toISOString()}&scheduled_before=${end.toISOString()}&per_page=100`),
+    ])
+
+    const allItems: BookingWithCalendar[] = []
+
+    if (bookingsRes.ok) {
+      const json = await bookingsRes.json()
+      allItems.push(...(json.data ?? []))
     }
+
+    // Convert calls to BookingWithCalendar format
+    if (callsRes.ok) {
+      const json = await callsRes.json()
+      const calls = json.data ?? []
+      for (const call of calls) {
+        // Skip calls that already have a linked booking (avoid duplicates)
+        if (allItems.some((b) => b.call_id === call.id)) continue
+
+        const callColor = call.type === 'setting' ? '#3b82f6' : '#a855f7'
+        const callLabel = call.type === 'setting' ? 'Setting' : 'Closing'
+        const leadName = call.lead
+          ? `${call.lead.first_name} ${call.lead.last_name}`.trim()
+          : 'Appel'
+
+        allItems.push({
+          id: `call-${call.id}`,
+          workspace_id: call.workspace_id,
+          calendar_id: null,
+          lead_id: call.lead_id,
+          call_id: call.id,
+          title: `${callLabel} — ${leadName}`,
+          scheduled_at: call.scheduled_at,
+          duration_minutes: call.duration_seconds ? Math.ceil(call.duration_seconds / 60) : 30,
+          status: call.outcome === 'done' ? 'completed' : call.outcome === 'cancelled' ? 'cancelled' : call.outcome === 'no_show' ? 'no_show' : 'confirmed',
+          source: 'manual',
+          form_data: {},
+          notes: call.notes,
+          google_event_id: null,
+          is_personal: false,
+          location_id: null,
+          created_at: call.created_at,
+          booking_calendar: { name: callLabel, color: callColor },
+          lead: call.lead ?? null,
+          location: null,
+        })
+      }
+    }
+
+    setBookings(allItems)
     setLoading(false)
   }, [viewMode, currentDate])
 
