@@ -4,7 +4,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createBookingSchema, bookingFiltersSchema } from '@/lib/validations/bookings'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 
-const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, location), lead:leads(id, first_name, last_name, phone, email)'
+const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address)'
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
         duration_minutes: parsed.data.duration_minutes,
         notes: parsed.data.notes ?? null,
         is_personal: parsed.data.is_personal,
+        location_id: parsed.data.location_id ?? null,
         source: 'manual',
       })
       .select(BOOKING_SELECT)

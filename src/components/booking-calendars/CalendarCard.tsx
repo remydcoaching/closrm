@@ -81,16 +81,6 @@ export default function CalendarCard({
           </svg>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{calendar.duration_minutes} min</span>
         </div>
-        {calendar.location && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {/* MapPin icon */}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
-            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{calendar.location}</span>
-          </div>
-        )}
       </div>
 
       {/* Booking URL */}

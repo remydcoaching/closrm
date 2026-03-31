@@ -35,7 +35,6 @@ export default function EditCalendarPage() {
   const [durationMinutes, setDurationMinutes] = useState(30)
   const [bufferMinutes, setBufferMinutes] = useState(0)
   const [color, setColor] = useState('#E53E3E')
-  const [location, setLocation] = useState('')
   const [availability, setAvailability] = useState<WeekAvailability>(DEFAULT_AVAILABILITY)
   const [formFields, setFormFields] = useState<FormField[]>([])
 
@@ -53,7 +52,6 @@ export default function EditCalendarPage() {
         setDurationMinutes(cal.duration_minutes)
         setBufferMinutes(cal.buffer_minutes)
         setColor(cal.color)
-        setLocation(cal.location ?? '')
         setAvailability(cal.availability ?? DEFAULT_AVAILABILITY)
         setFormFields(cal.form_fields ?? [])
       } catch (err) {
@@ -80,7 +78,6 @@ export default function EditCalendarPage() {
           duration_minutes: durationMinutes,
           buffer_minutes: bufferMinutes,
           color,
-          location: location || null,
           availability,
           form_fields: formFields,
         }),
@@ -292,19 +289,6 @@ export default function EditCalendarPage() {
             </div>
           </div>
 
-          {/* Location */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-              Lieu / Lien visio <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optionnel)</span>
-            </label>
-            <input
-              type="text"
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-              placeholder="Ex: Google Meet, Zoom, adresse…"
-              style={inputStyle}
-            />
-          </div>
         </div>
       </section>
 

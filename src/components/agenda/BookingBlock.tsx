@@ -57,10 +57,10 @@ export function BookingBlock({ booking, onClick, compact = false }: BookingBlock
           {booking.booking_calendar.name}
         </div>
       )}
-      {booking.booking_calendar?.location && (
+      {booking.location?.name && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, opacity: 0.7, marginTop: 2 }}>
           <MapPin size={10} />
-          {booking.booking_calendar.location}
+          {booking.location.name}
         </div>
       )}
     </div>

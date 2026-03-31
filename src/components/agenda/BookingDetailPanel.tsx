@@ -108,9 +108,14 @@ export function BookingDetailPanel({
         </DetailRow>
 
         {/* Location */}
-        {booking.booking_calendar?.location && (
+        {booking.location?.name && (
           <DetailRow icon={<MapPin size={15} />} label="Lieu">
-            {booking.booking_calendar.location}
+            {booking.location.name}
+            {booking.location.address && (
+              <span style={{ color: 'var(--text-secondary)', fontSize: 12, display: 'block' }}>
+                {booking.location.address}
+              </span>
+            )}
           </DetailRow>
         )}
 
