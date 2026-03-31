@@ -35,6 +35,7 @@ export function BookingBlock({ booking, onClick, style }: BookingBlockProps) {
         position: 'absolute',
         left: 2,
         right: 2,
+        pointerEvents: 'auto',
         background: `${color}26`,
         borderLeft: `3px solid ${color}`,
         borderRadius: 4,

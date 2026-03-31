@@ -149,7 +149,7 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
               const dayBookings = bookings.filter((b) => isSameDay(parseISO(b.scheduled_at), day))
               const positioned = resolveOverlaps(dayBookings)
               return (
-                <div key={day.toISOString()} style={{ position: 'relative', pointerEvents: 'auto' }}>
+                <div key={day.toISOString()} style={{ position: 'relative', pointerEvents: 'none' }}>
                   {positioned.map((b) => {
                     const pos = getBookingPosition(b)
                     const width = 100 / b.totalCols

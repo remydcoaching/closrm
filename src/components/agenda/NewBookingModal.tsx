@@ -57,6 +57,10 @@ export default function NewBookingModal({
   // Shared
   const [date, setDate] = useState(prefillDate)
   const [time, setTime] = useState(prefillTime)
+
+  // Sync prefill when props change (modal reopened with new slot)
+  useEffect(() => { setDate(prefillDate) }, [prefillDate])
+  useEffect(() => { setTime(prefillTime) }, [prefillTime])
   const [duration, setDuration] = useState<number>(
     calendars[0]?.duration_minutes ?? 60
   )
