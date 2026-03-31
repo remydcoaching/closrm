@@ -1,7 +1,7 @@
 # Tâches Pierre — ClosRM V1
 
 > Toutes les tâches de Pierre, dans l'ordre. Chaque module = API + Frontend, autonome.
-> Dernière mise à jour : 2026-03-30
+> Dernière mise à jour : 2026-03-31
 
 ---
 
@@ -54,46 +54,161 @@
 
 ---
 
-### 4. T-014 · Module Automations — API + Frontend
+### 4. T-014 · Module Automations (Workflows) — API + Frontend
 **Priorité :** Moyenne
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-03-30)
 
-**API (`/api/automations`) :**
-- [ ] `GET /api/automations` — liste
-- [ ] `POST /api/automations` — créer
-- [ ] `PATCH /api/automations/[id]` — modifier / activer / désactiver
-- [ ] `DELETE /api/automations/[id]` — supprimer
+**API (`/api/workflows`) :**
+- [x] `GET /api/workflows` — liste
+- [x] `POST /api/workflows` — créer
+- [x] `PATCH /api/workflows/[id]` — modifier
+- [x] `POST /api/workflows/[id]/activate` — activer
+- [x] `POST /api/workflows/[id]/deactivate` — désactiver
+- [x] `DELETE /api/workflows/[id]` — supprimer
+- [x] `GET/POST /api/workflows/[id]/steps` — gestion des étapes
+- [x] `GET /api/workflows/[id]/executions` — historique exécutions
 
-**Triggers :** new_lead, rdv_planifie, rdv_in_x_hours, lead_status_changed, followup_pending_x_days, à envoyer "x mot" en. story ou en dm ou a commenter sous uns post. 
-**Actions :** send_whatsapp, send_email, create_followup, change_lead_status, send_notification, send message instagram
+**Moteur d'exécution (`src/lib/workflows/`) :**
+- [x] `engine.ts` — exécution séquentielle des étapes (action/delay/condition)
+- [x] `trigger.ts` — dispatcher de triggers (fire-and-forget)
+- [x] `variables.ts` — résolution de templates (`{{prenom}}`, `{{date_rdv}}`, etc.)
+- [x] `templates.ts` — templates pré-configurés
+
+**Actions implémentées :**
+- [x] `send_email` (Resend API)
+- [x] `send_whatsapp` (Meta Cloud API)
+- [x] `send_notification` (Telegram ou WhatsApp au coach)
+- [x] `create_followup`
+- [x] `change_lead_status`
+- [x] `add_tag` / `remove_tag`
+- [ ] `send_dm_instagram` (stub — T-021)
+- [ ] `facebook_conversions_api` (stub — T-013)
+
+**Cron scheduler :**
+- [x] `/api/cron/workflow-scheduler` — reprend les exécutions pausées (delay steps) + triggers temporels
 
 **Frontend (page `/acquisition/automations`) :**
-- [ ] Liste des automations avec toggle actif/inactif
-- [ ] Builder : sélection trigger + config + action + config
-- [ ] Config dynamique selon trigger et action sélectionnés
-- [ ] Templates de messages avec variables ({{prenom}}, {{date_rdv}}, etc.)
-
-**Composants à créer :**
-- `src/components/automations/automation-list.tsx`
-- `src/components/automations/automation-builder.tsx`
-- `src/components/automations/trigger-config.tsx`
-- `src/components/automations/action-config.tsx`
+- [x] Liste des workflows avec toggle actif/inactif
+- [x] Builder visuel : trigger + étapes (action/delay/condition)
+- [x] Création depuis templates ou vierge
+- [x] Compteur d'exécutions + date dernière exécution
 
 ---
 
 ### 5. T-016 · Notifications WhatsApp + Telegram
 **Priorité :** Moyenne
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-03-30)
 
-- [ ] Client WhatsApp Meta Cloud API (`src/lib/whatsapp/client.ts`)
-- [ ] Client Telegram Bot API (`src/lib/telegram/client.ts`)
-- [ ] API route envoi WhatsApp (`/api/notifications/whatsapp`)
-- [ ] API route envoi Telegram (`/api/notifications/telegram`)
-- [ ] Templates messages avec variables dynamiques
+- [x] Client WhatsApp Meta Cloud API (`src/lib/whatsapp/client.ts`)
+- [x] Client Telegram Bot API (`src/lib/telegram/client.ts`)
+- [x] Client Email Resend (`src/lib/email/client.ts`)
+- [x] API route envoi WhatsApp (`/api/notifications/whatsapp`)
+- [x] API route envoi Telegram (`/api/notifications/telegram`)
+- [x] Intégré dans les actions workflow (send_whatsapp, send_notification)
 
 ---
 
-### 6. T-021 · Instagram Automations
+### 6. T-018 · Paramètres — Réglages
+**Priorité :** Basse
+**Statut :** ✅ Terminé (2026-03-30)
+
+**API :**
+- [x] `GET/PATCH /api/user/profile` — modifier profil (nom)
+- [x] `POST /api/user/avatar` — upload avatar (Supabase Storage)
+- [x] `GET/PATCH /api/workspaces` — modifier workspace (nom, timezone, accent_color)
+- [x] `POST/DELETE /api/workspaces/logo` — upload/suppression logo
+- [x] `DELETE /api/user/account` — supprimer compte + workspace
+
+**Frontend (page `/parametres/reglages`) :**
+- [x] Formulaire profil (nom, email, photo)
+- [x] Formulaire workspace (nom, logo, fuseau horaire)
+- [x] Section suppression compte avec confirmation
+- [x] **Branding** — formulaire couleur d'accent (presets + hex custom) + upload logo + preview live
+
+---
+
+### 6b. Dark/Light Mode
+**Statut :** ✅ Terminé (2026-03-31)
+
+- [x] ThemeProvider avec `next-themes` (class attribute, default dark)
+- [x] Toggle dans le footer sidebar (Sun/Moon icons, labels français)
+- [x] CSS variables complètes light/dark dans `globals.css`
+- [x] Support `prefers-color-scheme` (système)
+
+**Fichiers :** `src/components/theme/ThemeProvider.tsx`, `src/components/theme/ThemeToggle.tsx`
+
+---
+
+### 6c. Branding dynamique
+**Statut :** ✅ Terminé (2026-03-31)
+
+- [x] Migration SQL : `accent_color` + `logo_url` dans workspaces + bucket `workspace-logos`
+- [x] `BrandingInjector` — injection dynamique de CSS variables (`--color-primary`, etc.)
+- [x] `BrandingForm` — presets couleurs (12 couleurs) + hex custom + preview live
+- [x] Refactor global : couleurs hardcodées → CSS variables `var(--color-primary)`
+- [x] Logo affiché dans la sidebar si configuré
+- [ ] **⚠️ Migration non exécutée dans Supabase** (section à ajouter dans `sql-a-executer.md`)
+
+**Fichiers :** `src/lib/branding/BrandingInjector.tsx`, `src/lib/branding/utils.ts`, `src/components/settings/BrandingForm.tsx`, `supabase/migrations/003_branding.sql`
+**Spec :** `docs/superpowers/specs/2026-03-31-branding-customization-design.md`
+
+---
+
+### 7. T-019 · Paramètres — Page Intégrations
+**Priorité :** Basse
+**Statut :** ✅ Terminé (2026-03-30)
+
+- [x] Card par service : Telegram, WhatsApp, Meta, Google Agenda, Stripe
+- [x] Chaque card : icône, nom, description, statut, date connexion, bouton action
+- [x] Modale de connexion (Telegram: bot token + chat ID, WhatsApp: phone ID + access token)
+- [x] Validation automatique des credentials
+- [x] Toggle actif/inactif + déconnexion avec confirmation
+- [x] Placeholders OAuth pour Meta, Google Agenda (sera implémenté par Rémy)
+- [x] Chiffrement des credentials en base (`src/lib/crypto.ts`)
+
+---
+
+### 8. T-022 · Module Calendrier / Booking (type Calendly)
+**Priorité :** Haute
+**Statut :** 🔄 En cours — code implémenté, migration SQL en attente
+**Spec :** `docs/superpowers/specs/2026-03-30-agenda-booking-design.md`
+
+**Base de données :**
+- [x] Migration SQL : tables `workspace_slugs`, `booking_calendars`, `bookings`
+- [ ] **⚠️ Migration non exécutée dans Supabase** (Rémy doit run section 3 de `sql-a-executer.md`)
+
+**API :**
+- [x] CRUD `/api/booking-calendars`
+- [x] CRUD `/api/bookings`
+- [x] API publique `/api/public/book/[slug]/[slug]` (créneaux + réservation)
+- [x] API `/api/workspaces/slug` (slug public)
+- [x] Calcul des créneaux disponibles (`src/lib/bookings/availability.ts`)
+- [x] Anti-double-booking
+- [x] Création lead auto depuis booking public
+- [x] Trigger workflow `booking_created`
+
+**Frontend — Agenda (`/agenda`) :**
+- [x] Vues Jour / Semaine / Mois
+- [x] Sidebar : mini-calendrier + filtres calendriers
+- [x] Modale nouveau RDV (calendrier ou événement perso)
+- [x] Panel détails avec statut + suppression
+
+**Frontend — Paramètres Calendriers (`/parametres/calendriers`) :**
+- [x] Liste calendriers avec cards
+- [x] Éditeur : général, disponibilités hebdo, champs formulaire, lien
+
+**Frontend — Booking public (`/book/[slug]/[slug]`) :**
+- [x] Page Calendly-style avec branding coach
+- [x] Formulaire dynamique + page de confirmation
+
+**Ce qui reste :**
+- [ ] Exécuter migration SQL dans Supabase
+- [ ] Tester end-to-end
+- [ ] Ajouter champ slug workspace dans page Réglages (A-022-01)
+
+---
+
+### 9. T-021 · Instagram Automations
 **Priorité :** Moyenne
 **Statut :** ⬜ Non démarré
 
@@ -101,44 +216,7 @@
 - [ ] Intégration Instagram Graph API
 - [ ] Config des triggers : réponse à un mot-clé en story, DM, commentaire
 - [ ] Actions automatisées selon le trigger
-- [ ] Templates messages avec variables dynamiques
-
-**Fichiers à créer :**
-- `src/app/api/instagram/route.ts`
-- `src/lib/instagram/client.ts`
-- `src/components/instagram/`
-
----
-
-### 7. T-018 · Paramètres — Réglages
-**Priorité :** Basse
-**Statut :** ⬜ Non démarré
-
-**API :**
-- [ ] `PATCH /api/user/profile` — modifier profil (nom, avatar)
-- [ ] `PATCH /api/workspaces` — modifier workspace (nom, timezone)
-- [ ] `DELETE /api/user/account` — supprimer compte + workspace
-
-**Frontend (page `/parametres/reglages`) :**
-- [ ] Formulaire profil (nom, email, photo — upload Supabase Storage)
-- [ ] Formulaire workspace (nom, fuseau horaire)
-- [ ] Section suppression compte avec confirmation
-
-**Composants à créer :**
-- `src/components/settings/profile-form.tsx`
-- `src/components/settings/workspace-form.tsx`
-- `src/components/settings/delete-account.tsx`
-
----
-
-### 8. T-019 · Paramètres — Page Intégrations
-**Priorité :** Basse
-**Statut :** ⬜ Non démarré
-
-**Frontend (page `/parametres/integrations`) :**
-- [ ] Card par service : Google Agenda, Meta, WhatsApp, Stripe (V2 grisé), Telegram
-- [ ] Chaque card : icône, nom, description, statut (connecté/non), date connexion, bouton action
-- [ ] Boutons Connecter/Déconnecter (appellent les API d'intégration de Rémy pour Meta/Google)
+- [ ] Compléter le stub `send_dm_instagram` dans les workflows
 
 ---
 
@@ -149,12 +227,17 @@
 | 1 | Auth (T-002) | Critique | ✅ |
 | 2 | Closing (T-007) | Haute | ✅ |
 | 3 | Follow-ups (T-008) | Haute | ✅ |
-| 4 | Automations (T-014) | Moyenne | ⬜ |
-| 5 | Notifications WhatsApp/Telegram (T-016) | Moyenne | ⬜ |
-| 6 | Instagram Automations (T-021) | Moyenne | ⬜ |
-| 7 | Paramètres Réglages (T-018) | Basse | ⬜ |
-| 8 | Paramètres Intégrations (T-019) | Basse | ⬜ |
+| 4 | Automations/Workflows (T-014) | Moyenne | ✅ |
+| 5 | Notifications WhatsApp/Telegram (T-016) | Moyenne | ✅ |
+| 6 | Paramètres Réglages (T-018) | Basse | ✅ |
+| 6b | Dark/Light Mode | — | ✅ |
+| 6c | Branding dynamique | — | ✅ (attente migration SQL) |
+| 7 | Paramètres Intégrations (T-019) | Basse | ✅ |
+| 8 | Calendrier/Booking (T-022) | Haute | 🔄 (attente migration SQL) |
+| 9 | Instagram Automations (T-021) | Moyenne | ⬜ |
+
+**Score : 9/11 terminées · 2 en attente migration SQL · 1 non démarrée**
 
 ---
 
-*Créé le 2026-03-27 — ClosRM*
+*Mis à jour le 2026-03-31 — ClosRM*

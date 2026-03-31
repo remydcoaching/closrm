@@ -18,8 +18,8 @@ interface StatsClientProps {
 }
 
 const CARD_STYLE = {
-  background: '#0f0f11',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-primary)',
   borderRadius: 12,
   padding: 16,
 }
@@ -27,7 +27,7 @@ const CARD_STYLE = {
 const CARD_TITLE_STYLE = {
   fontSize: 11,
   fontWeight: 600,
-  color: '#888',
+  color: 'var(--text-tertiary)',
   letterSpacing: '0.5px',
   marginBottom: 12,
   textTransform: 'uppercase' as const,
@@ -40,7 +40,7 @@ export default function StatsClient({
     <div style={{ padding: 32 }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 }}>Statistiques</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Statistiques</h1>
         <StatsPeriodSelector current={period} />
       </div>
 

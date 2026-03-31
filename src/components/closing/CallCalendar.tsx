@@ -22,42 +22,42 @@ export default function CallCalendar({ calls, loading, onCallClick }: Props) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }))
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
-  if (loading) return <div style={{ textAlign: 'center', padding: 48, color: '#555' }}>Chargement...</div>
+  if (loading) return <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-label)' }}>Chargement...</div>
 
   return (
     <div>
       {/* Navigation */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ChevronLeft size={16} color="#888" />
           </button>
-          <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ChevronRight size={16} color="#888" />
           </button>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginLeft: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginLeft: 8 }}>
             {format(weekStart, 'd', { locale: fr })} - {format(addDays(weekStart, 6), 'd MMMM yyyy', { locale: fr })}
           </span>
         </div>
-        <button onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', color: '#888', fontSize: 12, cursor: 'pointer' }}>
+        <button onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', color: 'var(--text-tertiary)', fontSize: 12, cursor: 'pointer' }}>
           Aujourd&apos;hui
         </button>
       </div>
 
       {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '50px repeat(7, 1fr)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '50px repeat(7, 1fr)', border: '1px solid var(--border-primary)', borderRadius: 12, overflow: 'hidden' }}>
         {/* Header row */}
-        <div style={{ background: '#0a0a0c', padding: 8, borderBottom: '1px solid rgba(255,255,255,0.06)' }} />
+        <div style={{ background: 'var(--bg-input)', padding: 8, borderBottom: '1px solid var(--border-primary)' }} />
         {days.map((day) => {
           const today = isToday(day)
           return (
             <div key={day.toISOString()} style={{
-              background: today ? 'rgba(0,200,83,0.04)' : '#0a0a0c',
-              padding: '8px 6px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-              borderLeft: '1px solid rgba(255,255,255,0.04)', textAlign: 'center',
+              background: today ? 'rgba(0,200,83,0.04)' : 'var(--bg-input)',
+              padding: '8px 6px', borderBottom: '1px solid var(--border-primary)',
+              borderLeft: '1px solid var(--bg-hover)', textAlign: 'center',
             }}>
-              <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase' as const }}>{format(day, 'EEE', { locale: fr })}</div>
-              <div style={{ fontSize: 16, fontWeight: today ? 700 : 500, color: today ? '#00C853' : '#fff', marginTop: 2 }}>{format(day, 'd')}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' as const }}>{format(day, 'EEE', { locale: fr })}</div>
+              <div style={{ fontSize: 16, fontWeight: today ? 700 : 500, color: today ? 'var(--color-primary)' : 'var(--text-primary)', marginTop: 2 }}>{format(day, 'd')}</div>
             </div>
           )
         })}
@@ -65,7 +65,7 @@ export default function CallCalendar({ calls, loading, onCallClick }: Props) {
         {/* Hour rows */}
         {HOURS.map((hour) => (
           <>
-            <div key={`h-${hour}`} style={{ padding: '4px 6px', fontSize: 10, color: '#444', textAlign: 'right', borderBottom: '1px solid rgba(255,255,255,0.03)', minHeight: 48, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+            <div key={`h-${hour}`} style={{ padding: '4px 6px', fontSize: 10, color: 'var(--text-label)', textAlign: 'right', borderBottom: '1px solid var(--bg-hover)', minHeight: 48, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
               {hour}h
             </div>
             {days.map((day) => {
@@ -75,8 +75,8 @@ export default function CallCalendar({ calls, loading, onCallClick }: Props) {
               })
               return (
                 <div key={`${day.toISOString()}-${hour}`} style={{
-                  borderLeft: '1px solid rgba(255,255,255,0.04)',
-                  borderBottom: '1px solid rgba(255,255,255,0.03)',
+                  borderLeft: '1px solid var(--bg-hover)',
+                  borderBottom: '1px solid var(--bg-hover)',
                   padding: 2, minHeight: 48,
                   background: isToday(day) ? 'rgba(0,200,83,0.02)' : 'transparent',
                 }}>
@@ -84,11 +84,11 @@ export default function CallCalendar({ calls, loading, onCallClick }: Props) {
                     const oc = OUTCOME_CONFIG[call.outcome]
                     return (
                       <div key={call.id} onClick={() => onCallClick(call)} style={{
-                        background: '#141416', border: '1px solid rgba(255,255,255,0.06)',
+                        background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
                         borderLeft: `3px solid ${oc.color}`, borderRadius: 6, padding: '4px 6px',
                         marginBottom: 2, cursor: 'pointer', fontSize: 10,
                       }}>
-                        <div style={{ color: '#ccc', fontWeight: 500 }}>
+                        <div style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                           {format(new Date(call.scheduled_at), "HH'h'mm")} — {call.lead.first_name}
                         </div>
                         <div style={{ marginTop: 2 }}>

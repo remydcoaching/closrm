@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createLeadSchema, leadFiltersSchema } from '@/lib/validations/leads'
+import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,9 +33,13 @@ export async function GET(request: NextRequest) {
     // Recherche texte (prénom, nom, email, téléphone)
     if (filters.search) {
       const s = filters.search.trim()
-      query = query.or(
-        `first_name.ilike.%${s}%,last_name.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`
-      )
+      if (s) {
+        // Escape special PostgREST characters in search term
+        const escaped = s.replace(/[%_]/g, '\\$&')
+        query = query.or(
+          `first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%`
+        )
+      }
     }
 
     // Filtre par tags (au moins un des tags listés)
@@ -53,6 +58,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
 
     if (error) {
+      console.error('[API /leads] Supabase error:', error.message, '| filters:', JSON.stringify(filters))
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -105,6 +111,12 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // Fire workflow triggers (non-blocking)
+    fireTriggersForEvent(workspaceId, 'new_lead', {
+      lead_id: data.id,
+      source: data.source,
+    }).catch(() => {})
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {

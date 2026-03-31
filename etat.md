@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-03-30 (Revue projet Pierre + Rémy)
+> Dernière mise à jour : 2026-03-31 (T-022 Calendrier/Booking — Pierre)
 
 ---
 
@@ -29,16 +29,18 @@
 | Module Follow-ups — API + Frontend | Pierre | ✅ Terminé | T-008 |
 | Module Statistiques | Rémy | ✅ Terminé | T-011 |
 | Base de données (vue globale) | Rémy | ✅ Terminé | T-012 |
-| Module Automations | Pierre | ⬜ Non démarré | T-014 |
-| Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | 🔄 En cours (code complet, en attente env vars + tests) | T-013 |
+| Module Automations (Workflows) | Pierre | ✅ Terminé | T-014 |
+| Notifications WhatsApp/Telegram/Email | Pierre | ✅ Terminé | T-016 |
+| Paramètres Réglages | Pierre | ✅ Terminé | T-018 |
+| Paramètres Intégrations | Pierre | ✅ Terminé | T-019 |
+| Dark/Light Mode | Pierre | ✅ Terminé | — |
+| Branding dynamique (couleur + logo) | Pierre | ✅ Terminé (attente migration SQL) | — |
+| Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | 🔄 En cours (code complet, en attente tests Vercel) | T-013 |
 | Intégration Google Agenda | Rémy | ⬜ Non démarré | T-015 |
-| Notifications WhatsApp/Telegram | Pierre | ⬜ Non démarré | T-016 |
 | Module Publicités (Meta Ads dashboard) | Rémy | ⬜ Non démarré | T-017 |
-| Paramètres Réglages | Pierre | ⬜ Non démarré | T-018 |
-| Paramètres Intégrations (page UI) | Rémy | 🔄 En cours (page Meta créée, autres en placeholder) | T-013/T-019 |
 | Module Emails (séquences + broadcast) | Rémy | ⬜ Non démarré | T-020 |
 | Instagram Automations (follow, DM, commentaires ads) | Pierre | ⬜ Non démarré | T-021 |
-| Module Calendrier / Booking (type Calendly) | — | ⬜ Non démarré (post-V1) | T-022 |
+| Module Calendrier / Booking (type Calendly) | Pierre | 🔄 En cours (code fait, migration SQL en attente) | T-022 |
 | V2 — Tunnels | — | 🔒 Bloqué (V2) | — |
 | V2 — Stripe | — | 🔒 Bloqué (V2) | — |
 | V2 — Multi-membres équipe | — | 🔒 Bloqué (V2) | — |
@@ -142,7 +144,8 @@
 | 2026-03-28 | Rémy | T-011 — Module Statistiques (page + queries + 6 composants) | `feature/remy-dashboard` |
 | 2026-03-28 | Rémy | T-012 — Base de données (vue globale) | `feature/remy-database` |
 | 2026-03-30 | Rémy | T-013 — Meta Ads Bloc A (OAuth + webhook + UI intégrations) | `feature/remy-meta-ads` |
+| 2026-03-31 | Pierre | T-022 — Module Calendrier/Booking (27 fichiers, en attente migration SQL) | `feature/pierre-automations` |
 
 ---
 
-*Mis à jour par Claude Code — ClosRM*
+*Mis à jour le 2026-03-31 par Claude Code — ClosRM*

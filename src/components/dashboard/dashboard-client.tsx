@@ -35,10 +35,10 @@ export default function DashboardClient({
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28,
       }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
             Bonjour, {firstName} 👋
           </h1>
-          <p style={{ fontSize: 13, color: '#666', marginTop: 4 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
             Voici votre activité du moment
           </p>
         </div>

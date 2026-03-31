@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createCallSchema, callFiltersSchema } from '@/lib/validations/calls'
+import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -114,6 +115,13 @@ export async function POST(request: NextRequest) {
       .update({ status: newStatus })
       .eq('id', parsed.data.lead_id)
       .eq('workspace_id', workspaceId)
+
+    // Fire workflow triggers (non-blocking)
+    fireTriggersForEvent(workspaceId, 'call_scheduled', {
+      lead_id: parsed.data.lead_id,
+      call_id: data.id,
+      call_type: parsed.data.type,
+    }).catch(() => {})
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {

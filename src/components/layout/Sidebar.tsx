@@ -5,14 +5,17 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
   Zap, Megaphone, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
+  CalendarDays, CalendarRange,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import ThemeToggle from '@/components/theme/ThemeToggle'
 
 const NAV = [
   {
     title: 'VENTES',
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Agenda', href: '/agenda', icon: CalendarDays },
       { label: 'Leads', href: '/leads', icon: Users },
       { label: 'Closing', href: '/closing', icon: Phone },
       { label: 'Follow-ups', href: '/follow-ups', icon: Bell },
@@ -30,13 +33,14 @@ const NAV = [
   {
     title: 'COMPTE',
     items: [
-        { label: 'Intégrations', href: '/parametres/integrations', icon: Plug },
       { label: 'Paramètres', href: '/parametres/reglages', icon: Settings },
+      { label: 'Intégrations', href: '/parametres/integrations', icon: Plug },
+      { label: 'Calendriers', href: '/parametres/calendriers', icon: CalendarRange },
     ],
   },
 ]
 
-export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: boolean; onToggle: () => void; logoUrl?: string | null }) {
   const pathname = usePathname()
   const router = useRouter()
   const W = collapsed ? 64 : 220
@@ -51,24 +55,32 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
   return (
     <aside style={{
       position: 'fixed', left: 0, top: 0, bottom: 0, width: W,
-      background: '#0c0c0e', borderRight: '1px solid rgba(255,255,255,0.06)',
+      background: 'var(--bg-secondary)', borderRight: '1px solid var(--border-primary)',
       display: 'flex', flexDirection: 'column', zIndex: 40,
       transition: 'width 0.2s ease',
     }}>
       {/* Header */}
       <div style={{
         height: 56, display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between',
-        padding: '0 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
+        padding: '0 16px', borderBottom: '1px solid var(--border-primary)', flexShrink: 0,
       }}>
         {!collapsed && (
-          <Link href="/dashboard" style={{ fontSize: 18, fontWeight: 700, color: '#fff', textDecoration: 'none' }}>
-            Clos<span style={{ color: '#00C853' }}>RM</span>
+          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', textDecoration: 'none' }}>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
+            ) : null}
+            Clos<span style={{ color: 'var(--color-primary)' }}>RM</span>
+          </Link>
+        )}
+        {collapsed && logoUrl && (
+          <Link href="/dashboard" style={{ textDecoration: 'none' }}>
+            <img src={logoUrl} alt="Logo" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
           </Link>
         )}
         <button onClick={onToggle} style={{
-          width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', cursor: 'pointer', color: '#666',
+          width: 28, height: 28, borderRadius: 6, background: 'var(--bg-hover)',
+          border: '1px solid var(--border-primary)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)',
         }}>
           {collapsed ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
         </button>
@@ -79,7 +91,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
         {NAV.map((group) => (
           <div key={group.title} style={{ marginBottom: 20 }}>
             {!collapsed && (
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#444', padding: '0 10px', marginBottom: 6, letterSpacing: '0.2em', textTransform: 'uppercase' as const }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-label)', padding: '0 10px', marginBottom: 6, letterSpacing: '0.2em', textTransform: 'uppercase' as const }}>
                 {group.title}
               </div>
             )}
@@ -91,8 +103,8 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
                   display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '8px 0' : '7px 10px',
                   justifyContent: collapsed ? 'center' : 'flex-start',
                   borderRadius: 8, fontSize: 13, textDecoration: 'none', marginBottom: 2,
-                  color: active ? '#00C853' : '#888',
-                  background: active ? 'rgba(0,200,83,0.08)' : 'transparent',
+                  color: active ? 'var(--color-primary)' : 'var(--text-tertiary)',
+                  background: active ? 'var(--bg-active)' : 'transparent',
                   transition: 'all 0.15s ease',
                 }}>
                   <Icon size={16} style={{ flexShrink: 0 }} />
@@ -104,12 +116,13 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
         ))}
       </nav>
 
-      {/* Logout */}
-      <div style={{ padding: 8, borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+      {/* Footer */}
+      <div style={{ padding: 8, borderTop: '1px solid var(--border-primary)', flexShrink: 0 }}>
+        <ThemeToggle collapsed={collapsed} />
         <button onClick={logout} title={collapsed ? 'Déconnexion' : undefined} style={{
           display: 'flex', alignItems: 'center', gap: 10, width: '100%',
           padding: collapsed ? '8px 0' : '7px 10px', justifyContent: collapsed ? 'center' : 'flex-start',
-          borderRadius: 8, fontSize: 13, color: '#888', background: 'transparent',
+          borderRadius: 8, fontSize: 13, color: 'var(--text-tertiary)', background: 'transparent',
           border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
         }}>
           <LogOut size={16} style={{ flexShrink: 0 }} />

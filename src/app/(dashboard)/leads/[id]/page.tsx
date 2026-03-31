@@ -77,7 +77,7 @@ export default function LeadDetailPage() {
         <p style={{ color: '#ef4444' }}>{error || 'Lead introuvable.'}</p>
         <button onClick={() => router.push('/leads')} style={{
           marginTop: 12, display: 'flex', alignItems: 'center', gap: 6,
-          color: '#888', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
+          color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
         }}>
           <ArrowLeft size={14} /> Retour aux leads
         </button>
@@ -90,7 +90,7 @@ export default function LeadDetailPage() {
       {/* Breadcrumb */}
       <button onClick={() => router.push('/leads')} style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        color: '#666', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
+        color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
         marginBottom: 20,
       }}>
         <ArrowLeft size={14} /> Leads
@@ -98,19 +98,19 @@ export default function LeadDetailPage() {
 
       {/* Header */}
       <div style={{
-        background: '#0f0f11', border: '1px solid rgba(255,255,255,0.06)',
+        background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
         borderRadius: 14, padding: 24, marginBottom: 20,
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16,
       }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#fff', margin: '0 0 8px' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
             {lead.first_name} {lead.last_name}
           </h1>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <StatusBadge status={lead.status} />
             <SourceBadge source={lead.source} />
             {lead.phone && (
-              <span style={{ fontSize: 12, color: '#666', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Phone size={11} /> {lead.phone}
               </span>
             )}
@@ -134,7 +134,7 @@ export default function LeadDetailPage() {
           <button onClick={() => setShowCallModal(true)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: '#00C853', border: 'none', color: '#000', cursor: 'pointer',
+            background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
           }}>
             <Calendar size={13} /> Planifier RDV
           </button>
@@ -148,40 +148,40 @@ export default function LeadDetailPage() {
 
         {/* Colonne droite — infos rapides */}
         <div style={{
-          background: '#0f0f11', border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
           borderRadius: 14, padding: 20, position: 'sticky', top: 24,
         }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>
             Résumé
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <p style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>Tentatives d&apos;appel</p>
-              <p style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>{lead.call_attempts}</p>
+              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Tentatives d&apos;appel</p>
+              <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{lead.call_attempts}</p>
             </div>
             <div>
-              <p style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>Appels planifiés</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Appels planifiés</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
                 {lead.calls.filter(c => c.outcome === 'pending').length}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>Follow-ups en attente</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Follow-ups en attente</p>
+              <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
                 {lead.follow_ups.filter(f => f.status === 'en_attente').length}
               </p>
             </div>
-            <div style={{ paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <p style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>Source publicitaire</p>
+            <div style={{ paddingTop: 8, borderTop: '1px solid var(--border-primary)' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Source publicitaire</p>
               {lead.meta_campaign_id ? (
-                <div style={{ fontSize: 12, color: '#aaa' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   <p>Campagne : {lead.meta_campaign_id}</p>
                   {lead.meta_adset_id && <p>Ad Set : {lead.meta_adset_id}</p>}
                   {lead.meta_ad_id && <p>Ad : {lead.meta_ad_id}</p>}
                 </div>
               ) : (
-                <p style={{ fontSize: 12, color: '#444' }}>Non disponible</p>
+                <p style={{ fontSize: 12, color: 'var(--text-label)' }}>Non disponible</p>
               )}
             </div>
           </div>

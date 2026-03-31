@@ -27,9 +27,9 @@ export default function StatsPeriodSelector({ current }: StatsPeriodSelectorProp
               fontSize: 12,
               fontWeight: 600,
               textDecoration: 'none',
-              border: isActive ? '1px solid #00C853' : '1px solid #262626',
-              color: isActive ? '#00C853' : '#666',
-              background: isActive ? 'rgba(0,200,83,0.08)' : 'transparent',
+              border: isActive ? '1px solid var(--color-primary)' : `1px solid var(--border-secondary)`,
+              color: isActive ? 'var(--color-primary)' : 'var(--text-muted)',
+              background: isActive ? 'var(--bg-active)' : 'transparent',
             }}
           >
             {p.label}

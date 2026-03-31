@@ -13,13 +13,13 @@ interface UpcomingCallsProps {
 const CATEGORY_CONFIG = {
   overdue: { label: 'En retard', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: '#ef4444' },
   today:   { label: "Aujourd'hui", color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: '#f59e0b' },
-  upcoming: { label: 'À venir', color: '#888', bg: 'rgba(255,255,255,0.05)', border: '#333' },
+  upcoming: { label: 'À venir', color: 'var(--text-tertiary)', bg: 'var(--bg-hover)', border: 'var(--text-label)' },
 }
 
 export default function UpcomingCalls({ calls, onLeadClick }: UpcomingCallsProps) {
   const card: React.CSSProperties = {
-    background: '#0f0f11',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border-primary)',
     borderRadius: 14,
     padding: 20,
   }
@@ -31,15 +31,15 @@ export default function UpcomingCalls({ calls, onLeadClick }: UpcomingCallsProps
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Phone size={14} color="#f59e0b" />
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Prochains appels</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Prochains appels</span>
         </div>
-        <span style={{ fontSize: 10, color: '#555' }}>Aujourd&apos;hui + 7j</span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Aujourd&apos;hui + 7j</span>
       </div>
 
       {calls.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '28px 0' }}>
-          <Phone size={22} color="#333" />
-          <p style={{ fontSize: 13, color: '#888', marginTop: 10 }}>Aucun appel planifié</p>
+          <Phone size={22} color="var(--text-label)" />
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 10 }}>Aucun appel planifié</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -51,7 +51,7 @@ export default function UpcomingCalls({ calls, onLeadClick }: UpcomingCallsProps
                 onClick={() => onLeadClick(call.lead_id)}
                 style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '8px 10px', background: '#0a0a0c',
+                  padding: '8px 10px', background: 'var(--bg-input)',
                   borderRadius: 8,
                   border: 'none',
                   borderLeft: `2px solid ${cfg.border}`,
@@ -59,8 +59,8 @@ export default function UpcomingCalls({ calls, onLeadClick }: UpcomingCallsProps
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>{call.lead_name}</div>
-                  <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{call.lead_name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                     {call.type === 'setting' ? 'Setting' : 'Closing'} ·{' '}
                     {format(new Date(call.scheduled_at), "d MMM 'à' HH'h'mm", { locale: fr })}
                   </div>

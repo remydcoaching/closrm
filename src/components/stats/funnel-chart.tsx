@@ -12,7 +12,7 @@ interface FunnelChartProps {
 export default function FunnelChart({ data }: FunnelChartProps) {
   if (data.every(d => d.count === 0)) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: '#555', fontSize: 13 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: 'var(--text-muted)', fontSize: 13 }}>
         Aucune donnée sur cette période
       </div>
     )
@@ -34,9 +34,9 @@ export default function FunnelChart({ data }: FunnelChartProps) {
           allowDecimals={false}
         />
         <Tooltip
-          contentStyle={{ background: '#141416', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: '#aaa' }}
-          cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+          contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
+          labelStyle={{ color: 'var(--text-tertiary)' }}
+          cursor={{ fill: 'var(--bg-subtle)' }}
           formatter={(value, _name, props) => [
             `${value ?? 0} (${(props.payload as FunnelData | undefined)?.pct ?? 0}%)`,
             'Leads',
@@ -47,7 +47,7 @@ export default function FunnelChart({ data }: FunnelChartProps) {
             dataKey="pct"
             position="top"
             formatter={(v) => (v as number) > 0 ? `${v}%` : ''}
-            style={{ fontSize: 10, fill: '#888' }}
+            style={{ fontSize: 10, fill: 'var(--text-tertiary)' }}
           />
           {data.map((entry) => (
             <Cell key={entry.label} fill={entry.color} fillOpacity={0.85} />
