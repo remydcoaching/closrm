@@ -62,7 +62,7 @@ export function buildOAuthUrl(state: string): string {
     client_id: appId(),
     redirect_uri: callbackUrl(),
     state,
-    scope: 'leads_retrieval,pages_show_list,pages_manage_metadata,pages_read_engagement',
+    scope: 'leads_retrieval,pages_show_list,pages_manage_metadata,pages_read_engagement,business_management',
     response_type: 'code',
   })
   return `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`
@@ -108,15 +108,39 @@ export async function getLongLivedToken(
 // ─── Pages ───────────────────────────────────────────────────────────────────
 
 export async function getPages(userToken: string): Promise<MetaPage[]> {
+  // 1. Try direct user pages (/me/accounts)
   const res = await fetch(
     `${GRAPH_URL}/me/accounts?fields=id,name,access_token&access_token=${userToken}`
   )
-  if (!res.ok) {
-    const err = await res.json()
-    throw new Error(`Meta get pages failed: ${JSON.stringify(err)}`)
+  if (res.ok) {
+    const data: { data: MetaPage[] } = await res.json()
+    if (data.data && data.data.length > 0) {
+      return data.data
+    }
   }
-  const data: { data: MetaPage[] } = await res.json()
-  return data.data ?? []
+
+  // 2. Fallback: pages managed via Business Manager (Meta Business Suite)
+  // Pages linked to a Business don't appear in /me/accounts
+  const bizRes = await fetch(
+    `${GRAPH_URL}/me/businesses?fields=owned_pages{id,name,access_token}&access_token=${userToken}`
+  )
+  if (!bizRes.ok) {
+    return []
+  }
+  const bizData: {
+    data: Array<{
+      id: string
+      owned_pages?: { data: MetaPage[] }
+    }>
+  } = await bizRes.json()
+
+  const pages: MetaPage[] = []
+  for (const biz of bizData.data ?? []) {
+    if (biz.owned_pages?.data) {
+      pages.push(...biz.owned_pages.data)
+    }
+  }
+  return pages
 }
 
 export async function subscribePageToLeadgen(

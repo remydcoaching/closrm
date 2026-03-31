@@ -44,14 +44,14 @@ export async function GET(request: NextRequest) {
     // 1. Exchange code for short-lived token
     const shortToken = await exchangeCodeForToken(code)
 
-    // 2. Convert to long-lived token (60 days)
-    const { access_token: longToken, expires_at } = await getLongLivedToken(shortToken)
-
-    // 3. Get user's pages
-    const pages = await getPages(longToken)
+    // 2. Get pages with short-lived token (before long-lived exchange)
+    const pages = await getPages(shortToken)
     if (pages.length === 0) {
       return NextResponse.redirect(`${REDIRECT_BASE}?error=no_pages`)
     }
+
+    // 3. Convert to long-lived token (60 days)
+    const { access_token: longToken, expires_at } = await getLongLivedToken(shortToken)
 
     // Take first page (V1: one page per workspace)
     const page = pages[0]

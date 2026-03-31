@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
-  Zap, Megaphone, Settings, PanelLeftClose, PanelLeft, LogOut,
+  Zap, Megaphone, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -30,6 +30,7 @@ const NAV = [
   {
     title: 'COMPTE',
     items: [
+        { label: 'Intégrations', href: '/parametres/integrations', icon: Plug },
       { label: 'Paramètres', href: '/parametres/reglages', icon: Settings },
     ],
   },
