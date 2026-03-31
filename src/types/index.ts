@@ -244,7 +244,7 @@ export interface BookingCalendar {
   slug: string
   description: string | null
   duration_minutes: number
-  location: string | null
+  location_ids: string[]
   color: string
   form_fields: FormField[]
   availability: WeekAvailability
@@ -252,6 +252,15 @@ export interface BookingCalendar {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface BookingLocation {
+  id: string
+  workspace_id: string
+  name: string
+  address: string | null
+  is_active: boolean
+  created_at: string
 }
 
 // ── Booking ──────────────────────────────────────────────────────────────────
@@ -273,13 +282,15 @@ export interface Booking {
   form_data: Record<string, string>
   notes: string | null
   google_event_id: string | null
+  location_id: string | null
   is_personal: boolean
   created_at: string
 }
 
 export interface BookingWithCalendar extends Booking {
-  booking_calendar: Pick<BookingCalendar, 'name' | 'color' | 'location'> | null
+  booking_calendar: Pick<BookingCalendar, 'name' | 'color'> | null
   lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email'> | null
+  location: Pick<BookingLocation, 'id' | 'name' | 'address'> | null
 }
 
 // ─── Database / Contacts ─────────────────────────────────────────────────────

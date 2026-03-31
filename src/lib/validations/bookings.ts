@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const createBookingSchema = z.object({
   calendar_id: z.string().uuid('ID calendrier invalide.').optional().nullable(),
   lead_id: z.string().uuid('ID lead invalide.').optional().nullable(),
+  location_id: z.string().uuid('ID lieu invalide.').optional().nullable(),
   title: z.string().min(1, 'Le titre est requis.').max(200),
   scheduled_at: z.string().min(1, 'La date est requise.'),
   duration_minutes: z.number().int().min(5).max(480),
