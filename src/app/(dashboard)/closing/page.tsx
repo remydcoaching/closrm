@@ -115,7 +115,7 @@ export default function ClosingPage() {
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '10px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none',
               borderBottom: active ? `2px solid ${c.color}` : '2px solid transparent',
-              background: active ? 'rgba(255,255,255,0.02)' : 'transparent', color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              background: active ? 'var(--bg-subtle)' : 'transparent', color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
               {c.label}

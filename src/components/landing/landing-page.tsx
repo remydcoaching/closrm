@@ -43,7 +43,7 @@ export default function LandingPage() {
             </div>
           </FadeIn>
           <FadeIn delay={0.4}>
-            <div style={{ display: 'inline-flex', gap: 32, padding: '18px 36px', borderRadius: 16, border: '1px solid var(--border-primary)', background: 'rgba(255,255,255,0.02)' }}>
+            <div style={{ display: 'inline-flex', gap: 32, padding: '18px 36px', borderRadius: 16, border: '1px solid var(--border-primary)', background: 'var(--bg-subtle)' }}>
               {[{ v: '14 jours', l: 'Essai gratuit' }, { v: '2 min', l: 'Pour démarrer' }, { v: '0€', l: 'Sans carte bancaire' }].map((s, i) => (
                 <div key={i} style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{s.v}</div>

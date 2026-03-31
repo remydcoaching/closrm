@@ -57,7 +57,7 @@ export default function NewWorkflowModal({ open, onClose, onCreateFromTemplate, 
         maxWidth: 700, width: '90%',
         maxHeight: '80vh', overflowY: 'auto',
         padding: 24,
-        boxShadow: '0 24px 64px rgba(0,0,0,0.8)',
+        boxShadow: '0 24px 64px var(--shadow-dropdown)',
       }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>

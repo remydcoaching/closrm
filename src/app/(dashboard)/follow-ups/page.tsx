@@ -148,7 +148,7 @@ export default function FollowUpsPage() {
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '10px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none',
               borderBottom: active ? `2px solid ${c.color}` : '2px solid transparent',
-              background: active ? 'rgba(255,255,255,0.02)' : 'transparent', color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              background: active ? 'var(--bg-subtle)' : 'transparent', color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
               {c.label}
@@ -189,7 +189,7 @@ export default function FollowUpsPage() {
                   const scheduled = new Date(fu.scheduled_at)
                   const overdue = fu.status === 'en_attente' && scheduled < now
                   return (
-                    <tr key={fu.id} style={{ cursor: 'pointer', transition: 'background 0.15s' }} onClick={() => setSidePanelLeadId(fu.lead.id)} onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                    <tr key={fu.id} style={{ cursor: 'pointer', transition: 'background 0.15s' }} onClick={() => setSidePanelLeadId(fu.lead.id)} onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-subtle)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                       <td style={td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           {overdue && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />}

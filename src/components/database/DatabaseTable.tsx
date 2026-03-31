@@ -86,13 +86,13 @@ export default function DatabaseTable({ contacts, loading, groupBy, onViewContac
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} style={{ ...td, textAlign: 'center', color: '#555', padding: '48px 14px' }}>
+                <td colSpan={9} style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: '48px 14px' }}>
                   Chargement...
                 </td>
               </tr>
             ) : contacts.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ ...td, textAlign: 'center', color: '#555', padding: '48px 14px' }}>
+                <td colSpan={9} style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: '48px 14px' }}>
                   Aucun contact trouvé
                 </td>
               </tr>
@@ -102,13 +102,13 @@ export default function DatabaseTable({ contacts, loading, groupBy, onViewContac
                   <tr key={`group-${i}`}>
                     <td colSpan={9} style={{
                       padding: '8px 14px',
-                      background: 'rgba(255,255,255,0.02)',
+                      background: 'var(--bg-subtle)',
                       borderTop: i > 0 ? '1px solid var(--border-primary)' : undefined,
                       borderBottom: '1px solid var(--border-primary)',
-                      fontSize: 11, fontWeight: 700, color: '#555',
+                      fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
                       letterSpacing: '0.06em', textTransform: 'uppercase',
                     }}>
-                      {row.label} <span style={{ fontWeight: 400, color: '#333' }}>({row.count})</span>
+                      {row.label} <span style={{ fontWeight: 400, color: 'var(--text-label)' }}>({row.count})</span>
                     </td>
                   </tr>
                 )
@@ -120,8 +120,8 @@ export default function DatabaseTable({ contacts, loading, groupBy, onViewContac
               return (
                 <tr
                   key={contact.id}
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', opacity: isDead ? 0.55 : 1 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                  style={{ borderBottom: '1px solid var(--bg-subtle)', opacity: isDead ? 0.55 : 1 }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-subtle)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   {/* Date */}
@@ -168,7 +168,7 @@ export default function DatabaseTable({ contacts, loading, groupBy, onViewContac
                       {contact.tags.length > 2 && (
                         <span style={{ fontSize: 10, color: 'var(--text-label)' }}>+{contact.tags.length - 2}</span>
                       )}
-                      {contact.tags.length === 0 && <span style={{ color: '#333', fontSize: 11 }}>—</span>}
+                      {contact.tags.length === 0 && <span style={{ color: 'var(--text-label)', fontSize: 11 }}>—</span>}
                     </div>
                   </td>
 
@@ -178,7 +178,7 @@ export default function DatabaseTable({ contacts, loading, groupBy, onViewContac
                       {contact.nb_calls} appel{contact.nb_calls !== 1 ? 's' : ''}
                     </div>
                     {contact.last_call_at && (
-                      <div style={{ fontSize: 10, color: '#555', marginTop: 1 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
                         dernier: {format(new Date(contact.last_call_at), 'dd MMM', { locale: fr })}
                       </div>
                     )}

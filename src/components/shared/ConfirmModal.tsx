@@ -29,7 +29,7 @@ export default function ConfirmModal({
       <div style={{
         background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
         borderRadius: 14, padding: '28px 28px 24px', width: '100%', maxWidth: 380,
-        boxShadow: '0 24px 64px rgba(0,0,0,0.8)',
+        boxShadow: '0 24px 64px var(--shadow-dropdown)',
       }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>{title}</h3>
         <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '0 0 24px', lineHeight: 1.5 }}>{message}</p>

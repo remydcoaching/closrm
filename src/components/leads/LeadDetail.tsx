@@ -39,7 +39,7 @@ const sectionTitle = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)'
 const inputStyle = {
   width: '100%', boxSizing: 'border-box' as const,
   padding: '7px 10px',
-  background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-primary)',
+  background: 'var(--bg-subtle)', border: '1px solid var(--border-primary)',
   borderRadius: 7, color: 'var(--text-primary)', fontSize: 13, outline: 'none',
 }
 
@@ -171,7 +171,7 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
                   <button key={value} onClick={() => changeStatus(value)} style={{
                     display: 'block', width: '100%', textAlign: 'left',
                     padding: '7px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
-                    border: 'none', background: lead.status === value ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    border: 'none', background: lead.status === value ? 'var(--bg-hover)' : 'transparent',
                     color: cfg.color, cursor: 'pointer',
                   }}>
                     {cfg.label}

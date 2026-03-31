@@ -240,7 +240,7 @@ export default function LeadsPage() {
                   borderBottom: i < leads.length - 1 ? '1px solid var(--bg-hover)' : 'none',
                   transition: 'background 0.1s',
                 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-subtle)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   {/* Date */}
@@ -277,7 +277,7 @@ export default function LeadsPage() {
                         padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
                         border: '1px solid var(--border-primary)',
                         background: dropdown?.id === lead.id && dropdown?.type === 'attempts'
-                          ? 'var(--border-primary)' : 'rgba(255,255,255,0.03)',
+                          ? 'var(--border-primary)' : 'var(--bg-subtle)',
                         color: lead.call_attempts > 0 ? 'var(--text-primary)' : 'var(--text-label)',
                         cursor: 'pointer', whiteSpace: 'nowrap',
                       }}
@@ -408,7 +408,7 @@ export default function LeadsPage() {
               <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} style={{
                 padding: '5px 10px', borderRadius: 6, fontSize: 12,
                 background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
-                color: page <= 1 ? '#333' : 'var(--text-tertiary)', cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                color: page <= 1 ? 'var(--text-disabled)' : 'var(--text-tertiary)', cursor: page <= 1 ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}>
                 <ChevronLeft size={13} /> Préc.
@@ -416,7 +416,7 @@ export default function LeadsPage() {
               <button disabled={page >= meta.total_pages} onClick={() => setPage(p => p + 1)} style={{
                 padding: '5px 10px', borderRadius: 6, fontSize: 12,
                 background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
-                color: page >= meta.total_pages ? '#333' : 'var(--text-tertiary)',
+                color: page >= meta.total_pages ? 'var(--text-disabled)' : 'var(--text-tertiary)',
                 cursor: page >= meta.total_pages ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: 4,
               }}>
@@ -440,7 +440,7 @@ export default function LeadsPage() {
             border: '1px solid var(--border-primary)',
             borderRadius: 10,
             padding: 5,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+            boxShadow: '0 8px 32px var(--shadow-dropdown)',
             minWidth: dropdown.type === 'status' ? 200 : 160,
           }}
         >

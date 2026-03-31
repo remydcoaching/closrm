@@ -46,7 +46,7 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            background: 'rgba(255,255,255,0.02)',
+            background: 'var(--bg-subtle)',
             border: '1px solid var(--border-primary)',
             borderRadius: 8,
             padding: '8px 12px',

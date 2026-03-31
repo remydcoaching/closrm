@@ -10,7 +10,7 @@ interface SourceChartProps {
 export default function SourceChart({ data }: SourceChartProps) {
   if (data.length === 0) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: '#555', fontSize: 13 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: 'var(--text-muted)', fontSize: 13 }}>
         Aucune donnée sur cette période
       </div>
     )

@@ -33,6 +33,7 @@
   --bg-elevated: #ffffff;
   --bg-input: #f9fafb;
   --bg-hover: rgba(0,0,0,0.04);
+  --bg-subtle: rgba(0,0,0,0.02);
   --bg-active: rgba(0,200,83,0.08);
   --border-primary: rgba(0,0,0,0.08);
   --border-secondary: #e5e7eb;
@@ -41,6 +42,9 @@
   --text-tertiary: #9ca3af;
   --text-muted: #d1d5db;
   --text-label: #9ca3af;
+  --text-disabled: #d1d5db;
+  --grid-line: rgba(0,0,0,0.03);
+  --shadow-dropdown: rgba(0,0,0,0.15);
   --scrollbar-thumb: rgba(0,0,0,0.12);
   --scrollbar-hover: rgba(0,0,0,0.2);
 }
@@ -52,6 +56,7 @@
   --bg-elevated: #141414;
   --bg-input: #0a0a0c;
   --bg-hover: rgba(255,255,255,0.04);
+  --bg-subtle: rgba(255,255,255,0.02);
   --bg-active: rgba(0,200,83,0.08);
   --border-primary: rgba(255,255,255,0.06);
   --border-secondary: #262626;
@@ -60,6 +65,9 @@
   --text-tertiary: #888;
   --text-muted: #666;
   --text-label: #444;
+  --text-disabled: #333;
+  --grid-line: rgba(255,255,255,0.015);
+  --shadow-dropdown: rgba(0,0,0,0.8);
   --scrollbar-thumb: rgba(255,255,255,0.08);
   --scrollbar-hover: rgba(255,255,255,0.15);
 }

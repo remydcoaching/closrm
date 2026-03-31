@@ -100,9 +100,9 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
         </div>
 
         {loading ? (
-          <div style={{ padding: 48, textAlign: 'center', color: '#555' }}>Chargement...</div>
+          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Chargement...</div>
         ) : !lead ? (
-          <div style={{ padding: 48, textAlign: 'center', color: '#555' }}>Lead non trouvé</div>
+          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Lead non trouvé</div>
         ) : (
           <div style={{ padding: 20 }}>
             {/* Identity */}
@@ -193,7 +193,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
             <div style={card}>
               <div style={sectionTitle}>Appels ({lead.calls.length})</div>
               {lead.calls.length === 0 ? (
-                <p style={{ fontSize: 12, color: '#555' }}>Aucun appel</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun appel</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {lead.calls.map((call) => (
@@ -207,7 +207,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
             <div style={card}>
               <div style={sectionTitle}>Follow-ups ({lead.follow_ups.length})</div>
               {lead.follow_ups.length === 0 ? (
-                <p style={{ fontSize: 12, color: '#555' }}>Aucun follow-up</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun follow-up</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {lead.follow_ups.map((fu) => (

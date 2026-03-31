@@ -79,7 +79,7 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
       <div style={{ position: 'relative', width: 280 }}>
         <Search size={14} style={{
           position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-          color: '#555', pointerEvents: 'none',
+          color: 'var(--text-muted)', pointerEvents: 'none',
         }} />
         <input
           type="text"
@@ -150,7 +150,7 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
             {/* Section Statuts */}
             <div style={{ marginBottom: 18 }}>
               <p style={{
-                fontSize: 10, fontWeight: 700, color: '#555',
+                fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
                 textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
               }}>
                 Statut
@@ -176,7 +176,7 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
             {/* Section Sources */}
             <div>
               <p style={{
-                fontSize: 10, fontWeight: 700, color: '#555',
+                fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
                 textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
               }}>
                 Source

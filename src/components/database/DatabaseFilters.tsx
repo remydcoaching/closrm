@@ -42,7 +42,7 @@ type DropdownType = 'status' | 'source' | 'date' | 'reached' | 'group'
 const dropdownBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 5,
   padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
-  background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-primary)',
+  background: 'var(--bg-subtle)', border: '1px solid var(--border-primary)',
   color: 'var(--text-tertiary)', cursor: 'pointer', whiteSpace: 'nowrap',
 }
 
@@ -50,7 +50,7 @@ const dropdownPanel: React.CSSProperties = {
   position: 'fixed', zIndex: 9999,
   background: '#1a1a1c', border: '1px solid var(--border-primary)',
   borderRadius: 10, padding: 8,
-  boxShadow: '0 8px 32px rgba(0,0,0,0.8)', minWidth: 180,
+  boxShadow: '0 8px 32px var(--shadow-dropdown)', minWidth: 180,
 }
 
 export default function DatabaseFilters({ onFiltersChange }: Props) {

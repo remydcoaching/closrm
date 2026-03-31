@@ -12,7 +12,7 @@ interface FunnelChartProps {
 export default function FunnelChart({ data }: FunnelChartProps) {
   if (data.every(d => d.count === 0)) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: '#555', fontSize: 13 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 140, color: 'var(--text-muted)', fontSize: 13 }}>
         Aucune donnée sur cette période
       </div>
     )
@@ -35,8 +35,8 @@ export default function FunnelChart({ data }: FunnelChartProps) {
         />
         <Tooltip
           contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: '#aaa' }}
-          cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+          labelStyle={{ color: 'var(--text-tertiary)' }}
+          cursor={{ fill: 'var(--bg-subtle)' }}
           formatter={(value, _name, props) => [
             `${value ?? 0} (${(props.payload as FunnelData | undefined)?.pct ?? 0}%)`,
             'Leads',

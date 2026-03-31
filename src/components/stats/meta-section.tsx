@@ -63,7 +63,7 @@ export default function MetaSection({ meta }: MetaSectionProps) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span style={{ fontSize: 16 }}>📊</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#aaa' }}>Performance Meta Ads</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)' }}>Performance Meta Ads</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
         {cards.map(({ label, value }) => (

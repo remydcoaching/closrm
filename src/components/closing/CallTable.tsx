@@ -46,7 +46,7 @@ export default function CallTable({ calls, loading, onOutcome, onReschedule, onD
             const overdue = call.outcome === 'pending' && scheduled < now
 
             return (
-              <tr key={call.id} style={{ transition: 'background 0.15s', cursor: 'pointer' }} onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')} onClick={() => onLeadClick(call.lead.id)}>
+              <tr key={call.id} style={{ transition: 'background 0.15s', cursor: 'pointer' }} onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-subtle)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')} onClick={() => onLeadClick(call.lead.id)}>
                 <td style={td}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {overdue && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', animation: 'pulse 2s infinite' }} />}
