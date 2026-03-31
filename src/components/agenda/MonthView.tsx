@@ -85,7 +85,7 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
                 padding: '4px 6px',
                 cursor: 'pointer',
                 opacity: inMonth ? 1 : 0.3,
-                background: today ? 'rgba(229,62,62,0.05)' : 'transparent',
+                background: today ? 'color-mix(in srgb, var(--color-primary) 5%, transparent)' : 'transparent',
                 minHeight: 80,
                 boxSizing: 'border-box',
                 display: 'flex',
@@ -98,7 +98,7 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
                 style={{
                   fontSize: 12,
                   fontWeight: today ? 700 : 400,
-                  color: today ? '#E53E3E' : 'var(--text-primary)',
+                  color: today ? 'var(--color-primary)' : 'var(--text-primary)',
                   marginBottom: 2,
                   lineHeight: 1,
                 }}

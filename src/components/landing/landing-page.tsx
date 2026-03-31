@@ -8,7 +8,7 @@ import FadeIn from './fade-in'
 
 const W: React.CSSProperties = { maxWidth: 1100, margin: '0 auto', padding: '0 32px' }
 const card: React.CSSProperties = { background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 16, padding: 28, overflow: 'hidden' }
-const greenBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 32px', background: 'var(--color-primary)', color: '#fff', fontWeight: 600, fontSize: 15, borderRadius: 12, textDecoration: 'none', boxShadow: '0 4px 30px rgba(0,200,83,0.25)' }
+const greenBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 32px', background: '#00C853', color: '#fff', fontWeight: 600, fontSize: 15, borderRadius: 12, textDecoration: 'none', boxShadow: '0 4px 30px rgba(0,200,83,0.25)' }
 const ghostBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 32px', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', fontSize: 15, borderRadius: 12, textDecoration: 'none' }
 
 export default function LandingPage() {
@@ -23,12 +23,12 @@ export default function LandingPage() {
         <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', maxWidth: 800 }}>
           <FadeIn>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 18px', borderRadius: 99, border: '1px solid rgba(0,200,83,0.2)', background: 'rgba(0,200,83,0.05)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 32 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }} /> Plateforme tout-en-un pour coachs
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C853' }} /> Plateforme tout-en-un pour coachs
             </div>
           </FadeIn>
           <FadeIn delay={0.1}>
             <h1 style={{ fontSize: 'clamp(36px, 6vw, 72px)', fontWeight: 800, lineHeight: 1.05, marginBottom: 24 }}>
-              Transformez vos <span style={{ color: 'var(--color-primary)' }}>leads</span><br />en clients
+              Transformez vos <span style={{ color: '#00C853' }}>leads</span><br />en clients
             </h1>
           </FadeIn>
           <FadeIn delay={0.2}>
@@ -68,7 +68,7 @@ export default function LandingPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
             {[
-              { icon: Users, title: 'Pipeline de Leads', desc: 'Suivez chaque lead du premier contact au closing avec un kanban interactif.', color: 'var(--color-primary)' },
+              { icon: Users, title: 'Pipeline de Leads', desc: 'Suivez chaque lead du premier contact au closing avec un kanban interactif.', color: '#00C853' },
               { icon: Phone, title: 'Closing', desc: 'Gérez vos appels de closing. Vue calendrier, onglets par statut, suivi des résultats.', color: '#a855f7' },
               { icon: Bell, title: 'Follow-ups', desc: 'Relances automatiques par WhatsApp, email ou manuelles. Aucun lead oublié.', color: '#3b82f6' },
               { icon: BarChart2, title: 'Statistiques', desc: 'KPIs, taux de closing, coût par lead, funnel de conversion en temps réel.', color: '#22c55e' },
@@ -114,7 +114,7 @@ export default function LandingPage() {
               return (
                 <FadeIn key={s.n} delay={i * 0.1}>
                   <div style={{ ...card, textAlign: 'center', position: 'relative', paddingTop: 40 }}>
-                    <div style={{ position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)', width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,200,83,0.1)', border: '1px solid rgba(0,200,83,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'var(--color-primary)' }}>{s.n}</div>
+                    <div style={{ position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)', width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,200,83,0.1)', border: '1px solid rgba(0,200,83,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#00C853' }}>{s.n}</div>
                     <I size={24} color="var(--text-tertiary)" style={{ marginBottom: 16 }} />
                     <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 10 }}>{s.title}</h3>
                     <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>{s.desc}</p>
@@ -144,7 +144,7 @@ export default function LandingPage() {
             ].map((p) => (
               <FadeIn key={p.name}>
                 <div style={{ ...card, border: p.featured ? '2px solid rgba(0,200,83,0.3)' : card.border, boxShadow: p.featured ? '0 0 50px rgba(0,200,83,0.06)' : 'none', position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                  {p.featured && <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', padding: '4px 16px', background: 'var(--color-primary)', borderRadius: 99, fontSize: 11, fontWeight: 700, color: '#fff' }}>Recommandé</div>}
+                  {p.featured && <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', padding: '4px 16px', background: '#00C853', borderRadius: 99, fontSize: 11, fontWeight: 700, color: '#fff' }}>Recommandé</div>}
                   <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{p.name}</h3>
                   <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 24 }}>{p.desc}</p>
                   <div style={{ marginBottom: 24 }}>
@@ -160,7 +160,7 @@ export default function LandingPage() {
                   </ul>
                   <Link href="/register" style={{
                     display: 'block', textAlign: 'center', padding: '12px 0', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none',
-                    ...(p.featured ? { background: 'var(--color-primary)', color: '#fff', boxShadow: '0 4px 20px rgba(0,200,83,0.2)' } : { border: '1px solid var(--border-primary)', color: 'var(--text-secondary)' }),
+                    ...(p.featured ? { background: '#00C853', color: '#fff', boxShadow: '0 4px 20px rgba(0,200,83,0.2)' } : { border: '1px solid var(--border-primary)', color: 'var(--text-secondary)' }),
                   }}>{p.cta}</Link>
                 </div>
               </FadeIn>
@@ -193,7 +193,7 @@ export default function LandingPage() {
                   <div style={{ display: 'flex', gap: 2, marginBottom: 16 }}>{Array.from({ length: 5 }).map((_, i) => <Star key={i} size={14} color="#facc15" fill="#facc15" />)}</div>
                   <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 18 }}>&ldquo;{t.text}&rdquo;</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'var(--color-primary)' }}>{t.name[0]}</div>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#00C853' }}>{t.name[0]}</div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{t.role}</div>
@@ -223,7 +223,7 @@ export default function LandingPage() {
       {/* ── FOOTER ── */}
       <footer style={{ borderTop: '1px solid var(--border-primary)', padding: '40px 0' }}>
         <div style={{ ...W, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Clos<span style={{ color: 'var(--color-primary)' }}>RM</span></div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>Clos<span style={{ color: '#00C853' }}>RM</span></div>
           <div style={{ display: 'flex', gap: 24, fontSize: 13, color: 'var(--text-tertiary)' }}>
             <a href="#features" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Fonctionnalités</a>
             <a href="#pricing" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Tarifs</a>

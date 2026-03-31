@@ -70,7 +70,7 @@ export default function RegisterPage() {
 
         <button type="submit" disabled={loading} style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))', color: 'var(--text-primary)', fontWeight: 600,
+          background: 'linear-gradient(135deg, #00C853, #00A844)', color: 'var(--text-primary)', fontWeight: 600,
           fontSize: 14, padding: '13px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
           boxShadow: '0 4px 24px rgba(0,200,83,0.2)', opacity: loading ? 0.6 : 1,
         }}>
@@ -79,7 +79,7 @@ export default function RegisterPage() {
       </form>
 
       <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border-primary)', textAlign: 'center' }}>
-        <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Déjà un compte ? <Link href="/login" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>Se connecter</Link></p>
+        <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Déjà un compte ? <Link href="/login" style={{ color: '#00C853', fontWeight: 600, textDecoration: 'none' }}>Se connecter</Link></p>
       </div>
     </div>
   )

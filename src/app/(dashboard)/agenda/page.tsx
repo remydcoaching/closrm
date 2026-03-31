@@ -314,9 +314,9 @@ export default function AgendaPage() {
             onClick={() => setShowFilterPanel(!showFilterPanel)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
-              background: showFilterPanel ? 'rgba(229,62,62,0.1)' : 'var(--bg-secondary)',
-              color: showFilterPanel ? '#E53E3E' : 'var(--text-secondary)',
-              border: `1px solid ${showFilterPanel ? '#E53E3E' : 'var(--border-secondary)'}`,
+              background: showFilterPanel ? 'var(--bg-active)' : 'var(--bg-secondary)',
+              color: showFilterPanel ? 'var(--color-primary)' : 'var(--text-secondary)',
+              border: `1px solid ${showFilterPanel ? 'var(--color-primary)' : 'var(--border-secondary)'}`,
               borderRadius: 8, fontSize: 13, cursor: 'pointer',
             }}
           >
@@ -336,7 +336,7 @@ export default function AgendaPage() {
               padding: '7px 14px',
               borderRadius: 8,
               border: 'none',
-              background: '#E53E3E',
+              background: 'var(--color-primary)',
               color: '#ffffff',
               fontSize: 13,
               fontWeight: 600,
@@ -358,7 +358,7 @@ export default function AgendaPage() {
                 left: 0,
                 right: 0,
                 height: 2,
-                background: 'rgba(229,62,62,0.4)',
+                background: 'var(--color-primary)',
                 zIndex: 20,
               }}
             />

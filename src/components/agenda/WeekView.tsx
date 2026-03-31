@@ -81,18 +81,18 @@ export function WeekView({ date, bookings, onBookingClick, onSlotClick }: WeekVi
             <div key={day.toISOString()} style={{
               textAlign: 'center', padding: '10px 0 8px',
               borderRight: GRID_BORDER,
-              background: today ? 'rgba(229,62,62,0.06)' : 'transparent',
+              background: today ? 'color-mix(in srgb, var(--color-primary) 6%, transparent)' : 'transparent',
             }}>
               <div style={{
                 fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em',
-                color: today ? '#E53E3E' : 'var(--text-secondary)',
+                color: today ? 'var(--color-primary)' : 'var(--text-secondary)',
               }}>
                 {format(day, 'EEE', { locale: fr })}
               </div>
               <div style={{
                 width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 margin: '4px auto 0', fontSize: 16, fontWeight: 600,
-                background: today ? '#E53E3E' : 'transparent',
+                background: today ? 'var(--color-primary)' : 'transparent',
                 color: today ? '#fff' : 'var(--text-primary)',
               }}>
                 {format(day, 'd')}

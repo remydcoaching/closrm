@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
         </p>
         <Link
           href="/login"
-          className="block w-full text-center bg-[var(--bg-elevated)] border border-[var(--border-secondary)] hover:border-[var(--color-primary)] text-[var(--text-primary)] font-medium py-2.5 rounded-lg transition-colors text-sm"
+          className="block w-full text-center bg-[var(--bg-elevated)] border border-[var(--border-secondary)] hover:border-[#00C853] text-[var(--text-primary)] font-medium py-2.5 rounded-lg transition-colors text-sm"
         >
           Retour à la connexion
         </Link>
@@ -82,16 +82,16 @@ export default function ResetPasswordPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-[var(--bg-primary)] border border-[var(--border-secondary)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+            className="w-full bg-[var(--bg-primary)] border border-[var(--border-secondary)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm placeholder-[var(--text-secondary)] focus:outline-none focus:border-[#00C853] transition-colors"
             placeholder="coach@example.com"
           />
           {errors.email && (
-            <p className="text-xs text-[var(--color-primary)] mt-1">{errors.email}</p>
+            <p className="text-xs text-[#00C853] mt-1">{errors.email}</p>
           )}
         </div>
 
         {serverError && (
-          <p className="text-sm text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 rounded-lg px-3 py-2">
+          <p className="text-sm text-[#00C853] bg-[#00C853]/10 border border-[#00C853]/20 rounded-lg px-3 py-2">
             {serverError}
           </p>
         )}
@@ -99,14 +99,14 @@ export default function ResetPasswordPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-[var(--text-primary)] font-medium py-2.5 rounded-lg transition-colors text-sm"
+          className="w-full bg-[#00C853] hover:bg-[#00A844] disabled:opacity-50 disabled:cursor-not-allowed text-[var(--text-primary)] font-medium py-2.5 rounded-lg transition-colors text-sm"
         >
           {loading ? 'Envoi…' : 'Envoyer le lien'}
         </button>
       </form>
 
       <p className="text-center text-sm text-[var(--text-secondary)] mt-6">
-        <Link href="/login" className="text-[var(--color-primary)] hover:underline">
+        <Link href="/login" className="text-[#00C853] hover:underline">
           Retour à la connexion
         </Link>
       </p>

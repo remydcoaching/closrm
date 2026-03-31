@@ -132,10 +132,10 @@ export default function MiniCalendar({ selectedDate, onDateSelect }: MiniCalenda
           let outline = 'none'
 
           if (isSelected) {
-            background = '#E53E3E'
+            background = 'var(--color-primary)'
             color = 'var(--text-primary)'
           } else if (isTodayDay) {
-            border = '1.5px solid #E53E3E'
+            border = '1.5px solid var(--color-primary)'
             color = inMonth ? 'var(--text-primary)' : 'var(--text-muted)'
           }
 

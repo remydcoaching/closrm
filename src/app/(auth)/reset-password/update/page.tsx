@@ -69,10 +69,10 @@ export default function UpdatePasswordPage() {
     return (
       <div style={{ background: 'linear-gradient(135deg, rgba(17,17,19,0.9), rgba(12,12,14,0.95))', border: '1px solid var(--border-primary)', borderRadius: 16, padding: '36px 32px', boxShadow: '0 0 60px rgba(0,200,83,0.04)', textAlign: 'center' }}>
         <p style={{ fontSize: 14, color: 'var(--text-tertiary)', marginBottom: 16 }}>Vérification du lien en cours...</p>
-        <Loader2 size={24} color="var(--color-primary)" style={{ animation: 'spin 1s linear infinite' }} />
+        <Loader2 size={24} color="#00C853" style={{ animation: 'spin 1s linear infinite' }} />
         <p style={{ fontSize: 12, color: 'var(--text-label)', marginTop: 16 }}>
           Lien expiré ?{' '}
-          <Link href="/reset-password" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>Redemander un lien</Link>
+          <Link href="/reset-password" style={{ color: '#00C853', textDecoration: 'none' }}>Redemander un lien</Link>
         </p>
       </div>
     )
@@ -110,7 +110,7 @@ export default function UpdatePasswordPage() {
 
         <button type="submit" disabled={loading} style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-hover))', color: 'var(--text-primary)', fontWeight: 600,
+          background: 'linear-gradient(135deg, #00C853, #00A844)', color: 'var(--text-primary)', fontWeight: 600,
           fontSize: 14, padding: '13px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
           boxShadow: '0 4px 24px rgba(0,200,83,0.2)', opacity: loading ? 0.6 : 1,
         }}>
@@ -121,7 +121,7 @@ export default function UpdatePasswordPage() {
       <div style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--border-primary)', textAlign: 'center' }}>
         <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
           Lien expiré ?{' '}
-          <Link href="/reset-password" style={{ color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>Redemander un lien</Link>
+          <Link href="/reset-password" style={{ color: '#00C853', fontWeight: 600, textDecoration: 'none' }}>Redemander un lien</Link>
         </p>
       </div>
     </div>

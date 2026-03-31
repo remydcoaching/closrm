@@ -225,8 +225,8 @@ export default function NewBookingModal({
               style={{
                 padding: '10px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
                 background: 'none', border: 'none',
-                color: activeTab === tab.key ? '#E53E3E' : 'var(--text-muted)',
-                borderBottom: activeTab === tab.key ? '2px solid #E53E3E' : '2px solid transparent',
+                color: activeTab === tab.key ? 'var(--color-primary)' : 'var(--text-muted)',
+                borderBottom: activeTab === tab.key ? '2px solid var(--color-primary)' : '2px solid transparent',
                 marginBottom: -2,
               }}
             >
@@ -476,7 +476,7 @@ export default function NewBookingModal({
                 type="submit"
                 disabled={loading}
                 style={{
-                  background: loading ? '#8b2020' : '#E53E3E',
+                  background: loading ? 'var(--color-primary-hover)' : 'var(--color-primary)',
                   border: 'none',
                   borderRadius: 8,
                   color: 'var(--text-primary)',

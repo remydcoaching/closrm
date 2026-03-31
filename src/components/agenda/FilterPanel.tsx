@@ -58,7 +58,7 @@ export function FilterPanel({
               type="radio" name="filterType"
               checked={filterType === ft.value}
               onChange={() => onFilterTypeChange(ft.value)}
-              style={{ accentColor: '#E53E3E' }}
+              style={{ accentColor: 'var(--color-primary)' }}
             />
             {ft.label}
           </label>

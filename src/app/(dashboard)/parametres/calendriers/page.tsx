@@ -144,6 +144,33 @@ export default function CalendriersPage() {
         </button>
       </div>
 
+      {/* Slug warning */}
+      {!workspaceSlug && (
+        <div
+          style={{
+            background: 'rgba(214,158,46,0.1)',
+            border: '1px solid rgba(214,158,46,0.3)',
+            borderRadius: 8,
+            padding: '12px 16px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 13,
+            color: '#D69E2E',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>⚠</span>
+          <span>
+            Configurez votre <strong>slug public</strong> dans{' '}
+            <a href="/parametres/reglages" style={{ color: '#D69E2E', textDecoration: 'underline' }}>
+              Paramètres &gt; Réglages
+            </a>{' '}
+            pour que vos liens de réservation fonctionnent.
+          </span>
+        </div>
+      )}
+
       {/* Empty state */}
       {calendars.length === 0 && (
         <div

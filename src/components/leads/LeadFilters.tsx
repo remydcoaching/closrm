@@ -32,6 +32,8 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
   const [panelOpen, setPanelOpen] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const onFiltersChangeRef = useRef(onFiltersChange)
+  onFiltersChangeRef.current = onFiltersChange
 
   // Fermer le panneau si clic en dehors
   useEffect(() => {
@@ -48,10 +50,10 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      onFiltersChange({ search, statuses: selectedStatuses, sources: selectedSources })
+      onFiltersChangeRef.current({ search, statuses: selectedStatuses, sources: selectedSources })
     }, 300)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [search, selectedStatuses, selectedSources, onFiltersChange])
+  }, [search, selectedStatuses, selectedSources])
 
   function toggleStatus(s: LeadStatus) {
     setSelectedStatuses(prev =>

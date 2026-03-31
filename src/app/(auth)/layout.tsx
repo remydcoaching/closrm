@@ -25,10 +25,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             border: '1px solid rgba(0,200,83,0.15)', display: 'inline-flex', alignItems: 'center',
             justifyContent: 'center', marginBottom: 16,
           }}>
-            <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--color-primary)' }}>C</span>
+            <span style={{ fontSize: 22, fontWeight: 900, color: '#00C853' }}>C</span>
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Clos<span style={{ color: 'var(--color-primary)' }}>RM</span>
+            Clos<span style={{ color: '#00C853' }}>RM</span>
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 6 }}>CRM pour coachs indépendants</p>
         </div>

@@ -23,7 +23,7 @@ export default function LandingNavbar() {
     }}>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Link href="/" style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', textDecoration: 'none' }}>
-          Clos<span style={{ color: 'var(--color-primary)' }}>RM</span>
+          Clos<span style={{ color: '#00C853' }}>RM</span>
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 32 }} className="hidden md:flex">
@@ -34,7 +34,7 @@ export default function LandingNavbar() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="hidden md:flex">
           <Link href="/login" style={{ padding: '8px 16px', fontSize: 13, color: 'var(--text-secondary)', border: '1px solid var(--border-primary)', borderRadius: 8, textDecoration: 'none' }}>Se connecter</Link>
-          <Link href="/register" style={{ padding: '8px 16px', fontSize: 13, color: '#fff', background: 'var(--color-primary)', borderRadius: 8, textDecoration: 'none', fontWeight: 500 }}>Commencer</Link>
+          <Link href="/register" style={{ padding: '8px 16px', fontSize: 13, color: '#fff', background: '#00C853', borderRadius: 8, textDecoration: 'none', fontWeight: 500 }}>Commencer</Link>
         </div>
 
         <button className="md:hidden" onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
@@ -49,7 +49,7 @@ export default function LandingNavbar() {
           <a href="#contact" onClick={() => setMenuOpen(false)} style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', marginBottom: 16 }}>Contact</a>
           <div style={{ paddingTop: 12, borderTop: '1px solid var(--border-primary)', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <Link href="/login" style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)', padding: 10, border: '1px solid var(--border-primary)', borderRadius: 8, textDecoration: 'none' }}>Se connecter</Link>
-            <Link href="/register" style={{ textAlign: 'center', fontSize: 13, color: '#fff', background: 'var(--color-primary)', padding: 10, borderRadius: 8, textDecoration: 'none', fontWeight: 500 }}>Commencer</Link>
+            <Link href="/register" style={{ textAlign: 'center', fontSize: 13, color: '#fff', background: '#00C853', padding: 10, borderRadius: 8, textDecoration: 'none', fontWeight: 500 }}>Commencer</Link>
           </div>
         </div>
       )}
