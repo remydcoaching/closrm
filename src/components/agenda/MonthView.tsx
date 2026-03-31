@@ -12,7 +12,6 @@ import {
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { BookingWithCalendar } from '@/types'
-import { BookingBlock } from './BookingBlock'
 
 interface MonthViewProps {
   date: Date
@@ -22,7 +21,6 @@ interface MonthViewProps {
 }
 
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-const MAX_VISIBLE = 3
 
 export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthViewProps) {
   const monthStart = startOfMonth(date)
@@ -76,8 +74,7 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
           const inMonth = isSameMonth(day, date)
           const today = isToday(day)
           const dayBookings = bookingsForDay(day)
-          const visible = dayBookings.slice(0, MAX_VISIBLE)
-          const overflow = dayBookings.length - MAX_VISIBLE
+          const overflow = dayBookings.length - 3
 
           return (
             <div
@@ -110,16 +107,23 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
               </div>
 
               {/* Booking blocks */}
-              {visible.map((booking) => (
-                <BookingBlock
-                  key={booking.id}
-                  booking={booking}
-                  onClick={(b) => {
-                    // stop click from bubbling to day cell
-                    onBookingClick(b)
-                  }}
-                />
-              ))}
+              {dayBookings.slice(0, 3).map((b) => {
+                const color = b.is_personal ? '#6b7280' : b.booking_calendar?.color || '#3b82f6'
+                const title = b.lead ? `${b.lead.first_name} ${b.lead.last_name}`.trim() : b.title
+                return (
+                  <div
+                    key={b.id}
+                    onClick={(e) => { e.stopPropagation(); onBookingClick(b) }}
+                    style={{
+                      background: color, color: '#fff', padding: '1px 4px', borderRadius: 2,
+                      fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      marginBottom: 1, cursor: 'pointer',
+                    }}
+                  >
+                    {format(parseISO(b.scheduled_at), 'HH:mm')} {title}
+                  </div>
+                )
+              })}
 
               {/* Overflow indicator */}
               {overflow > 0 && (
