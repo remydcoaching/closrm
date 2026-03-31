@@ -1,0 +1,534 @@
+'use client'
+
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { X } from 'lucide-react'
+import { BookingCalendar, Lead, BookingLocation } from '@/types'
+
+interface NewBookingModalProps {
+  calendars: BookingCalendar[]
+  locations: BookingLocation[]
+  prefillDate: string   // "2026-04-01"
+  prefillTime: string   // "14:00"
+  prefillDuration?: number // minutes, from drag selection
+  onClose: () => void
+  onCreated: () => void
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border-secondary)',
+  borderRadius: 8,
+  color: 'var(--text-primary)',
+  padding: '8px 12px',
+  fontSize: 14,
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  color: 'var(--text-secondary)',
+  fontSize: 12,
+  marginBottom: 6,
+}
+
+export default function NewBookingModal({
+  calendars,
+  locations,
+  prefillDate,
+  prefillTime,
+  prefillDuration,
+  onClose,
+  onCreated,
+}: NewBookingModalProps) {
+  const [activeTab, setActiveTab] = useState<'booking' | 'blocked'>('booking')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Calendar mode
+  const [calendarId, setCalendarId] = useState<string>(calendars[0]?.id ?? '')
+  const [locationId, setLocationId] = useState<string>('')
+  const [leadSearch, setLeadSearch] = useState('')
+  const [leadResults, setLeadResults] = useState<Lead[]>([])
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+
+  // Personal mode
+  const [title, setTitle] = useState('')
+
+  // Shared
+  const [date, setDate] = useState(prefillDate)
+  const [time, setTime] = useState(prefillTime)
+
+  // Sync prefill when props change (modal reopened with new slot)
+  useEffect(() => { setDate(prefillDate) }, [prefillDate])
+  useEffect(() => { setTime(prefillTime) }, [prefillTime])
+  useEffect(() => { if (prefillDuration) setDuration(prefillDuration) }, [prefillDuration])
+  const [duration, setDuration] = useState<number>(
+    prefillDuration ?? calendars[0]?.duration_minutes ?? 60
+  )
+  const [notes, setNotes] = useState('')
+
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const selectedCalendar = calendars.find((c) => c.id === calendarId)
+  const availableLocations = locations.filter(
+    (l) => l.is_active && selectedCalendar?.location_ids?.includes(l.id)
+  )
+
+  // Update duration when calendar changes
+  useEffect(() => {
+    const cal = calendars.find((c) => c.id === calendarId)
+    if (cal) setDuration(cal.duration_minutes)
+  }, [calendarId, calendars])
+
+  // Lead search debounce
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (leadSearch.length < 1) {
+      setLeadResults([])
+      return
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/leads?search=${encodeURIComponent(leadSearch)}&per_page=5`)
+        if (res.ok) {
+          const json = await res.json()
+          setLeadResults(json.data ?? [])
+        }
+      } catch {
+        // silently ignore search errors
+      }
+    }, 300)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [leadSearch])
+
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.target === overlayRef.current) onClose()
+    },
+    [onClose]
+  )
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    try {
+      const scheduledAt = `${date}T${time}:00`
+
+      const body = activeTab === 'blocked'
+        ? {
+            is_personal: true,
+            title,
+            scheduled_at: scheduledAt,
+            duration_minutes: duration,
+            notes: notes || null,
+          }
+        : {
+            is_personal: false,
+            calendar_id: calendarId || null,
+            lead_id: selectedLead?.id ?? null,
+            location_id: locationId || null,
+            title: selectedLead
+              ? `${selectedLead.first_name} ${selectedLead.last_name}`.trim()
+              : 'Rendez-vous',
+            scheduled_at: scheduledAt,
+            duration_minutes: duration,
+            notes: notes || null,
+          }
+
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error ?? 'Erreur lors de la création')
+      }
+
+      onCreated()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+      }}
+    >
+      <div
+        style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-secondary)',
+          borderRadius: 12,
+          width: 460,
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: 'calc(100vh - 64px)',
+          overflowY: 'auto',
+          padding: 24,
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 20,
+          }}
+        >
+          <span style={{ color: 'var(--text-primary)', fontSize: 16, fontWeight: 600 }}>
+            Nouveau rendez-vous
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              padding: 2,
+            }}
+            aria-label="Fermer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '2px solid var(--border-secondary)', marginBottom: 16 }}>
+          {[
+            { key: 'booking' as const, label: 'Rendez-vous' },
+            { key: 'blocked' as const, label: 'Horaire bloqué' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '10px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                background: 'none', border: 'none',
+                color: activeTab === tab.key ? 'var(--color-primary)' : 'var(--text-muted)',
+                borderBottom: activeTab === tab.key ? '2px solid var(--color-primary)' : '2px solid transparent',
+                marginBottom: -2,
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Booking tab */}
+            {activeTab === 'booking' && (
+              <>
+                {/* Calendar picker */}
+                {calendars.length > 0 && (
+                  <div>
+                    <label style={labelStyle}>Calendrier</label>
+                    <select
+                      value={calendarId}
+                      onChange={(e) => setCalendarId(e.target.value)}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      {calendars.map((cal) => (
+                        <option key={cal.id} value={cal.id}>
+                          {cal.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Lead search */}
+                <div>
+                  <label style={labelStyle}>Lead</label>
+                  {selectedLead ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        ...inputStyle,
+                      }}
+                    >
+                      <span style={{ fontSize: 14 }}>
+                        {selectedLead.first_name} {selectedLead.last_name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLead(null)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: 0,
+                        }}
+                        aria-label="Désélectionner le lead"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        placeholder="Rechercher un lead..."
+                        value={leadSearch}
+                        onChange={(e) => setLeadSearch(e.target.value)}
+                        style={inputStyle}
+                      />
+                      {leadResults.length > 0 && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            background: 'var(--bg-input)',
+                            border: '1px solid var(--border-secondary)',
+                            borderRadius: 8,
+                            marginTop: 4,
+                            zIndex: 10,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {leadResults.map((lead) => (
+                            <button
+                              key={lead.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedLead(lead)
+                                setLeadSearch('')
+                                setLeadResults([])
+                              }}
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--text-primary)',
+                                fontSize: 13,
+                                padding: '8px 12px',
+                                textAlign: 'left',
+                              }}
+                              onMouseEnter={(e) => {
+                                (e.currentTarget as HTMLButtonElement).style.background = 'var(--border-secondary)'
+                              }}
+                              onMouseLeave={(e) => {
+                                (e.currentTarget as HTMLButtonElement).style.background = 'none'
+                              }}
+                            >
+                              {lead.first_name} {lead.last_name}
+                              {lead.phone && (
+                                <span style={{ color: 'var(--text-secondary)', marginLeft: 8, fontSize: 12 }}>
+                                  {lead.phone}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Location dropdown */}
+                {availableLocations.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={labelStyle}>Lieu de la réunion</label>
+                    <select
+                      value={locationId}
+                      onChange={(e) => setLocationId(e.target.value)}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      <option value="">Sélectionnez un lieu</option>
+                      {availableLocations.map((l) => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Blocked tab */}
+            {activeTab === 'blocked' && (
+              <div>
+                <label style={labelStyle}>Titre</label>
+                <input
+                  type="text"
+                  placeholder="Titre de l'événement"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  style={inputStyle}
+                />
+              </div>
+            )}
+
+            {/* Date */}
+            <div>
+              <label style={labelStyle}>Date</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Time start + end */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Heure de début</label>
+                <select
+                  value={time}
+                  onChange={(e) => {
+                    const newTime = e.target.value
+                    // Keep same duration, shift end time
+                    setTime(newTime)
+                  }}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  {Array.from({ length: (21 - 7) * 2 }, (_, i) => {
+                    const h = Math.floor(i / 2) + 7
+                    const m = (i % 2) * 30
+                    const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+                    return <option key={val} value={val}>{val}</option>
+                  })}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Heure de fin</label>
+                <select
+                  value={(() => {
+                    if (!time) return ''
+                    const [h, m] = time.split(':').map(Number)
+                    const totalMin = h * 60 + m + duration
+                    const endH = Math.floor(totalMin / 60) % 24
+                    const endM = totalMin % 60
+                    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+                  })()}
+                  onChange={(e) => {
+                    if (!time || !e.target.value) return
+                    const [sh, sm] = time.split(':').map(Number)
+                    const [eh, em] = e.target.value.split(':').map(Number)
+                    const diff = (eh * 60 + em) - (sh * 60 + sm)
+                    if (diff > 0) setDuration(diff)
+                  }}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  {Array.from({ length: (22 - 7) * 2 }, (_, i) => {
+                    const h = Math.floor(i / 2) + 7
+                    const m = (i % 2) * 30
+                    const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+                    return <option key={val} value={val}>{val}</option>
+                  })}
+                </select>
+              </div>
+            </div>
+
+            {/* Duration display */}
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: -4 }}>
+              Durée : {duration >= 60 ? `${Math.floor(duration / 60)}h${duration % 60 > 0 ? String(duration % 60).padStart(2, '0') : ''}` : `${duration} min`}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label style={labelStyle}>Notes</label>
+              <textarea
+                placeholder="Notes optionnelles..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                style={{ ...inputStyle, resize: 'vertical' }}
+              />
+            </div>
+
+            {error && (
+              <div
+                style={{
+                  background: '#2d1515',
+                  border: '1px solid #E53E3E',
+                  borderRadius: 8,
+                  color: '#fc8181',
+                  fontSize: 13,
+                  padding: '8px 12px',
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border-secondary)',
+                  borderRadius: 8,
+                  color: 'var(--text-secondary)',
+                  fontSize: 14,
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  background: loading ? 'var(--color-primary-hover)' : 'var(--color-primary)',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  padding: '8px 20px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.15s',
+                }}
+              >
+                {loading ? 'Création...' : activeTab === 'blocked' ? 'Bloquer le créneau' : 'Prendre rendez-vous'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

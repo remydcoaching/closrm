@@ -31,7 +31,7 @@ const CARDS = [
     key: 'closedDeals' as const,
     label: 'Deals closés',
     icon: Target,
-    color: '#00C853',
+    color: 'var(--color-primary)',
     format: (v: number | null) => String(v ?? 0),
   },
   {
@@ -44,7 +44,7 @@ const CARDS = [
 ]
 
 const VALUE_COLORS: Record<string, string> = {
-  closedDeals: '#00C853',
+  closedDeals: 'var(--color-primary)',
   winRate: '#a855f7',
   bookingRate: '#3b82f6',
 }
@@ -59,8 +59,8 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
     }}>
       {CARDS.map(({ key, label, icon: Icon, color, format }) => (
         <div key={key} style={{
-          background: '#0f0f11',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-primary)',
           borderRadius: 12,
           padding: 18,
         }}>
@@ -72,10 +72,10 @@ export default function KpiCards({ kpis }: KpiCardsProps) {
           }}>
             <Icon size={15} color={color} />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: VALUE_COLORS[key] ?? '#fff' }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: VALUE_COLORS[key] ?? 'var(--text-primary)' }}>
             {format(kpis[key] as number | null)}
           </div>
-          <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{label}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>{label}</div>
         </div>
       ))}
     </div>

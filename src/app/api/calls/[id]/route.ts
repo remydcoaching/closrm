@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateCallSchema } from '@/lib/validations/calls'
+import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 
 export async function GET(
   _request: NextRequest,
@@ -60,6 +61,22 @@ export async function PATCH(
       if (newLeadStatus) {
         await supabase.from('leads').update({ status: newLeadStatus })
           .eq('id', existingCall.lead_id).eq('workspace_id', workspaceId)
+      }
+    }
+
+    // Fire workflow triggers (non-blocking)
+    if (parsed.data.outcome && parsed.data.outcome !== existingCall.outcome) {
+      fireTriggersForEvent(workspaceId, 'call_outcome_logged', {
+        lead_id: existingCall.lead_id,
+        call_id: id,
+        outcome: parsed.data.outcome,
+      }).catch(() => {})
+
+      if (parsed.data.outcome === 'no_show') {
+        fireTriggersForEvent(workspaceId, 'call_no_show', {
+          lead_id: existingCall.lead_id,
+          call_id: id,
+        }).catch(() => {})
       }
     }
 

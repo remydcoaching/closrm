@@ -16,8 +16,8 @@ const CHANNEL_LABEL: Record<string, string> = {
 
 export default function OverdueFollowUps({ followUps, onLeadClick }: OverdueFollowUpsProps) {
   const card: React.CSSProperties = {
-    background: '#0f0f11',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border-primary)',
     borderRadius: 14,
     padding: 20,
   }
@@ -29,7 +29,7 @@ export default function OverdueFollowUps({ followUps, onLeadClick }: OverdueFoll
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Clock size={14} color="#ef4444" />
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Follow-ups en retard</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Follow-ups en retard</span>
         </div>
         {followUps.length > 0 ? (
           <span style={{
@@ -40,7 +40,7 @@ export default function OverdueFollowUps({ followUps, onLeadClick }: OverdueFoll
           </span>
         ) : (
           <span style={{
-            fontSize: 10, color: '#00C853', background: 'rgba(0,200,83,0.08)',
+            fontSize: 10, color: 'var(--color-primary)', background: 'var(--bg-active)',
             padding: '3px 10px', borderRadius: 99, fontWeight: 600,
           }}>
             À jour
@@ -51,7 +51,7 @@ export default function OverdueFollowUps({ followUps, onLeadClick }: OverdueFoll
       {followUps.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '28px 0' }}>
           <Clock size={22} color="#333" />
-          <p style={{ fontSize: 13, color: '#888', marginTop: 10 }}>Aucun follow-up en retard</p>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 10 }}>Aucun follow-up en retard</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -61,13 +61,13 @@ export default function OverdueFollowUps({ followUps, onLeadClick }: OverdueFoll
               onClick={() => onLeadClick(fu.lead_id)}
               style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '8px 10px', background: '#0a0a0c', borderRadius: 8,
+                padding: '8px 10px', background: 'var(--bg-input)', borderRadius: 8,
                 border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%',
               }}
             >
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>{fu.lead_name}</div>
-                <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{fu.lead_name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                   {CHANNEL_LABEL[fu.channel]}
                 </div>
               </div>

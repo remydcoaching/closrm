@@ -6,7 +6,7 @@ const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: stri
   no_show_setting: { label: 'No-show Setting', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   closing_planifie: { label: 'Closing planifié', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
   no_show_closing: { label: 'No-show Closing', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  clos: { label: 'Closé ✅', color: '#00C853', bg: 'rgba(0,200,83,0.12)' },
+  clos: { label: 'Closé ✅', color: 'var(--color-primary)', bg: 'rgba(0,200,83,0.12)' },
   dead: { label: 'Dead ❌', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
 }
 

@@ -24,27 +24,30 @@ Les seuls fichiers partagés sont :
 
 ### Pierre — Modules
 
-| Module | Périmètre (API + Frontend) |
-|--------|---------------------------|
-| **Auth** | Finaliser login/register, reset password, hook `useUser()`, helper `getWorkspaceId()` |
-| **Closing** | API `/api/calls` + page closing (onglets, calendrier, actions) |
-| **Follow-ups** | API `/api/follow-ups` + page follow-ups (tableau, filtres, modale) |
-| **Automations** | API `/api/automations` + page automations (builder trigger/action) |
-| **Notifications** | WhatsApp + Telegram (clients + API routes) |
-| **Paramètres Réglages** | API `/api/user/profile` + `/api/workspaces` + page réglages |
-| **Paramètres Intégrations** | Page intégrations (cards connexion/déconnexion) |
-| **Intégration Meta Ads** | OAuth Meta, webhook `/api/webhooks/meta`, client Meta API |
+| Module | Périmètre (API + Frontend) | Statut |
+|--------|---------------------------|--------|
+| **Auth** | Login/register, reset password, hook `useUser()`, helper `getWorkspaceId()` | ✅ Terminé |
+| **Landing page + Refonte visuelle** | Hero, particules, features, pricing, pages auth refaites | ✅ Terminé |
+| **Closing** | API `/api/calls` + page closing (onglets, calendrier, actions) | ✅ Terminé |
+| **Follow-ups** | API `/api/follow-ups` + page follow-ups (tableau, filtres, modale) | ✅ Terminé |
+| **Automations** | API `/api/automations` + page automations (builder trigger/action) | ⬜ À faire |
+| **Notifications** | WhatsApp + Telegram (clients + API routes) | ⬜ À faire |
+| **Instagram Automations** | Follow, DM, commentaires ads automatisés | ⬜ À faire |
+| **Paramètres Réglages** | API `/api/user/profile` + `/api/workspaces` + page réglages | ⬜ À faire |
+| **Paramètres Intégrations** | Page intégrations (cards connexion/déconnexion) | ⬜ À faire |
 
 ### Rémy — Modules
 
-| Module | Périmètre (API + Frontend) |
-|--------|---------------------------|
-| **Dashboard** | Page d'accueil avec KPIs, prochains appels, follow-ups en retard |
-| **Leads** | API `/api/leads` + page liste leads + fiche lead détaillée |
-| **Statistiques** | API `/api/leads/stats` + page stats (graphiques, funnel, KPIs) |
-| **Base de données** | Page vue globale contacts, recherche, export CSV |
-| **Intégration Google Agenda** | OAuth Google, sync RDV bidirectionnel |
-| **Publicités** | Page dashboard Meta Ads (stats campagnes) |
+| Module | Périmètre (API + Frontend) | Statut |
+|--------|---------------------------|--------|
+| **Dashboard** | Page d'accueil avec KPIs, prochains appels, follow-ups en retard | ✅ Terminé |
+| **Leads** | API `/api/leads` + page liste leads + fiche lead détaillée | ✅ Terminé |
+| **Statistiques** | API `/api/leads/stats` + page stats (graphiques, funnel, KPIs) | ✅ Terminé |
+| **Base de données** | Page vue globale contacts, recherche, export CSV | ✅ Terminé |
+| **Intégration Meta Ads** | OAuth Meta, webhook `/api/webhooks/meta`, client Meta API | ⬜ À faire |
+| **Intégration Google Agenda** | OAuth Google, sync RDV bidirectionnel | ⬜ À faire |
+| **Publicités** | Page dashboard Meta Ads (stats campagnes, dépend de Meta Ads) | ⬜ À faire |
+| **Emails** | Séquences automatiques + broadcast + templates | ⬜ À faire |
 
 ---
 
@@ -64,14 +67,17 @@ src/app/api/automations/               ← Pierre
 src/app/api/notifications/             ← Pierre
 src/app/api/user/                      ← Pierre
 src/app/api/workspaces/                ← Pierre
+src/app/api/instagram/                 ← Pierre
 src/components/closing/                 ← Pierre
 src/components/follow-ups/              ← Pierre
 src/components/automations/             ← Pierre
+src/components/instagram/               ← Pierre
 src/components/settings/                ← Pierre
 src/hooks/use-user.ts                   ← Pierre
 src/lib/supabase/get-workspace.ts       ← Pierre
 src/lib/whatsapp/                       ← Pierre
 src/lib/telegram/                       ← Pierre
+src/lib/instagram/                      ← Pierre
 ```
 
 ### Dossiers de Rémy (ne pas toucher si tu es Pierre)
@@ -82,15 +88,19 @@ src/app/(dashboard)/leads/              ← Rémy
 src/app/(dashboard)/statistiques/       ← Rémy
 src/app/(dashboard)/base-de-donnees/    ← Rémy
 src/app/(dashboard)/acquisition/publicites/  ← Rémy
+src/app/(dashboard)/acquisition/emails/ ← Rémy
 src/app/api/leads/                      ← Rémy
 src/app/api/webhooks/meta/              ← Rémy
 src/app/api/integrations/meta/          ← Rémy
 src/app/api/integrations/google/        ← Rémy
+src/app/api/emails/                     ← Rémy
 src/components/dashboard/               ← Rémy
 src/components/leads/                   ← Rémy
 src/components/stats/                   ← Rémy
+src/components/emails/                  ← Rémy
 src/lib/meta/                           ← Rémy
 src/lib/google/                         ← Rémy
+src/lib/email/                          ← Rémy
 ```
 
 ### Fichiers partagés (ne modifier qu'en accord)
@@ -192,4 +202,17 @@ Alternativement, Rémy peut créer ses propres helpers en attendant et les rempl
 
 ---
 
-*Créé le 2026-03-27 — ClosRM*
+### Module partagé (post-V1)
+
+```
+src/app/book/                           ← Partagé (T-022 — Calendrier/Booking type Calendly)
+src/app/(dashboard)/calendrier/         ← Partagé (T-022)
+src/app/api/bookings/                   ← Partagé (T-022)
+src/app/api/booking-types/              ← Partagé (T-022)
+src/app/api/booking-locations/          ← Partagé (T-022)
+src/app/api/booking-availability/       ← Partagé (T-022)
+```
+
+---
+
+*Mis à jour le 2026-03-30 — ClosRM*

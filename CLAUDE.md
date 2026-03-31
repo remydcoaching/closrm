@@ -5,6 +5,12 @@
 
 ---
 
+## 🔌 Plugins Claude Code requis
+
+- **vercel/vercel-plugin** — à installer via l'interface Claude Code (menu plugins) ou `npx plugins add vercel/vercel-plugin`. Donne accès aux commandes Vercel (logs, env vars, déploiements) directement depuis le terminal.
+
+---
+
 ## 🎯 Vision du projet
 
 **ClosRM** est un CRM web full-stack destiné aux coachs indépendants qui gèrent des leads via Meta Ads (Facebook & Instagram). L'objectif est de centraliser tout le cycle de vente : acquisition des leads, suivi des appels (setting/closing), automations (WhatsApp, rappels), statistiques de performance et tunnels de vente.

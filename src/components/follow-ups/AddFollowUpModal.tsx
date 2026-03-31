@@ -10,8 +10,8 @@ interface Props {
   preselectedLead?: Pick<Lead, 'id' | 'first_name' | 'last_name'> | null
 }
 
-const inputS: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, color: '#fff', fontSize: 13, outline: 'none' }
-const lblS: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }
+const inputS: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 10, color: 'var(--text-primary)', fontSize: 13, outline: 'none' }
+const lblS: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 8, display: 'block', letterSpacing: '0.1em', textTransform: 'uppercase' as const }
 
 export default function AddFollowUpModal({ onClose, onCreated, preselectedLead }: Props) {
   const [leads, setLeads] = useState<Pick<Lead, 'id' | 'first_name' | 'last_name'>[]>([])
@@ -48,15 +48,15 @@ export default function AddFollowUpModal({ onClose, onCreated, preselectedLead }
   const channels: { value: FollowUpChannel; label: string; icon: typeof MessageCircle; color: string }[] = [
     { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, color: '#22c55e' },
     { value: 'email', label: 'Email', icon: Mail, color: '#3b82f6' },
-    { value: 'manuel', label: 'Manuel', icon: User, color: '#888' },
+    { value: 'manuel', label: 'Manuel', icon: User, color: 'var(--text-tertiary)' },
   ]
 
   return (
     <div onClick={(e) => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ background: '#0f0f11', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 28, width: '100%', maxWidth: 440 }}>
+      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 14, padding: 28, width: '100%', maxWidth: 440 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#fff' }}>Créer un follow-up</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}><X size={18} /></button>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>Créer un follow-up</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
         </div>
 
         <form onSubmit={submit}>
@@ -64,7 +64,7 @@ export default function AddFollowUpModal({ onClose, onCreated, preselectedLead }
           {preselectedLead ? (
             <div style={{ marginBottom: 18 }}>
               <label style={lblS}>Lead</label>
-              <div style={{ ...inputS, background: '#0f0f11', color: '#ccc' }}>{preselectedLead.first_name} {preselectedLead.last_name}</div>
+              <div style={{ ...inputS, background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}>{preselectedLead.first_name} {preselectedLead.last_name}</div>
             </div>
           ) : (
             <div style={{ marginBottom: 18 }}>
@@ -87,14 +87,14 @@ export default function AddFollowUpModal({ onClose, onCreated, preselectedLead }
             <div>
               <label style={lblS}>Date *</label>
               <div style={{ position: 'relative' }}>
-                <Calendar size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#555', pointerEvents: 'none' }} />
+                <Calendar size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-label)', pointerEvents: 'none' }} />
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...inputS, paddingLeft: 38, colorScheme: 'dark' }} />
               </div>
             </div>
             <div>
               <label style={lblS}>Heure</label>
               <div style={{ position: 'relative' }}>
-                <Clock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#555', pointerEvents: 'none' }} />
+                <Clock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-label)', pointerEvents: 'none' }} />
                 <input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ ...inputS, paddingLeft: 38, colorScheme: 'dark' }} />
               </div>
             </div>
@@ -110,8 +110,8 @@ export default function AddFollowUpModal({ onClose, onCreated, preselectedLead }
                 return (
                   <button key={ch.value} type="button" onClick={() => setChannel(ch.value)} style={{
                     flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    border: active ? `2px solid ${ch.color}` : '1px solid rgba(255,255,255,0.06)',
-                    background: active ? `${ch.color}12` : 'transparent', color: active ? ch.color : '#666',
+                    border: active ? `2px solid ${ch.color}` : '1px solid var(--border-primary)',
+                    background: active ? `${ch.color}12` : 'transparent', color: active ? ch.color : 'var(--text-muted)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                   }}>
                     <Icon size={13} />{ch.label}
@@ -130,8 +130,8 @@ export default function AddFollowUpModal({ onClose, onCreated, preselectedLead }
           {error && <div style={{ fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.06)', padding: '8px 12px', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
 
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={onClose} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: '#888', cursor: 'pointer' }}>Annuler</button>
-            <button type="submit" disabled={loading} style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: '#00C853', border: 'none', color: '#fff', cursor: 'pointer', opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button type="button" onClick={onClose} style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, border: '1px solid var(--border-primary)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}>Annuler</button>
+            <button type="submit" disabled={loading} style={{ padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'var(--color-primary)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', opacity: loading ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
               {loading && <Loader2 size={14} />}Créer
             </button>
           </div>
