@@ -1,131 +1,163 @@
-'use client'
+import { createClient } from '@/lib/supabase/server'
+import { getWorkspaceId } from '@/lib/supabase/get-workspace'
+import MetaIntegrationCard from './meta-card'
 
-import { useEffect, useState, useCallback } from 'react'
-import IntegrationCard from '@/components/settings/IntegrationCard'
-import ConnectIntegrationModal from '@/components/settings/ConnectIntegrationModal'
-
-interface IntegrationData {
-  type: string
-  is_active: boolean
-  connected_at: string | null
-  has_credentials: boolean
+interface PageProps {
+  searchParams: Promise<{ success?: string; error?: string }>
 }
 
-const DISPLAY_ORDER = ['telegram', 'whatsapp', 'meta', 'google_calendar', 'stripe']
-const DISABLED_TYPES = new Set(['stripe'])
+export default async function IntegrationsPage({ searchParams }: PageProps) {
+  const params = await searchParams
+  const { workspaceId } = await getWorkspaceId()
+  const supabase = await createClient()
 
-export default function IntegrationsPage() {
-  const [integrations, setIntegrations] = useState<IntegrationData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [connectModal, setConnectModal] = useState<{ open: boolean; type: string }>({ open: false, type: '' })
+  const { data: integrations } = await supabase
+    .from('integrations')
+    .select('type, is_active, connected_at, meta_page_id, credentials_encrypted')
+    .eq('workspace_id', workspaceId)
 
-  const fetchIntegrations = useCallback(async () => {
-    try {
-      const res = await fetch('/api/integrations')
-      const json = await res.json()
-      if (json.data) {
-        // Enrich with has_credentials (GET list doesn't return it, default based on connected_at)
-        const enriched: IntegrationData[] = json.data.map((i: IntegrationData & { id?: string | null }) => ({
-          type: i.type,
-          is_active: i.is_active,
-          connected_at: i.connected_at,
-          has_credentials: i.connected_at !== null,
-        }))
-        setIntegrations(enriched)
-      }
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const metaIntegration = integrations?.find(i => i.type === 'meta')
 
-  useEffect(() => {
-    fetchIntegrations()
-  }, [fetchIntegrations])
-
-  async function handleConnect(type: string, credentials: Record<string, string>) {
-    const res = await fetch('/api/integrations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, credentials }),
-    })
-    if (res.ok) {
-      setConnectModal({ open: false, type: '' })
-      await fetchIntegrations()
-    }
+  const successMessage: Record<string, string> = {
+    meta_connected: 'Meta Ads connecté avec succès ! Les leads arrivent maintenant automatiquement.',
   }
-
-  async function handleDisconnect(type: string) {
-    const confirmed = window.confirm(`Voulez-vous vraiment déconnecter cette intégration ?`)
-    if (!confirmed) return
-
-    const res = await fetch(`/api/integrations/${type}`, { method: 'DELETE' })
-    if (res.ok) {
-      await fetchIntegrations()
-    }
+  const errorMessage: Record<string, string> = {
+    auth_required: 'Vous devez être connecté pour accéder à cette page.',
+    meta_denied: 'Connexion Meta annulée.',
+    invalid_state: 'Erreur de sécurité. Veuillez réessayer.',
+    no_pages: 'Aucune page Facebook trouvée sur ce compte Meta.',
+    oauth_failed: 'Erreur lors de la connexion Meta. Vérifiez votre compte et réessayez.',
+    db_error: 'Erreur lors de la sauvegarde. Veuillez réessayer.',
   }
-
-  async function handleToggle(type: string, active: boolean) {
-    const res = await fetch(`/api/integrations/${type}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: active }),
-    })
-    if (res.ok) {
-      await fetchIntegrations()
-    }
-  }
-
-  // Sort integrations by display order
-  const sorted = DISPLAY_ORDER.map(type =>
-    integrations.find(i => i.type === type) || {
-      type,
-      is_active: false,
-      connected_at: null,
-      has_credentials: false,
-    }
-  )
 
   return (
-    <div style={{ padding: 32, maxWidth: 900 }}>
-      {/* Header */}
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
+    <div style={{ padding: '32px 40px', maxWidth: 800 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 6 }}>
         Intégrations
       </h1>
-      <p style={{ fontSize: 14, color: 'var(--text-tertiary)', margin: '0 0 32px 0' }}>
-        Connectez vos services pour automatiser vos workflows.
+      <p style={{ fontSize: 13, color: '#666', marginBottom: 32 }}>
+        Connecte tes outils pour automatiser l&apos;acquisition et le suivi des leads.
       </p>
 
-      {/* Grid */}
-      {loading ? (
-        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Chargement...</div>
-      ) : (
+      {/* Notifications */}
+      {params.success && successMessage[params.success] && (
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 16,
+          background: 'rgba(0, 200, 83, 0.08)',
+          border: '1px solid rgba(0, 200, 83, 0.25)',
+          borderRadius: 10,
+          padding: '12px 16px',
+          marginBottom: 24,
+          fontSize: 13,
+          color: '#00C853',
         }}>
-          {sorted.map(integration => (
-            <IntegrationCard
-              key={integration.type}
-              integration={integration}
-              onConnect={type => setConnectModal({ open: true, type })}
-              onDisconnect={handleDisconnect}
-              onToggle={handleToggle}
-              disabled={DISABLED_TYPES.has(integration.type)}
-            />
-          ))}
+          {successMessage[params.success]}
+        </div>
+      )}
+      {params.error && errorMessage[params.error] && (
+        <div style={{
+          background: 'rgba(229, 62, 62, 0.08)',
+          border: '1px solid rgba(229, 62, 62, 0.25)',
+          borderRadius: 10,
+          padding: '12px 16px',
+          marginBottom: 24,
+          fontSize: 13,
+          color: '#E53E3E',
+        }}>
+          {errorMessage[params.error]}
         </div>
       )}
 
-      {/* Modal */}
-      <ConnectIntegrationModal
-        open={connectModal.open}
-        type={connectModal.type}
-        onClose={() => setConnectModal({ open: false, type: '' })}
-        onConnect={handleConnect}
-      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Meta Ads */}
+        <MetaIntegrationCard integration={metaIntegration ?? null} />
+
+        {/* Google Agenda — coming soon */}
+        <PlaceholderCard
+          icon="📅"
+          name="Google Agenda"
+          description="Sync RDV bidirectionnel, créer des RDV depuis le CRM"
+          color="#4285F4"
+        />
+
+        {/* WhatsApp Business */}
+        <PlaceholderCard
+          icon="💬"
+          name="WhatsApp Business"
+          description="Messages automatiques aux leads et rappels RDV"
+          color="#25D366"
+        />
+
+        {/* Telegram */}
+        <PlaceholderCard
+          icon="✈️"
+          name="Telegram"
+          description="Notifications coach en temps réel"
+          color="#229ED9"
+        />
+
+        {/* Stripe */}
+        <PlaceholderCard
+          icon="💳"
+          name="Stripe"
+          description="Suivi paiements et abonnements — V2"
+          color="#635BFF"
+        />
+      </div>
+    </div>
+  )
+}
+
+function PlaceholderCard({
+  icon,
+  name,
+  description,
+  color,
+}: {
+  icon: string
+  name: string
+  description: string
+  color: string
+}) {
+  return (
+    <div style={{
+      background: '#141414',
+      border: '1px solid #262626',
+      borderRadius: 12,
+      padding: '16px 20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          borderRadius: 10,
+          background: `${color}18`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 18,
+        }}>
+          {icon}
+        </div>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 2 }}>
+            {name}
+          </div>
+          <div style={{ fontSize: 12, color: '#555' }}>{description}</div>
+        </div>
+      </div>
+      <span style={{
+        fontSize: 11,
+        color: '#444',
+        background: '#1a1a1a',
+        border: '1px solid #2a2a2a',
+        borderRadius: 6,
+        padding: '4px 10px',
+      }}>
+        Bientôt
+      </span>
     </div>
   )
 }

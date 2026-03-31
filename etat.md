@@ -35,7 +35,7 @@
 | Paramètres Intégrations | Pierre | ✅ Terminé | T-019 |
 | Dark/Light Mode | Pierre | ✅ Terminé | — |
 | Branding dynamique (couleur + logo) | Pierre | ✅ Terminé (attente migration SQL) | — |
-| Intégration Meta Ads | Rémy | ⬜ Non démarré | T-013 |
+| Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | 🔄 En cours (code complet, en attente tests Vercel) | T-013 |
 | Intégration Google Agenda | Rémy | ⬜ Non démarré | T-015 |
 | Module Publicités (Meta Ads dashboard) | Rémy | ⬜ Non démarré | T-017 |
 | Module Emails (séquences + broadcast) | Rémy | ⬜ Non démarré | T-020 |
@@ -103,7 +103,7 @@
 
 ### Ce qui manque (au 30/03/2026)
 - [ ] Module Automations — API + Frontend (Pierre — T-014)
-- [ ] Intégration Meta Ads — OAuth + webhook + stats (Pierre — T-013)
+- [ ] Intégration Meta Ads — en attente env vars + tests E2E (Rémy — T-013)
 - [ ] Intégration Google Agenda — OAuth + sync RDV (Rémy — T-015)
 - [ ] Notifications WhatsApp + Telegram (Pierre — T-016)
 - [ ] Module Publicités — dashboard Meta Ads (Rémy — T-017)
@@ -143,6 +143,7 @@
 | 2026-03-28 | Rémy | T-003 — Dashboard d'accueil avec vraies données Supabase | `feature/remy-dashboard` |
 | 2026-03-28 | Rémy | T-011 — Module Statistiques (page + queries + 6 composants) | `feature/remy-dashboard` |
 | 2026-03-28 | Rémy | T-012 — Base de données (vue globale) | `feature/remy-database` |
+| 2026-03-30 | Rémy | T-013 — Meta Ads Bloc A (OAuth + webhook + UI intégrations) | `feature/remy-meta-ads` |
 | 2026-03-31 | Pierre | T-022 — Module Calendrier/Booking (27 fichiers, en attente migration SQL) | `feature/pierre-automations` |
 
 ---
