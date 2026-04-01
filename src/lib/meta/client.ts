@@ -92,6 +92,8 @@ export interface InsightsParams {
   level: 'account' | 'campaign' | 'adset' | 'ad'
   dateFrom: string  // YYYY-MM-DD
   dateTo: string    // YYYY-MM-DD
+  campaignIds?: string[]  // filter insights to these campaigns
+  adsetIds?: string[]     // filter insights to these adsets
 }
 
 // ─── OAuth ───────────────────────────────────────────────────────────────────
@@ -249,15 +251,23 @@ const LEVEL_TO_EDGE: Record<string, string> = {
 export async function listAdObjects(
   adAccountId: string,
   token: string,
-  level: 'campaign' | 'adset' | 'ad'
+  level: 'campaign' | 'adset' | 'ad',
+  parentId?: string // campaign_id for adsets, adset_id for ads
 ): Promise<MetaAdObject[]> {
-  const edge = LEVEL_TO_EDGE[level]
-  const res = await fetch(
-    `${GRAPH_URL}/${adAccountId}/${edge}?fields=id,name,status,effective_status&limit=200&access_token=${token}`
-  )
+  // If we have a parent, fetch from the parent's edge instead of account level
+  let url: string
+  if (parentId && level === 'adset') {
+    url = `${GRAPH_URL}/${parentId}/adsets?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+  } else if (parentId && level === 'ad') {
+    url = `${GRAPH_URL}/${parentId}/ads?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+  } else {
+    const edge = LEVEL_TO_EDGE[level]
+    url = `${GRAPH_URL}/${adAccountId}/${edge}?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+  }
+
+  const res = await fetch(url)
   if (!res.ok) {
-    // Non-blocking — we can still show insights-only data
-    console.warn(`Failed to list ${edge}:`, await res.text())
+    console.warn(`Failed to list ${level}s:`, await res.text())
     return []
   }
   const data: { data: MetaAdObject[] } = await res.json()
@@ -301,6 +311,18 @@ export async function getInsights(
     searchParams.set('time_increment', '1')
   } else {
     searchParams.set('limit', '100')
+  }
+
+  // Filter by parent (campaign or adset)
+  const filtering: Array<{ field: string; operator: string; value: string[] }> = []
+  if (params.campaignIds && params.campaignIds.length > 0) {
+    filtering.push({ field: 'campaign.id', operator: 'IN', value: params.campaignIds })
+  }
+  if (params.adsetIds && params.adsetIds.length > 0) {
+    filtering.push({ field: 'adset.id', operator: 'IN', value: params.adsetIds })
+  }
+  if (filtering.length > 0) {
+    searchParams.set('filtering', JSON.stringify(filtering))
   }
 
   const res = await fetch(

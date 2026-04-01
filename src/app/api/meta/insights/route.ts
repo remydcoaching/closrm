@@ -90,6 +90,8 @@ export async function GET(request: NextRequest) {
     const preset = searchParams.get('preset') ?? '7d'
     const customFrom = searchParams.get('date_from')
     const customTo = searchParams.get('date_to')
+    const campaignId = searchParams.get('campaign_id')
+    const adsetId = searchParams.get('adset_id')
 
     // Validate level
     if (!['account', 'campaign', 'adset', 'ad'].includes(level)) {
@@ -131,6 +133,8 @@ export async function GET(request: NextRequest) {
       level,
       dateFrom,
       dateTo,
+      campaignIds: campaignId ? [campaignId] : undefined,
+      adsetIds: adsetId ? [adsetId] : undefined,
     })
 
     // Build response based on level
@@ -181,8 +185,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Campaign / AdSet / Ad level — fetch all objects + merge with insights
+    // Determine parent for listAdObjects
+    let parentId: string | undefined
+    if (level === 'adset' && campaignId) parentId = campaignId
+    if (level === 'ad' && adsetId) parentId = adsetId
+
     const [allObjects] = await Promise.all([
-      listAdObjects(credentials.ad_account_id, credentials.user_access_token, level as 'campaign' | 'adset' | 'ad'),
+      listAdObjects(credentials.ad_account_id, credentials.user_access_token, level as 'campaign' | 'adset' | 'ad', parentId),
     ])
 
     // Build insights map by id
