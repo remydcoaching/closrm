@@ -4,6 +4,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { decrypt } from '@/lib/meta/encryption'
 import {
   getInsights,
+  listAdObjects,
   extractLeadCount,
   extractCostPerLead,
   type MetaCredentials,
@@ -179,13 +180,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(response)
     }
 
-    // Campaign / AdSet / Ad level — build breakdown
+    // Campaign / AdSet / Ad level — fetch all objects + merge with insights
+    const [allObjects] = await Promise.all([
+      listAdObjects(credentials.ad_account_id, credentials.user_access_token, level as 'campaign' | 'adset' | 'ad'),
+    ])
+
+    // Build insights map by id
+    const insightsMap = new Map<string, BreakdownRow>()
     let totalSpend = 0
     let totalImpressions = 0
     let totalClicks = 0
     let totalLeads = 0
 
-    const breakdown: BreakdownRow[] = rows.map(row => {
+    for (const row of rows) {
       const spend = parseFloat(row.spend || '0')
       const impressions = parseInt(row.impressions || '0', 10)
       const clicks = parseInt(row.clicks || '0', 10)
@@ -198,7 +205,6 @@ export async function GET(request: NextRequest) {
       totalClicks += clicks
       totalLeads += leads
 
-      // Determine id and name based on level
       let id = ''
       let name = ''
       if (level === 'campaign') {
@@ -212,18 +218,52 @@ export async function GET(request: NextRequest) {
         name = row.ad_name ?? 'Sans nom'
       }
 
-      return {
+      insightsMap.set(id, {
         id,
         name,
-        status: 'ACTIVE', // Meta insights only return data for items with activity
+        status: 'ACTIVE',
         spend: Math.round(spend * 100) / 100,
         impressions,
         clicks,
         ctr: Math.round(rowCtr * 100) / 100,
         leads,
         cpl: cpl !== null ? Math.round(cpl * 100) / 100 : null,
+      })
+    }
+
+    // Merge: start with all objects, overlay insights
+    const breakdown: BreakdownRow[] = []
+
+    if (allObjects.length > 0) {
+      for (const obj of allObjects) {
+        const existing = insightsMap.get(obj.id)
+        if (existing) {
+          // Has insights — use real status from Meta object
+          breakdown.push({ ...existing, status: obj.effective_status })
+          insightsMap.delete(obj.id)
+        } else {
+          // No insights — inactive/draft object
+          breakdown.push({
+            id: obj.id,
+            name: obj.name,
+            status: obj.effective_status,
+            spend: 0,
+            impressions: 0,
+            clicks: 0,
+            ctr: 0,
+            leads: 0,
+            cpl: null,
+          })
+        }
       }
-    })
+      // Add any remaining insights not matched to objects (shouldn't happen but safe)
+      for (const row of insightsMap.values()) {
+        breakdown.push(row)
+      }
+    } else {
+      // Fallback if listAdObjects failed — use insights only
+      breakdown.push(...insightsMap.values())
+    }
 
     const overallCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
 

@@ -231,6 +231,39 @@ export async function getAdAccounts(userToken: string): Promise<MetaAdAccount[]>
   return data.data ?? []
 }
 
+// ─── List all objects (including inactive) ──────────────────────────────────
+
+export interface MetaAdObject {
+  id: string
+  name: string
+  status: string           // ACTIVE, PAUSED, DELETED, ARCHIVED
+  effective_status: string  // ACTIVE, PAUSED, CAMPAIGN_PAUSED, IN_PROCESS, WITH_ISSUES, etc.
+}
+
+const LEVEL_TO_EDGE: Record<string, string> = {
+  campaign: 'campaigns',
+  adset: 'adsets',
+  ad: 'ads',
+}
+
+export async function listAdObjects(
+  adAccountId: string,
+  token: string,
+  level: 'campaign' | 'adset' | 'ad'
+): Promise<MetaAdObject[]> {
+  const edge = LEVEL_TO_EDGE[level]
+  const res = await fetch(
+    `${GRAPH_URL}/${adAccountId}/${edge}?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+  )
+  if (!res.ok) {
+    // Non-blocking — we can still show insights-only data
+    console.warn(`Failed to list ${edge}:`, await res.text())
+    return []
+  }
+  const data: { data: MetaAdObject[] } = await res.json()
+  return data.data ?? []
+}
+
 // ─── Marketing API Insights ─────────────────────────────────────────────────
 
 export async function getInsights(

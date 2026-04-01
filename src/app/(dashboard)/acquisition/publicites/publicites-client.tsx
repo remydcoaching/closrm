@@ -214,7 +214,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
         />
       )}
       {!error && tab !== 'overview' && (
-        <AdsTableTab data={data} loading={loading} />
+        <AdsTableTab data={data} loading={loading} tabKey={tab} />
       )}
     </div>
   )
