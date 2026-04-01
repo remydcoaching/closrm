@@ -7,6 +7,7 @@ import {
   exchangeCodeForToken,
   getLongLivedToken,
   getPages,
+  getAdAccounts,
   subscribePageToLeadgen,
   type MetaCredentials,
 } from '@/lib/meta/client'
@@ -59,13 +60,28 @@ export async function GET(request: NextRequest) {
     // 4. Subscribe page to leadgen webhook events
     await subscribePageToLeadgen(page.id, page.access_token)
 
-    // 5. Encrypt and store credentials
+    // 5. Fetch ad accounts (for Marketing API — T-017)
+    let adAccountId: string | undefined
+    try {
+      const adAccounts = await getAdAccounts(longToken)
+      if (adAccounts.length > 0) {
+        // V1: auto-select first active account, or first overall
+        const active = adAccounts.find(a => a.account_status === 1)
+        adAccountId = (active ?? adAccounts[0]).id
+      }
+    } catch (e) {
+      // Non-blocking: ads features won't work but leads webhook still will
+      console.warn('Failed to fetch ad accounts (non-blocking):', e)
+    }
+
+    // 6. Encrypt and store credentials
     const credentials: MetaCredentials = {
       user_access_token: longToken,
       token_expires_at: expires_at,
       page_id: page.id,
       page_name: page.name,
       page_access_token: page.access_token,
+      ad_account_id: adAccountId,
     }
     const encrypted = encrypt(JSON.stringify(credentials))
 
