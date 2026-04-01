@@ -240,10 +240,21 @@ export async function getInsights(
 ): Promise<MetaInsightRow[]> {
   const timeRange = JSON.stringify({ since: params.dateFrom, until: params.dateTo })
 
-  const fields = [
+  const baseFields = [
     'spend', 'impressions', 'clicks', 'ctr',
     'actions', 'cost_per_action_type',
-  ].join(',')
+  ]
+
+  // Add name fields based on level so Meta returns them
+  if (params.level === 'campaign') {
+    baseFields.push('campaign_name')
+  } else if (params.level === 'adset') {
+    baseFields.push('adset_name', 'campaign_name')
+  } else if (params.level === 'ad') {
+    baseFields.push('ad_name', 'adset_name', 'campaign_name')
+  }
+
+  const fields = baseFields.join(',')
 
   const searchParams = new URLSearchParams({
     fields,
