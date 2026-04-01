@@ -5,7 +5,7 @@ export const createLeadSchema = z.object({
   last_name: z.string().max(100).optional().default(''),
   phone: z.string().max(30).optional().default(''),
   email: z.string().email("Format d'email invalide.").optional().or(z.literal('')),
-  source: z.enum(['facebook_ads', 'instagram_ads', 'formulaire', 'manuel']).default('manuel'),
+  source: z.enum(['facebook_ads', 'instagram_ads', 'formulaire', 'manuel', 'funnel']).default('manuel'),
   tags: z.array(z.string()).optional().default([]),
   notes: z.string().max(5000).optional().default(''),
 })
@@ -15,7 +15,7 @@ export const updateLeadSchema = z.object({
   last_name: z.string().max(100).optional(),
   phone: z.string().max(30).optional(),
   email: z.string().email().optional().or(z.literal('')),
-  source: z.enum(['facebook_ads', 'instagram_ads', 'formulaire', 'manuel']).optional(),
+  source: z.enum(['facebook_ads', 'instagram_ads', 'formulaire', 'manuel', 'funnel']).optional(),
   status: z.enum(['nouveau', 'setting_planifie', 'no_show_setting', 'closing_planifie', 'no_show_closing', 'clos', 'dead']).optional(),
   tags: z.array(z.string()).optional(),
   notes: z.string().max(5000).optional(),

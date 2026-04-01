@@ -36,6 +36,7 @@ export type LeadSource =
   | 'instagram_ads'
   | 'formulaire'
   | 'manuel'
+  | 'funnel'
 
 export interface Lead {
   id: string
@@ -328,6 +329,194 @@ export interface PlanningTemplate {
   blocks: TemplateBlock[]
   created_at: string
   updated_at: string
+}
+
+// ─── Funnels ────────────────────────────────────────────────────────────────
+
+export type FunnelStatus = 'draft' | 'published'
+
+export interface Funnel {
+  id: string
+  workspace_id: string
+  name: string
+  slug: string
+  description: string | null
+  domain_id: string | null
+  status: FunnelStatus
+  created_at: string
+  updated_at: string
+}
+
+export type FunnelBlockType =
+  | 'hero'
+  | 'video'
+  | 'testimonials'
+  | 'form'
+  | 'booking'
+  | 'pricing'
+  | 'faq'
+  | 'countdown'
+  | 'cta'
+  | 'text'
+  | 'image'
+  | 'spacer'
+
+export interface HeroBlockConfig {
+  title: string
+  subtitle: string
+  ctaText: string
+  ctaUrl: string
+  backgroundImage: string | null
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface VideoBlockConfig {
+  url: string
+  autoplay: boolean
+  controls: boolean
+  aspectRatio: '16:9' | '9:16' | '4:3' | '1:1'
+}
+
+export interface TestimonialItem {
+  name: string
+  role: string
+  content: string
+  avatarUrl: string | null
+  rating: number
+}
+
+export interface TestimonialsBlockConfig {
+  items: TestimonialItem[]
+  layout: 'grid' | 'carousel'
+  columns: 1 | 2 | 3
+}
+
+export interface FunnelFormField {
+  key: string
+  label: string
+  type: 'text' | 'email' | 'tel' | 'textarea' | 'select'
+  placeholder: string
+  required: boolean
+  options?: string[]
+}
+
+export interface FormBlockConfig {
+  title: string
+  subtitle: string
+  fields: FunnelFormField[]
+  submitText: string
+  redirectUrl: string | null
+  successMessage: string
+}
+
+export interface BookingBlockConfig {
+  calendarId: string | null
+  title: string
+  subtitle: string
+}
+
+export interface PricingBlockConfig {
+  title: string
+  price: string
+  currency: string
+  period: string
+  features: string[]
+  ctaText: string
+  ctaUrl: string
+  highlighted: boolean
+}
+
+export interface FaqItem {
+  question: string
+  answer: string
+}
+
+export interface FaqBlockConfig {
+  title: string
+  items: FaqItem[]
+}
+
+export interface CountdownBlockConfig {
+  targetDate: string
+  title: string
+  expiredMessage: string
+  style: 'flip' | 'simple' | 'bar'
+}
+
+export interface CtaBlockConfig {
+  text: string
+  url: string
+  style: 'primary' | 'secondary' | 'outline'
+  size: 'sm' | 'md' | 'lg'
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface FunnelTextBlockConfig {
+  content: string
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface FunnelImageBlockConfig {
+  src: string
+  alt: string
+  width: number | null
+  alignment: 'left' | 'center' | 'right'
+  linkUrl: string | null
+}
+
+export interface SpacerBlockConfig {
+  height: number
+}
+
+export type FunnelBlockConfig =
+  | HeroBlockConfig
+  | VideoBlockConfig
+  | TestimonialsBlockConfig
+  | FormBlockConfig
+  | BookingBlockConfig
+  | PricingBlockConfig
+  | FaqBlockConfig
+  | CountdownBlockConfig
+  | CtaBlockConfig
+  | FunnelTextBlockConfig
+  | FunnelImageBlockConfig
+  | SpacerBlockConfig
+
+export interface FunnelBlock {
+  id: string
+  type: FunnelBlockType
+  config: FunnelBlockConfig
+}
+
+export interface FunnelPage {
+  id: string
+  funnel_id: string
+  workspace_id: string
+  name: string
+  slug: string
+  page_order: number
+  blocks: FunnelBlock[]
+  seo_title: string | null
+  seo_description: string | null
+  favicon_url: string | null
+  redirect_url: string | null
+  is_published: boolean
+  views_count: number
+  submissions_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type FunnelEventType = 'view' | 'form_submit' | 'button_click' | 'video_play'
+
+export interface FunnelEvent {
+  id: string
+  funnel_page_id: string
+  workspace_id: string
+  event_type: FunnelEventType
+  visitor_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
 }
 
 // ─── Database / Contacts ─────────────────────────────────────────────────────
