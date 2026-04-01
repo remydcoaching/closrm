@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-03-31 (T-013 Meta Ads Bloc A — Rémy)
+> Dernière mise à jour : 2026-04-01 (T-017 Module Publicités — Rémy)
 
 ---
 
@@ -36,8 +36,8 @@
 | Dark/Light Mode | Pierre | ✅ Terminé | — |
 | Branding dynamique (couleur + logo) | Pierre | ✅ Terminé (attente migration SQL) | — |
 | Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | ✅ Terminé (webhook Meta non livré en mode Dev) | T-013 |
-| Intégration Google Agenda | Rémy | ⬜ Non démarré | T-015 |
-| Module Publicités (Meta Ads dashboard) | Rémy | ⬜ Non démarré | T-017 |
+| Intégration Google Agenda | Pierre | ✅ Terminé | T-015 |
+| Module Publicités (Meta Ads dashboard) | Rémy | ✅ Terminé | T-017 |
 | Module Emails (séquences + broadcast) | Rémy | ⬜ Non démarré | T-020 |
 | Instagram Automations (follow, DM, commentaires ads) | Pierre | ⬜ Non démarré | T-021 |
 | Module Calendrier / Booking (type Calendly) | Pierre | 🔄 En cours (code fait, migration SQL en attente) | T-022 |
@@ -101,33 +101,20 @@
 - [x] Répartition par source (Recharts PieChart donut + légende)
 - [x] Section Meta Ads (banner si non connecté, métriques si connecté)
 
-### Ce qui manque (au 30/03/2026)
-- [ ] Module Automations — API + Frontend (Pierre — T-014)
-- [ ] Intégration Meta Ads — en attente env vars + tests E2E (Rémy — T-013)
-- [ ] Intégration Google Agenda — OAuth + sync RDV (Rémy — T-015)
-- [ ] Notifications WhatsApp + Telegram (Pierre — T-016)
-- [ ] Module Publicités — dashboard Meta Ads (Rémy — T-017)
-- [ ] Paramètres Réglages (Pierre — T-018)
-- [ ] Paramètres Intégrations (Pierre — T-019)
+### Ce qui manque (au 01/04/2026)
+- [ ] Intégration Meta Ads — en attente App Review Meta pour webhooks live (Rémy — T-013)
 - [ ] Module Emails — séquences + broadcast (à assigner — T-020)
-- [ ] Instagram Automations — follow, DM, commentaires ads (à assigner — T-021)
+- [ ] Instagram Automations — follow, DM, commentaires ads (Pierre — T-021)
 
 ---
 
 ## Prochaines étapes prioritaires
 
-### Pierre (5 tâches)
-1. T-014 — Module Automations (API + Frontend)
-2. T-016 — Notifications WhatsApp + Telegram
-3. T-021 — Instagram Automations (follow, DM, commentaires ads)
-4. T-018 — Paramètres Réglages
-5. T-019 — Paramètres Intégrations
+### Pierre (1 tâche)
+1. T-021 — Instagram Automations (follow, DM, commentaires ads)
 
-### Rémy (4 tâches)
-1. T-013 — Intégration Meta Ads (OAuth + webhook + stats)
-2. T-015 — Intégration Google Agenda (OAuth + sync RDV)
-3. T-017 — Module Publicités (dashboard Meta Ads — dépend de T-013)
-4. T-020 — Module Emails (séquences + broadcast)
+### Rémy (1 tâche)
+1. T-020 — Module Emails (séquences + broadcast)
 
 ---
 
@@ -145,7 +132,8 @@
 | 2026-03-28 | Rémy | T-012 — Base de données (vue globale) | `feature/remy-database` |
 | 2026-03-30 | Rémy | T-013 — Meta Ads Bloc A (OAuth + webhook + UI intégrations) | `feature/remy-meta-ads` |
 | 2026-03-31 | Pierre | T-022 — Module Calendrier/Booking (27 fichiers, en attente migration SQL) | `feature/pierre-automations` |
+| 2026-04-01 | Rémy | T-017 — Module Publicités (Meta Ads Dashboard — Bloc B) | `feature/remy-meta-ads` |
 
 ---
 
-*Mis à jour le 2026-03-31 par Claude Code — ClosRM*
+*Mis à jour le 2026-04-01 par Claude Code — ClosRM*
