@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
-  Zap, Megaphone, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
-  CalendarDays, CalendarRange,
+  Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
+  CalendarDays, CalendarRange, Layers,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -26,7 +26,9 @@ const NAV = [
   {
     title: 'ACQUISITION',
     items: [
+      { label: 'Funnels', href: '/acquisition/funnels', icon: Layers },
       { label: 'Automations', href: '/acquisition/automations', icon: Zap },
+      { label: 'Emails', href: '/acquisition/emails', icon: Mail },
       { label: 'Publicités', href: '/acquisition/publicites', icon: Megaphone },
     ],
   },

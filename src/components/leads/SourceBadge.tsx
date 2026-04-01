@@ -5,6 +5,7 @@ const SOURCE_CONFIG: Record<LeadSource, { label: string; color: string; bg: stri
   instagram_ads: { label: 'Instagram Ads', color: '#e879f9', bg: 'rgba(232,121,249,0.10)' },
   formulaire: { label: 'Formulaire', color: '#06b6d4', bg: 'rgba(6,182,212,0.10)' },
   manuel: { label: 'Manuel', color: '#a0a0a0', bg: 'rgba(160,160,160,0.10)' },
+  funnel: { label: 'Funnel', color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
 }
 
 export default function SourceBadge({ source }: { source: LeadSource }) {

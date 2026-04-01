@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createBookingSchema, bookingFiltersSchema } from '@/lib/validations/bookings'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 
 const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address)'
 
@@ -87,6 +88,27 @@ export async function POST(request: NextRequest) {
         scheduled_at: data.scheduled_at,
       }).catch(() => {})
     }
+
+    // Create Google Calendar event (non-blocking)
+    const scheduledAt = new Date(data.scheduled_at)
+    const endAt = new Date(scheduledAt.getTime() + (data.duration_minutes ?? 30) * 60_000)
+    createGoogleCalendarEvent(workspaceId, {
+      summary: data.title,
+      description: data.notes ?? undefined,
+      start: { dateTime: scheduledAt.toISOString() },
+      end: { dateTime: endAt.toISOString() },
+    })
+      .then(async (googleEvent) => {
+        if (googleEvent?.id) {
+          const supa = await createClient()
+          await supa
+            .from('bookings')
+            .update({ google_event_id: googleEvent.id })
+            .eq('id', data.id)
+            .eq('workspace_id', workspaceId)
+        }
+      })
+      .catch(() => {})
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {

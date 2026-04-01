@@ -36,6 +36,7 @@ export type LeadSource =
   | 'instagram_ads'
   | 'formulaire'
   | 'manuel'
+  | 'funnel'
 
 export interface Lead {
   id: string
@@ -53,6 +54,8 @@ export interface Lead {
   meta_campaign_id: string | null
   meta_adset_id: string | null
   meta_ad_id: string | null
+  email_unsubscribed: boolean
+  email_unsubscribed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -130,8 +133,19 @@ export type WorkflowActionType =
   | 'remove_tag'
   | 'send_notification'
   | 'facebook_conversions_api'
+  | 'enroll_in_sequence'
+  | 'add_note'
+  | 'set_reached'
+  | 'schedule_call'
+  | 'webhook'
 
-export type WorkflowStepType = 'action' | 'delay' | 'condition'
+export type WorkflowStepType = 'action' | 'delay' | 'condition' | 'wait_for_event'
+
+export type WaitForEventType =
+  | 'before_call'      // X heures avant un appel planifié
+  | 'before_booking'   // X heures avant un booking
+  | 'lead_status_is'   // Attendre que le lead ait un certain statut
+  | 'tag_present'      // Attendre qu'un tag soit présent
 
 export type DelayUnit = 'minutes' | 'hours' | 'days'
 
@@ -166,6 +180,8 @@ export interface WorkflowStep {
   condition_value: string | null
   on_true_step: number | null
   on_false_step: number | null
+  parent_step_id: string | null
+  branch: 'main' | 'true' | 'false' | null
   created_at: string
 }
 
@@ -295,6 +311,214 @@ export interface BookingWithCalendar extends Booking {
   location: Pick<BookingLocation, 'id' | 'name' | 'address'> | null
 }
 
+// ── Planning Template ────────────────────────────────────────────────────────
+
+export interface TemplateBlock {
+  day: DayOfWeek
+  start: string  // "07:00"
+  end: string    // "08:00"
+  title: string
+  color: string
+}
+
+export interface PlanningTemplate {
+  id: string
+  workspace_id: string
+  name: string
+  description: string | null
+  blocks: TemplateBlock[]
+  created_at: string
+  updated_at: string
+}
+
+// ─── Funnels ────────────────────────────────────────────────────────────────
+
+export type FunnelStatus = 'draft' | 'published'
+
+export interface Funnel {
+  id: string
+  workspace_id: string
+  name: string
+  slug: string
+  description: string | null
+  domain_id: string | null
+  status: FunnelStatus
+  created_at: string
+  updated_at: string
+}
+
+export type FunnelBlockType =
+  | 'hero'
+  | 'video'
+  | 'testimonials'
+  | 'form'
+  | 'booking'
+  | 'pricing'
+  | 'faq'
+  | 'countdown'
+  | 'cta'
+  | 'text'
+  | 'image'
+  | 'spacer'
+
+export interface HeroBlockConfig {
+  title: string
+  subtitle: string
+  ctaText: string
+  ctaUrl: string
+  backgroundImage: string | null
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface VideoBlockConfig {
+  url: string
+  autoplay: boolean
+  controls: boolean
+  aspectRatio: '16:9' | '9:16' | '4:3' | '1:1'
+}
+
+export interface TestimonialItem {
+  name: string
+  role: string
+  content: string
+  avatarUrl: string | null
+  rating: number
+}
+
+export interface TestimonialsBlockConfig {
+  items: TestimonialItem[]
+  layout: 'grid' | 'carousel'
+  columns: 1 | 2 | 3
+}
+
+export interface FunnelFormField {
+  key: string
+  label: string
+  type: 'text' | 'email' | 'tel' | 'textarea' | 'select'
+  placeholder: string
+  required: boolean
+  options?: string[]
+}
+
+export interface FormBlockConfig {
+  title: string
+  subtitle: string
+  fields: FunnelFormField[]
+  submitText: string
+  redirectUrl: string | null
+  successMessage: string
+}
+
+export interface BookingBlockConfig {
+  calendarId: string | null
+  title: string
+  subtitle: string
+}
+
+export interface PricingBlockConfig {
+  title: string
+  price: string
+  currency: string
+  period: string
+  features: string[]
+  ctaText: string
+  ctaUrl: string
+  highlighted: boolean
+}
+
+export interface FaqItem {
+  question: string
+  answer: string
+}
+
+export interface FaqBlockConfig {
+  title: string
+  items: FaqItem[]
+}
+
+export interface CountdownBlockConfig {
+  targetDate: string
+  title: string
+  expiredMessage: string
+  style: 'flip' | 'simple' | 'bar'
+}
+
+export interface CtaBlockConfig {
+  text: string
+  url: string
+  style: 'primary' | 'secondary' | 'outline'
+  size: 'sm' | 'md' | 'lg'
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface FunnelTextBlockConfig {
+  content: string
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface FunnelImageBlockConfig {
+  src: string
+  alt: string
+  width: number | null
+  alignment: 'left' | 'center' | 'right'
+  linkUrl: string | null
+}
+
+export interface SpacerBlockConfig {
+  height: number
+}
+
+export type FunnelBlockConfig =
+  | HeroBlockConfig
+  | VideoBlockConfig
+  | TestimonialsBlockConfig
+  | FormBlockConfig
+  | BookingBlockConfig
+  | PricingBlockConfig
+  | FaqBlockConfig
+  | CountdownBlockConfig
+  | CtaBlockConfig
+  | FunnelTextBlockConfig
+  | FunnelImageBlockConfig
+  | SpacerBlockConfig
+
+export interface FunnelBlock {
+  id: string
+  type: FunnelBlockType
+  config: FunnelBlockConfig
+}
+
+export interface FunnelPage {
+  id: string
+  funnel_id: string
+  workspace_id: string
+  name: string
+  slug: string
+  page_order: number
+  blocks: FunnelBlock[]
+  seo_title: string | null
+  seo_description: string | null
+  favicon_url: string | null
+  redirect_url: string | null
+  is_published: boolean
+  views_count: number
+  submissions_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type FunnelEventType = 'view' | 'form_submit' | 'button_click' | 'video_play'
+
+export interface FunnelEvent {
+  id: string
+  funnel_page_id: string
+  workspace_id: string
+  event_type: FunnelEventType
+  visitor_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
 // ─── Database / Contacts ─────────────────────────────────────────────────────
 
 export interface ContactRow extends Lead {
@@ -302,6 +526,161 @@ export interface ContactRow extends Lead {
   nb_calls: number
   last_call_at: string | null
 }
+
+// ─── Email Module ───────────────────────────────────────────────────────────
+
+export type EmailDomainStatus = 'pending' | 'verified' | 'failed'
+
+export interface EmailDomain {
+  id: string
+  workspace_id: string
+  domain: string
+  resend_domain_id: string | null
+  status: EmailDomainStatus
+  dns_records: ResendDnsRecord[] | null
+  default_from_email: string | null
+  default_from_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ResendDnsRecord {
+  type: string      // "MX" | "TXT" | "CNAME"
+  name: string
+  value: string
+  priority?: number
+  status: string    // "verified" | "not_started" | "pending"
+}
+
+// ── Email Template Blocks ───────────────────────────────────────────────────
+
+export type EmailBlockType = 'header' | 'text' | 'image' | 'button' | 'divider' | 'footer'
+
+export interface HeaderBlockConfig {
+  logoUrl?: string
+  title: string
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface TextBlockConfig {
+  content: string  // HTML from TipTap
+}
+
+export interface ImageBlockConfig {
+  src: string
+  alt: string
+  width?: number
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface ButtonBlockConfig {
+  text: string
+  url: string
+  color: string
+  textColor?: string
+  alignment: 'left' | 'center' | 'right'
+}
+
+export interface DividerBlockConfig {
+  color?: string
+  spacing?: number
+}
+
+export interface FooterBlockConfig {
+  text: string  // Legal text, unsubscribe link auto-appended
+}
+
+export type EmailBlockConfig =
+  | HeaderBlockConfig
+  | TextBlockConfig
+  | ImageBlockConfig
+  | ButtonBlockConfig
+  | DividerBlockConfig
+  | FooterBlockConfig
+
+export interface EmailBlock {
+  id: string
+  type: EmailBlockType
+  config: EmailBlockConfig
+}
+
+export interface EmailTemplate {
+  id: string
+  workspace_id: string
+  name: string
+  subject: string
+  blocks: EmailBlock[]
+  preview_text: string | null
+  thumbnail_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ── Email Broadcasts ────────────────────────────────────────────────────────
+
+export type EmailBroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed'
+
+export interface EmailBroadcastFilters {
+  statuses?: LeadStatus[]
+  sources?: LeadSource[]
+  tags?: string[]
+  date_from?: string
+  date_to?: string
+  reached?: 'all' | 'true' | 'false'
+}
+
+export interface EmailBroadcast {
+  id: string
+  workspace_id: string
+  name: string
+  template_id: string | null
+  subject: string | null
+  filters: EmailBroadcastFilters
+  status: EmailBroadcastStatus
+  scheduled_at: string | null
+  sent_count: number
+  total_count: number
+  sent_at: string | null
+  created_at: string
+}
+
+// ── Email Sends (log) ───────────────────────────────────────────────────────
+
+export type EmailSendStatus = 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'complained'
+
+export interface EmailSend {
+  id: string
+  workspace_id: string
+  lead_id: string
+  broadcast_id: string | null
+  sequence_id: string | null
+  template_id: string | null
+  resend_email_id: string | null
+  status: EmailSendStatus
+  subject: string | null
+  from_email: string | null
+  opened_at: string | null
+  clicked_at: string | null
+  bounced_at: string | null
+  sent_at: string
+}
+
+// ── Email Sequence Enrollments ──────────────────────────────────────────────
+
+export type EmailEnrollmentStatus = 'active' | 'completed' | 'paused' | 'unsubscribed'
+
+export interface EmailSequenceEnrollment {
+  id: string
+  workspace_id: string
+  sequence_id: string
+  lead_id: string
+  status: EmailEnrollmentStatus
+  current_step: number
+  enrolled_at: string
+  completed_at: string | null
+}
+
+// ─── Database / Contacts ─────────────────────────────────────────────────────
 
 export type ContactGroupBy = 'status' | 'source'
 

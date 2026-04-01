@@ -126,9 +126,31 @@ export default function ConnectIntegrationModal({ open, type, onClose, onConnect
 
     if (type === 'google_calendar') {
       return (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-          Configuration OAuth — sera disponible prochainement.
-        </p>
+        <>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 16 }}>
+            Connectez votre Google Agenda pour synchroniser vos rendez-vous directement depuis le CRM.
+          </p>
+          <a
+            href="/api/integrations/google/authorize"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'var(--color-primary)',
+              color: '#000',
+              border: 'none',
+              borderRadius: 8,
+              padding: '10px 20px',
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: 'none',
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+          >
+            Connecter Google Agenda
+          </a>
+        </>
       )
     }
 
@@ -149,7 +171,7 @@ export default function ConnectIntegrationModal({ open, type, onClose, onConnect
     ? !!(fields.phone_number_id && fields.access_token)
     : false
 
-  const isDisabledType = type === 'meta' || type === 'google_calendar' || type === 'stripe'
+  const isDisabledType = type === 'meta' || type === 'stripe' || type === 'google_calendar'
 
   return (
     <div

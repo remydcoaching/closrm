@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Zap, Clock, GitBranch } from 'lucide-react'
+import { Plus, Zap, Clock, GitBranch, Timer } from 'lucide-react'
 import { WorkflowStepType } from '@/types'
 
 interface Props {
@@ -11,7 +11,8 @@ interface Props {
 const options: { type: WorkflowStepType; label: string; icon: typeof Zap; color: string }[] = [
   { type: 'action', label: 'Action', icon: Zap, color: '#5b9bf5' },
   { type: 'delay', label: 'Délai', icon: Clock, color: '#D69E2E' },
-  { type: 'condition', label: 'Condition', icon: GitBranch, color: '#5b9bf5' },
+  { type: 'condition', label: 'Condition (Si/Sinon)', icon: GitBranch, color: '#8B5CF6' },
+  { type: 'wait_for_event', label: 'Attendre un événement', icon: Timer, color: '#F97316' },
 ]
 
 export default function AddStepButton({ onAdd }: Props) {
@@ -66,7 +67,7 @@ export default function AddStepButton({ onAdd }: Props) {
             borderRadius: 8,
             padding: 4,
             zIndex: 10,
-            minWidth: 140,
+            minWidth: 200,
           }}
         >
           {options.map((opt) => {

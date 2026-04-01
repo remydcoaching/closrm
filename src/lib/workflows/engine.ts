@@ -239,14 +239,78 @@ async function runSteps(
           result: conditionMet,
         })
 
-        if (conditionMet) {
-          currentOrder = step.on_true_step ?? currentOrder + 1
-        } else {
-          // on_false_step = null means stop execution
-          if (step.on_false_step === null) {
-            break
+        // Find branch steps
+        const branchLabel = conditionMet ? 'true' : 'false'
+        const branchSteps = steps
+          .filter(s => s.parent_step_id === step.id && s.branch === branchLabel)
+          .sort((a, b) => a.step_order - b.step_order)
+
+        if (branchSteps.length > 0) {
+          // Execute the branch steps inline
+          for (const branchStep of branchSteps) {
+            await supabase
+              .from('workflow_executions')
+              .update({ current_step: branchStep.step_order })
+              .eq('id', executionId)
+
+            if (branchStep.step_type === 'action') {
+              const bActionType = branchStep.action_type as WorkflowActionType
+              const bHandler = actionHandlers[bActionType]
+              if (bHandler) {
+                const bContext: ExecutionContext = {
+                  workspaceId, leadId: triggerData.lead_id, lead: leadData,
+                  coach: templateContext.coach, actionType: bActionType,
+                  resolveTemplate: resolveTemplateFn, supabase,
+                }
+                const bResult = await bHandler(branchStep.action_config ?? {}, bContext)
+                await logStep(supabase, executionId, branchStep, bResult.success ? 'success' : 'failed', bResult.result, bResult.error)
+              }
+            } else if (branchStep.step_type === 'delay') {
+              const delayMs = computeDelayMs(branchStep.delay_value, branchStep.delay_unit)
+              const resumeAt = new Date(Date.now() + delayMs)
+              await logStep(supabase, executionId, branchStep, 'success', { delay_value: branchStep.delay_value, delay_unit: branchStep.delay_unit, resume_at: resumeAt.toISOString() })
+              await supabase.from('workflow_executions').update({ status: 'waiting', current_step: branchStep.step_order, resume_at: resumeAt.toISOString() }).eq('id', executionId)
+              return
+            }
           }
-          currentOrder = step.on_false_step
+        } else {
+          // Legacy: use on_true_step / on_false_step for backwards compat
+          if (conditionMet) {
+            currentOrder = step.on_true_step ?? currentOrder + 1
+          } else {
+            if (step.on_false_step === null) break
+            currentOrder = step.on_false_step
+          }
+          continue
+        }
+
+        currentOrder++
+      } else if (step.step_type === 'wait_for_event') {
+        // Wait for a dynamic event (e.g. X hours before a call)
+        const eventConfig = step.action_config ?? {}
+        const eventType = eventConfig.event_type as string
+        const resumeAt = await computeEventResumeAt(supabase, workspaceId, triggerData, eventType, eventConfig)
+
+        if (resumeAt) {
+          await logStep(supabase, executionId, step, 'success', {
+            event_type: eventType,
+            resume_at: resumeAt.toISOString(),
+          })
+
+          await supabase
+            .from('workflow_executions')
+            .update({
+              status: 'waiting',
+              current_step: currentOrder,
+              resume_at: resumeAt.toISOString(),
+            })
+            .eq('id', executionId)
+
+          return // Cron will resume
+        } else {
+          // No event found — skip
+          await logStep(supabase, executionId, step, 'skipped', undefined, `No event found for ${eventType}`)
+          currentOrder++
         }
       } else {
         await logStep(supabase, executionId, step, 'skipped', undefined, `Unknown step type: ${step.step_type}`)
@@ -285,6 +349,57 @@ function evaluateCondition(step: WorkflowStep, leadData: Record<string, unknown>
     default:
       return false
   }
+}
+
+// ─── Wait-for-event computation ─────────────────────────────────────────────
+
+async function computeEventResumeAt(
+  supabase: ReturnType<typeof createServiceClient>,
+  workspaceId: string,
+  triggerData: TriggerData,
+  eventType: string,
+  config: Record<string, unknown>
+): Promise<Date | null> {
+  const hoursBefore = (config.hours_before as number) ?? 0
+  const leadId = triggerData.lead_id
+
+  if (!leadId) return null
+
+  if (eventType === 'before_call') {
+    // Find the next scheduled call for this lead
+    const { data: call } = await supabase
+      .from('calls')
+      .select('scheduled_at')
+      .eq('lead_id', leadId)
+      .eq('workspace_id', workspaceId)
+      .eq('outcome', 'pending')
+      .gt('scheduled_at', new Date().toISOString())
+      .order('scheduled_at', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (!call?.scheduled_at) return null
+    return new Date(new Date(call.scheduled_at).getTime() - hoursBefore * 3600000)
+  }
+
+  if (eventType === 'before_booking') {
+    // Find the next booking for this lead
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('scheduled_at')
+      .eq('lead_id', leadId)
+      .eq('workspace_id', workspaceId)
+      .eq('status', 'confirmed')
+      .gt('scheduled_at', new Date().toISOString())
+      .order('scheduled_at', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (!booking?.scheduled_at) return null
+    return new Date(new Date(booking.scheduled_at).getTime() - hoursBefore * 3600000)
+  }
+
+  return null
 }
 
 // ─── Delay computation ───────────────────────────────────────────────────────

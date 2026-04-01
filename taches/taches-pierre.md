@@ -1,7 +1,7 @@
 # Tâches Pierre — ClosRM V1
 
 > Toutes les tâches de Pierre, dans l'ordre. Chaque module = API + Frontend, autonome.
-> Dernière mise à jour : 2026-03-31
+> Dernière mise à jour : 2026-04-01
 
 ---
 
@@ -56,7 +56,8 @@
 
 ### 4. T-014 · Module Automations (Workflows) — API + Frontend
 **Priorité :** Moyenne
-**Statut :** ✅ Terminé (2026-03-30)
+**Statut :** 🔄 En cours (builder refait le 01/04, reste polish)
+**Spec :** `docs/superpowers/specs/2026-03-31-email-module-design.md`
 
 **API (`/api/workflows`) :**
 - [x] `GET /api/workflows` — liste
@@ -74,24 +75,41 @@
 - [x] `variables.ts` — résolution de templates (`{{prenom}}`, `{{date_rdv}}`, etc.)
 - [x] `templates.ts` — templates pré-configurés
 
-**Actions implémentées :**
+**Actions implémentées (13 au total) :**
 - [x] `send_email` (Resend API)
 - [x] `send_whatsapp` (Meta Cloud API)
 - [x] `send_notification` (Telegram ou WhatsApp au coach)
 - [x] `create_followup`
 - [x] `change_lead_status`
 - [x] `add_tag` / `remove_tag`
+- [x] `enroll_in_sequence` — inscrire lead dans une séquence email
+- [x] `add_note` — ajouter une note au lead
+- [x] `set_reached` — marquer comme joint
+- [x] `schedule_call` — planifier un appel (setting/closing)
+- [x] `webhook` — appeler un webhook externe (POST/GET/PUT)
 - [ ] `send_dm_instagram` (stub — T-021)
 - [ ] `facebook_conversions_api` (stub — T-013)
 
-**Cron scheduler :**
-- [x] `/api/cron/workflow-scheduler` — reprend les exécutions pausées (delay steps) + triggers temporels
+**Branching + Wait-for-event (ajouté 01/04) :**
+- [x] Conditions Si/Sinon avec branches visuelles (Oui/Non côte à côte)
+- [x] Nouveau step type `wait_for_event` — pause jusqu'à X heures avant un événement
+- [x] Events supportés : `before_call`, `before_booking`
+- [x] Engine mis à jour pour exécuter les branches + attendre des events
+- [x] Migration SQL `007_workflow_branching.sql`
+- [ ] **Exécuter migration 007 dans Supabase**
+- [ ] Tester branching end-to-end (condition → branche Oui → actions / branche Non → actions)
+- [ ] Tester wait_for_event avec un vrai booking planifié
 
-**Frontend (page `/acquisition/automations`) :**
-- [x] Liste des workflows avec toggle actif/inactif
-- [x] Builder visuel : trigger + étapes (action/delay/condition)
-- [x] Création depuis templates ou vierge
-- [x] Compteur d'exécutions + date dernière exécution
+**Builder visuel (refait le 01/04) :**
+- [x] Drag & drop pour réordonner les steps (dnd-kit, poignée dédiée)
+- [x] Bouton `+` entre chaque step pour insérer à la bonne position
+- [x] Insertion correcte (décalage des steps suivants côté API)
+- [x] Branches visuelles Oui/Non après une condition
+- [x] Blocs `wait_for_event` (orange) dans le builder
+- [ ] Polish UI : améliorer les connecteurs visuels entre branches
+
+**Cron scheduler :**
+- [x] `/api/cron/workflow-scheduler` — reprend les exécutions pausées (delay steps + wait_for_event)
 
 ---
 
@@ -135,22 +153,16 @@
 - [x] CSS variables complètes light/dark dans `globals.css`
 - [x] Support `prefers-color-scheme` (système)
 
-**Fichiers :** `src/components/theme/ThemeProvider.tsx`, `src/components/theme/ThemeToggle.tsx`
-
 ---
 
 ### 6c. Branding dynamique
 **Statut :** ✅ Terminé (2026-03-31)
 
 - [x] Migration SQL : `accent_color` + `logo_url` dans workspaces + bucket `workspace-logos`
-- [x] `BrandingInjector` — injection dynamique de CSS variables (`--color-primary`, etc.)
+- [x] `BrandingInjector` — injection dynamique de CSS variables
 - [x] `BrandingForm` — presets couleurs (12 couleurs) + hex custom + preview live
 - [x] Refactor global : couleurs hardcodées → CSS variables `var(--color-primary)`
 - [x] Logo affiché dans la sidebar si configuré
-- [ ] **⚠️ Migration non exécutée dans Supabase** (section à ajouter dans `sql-a-executer.md`)
-
-**Fichiers :** `src/lib/branding/BrandingInjector.tsx`, `src/lib/branding/utils.ts`, `src/components/settings/BrandingForm.tsx`, `supabase/migrations/003_branding.sql`
-**Spec :** `docs/superpowers/specs/2026-03-31-branding-customization-design.md`
 
 ---
 
@@ -159,56 +171,89 @@
 **Statut :** ✅ Terminé (2026-03-30)
 
 - [x] Card par service : Telegram, WhatsApp, Meta, Google Agenda, Stripe
-- [x] Chaque card : icône, nom, description, statut, date connexion, bouton action
 - [x] Modale de connexion (Telegram: bot token + chat ID, WhatsApp: phone ID + access token)
 - [x] Validation automatique des credentials
 - [x] Toggle actif/inactif + déconnexion avec confirmation
-- [x] Placeholders OAuth pour Meta, Google Agenda (sera implémenté par Rémy)
-- [x] Chiffrement des credentials en base (`src/lib/crypto.ts`)
+- [x] Chiffrement des credentials en base
+- [x] **Card Domaine Email** ajoutée (01/04) — config domaine custom Resend
 
 ---
 
 ### 8. T-022 · Module Calendrier / Booking (type Calendly)
 **Priorité :** Haute
-**Statut :** 🔄 En cours — code implémenté, migration SQL en attente
+**Statut :** 🔄 En cours — code implémenté, migrations SQL ✅, tests E2E restants
 **Spec :** `docs/superpowers/specs/2026-03-30-agenda-booking-design.md`
 
-**Base de données :**
-- [x] Migration SQL : tables `workspace_slugs`, `booking_calendars`, `bookings`
-- [ ] **⚠️ Migration non exécutée dans Supabase** (Rémy doit run section 3 de `sql-a-executer.md`)
-
-**API :**
-- [x] CRUD `/api/booking-calendars`
-- [x] CRUD `/api/bookings`
-- [x] API publique `/api/public/book/[slug]/[slug]` (créneaux + réservation)
-- [x] API `/api/workspaces/slug` (slug public)
-- [x] Calcul des créneaux disponibles (`src/lib/bookings/availability.ts`)
-- [x] Anti-double-booking
-- [x] Création lead auto depuis booking public
-- [x] Trigger workflow `booking_created`
-
-**Frontend — Agenda (`/agenda`) :**
-- [x] Vues Jour / Semaine / Mois
-- [x] Sidebar : mini-calendrier + filtres calendriers
-- [x] Modale nouveau RDV (calendrier ou événement perso)
-- [x] Panel détails avec statut + suppression
-
-**Frontend — Paramètres Calendriers (`/parametres/calendriers`) :**
-- [x] Liste calendriers avec cards
-- [x] Éditeur : général, disponibilités hebdo, champs formulaire, lien
-
-**Frontend — Booking public (`/book/[slug]/[slug]`) :**
-- [x] Page Calendly-style avec branding coach
-- [x] Formulaire dynamique + page de confirmation
-
-**Ce qui reste :**
-- [ ] Exécuter migration SQL dans Supabase
+- [x] Base de données + migrations
+- [x] API CRUD booking-calendars + bookings
+- [x] API publique booking
+- [x] Agenda vues Jour/Semaine/Mois
+- [x] Page booking public Calendly-style
+- [x] Google Calendar sync
+- [x] Planning Templates (éditeur hebdomadaire)
 - [ ] Tester end-to-end
-- [ ] Ajouter champ slug workspace dans page Réglages (A-022-01)
+- [ ] Ajouter champ slug workspace dans page Réglages
 
 ---
 
-### 9. T-021 · Instagram Automations
+### 9. T-020 · Module Emails (séquences + broadcast)
+**Priorité :** Moyenne
+**Statut :** 🔄 En cours (code complet, reste polish + tests)
+**Spec :** `docs/superpowers/specs/2026-03-31-email-module-design.md`
+
+**Base de données :**
+- [x] Migration SQL `006_email_module.sql` — 5 tables + champs leads
+- [x] **Migration exécutée dans Supabase** ✅
+
+**Domaines custom (Resend) :**
+- [x] API CRUD `/api/emails/domains` + verify
+- [x] Composant `DomainSetup` — 3 états (vide → DNS pending → vérifié)
+- [x] Intégré dans page Intégrations
+- [ ] Tester avec un vrai domaine (ajout DNS + vérification)
+
+**Templates email (drag & drop builder) :**
+- [x] API CRUD `/api/emails/templates` + preview HTML
+- [x] 6 composants blocs (Header, Text, Image, Button, Divider, Footer)
+- [x] Builder drag & drop (dnd-kit) avec palette de blocs
+- [x] Preview live desktop/mobile (iframe)
+- [x] Compilateur JSON → HTML responsive (`src/lib/email/compiler.ts`)
+- [x] Pages : liste templates + éditeur
+- [ ] Polish : améliorer l'UX du builder (TipTap rich text au lieu de textarea brut)
+
+**Séquences email :**
+- [x] API CRUD `/api/emails/sequences` + enroll leads
+- [x] Composant `SequenceTimeline` (emails + délais)
+- [x] Pages : liste + éditeur timeline
+- [ ] Connecter à l'engine workflow (exécution réelle des séquences via cron)
+- [ ] Tester : inscrire un lead → vérifier envoi email 1, délai, email 2...
+
+**Broadcasts (campagnes ponctuelles) :**
+- [x] API CRUD `/api/emails/broadcasts` + send batch + preview count
+- [x] Composant `BroadcastFilterBuilder` (filtres dynamiques)
+- [x] Pages : liste campagnes + création
+- [x] Batch sender avec rate limiting (`src/lib/email/batch-sender.ts`)
+- [ ] Tester : créer campagne → filtres → envoi → vérifier logs `email_sends`
+
+**Stats & tracking :**
+- [x] Webhook Resend (`/api/webhooks/resend`) — 5 events
+- [x] API stats `/api/emails/stats` (agrégations par période)
+- [x] Dashboard emails avec KPIs placeholder
+- [ ] Configurer le webhook dans Resend dashboard (URL production)
+- [ ] Brancher les vraies stats dans le dashboard (remplacer les "—")
+
+**Désinscription :**
+- [x] API `/api/unsubscribe` (validation token + update lead)
+- [x] Page publique `/unsubscribe` (confirmation)
+- [x] Tokens signés HMAC (`src/lib/email/unsubscribe.ts`)
+- [x] Champs `email_unsubscribed` + `email_unsubscribed_at` sur leads
+
+**Navigation :**
+- [x] Entrée "Emails" dans la sidebar (sous Acquisition)
+- [x] Tabs : Dashboard / Templates / Séquences / Campagnes
+
+---
+
+### 10. T-021 · Instagram Automations
 **Priorité :** Moyenne
 **Statut :** ⬜ Non démarré
 
@@ -227,17 +272,35 @@
 | 1 | Auth (T-002) | Critique | ✅ |
 | 2 | Closing (T-007) | Haute | ✅ |
 | 3 | Follow-ups (T-008) | Haute | ✅ |
-| 4 | Automations/Workflows (T-014) | Moyenne | ✅ |
+| 4 | Automations/Workflows (T-014) | Moyenne | 🔄 (branching + polish) |
 | 5 | Notifications WhatsApp/Telegram (T-016) | Moyenne | ✅ |
 | 6 | Paramètres Réglages (T-018) | Basse | ✅ |
 | 6b | Dark/Light Mode | — | ✅ |
-| 6c | Branding dynamique | — | ✅ (attente migration SQL) |
+| 6c | Branding dynamique | — | ✅ |
 | 7 | Paramètres Intégrations (T-019) | Basse | ✅ |
-| 8 | Calendrier/Booking (T-022) | Haute | 🔄 (attente migration SQL) |
-| 9 | Instagram Automations (T-021) | Moyenne | ⬜ |
+| 8 | Calendrier/Booking (T-022) | Haute | 🔄 (tests E2E restants) |
+| 9 | Emails séquences + broadcast (T-020) | Moyenne | 🔄 (code complet, tests restants) |
+| 10 | Instagram Automations (T-021) | Moyenne | ⬜ |
 
-**Score : 9/11 terminées · 2 en attente migration SQL · 1 non démarrée**
+**Score : 8/12 terminées · 3 en cours · 1 non démarrée**
 
 ---
 
-*Mis à jour le 2026-03-31 — ClosRM*
+## Ce qui reste à faire (priorisé)
+
+### Migrations SQL à exécuter dans Supabase
+1. `007_workflow_branching.sql` — branching + wait_for_event
+
+### Tests end-to-end à faire
+1. **T-014 Automations** — branching (condition → Oui/Non) + wait_for_event
+2. **T-020 Emails** — domaine custom + template builder + séquence + broadcast + stats webhook
+3. **T-022 Booking** — booking public + Google Calendar sync
+
+### Polish UI restant
+1. **T-014** — connecteurs visuels entre branches
+2. **T-020** — TipTap rich text dans le builder templates + stats dashboard réelles
+3. **T-020** — Configurer webhook Resend en production
+
+---
+
+*Mis à jour le 2026-04-01 — ClosRM*

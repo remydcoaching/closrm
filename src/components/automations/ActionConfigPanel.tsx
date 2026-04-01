@@ -292,6 +292,110 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
           </>
         )
 
+      case 'enroll_in_sequence':
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>ID de la séquence</label>
+            <input
+              type="text"
+              style={inputStyle}
+              placeholder="ID de la séquence email..."
+              value={(config.sequence_id as string) || ''}
+              onChange={(e) => updateConfig('sequence_id', e.target.value)}
+            />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+              Retrouve l&apos;ID dans Emails &gt; Séquences
+            </div>
+          </div>
+        )
+
+      case 'add_note':
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Contenu de la note</label>
+            <textarea
+              style={textareaStyle}
+              placeholder="Note à ajouter au lead..."
+              value={(config.note as string) || ''}
+              onChange={(e) => updateConfig('note', e.target.value)}
+            />
+            <TemplateVariableHelper />
+          </div>
+        )
+
+      case 'set_reached':
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Valeur</label>
+            <select
+              style={selectStyle}
+              value={(config.reached as string) ?? 'true'}
+              onChange={(e) => updateConfig('reached', e.target.value)}
+            >
+              <option value="true">Joint (oui)</option>
+              <option value="false">Non joint (non)</option>
+            </select>
+          </div>
+        )
+
+      case 'schedule_call':
+        return (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Type d&apos;appel</label>
+              <select
+                style={selectStyle}
+                value={(config.call_type as string) || 'setting'}
+                onChange={(e) => updateConfig('call_type', e.target.value)}
+              >
+                <option value="setting">Setting</option>
+                <option value="closing">Closing</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Délai avant l&apos;appel (jours)</label>
+              <input
+                type="number"
+                style={inputStyle}
+                min={0}
+                value={(config.delay_days as number) ?? 1}
+                onChange={(e) => updateConfig('delay_days', parseInt(e.target.value) || 0)}
+              />
+            </div>
+          </>
+        )
+
+      case 'webhook':
+        return (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>URL du webhook</label>
+              <input
+                type="url"
+                style={inputStyle}
+                placeholder="https://..."
+                value={(config.url as string) || ''}
+                onChange={(e) => updateConfig('url', e.target.value)}
+              />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Méthode HTTP</label>
+              <select
+                style={selectStyle}
+                value={(config.method as string) || 'POST'}
+                onChange={(e) => updateConfig('method', e.target.value)}
+              >
+                <option value="POST">POST</option>
+                <option value="GET">GET</option>
+                <option value="PUT">PUT</option>
+              </select>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Les données du lead seront envoyées automatiquement dans le body.
+            </div>
+          </>
+        )
+
       default:
         return null
     }
@@ -332,6 +436,11 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
           <option value="remove_tag">Supprimer un tag</option>
           <option value="send_notification">Notifier le coach</option>
           <option value="facebook_conversions_api">Facebook Conversions API</option>
+          <option value="enroll_in_sequence">Inscrire dans une séquence email</option>
+          <option value="add_note">Ajouter une note au lead</option>
+          <option value="set_reached">Marquer comme joint</option>
+          <option value="schedule_call">Planifier un appel</option>
+          <option value="webhook">Appeler un webhook externe</option>
         </select>
       </div>
 

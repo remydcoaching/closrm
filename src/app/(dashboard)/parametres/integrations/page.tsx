@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import MetaIntegrationCard from './meta-card'
+import GoogleCalendarCard from './google-card'
+import DomainSetup from '@/components/emails/DomainSetup'
 
 interface PageProps {
   searchParams: Promise<{ success?: string; error?: string }>
@@ -17,6 +19,7 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
     .eq('workspace_id', workspaceId)
 
   const metaIntegration = integrations?.find(i => i.type === 'meta')
+  const googleIntegration = integrations?.find(i => i.type === 'google_calendar')
 
   const successMessage: Record<string, string> = {
     meta_connected: 'Meta Ads connecté avec succès ! Les leads arrivent maintenant automatiquement.',
@@ -71,13 +74,11 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
         {/* Meta Ads */}
         <MetaIntegrationCard integration={metaIntegration ?? null} />
 
-        {/* Google Agenda — coming soon */}
-        <PlaceholderCard
-          icon="📅"
-          name="Google Agenda"
-          description="Sync RDV bidirectionnel, créer des RDV depuis le CRM"
-          color="#4285F4"
-        />
+        {/* Google Agenda */}
+        <GoogleCalendarCard integration={googleIntegration ?? null} />
+
+        {/* Domaine Email */}
+        <DomainSetup />
 
         {/* WhatsApp Business */}
         <PlaceholderCard

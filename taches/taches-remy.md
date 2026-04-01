@@ -108,20 +108,7 @@
 
 ---
 
-### 8. T-020 · Module Emails (séquences + broadcast)
-**Priorité :** Moyenne
-**Statut :** ⬜ Non démarré
-
-- [ ] Séquences automatiques (type Mailerlite)
-- [ ] Broadcast à une liste segmentée
-- [ ] Templates d'emails
-- [ ] Stats : taux d'ouverture, clics, désinscriptions
-
-**Fichiers à créer :**
-- `src/app/(dashboard)/acquisition/emails/`
-- `src/app/api/emails/route.ts`
-- `src/components/emails/`
-- `src/lib/email/`
+### ~~8. T-020 · Module Emails~~ → **Transféré à Pierre (fait le 01/04)**
 
 ---
 
@@ -136,7 +123,7 @@
 | 5 | Intégration Meta Ads (T-013) | Haute | ⬜ |
 | 6 | Intégration Google Agenda (T-015) | Moyenne | ⬜ |
 | 7 | Publicités dashboard (T-017) | Moyenne | ⬜ |
-| 8 | Emails séquences + broadcast (T-020) | Moyenne | ⬜ |
+| 8 | ~~Emails (T-020)~~ | — | → Pierre ✅ |
 
 ---
 

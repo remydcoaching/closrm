@@ -9,6 +9,7 @@ import TriggerConfigPanel from '@/components/automations/TriggerConfigPanel'
 import ActionConfigPanel from '@/components/automations/ActionConfigPanel'
 import DelayConfigPanel from '@/components/automations/DelayConfigPanel'
 import ConditionConfigPanel from '@/components/automations/ConditionConfigPanel'
+import WaitForEventConfigPanel from '@/components/automations/WaitForEventConfigPanel'
 
 export default function WorkflowEditorPage() {
   const params = useParams()
@@ -104,11 +105,14 @@ export default function WorkflowEditorPage() {
     }
   }
 
-  const handleAddStep = async (stepType: WorkflowStepType, afterOrder: number) => {
+  const handleAddStep = async (stepType: WorkflowStepType, afterOrder: number, parentStepId?: string, branch?: string) => {
     const newStep: Record<string, unknown> = {
       step_type: stepType,
-      step_order: afterOrder + 1,
+      insert_after: afterOrder,
     }
+
+    if (parentStepId) newStep.parent_step_id = parentStepId
+    if (branch) newStep.branch = branch
 
     if (stepType === 'action') {
       newStep.action_type = 'send_email'
@@ -120,20 +124,25 @@ export default function WorkflowEditorPage() {
       newStep.condition_field = 'status'
       newStep.condition_operator = 'equals'
       newStep.condition_value = ''
+    } else if (stepType === 'wait_for_event') {
+      newStep.action_config = { event_type: 'before_call', hours_before: 24 }
     }
 
     try {
+      console.log('Adding step:', JSON.stringify(newStep))
       const res = await fetch(`/api/workflows/${workflowId}/steps`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newStep),
       })
+      const resBody = await res.json()
+      console.log('Add step response:', res.status, JSON.stringify(resBody))
       if (res.ok) {
         await fetchWorkflow()
         setHasUnsavedChanges(true)
       }
-    } catch {
-      console.error('Erreur ajout étape')
+    } catch (err) {
+      console.error('Erreur ajout étape', err)
     }
   }
 
@@ -341,6 +350,10 @@ export default function WorkflowEditorPage() {
             onSelectStep={(stepId) => setSelectedBlockId(stepId)}
             onAddStep={handleAddStep}
             onDeleteStep={handleDeleteStep}
+            onReorderSteps={(reordered) => {
+              setSteps(reordered)
+              setHasUnsavedChanges(true)
+            }}
           />
         </div>
 
@@ -375,6 +388,14 @@ export default function WorkflowEditorPage() {
               />
             ) : selectedStep.step_type === 'delay' ? (
               <DelayConfigPanel
+                step={selectedStep}
+                onChange={(updates) => {
+                  setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))
+                  setHasUnsavedChanges(true)
+                }}
+              />
+            ) : selectedStep.step_type === 'wait_for_event' ? (
+              <WaitForEventConfigPanel
                 step={selectedStep}
                 onChange={(updates) => {
                   setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))

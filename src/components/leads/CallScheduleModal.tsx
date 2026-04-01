@@ -31,14 +31,17 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
       const res = await fetch('/api/calls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_id: lead.id, type, scheduled_at, notes: notes || null }),
+        body: JSON.stringify({ lead_id: lead.id, type, scheduled_at, notes: notes || undefined }),
       })
 
       if (!res.ok) {
         const json = await res.json().catch(() => null)
         let msg = 'Erreur lors de la planification.'
         if (typeof json?.error === 'string') msg = json.error
-        else if (json?.error?.formErrors) msg = json.error.formErrors.join(', ') || msg
+        else if (json?.error?.fieldErrors) {
+          const fieldMsgs = Object.values(json.error.fieldErrors).flat()
+          if (fieldMsgs.length) msg = fieldMsgs.join(', ')
+        } else if (json?.error?.formErrors?.length) msg = json.error.formErrors.join(', ')
         else if (json?.details) msg = JSON.stringify(json.details)
         setError(msg)
         setLoading(false)
