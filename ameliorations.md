@@ -246,4 +246,38 @@ Chaque amélioration suit ce format :
 
 ---
 
-*Mis à jour le 2026-03-31 par Claude Code — ClosRM*
+## T-017 — Module Publicités (Meta Ads Dashboard)
+
+### A-017-01 · Cache des données Meta en DB
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-017 (performance)
+**Description :** Chaque visite de la page Publicités appelle la Meta Marketing API en temps réel (~1-3s). Pour un coach qui consulte souvent, ajouter un cache court (5-15 min) en DB ou en mémoire.
+**Proposition :** Créer une table `meta_insights_cache` avec TTL, ou utiliser un cache edge (Vercel KV).
+
+### A-017-02 · Sélecteur de compte publicitaire UI
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-017 (multi-comptes)
+**Description :** La V1 auto-sélectionne le premier compte pub actif. Un coach avec plusieurs comptes pub ne peut pas choisir lequel afficher.
+**Proposition :** Ajouter un dropdown dans `/parametres/integrations` ou dans la page Publicités pour choisir le compte pub.
+
+### A-017-03 · Comparaison de périodes
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-017 (UX)
+**Description :** Le dashboard ne montre qu'une seule période. Ajouter la possibilité de comparer (ex: "cette semaine vs semaine dernière") avec des indicateurs % de variation.
+**Proposition :** Ajouter un mode comparaison dans le sélecteur de période, double appel API, affichage des deltas.
+
+### A-017-04 · Export des données pub en CSV
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-017 (fonctionnalité)
+**Description :** Pas d'export CSV pour les données de campagnes. Utile pour les coachs qui veulent partager les stats avec leur équipe.
+**Proposition :** Bouton "Exporter CSV" dans chaque onglet tableau.
+
+### A-017-05 · ROAS réel basé sur le revenu par deal
+**Priorité :** Haute
+**Contexte :** Identifié pendant T-017 (KPI)
+**Description :** Le ROAS est affiché "—" car il n'y a pas de suivi du revenu par deal. Nécessite l'ajout d'un champ `deal_value` sur les leads closés.
+**Proposition :** Ajouter `deal_value DECIMAL` à la table leads, un input dans la modale de closing, et calculer le ROAS = SUM(deal_value) / spend.
+
+---
+
+*Mis à jour le 2026-04-01 par Claude Code — ClosRM*

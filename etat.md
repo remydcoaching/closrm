@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-04-01 (T-020 Emails + T-014 Automations v2 — Pierre)
+> Dernière mise à jour : 2026-04-01 (T-017 Module Publicités — Rémy + T-020 Emails + T-014 Automations v2 — Pierre)
 
 ---
 
@@ -10,7 +10,6 @@
 **Phase actuelle :** Développement V1
 **Version :** 0.3
 **Branche principale active :** `develop`
-**Branche feature active :** `feature/pierre-email-module`
 
 ---
 
@@ -37,7 +36,7 @@
 | Branding dynamique (couleur + logo) | Pierre | ✅ Terminé | — |
 | Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | ✅ Terminé (webhook Meta non livré en mode Dev) | T-013 |
 | Intégration Google Calendar | Pierre | ✅ Terminé | T-022 |
-| Module Publicités (Meta Ads dashboard) | Rémy | ⬜ Non démarré | T-017 |
+| Module Publicités (Meta Ads dashboard) | Rémy | ✅ Terminé | T-017 |
 | **Module Emails (séquences + broadcast)** | **Pierre** | **🔄 En cours (code complet, tests restants)** | **T-020** |
 | Module Calendrier / Booking (type Calendly) | Pierre | 🔄 En cours (tests E2E restants) | T-022 |
 | Instagram Automations | Pierre | ⬜ Non démarré | T-021 |
@@ -61,7 +60,7 @@
 | 2026-03-28 | Rémy | T-003 — Dashboard d'accueil | `feature/remy-dashboard` |
 | 2026-03-28 | Rémy | T-011 — Module Statistiques | `feature/remy-dashboard` |
 | 2026-03-28 | Rémy | T-012 — Base de données | `feature/remy-database` |
-| 2026-03-30 | Rémy | T-013 — Meta Ads Bloc A (en attente tests) | `feature/remy-meta-ads` |
+| 2026-03-30 | Rémy | T-013 — Meta Ads Bloc A (OAuth + webhook + UI intégrations) | `feature/remy-meta-ads` |
 | 2026-03-30 | Pierre | T-014 — Automations/Workflows v1 | `feature/pierre-automations` |
 | 2026-03-30 | Pierre | T-016 — Notifications WhatsApp/Telegram | `feature/pierre-automations` |
 | 2026-03-30 | Pierre | T-018 — Paramètres Réglages | `feature/pierre-automations` |
@@ -69,6 +68,7 @@
 | 2026-03-31 | Pierre | T-022 — Calendrier/Booking + Google Calendar + Planning Templates | `feature/pierre-automations` |
 | 2026-04-01 | Pierre | T-020 — Module Emails (domaines, templates, séquences, broadcasts, stats) | `feature/pierre-email-module` |
 | 2026-04-01 | Pierre | T-014 v2 — Automations : branching, wait_for_event, 13 actions, builder refait | `feature/pierre-email-module` |
+| 2026-04-01 | Rémy | T-017 — Module Publicités (Meta Ads Dashboard — Bloc B) | `feature/remy-meta-ads` |
 
 ---
 
