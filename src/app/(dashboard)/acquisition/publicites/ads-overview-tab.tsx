@@ -81,8 +81,8 @@ export default function AdsOverviewTab({ data, closedCount, closedRevenue, loadi
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                labelFormatter={(d: string) => `Date : ${d}`}
-                formatter={(value: number) => [value, 'Leads']}
+                labelFormatter={(d) => `Date : ${String(d)}`}
+                formatter={(value) => [String(value), 'Leads']}
               />
               <Bar dataKey="leads" fill="#1877F2" radius={[3, 3, 0, 0]} />
             </BarChart>
