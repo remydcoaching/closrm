@@ -265,9 +265,12 @@ export async function GET(request: NextRequest) {
           })
         }
       }
-      // Add any remaining insights not matched to objects (shouldn't happen but safe)
-      for (const row of insightsMap.values()) {
-        breakdown.push(row)
+      // Add remaining insights only if we're NOT scoped to a parent
+      // (when scoped, unmatched insights are from other parents and should be excluded)
+      if (!parentId) {
+        for (const row of insightsMap.values()) {
+          breakdown.push(row)
+        }
       }
     } else {
       // Fallback if listAdObjects failed — use insights only
