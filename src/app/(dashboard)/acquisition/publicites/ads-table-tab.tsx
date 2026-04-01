@@ -7,6 +7,7 @@ interface AdsTableTabProps {
   data: MetaInsightsResponse | null
   loading: boolean
   tabKey: string // 'campaigns' | 'adsets' | 'ads' — used to persist column prefs per tab
+  onRowClick?: (id: string, name: string) => void // drill-down: click campaign → adsets, click adset → ads
 }
 
 type ColumnKey = 'name' | 'status' | 'spend' | 'impressions' | 'clicks' | 'ctr' | 'leads' | 'cpl'
@@ -94,7 +95,7 @@ const inputStyle: React.CSSProperties = {
   width: 220,
 }
 
-export default function AdsTableTab({ data, loading, tabKey }: AdsTableTabProps) {
+export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTableTabProps) {
   const [sort, setSort] = useState<SortState>(null) // null = default (spend desc)
   const [search, setSearch] = useState('')
   const [visibleCols, setVisibleCols] = useState<Set<ColumnKey>>(() => {
@@ -180,7 +181,11 @@ export default function AdsTableTab({ data, loading, tabKey }: AdsTableTabProps)
   function renderCell(row: (typeof sorted)[0], col: ColumnDef) {
     switch (col.key) {
       case 'name':
-        return <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{row.name}</span>
+        return (
+          <span style={{ fontWeight: 500, color: onRowClick ? '#1877F2' : 'var(--text-primary)' }}>
+            {row.name}{onRowClick ? ' →' : ''}
+          </span>
+        )
       case 'status': {
         const s = getStatusLabel(row.status)
         return (
@@ -325,8 +330,12 @@ export default function AdsTableTab({ data, loading, tabKey }: AdsTableTabProps)
               {sorted.map(row => (
                 <tr
                   key={row.id}
-                  style={{ transition: 'background 0.1s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                  style={{
+                    transition: 'background 0.1s',
+                    cursor: onRowClick ? 'pointer' : 'default',
+                  }}
+                  onClick={() => onRowClick?.(row.id, row.name)}
+                  onMouseEnter={e => (e.currentTarget.style.background = onRowClick ? 'rgba(24,119,242,0.04)' : 'rgba(255,255,255,0.02)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   {columns.map(col => (

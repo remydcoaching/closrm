@@ -14,12 +14,13 @@ interface PublicitesClientProps {
   connectionState: MetaConnectionState
 }
 
-const TAB_LABELS: { key: TabKey; label: string }[] = [
-  { key: 'overview', label: "Vue d'ensemble" },
-  { key: 'campaigns', label: 'Campagnes' },
-  { key: 'adsets', label: 'Ad Sets' },
-  { key: 'ads', label: 'Ads' },
-]
+// Drill-down context: which campaign/adset is selected
+interface DrillDown {
+  campaignId?: string
+  campaignName?: string
+  adsetId?: string
+  adsetName?: string
+}
 
 const TAB_TO_LEVEL: Record<TabKey, string> = {
   overview: 'account',
@@ -41,6 +42,7 @@ function getDefaultDates(): { dateFrom: string; dateTo: string } {
 
 export default function PublicitesClient({ connectionState }: PublicitesClientProps) {
   const [tab, setTab] = useState<TabKey>('overview')
+  const [drillDown, setDrillDown] = useState<DrillDown>({})
   const [period, setPeriod] = useState<PeriodPreset>('7d')
   const [dateFrom, setDateFrom] = useState(getDefaultDates().dateFrom)
   const [dateTo, setDateTo] = useState(getDefaultDates().dateTo)
@@ -48,7 +50,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [closedCount, setClosedCount] = useState(0)
-  const [closedRevenue] = useState(0) // V1: no revenue tracking yet
+  const [closedRevenue] = useState(0)
 
   const fetchInsights = useCallback(async () => {
     if (connectionState !== 'connected') return
@@ -66,6 +68,14 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
         params.set('date_to', dateTo)
       } else {
         params.set('preset', period)
+      }
+
+      // Drill-down filters
+      if (drillDown.campaignId && (tab === 'adsets' || tab === 'ads')) {
+        params.set('campaign_id', drillDown.campaignId)
+      }
+      if (drillDown.adsetId && tab === 'ads') {
+        params.set('adset_id', drillDown.adsetId)
       }
 
       const res = await fetch(`/api/meta/insights?${params.toString()}`)
@@ -93,12 +103,10 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     } finally {
       setLoading(false)
     }
-  }, [connectionState, tab, period, dateFrom, dateTo])
+  }, [connectionState, tab, period, dateFrom, dateTo, drillDown])
 
-  // Fetch closed leads count from Supabase for the funnel
   const fetchClosedCount = useCallback(async () => {
     if (connectionState !== 'connected') return
-
     try {
       const params = new URLSearchParams({
         status: 'clos',
@@ -111,18 +119,11 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
         const json = await res.json()
         setClosedCount(json.total ?? 0)
       }
-    } catch {
-      // Non-critical, funnel will show 0
-    }
+    } catch { /* non-critical */ }
   }, [connectionState])
 
-  useEffect(() => {
-    fetchInsights()
-  }, [fetchInsights])
-
-  useEffect(() => {
-    fetchClosedCount()
-  }, [fetchClosedCount])
+  useEffect(() => { fetchInsights() }, [fetchInsights])
+  useEffect(() => { fetchClosedCount() }, [fetchClosedCount])
 
   function handlePeriodChange(preset: PeriodPreset, customFrom?: string, customTo?: string) {
     setPeriod(preset)
@@ -130,6 +131,45 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
       setDateFrom(customFrom)
       setDateTo(customTo)
     }
+  }
+
+  // Navigation helpers
+  function handleTabChange(newTab: TabKey) {
+    // When manually clicking a tab, reset drill-down for that level
+    if (newTab === 'campaigns') {
+      setDrillDown({})
+    } else if (newTab === 'adsets') {
+      setDrillDown(prev => ({ campaignId: prev.campaignId, campaignName: prev.campaignName }))
+    }
+    setTab(newTab)
+  }
+
+  function handleDrillIntoCampaign(campaignId: string, campaignName: string) {
+    setDrillDown({ campaignId, campaignName })
+    setTab('adsets')
+  }
+
+  function handleDrillIntoAdset(adsetId: string, adsetName: string) {
+    setDrillDown(prev => ({ ...prev, adsetId, adsetName }))
+    setTab('ads')
+  }
+
+  // Breadcrumb navigation
+  function navigateToCampaigns() {
+    setDrillDown({})
+    setTab('campaigns')
+  }
+
+  function navigateToAdsets() {
+    setDrillDown(prev => ({ campaignId: prev.campaignId, campaignName: prev.campaignName }))
+    setTab('adsets')
+  }
+
+  // Get tab label with context
+  function getTabLabel(key: TabKey): string {
+    if (key === 'adsets' && drillDown.campaignName) return `Ad Sets`
+    if (key === 'ads' && drillDown.adsetName) return `Ads`
+    return { overview: "Vue d'ensemble", campaigns: 'Campagnes', adsets: 'Ad Sets', ads: 'Ads' }[key]
   }
 
   // Banner states
@@ -153,6 +193,8 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     )
   }
 
+  const tabs: TabKey[] = ['overview', 'campaigns', 'adsets', 'ads']
+
   return (
     <div style={{ padding: 32 }}>
       {/* Header */}
@@ -174,28 +216,85 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
         display: 'flex',
         gap: 0,
         borderBottom: '1px solid var(--border-primary)',
-        marginBottom: 20,
+        marginBottom: 12,
       }}>
-        {TAB_LABELS.map(t => (
+        {tabs.map(t => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={t}
+            onClick={() => handleTabChange(t)}
             style={{
               padding: '10px 20px',
               fontSize: 13,
-              fontWeight: tab === t.key ? 600 : 400,
-              color: tab === t.key ? '#1877F2' : 'var(--text-muted)',
+              fontWeight: tab === t ? 600 : 400,
+              color: tab === t ? '#1877F2' : 'var(--text-muted)',
               background: 'transparent',
               border: 'none',
-              borderBottom: tab === t.key ? '2px solid #1877F2' : '2px solid transparent',
+              borderBottom: tab === t ? '2px solid #1877F2' : '2px solid transparent',
               cursor: 'pointer',
               transition: 'all 0.15s',
             }}
           >
-            {t.label}
+            {getTabLabel(t)}
           </button>
         ))}
       </div>
+
+      {/* Breadcrumbs for drill-down */}
+      {(drillDown.campaignName || drillDown.adsetName) && tab !== 'overview' && tab !== 'campaigns' && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          marginBottom: 14,
+          fontSize: 12,
+        }}>
+          <button
+            onClick={navigateToCampaigns}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#1877F2',
+              cursor: 'pointer',
+              fontSize: 12,
+              padding: 0,
+            }}
+          >
+            Campagnes
+          </button>
+          {drillDown.campaignName && (
+            <>
+              <span style={{ color: 'var(--text-muted)' }}>›</span>
+              {tab === 'ads' && drillDown.adsetName ? (
+                <button
+                  onClick={navigateToAdsets}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#1877F2',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    padding: 0,
+                  }}
+                >
+                  {drillDown.campaignName}
+                </button>
+              ) : (
+                <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+                  {drillDown.campaignName}
+                </span>
+              )}
+            </>
+          )}
+          {drillDown.adsetName && tab === 'ads' && (
+            <>
+              <span style={{ color: 'var(--text-muted)' }}>›</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+                {drillDown.adsetName}
+              </span>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Error state */}
       {error && (
@@ -214,7 +313,18 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
         />
       )}
       {!error && tab !== 'overview' && (
-        <AdsTableTab data={data} loading={loading} tabKey={tab} />
+        <AdsTableTab
+          data={data}
+          loading={loading}
+          tabKey={tab}
+          onRowClick={
+            tab === 'campaigns'
+              ? (id, name) => handleDrillIntoCampaign(id, name)
+              : tab === 'adsets'
+              ? (id, name) => handleDrillIntoAdset(id, name)
+              : undefined
+          }
+        />
       )}
     </div>
   )
