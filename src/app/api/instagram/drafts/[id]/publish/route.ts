@@ -19,10 +19,12 @@ export async function POST(
     if (draftErr || !draft) return NextResponse.json({ error: 'Brouillon introuvable' }, { status: 404 })
     if (!draft.media_urls?.length) return NextResponse.json({ error: 'Au moins un média requis' }, { status: 400 })
 
-    // 2. Get IG account
+    // 2. Get IG account — use page_access_token for publishing (required by Meta)
     const { data: account } = await supabase
       .from('ig_accounts').select('*').eq('workspace_id', workspaceId).eq('is_connected', true).single()
     if (!account) return NextResponse.json({ error: 'Aucun compte Instagram connecté' }, { status: 400 })
+
+    const publishToken = account.page_access_token || account.access_token
 
     // 3. Mark as publishing
     await supabase.from('ig_drafts').update({ status: 'publishing' }).eq('id', id)
@@ -36,7 +38,7 @@ export async function POST(
     try {
       const isVideo = draft.media_type === 'VIDEO'
       const opts = {
-        accessToken: account.access_token,
+        accessToken: publishToken,
         igUserId: account.ig_user_id,
         caption: fullCaption,
         ...(isVideo ? { videoUrl: draft.media_urls[0] } : { imageUrl: draft.media_urls[0] }),
@@ -47,13 +49,13 @@ export async function POST(
 
       // 6. Poll for video processing
       if (isVideo) {
-        const status = await pollContainerStatus(account.access_token, containerId)
+        const status = await pollContainerStatus(publishToken, containerId)
         if (status === 'ERROR') throw new Error('Video processing failed')
       }
 
       // 7. Publish
       const igMediaId = await publishContainer({
-        accessToken: account.access_token,
+        accessToken: publishToken,
         igUserId: account.ig_user_id,
         containerId,
       })

@@ -54,6 +54,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Aucune Page Facebook liée. Reconnectez Meta.' }, { status: 400 })
     }
 
+    // Step 0: Get Page Access Token (required for publishing + DMs)
+    const pagesRes = await fetch(
+      `https://graph.facebook.com/v25.0/me/accounts?access_token=${accessToken}`
+    )
+    let pageAccessToken = accessToken
+    if (pagesRes.ok) {
+      const pagesData = await pagesRes.json()
+      const matchedPage = (pagesData.data ?? []).find((p: { id: string }) => p.id === pageId)
+      if (matchedPage?.access_token) {
+        pageAccessToken = matchedPage.access_token
+      }
+    }
+
     // Step 1: Get Instagram Business Account linked to the Facebook Page
     const pageRes = await fetch(
       `https://graph.facebook.com/v25.0/${pageId}?fields=instagram_business_account&access_token=${accessToken}`
@@ -95,7 +108,7 @@ export async function POST(request: NextRequest) {
         access_token: accessToken,
         token_expires_at: creds.token_expires_at ?? null,
         page_id: pageId,
-        page_access_token: creds.page_access_token ?? null,
+        page_access_token: pageAccessToken,
         is_connected: true,
         starting_followers: body.starting_followers ?? profile.followers_count ?? 0,
         starting_date: body.starting_date ?? new Date().toISOString().slice(0, 10),
