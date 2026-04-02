@@ -103,7 +103,7 @@ export function buildOAuthUrl(state: string): string {
     client_id: appId(),
     redirect_uri: callbackUrl(),
     state,
-    scope: 'leads_retrieval,pages_show_list,pages_manage_metadata,pages_read_engagement,business_management,ads_read,read_insights',
+    scope: 'leads_retrieval,pages_show_list,pages_manage_metadata,pages_read_engagement,business_management,ads_read,read_insights,instagram_business_basic,instagram_business_manage_messages,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments',
     response_type: 'code',
   })
   return `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`
