@@ -53,6 +53,47 @@ export interface MetaCredentials {
   page_id: string
   page_name: string
   page_access_token: string
+  ad_account_id?: string  // added in T-017
+}
+
+// ─── Ad Accounts ────────────────────────────────────────────────────────────
+
+export interface MetaAdAccount {
+  id: string        // format "act_123456"
+  name: string
+  account_status: number  // 1=ACTIVE, 2=DISABLED, 3=UNSETTLED, etc.
+}
+
+// ─── Marketing API Insights ─────────────────────────────────────────────────
+
+export interface MetaInsightAction {
+  action_type: string
+  value: string
+}
+
+export interface MetaInsightRow {
+  date_start: string
+  date_stop: string
+  campaign_id?: string
+  campaign_name?: string
+  adset_id?: string
+  adset_name?: string
+  ad_id?: string
+  ad_name?: string
+  spend: string
+  impressions: string
+  clicks: string
+  ctr: string
+  actions?: MetaInsightAction[]
+  cost_per_action_type?: MetaInsightAction[]
+}
+
+export interface InsightsParams {
+  level: 'account' | 'campaign' | 'adset' | 'ad'
+  dateFrom: string  // YYYY-MM-DD
+  dateTo: string    // YYYY-MM-DD
+  campaignIds?: string[]  // filter insights to these campaigns
+  adsetIds?: string[]     // filter insights to these adsets
 }
 
 // ─── OAuth ───────────────────────────────────────────────────────────────────
@@ -62,7 +103,7 @@ export function buildOAuthUrl(state: string): string {
     client_id: appId(),
     redirect_uri: callbackUrl(),
     state,
-    scope: 'leads_retrieval,pages_show_list,pages_manage_metadata,pages_read_engagement,business_management',
+    scope: 'leads_retrieval,pages_show_list,pages_manage_metadata,pages_read_engagement,business_management,ads_read,read_insights',
     response_type: 'code',
   })
   return `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`
@@ -176,6 +217,150 @@ export async function unsubscribePageFromLeadgen(
   if (!res.ok) {
     console.warn('Meta unsubscribe warning (ignored):', await res.text())
   }
+}
+
+// ─── Ad Accounts ────────────────────────────────────────────────────────────
+
+export async function getAdAccounts(userToken: string): Promise<MetaAdAccount[]> {
+  const res = await fetch(
+    `${GRAPH_URL}/me/adaccounts?fields=id,name,account_status&access_token=${userToken}`
+  )
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(`Meta ad accounts fetch failed: ${JSON.stringify(err)}`)
+  }
+  const data: { data: MetaAdAccount[] } = await res.json()
+  return data.data ?? []
+}
+
+// ─── List all objects (including inactive) ──────────────────────────────────
+
+export interface MetaAdObject {
+  id: string
+  name: string
+  status: string           // ACTIVE, PAUSED, DELETED, ARCHIVED
+  effective_status: string  // ACTIVE, PAUSED, CAMPAIGN_PAUSED, IN_PROCESS, WITH_ISSUES, etc.
+}
+
+const LEVEL_TO_EDGE: Record<string, string> = {
+  campaign: 'campaigns',
+  adset: 'adsets',
+  ad: 'ads',
+}
+
+export async function listAdObjects(
+  adAccountId: string,
+  token: string,
+  level: 'campaign' | 'adset' | 'ad',
+  parentId?: string // campaign_id for adsets, adset_id for ads
+): Promise<MetaAdObject[]> {
+  // If we have a parent, fetch from the parent's edge instead of account level
+  let url: string
+  if (parentId && level === 'adset') {
+    url = `${GRAPH_URL}/${parentId}/adsets?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+  } else if (parentId && level === 'ad') {
+    url = `${GRAPH_URL}/${parentId}/ads?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+  } else {
+    const edge = LEVEL_TO_EDGE[level]
+    url = `${GRAPH_URL}/${adAccountId}/${edge}?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+  }
+
+  const res = await fetch(url)
+  if (!res.ok) {
+    console.warn(`Failed to list ${level}s:`, await res.text())
+    return []
+  }
+  const data: { data: MetaAdObject[] } = await res.json()
+  return data.data ?? []
+}
+
+// ─── Marketing API Insights ─────────────────────────────────────────────────
+
+export async function getInsights(
+  adAccountId: string,
+  token: string,
+  params: InsightsParams
+): Promise<MetaInsightRow[]> {
+  const timeRange = JSON.stringify({ since: params.dateFrom, until: params.dateTo })
+
+  const baseFields = [
+    'spend', 'impressions', 'clicks', 'ctr',
+    'actions', 'cost_per_action_type',
+  ]
+
+  // Add name fields based on level so Meta returns them
+  if (params.level === 'campaign') {
+    baseFields.push('campaign_name')
+  } else if (params.level === 'adset') {
+    baseFields.push('adset_name', 'campaign_name')
+  } else if (params.level === 'ad') {
+    baseFields.push('ad_name', 'adset_name', 'campaign_name')
+  }
+
+  const fields = baseFields.join(',')
+
+  const searchParams = new URLSearchParams({
+    fields,
+    level: params.level,
+    time_range: timeRange,
+    access_token: token,
+  })
+
+  // Daily breakdown for account-level (chart data)
+  if (params.level === 'account') {
+    searchParams.set('time_increment', '1')
+  } else {
+    searchParams.set('limit', '100')
+  }
+
+  // Filter by parent (campaign or adset)
+  const filtering: Array<{ field: string; operator: string; value: string[] }> = []
+  if (params.campaignIds && params.campaignIds.length > 0) {
+    filtering.push({ field: 'campaign.id', operator: 'IN', value: params.campaignIds })
+  }
+  if (params.adsetIds && params.adsetIds.length > 0) {
+    filtering.push({ field: 'adset.id', operator: 'IN', value: params.adsetIds })
+  }
+  if (filtering.length > 0) {
+    searchParams.set('filtering', JSON.stringify(filtering))
+  }
+
+  const res = await fetch(
+    `${GRAPH_URL}/${adAccountId}/insights?${searchParams.toString()}`
+  )
+
+  if (!res.ok) {
+    const err = await res.json()
+    const metaError = err?.error
+    if (metaError?.code === 190) {
+      throw new Error('META_TOKEN_EXPIRED')
+    }
+    if (metaError?.code === 17 || metaError?.code === 4) {
+      throw new Error('META_RATE_LIMITED')
+    }
+    throw new Error(`Meta insights fetch failed: ${JSON.stringify(err)}`)
+  }
+
+  const data: { data: MetaInsightRow[] } = await res.json()
+  return data.data ?? []
+}
+
+// ─── Insight helpers ────────────────────────────────────────────────────────
+
+export function extractLeadCount(row: MetaInsightRow): number {
+  if (!row.actions) return 0
+  const leadAction = row.actions.find(
+    a => a.action_type === 'lead' || a.action_type === 'offsite_conversion.fb_pixel_lead'
+  )
+  return leadAction ? parseInt(leadAction.value, 10) : 0
+}
+
+export function extractCostPerLead(row: MetaInsightRow): number | null {
+  if (!row.cost_per_action_type) return null
+  const cplAction = row.cost_per_action_type.find(
+    a => a.action_type === 'lead' || a.action_type === 'offsite_conversion.fb_pixel_lead'
+  )
+  return cplAction ? parseFloat(cplAction.value) : null
 }
 
 // ─── Lead data ───────────────────────────────────────────────────────────────
