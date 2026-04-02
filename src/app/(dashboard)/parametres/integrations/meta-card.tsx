@@ -22,8 +22,15 @@ export default function MetaIntegrationCard({ integration }: MetaIntegrationCard
     if (!confirm('Déconnecter Meta Ads ? Les leads ne seront plus importés automatiquement.')) return
     setLoading(true)
     try {
-      await fetch('/api/integrations/meta/disconnect', { method: 'POST' })
+      const res = await fetch('/api/integrations/meta/disconnect', { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Erreur inconnue' }))
+        alert(`Erreur: ${err.error || 'Déconnexion échouée'}`)
+        return
+      }
       router.refresh()
+    } catch {
+      alert('Erreur réseau lors de la déconnexion')
     } finally {
       setLoading(false)
     }

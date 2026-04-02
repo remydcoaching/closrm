@@ -125,17 +125,24 @@ export async function createMediaContainer(
   opts: IgApiOptions & { imageUrl?: string; videoUrl?: string; caption: string }
 ): Promise<string> {
   const { accessToken, igUserId, imageUrl, videoUrl, caption } = opts
-  const params = new URLSearchParams({ caption, access_token: accessToken })
+
+  // Use JSON body — avoids URLSearchParams double-encoding of URLs
+  const body: Record<string, string> = {
+    caption,
+    access_token: accessToken,
+  }
   if (videoUrl) {
-    params.set('video_url', videoUrl)
-    params.set('media_type', 'REELS')
+    body.video_url = videoUrl
+    body.media_type = 'REELS'
   } else if (imageUrl) {
-    params.set('image_url', imageUrl)
+    body.image_url = imageUrl
   }
 
-  // Meta Content Publishing API expects params as query string, not body
-  const url = `${FB_BASE}/${igUserId}/media?${params.toString()}`
-  const res = await fetch(url, { method: 'POST' })
+  const res = await fetch(`${FB_BASE}/${igUserId}/media`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
   if (!res.ok) {
     const err = await res.json()
     throw new Error(`Create container failed: ${JSON.stringify(err)}`)
@@ -168,13 +175,15 @@ export async function publishContainer(
   opts: IgApiOptions & { containerId: string }
 ): Promise<string> {
   const { accessToken, igUserId, containerId } = opts
-  const params = new URLSearchParams({
-    creation_id: containerId,
-    access_token: accessToken,
+
+  const res = await fetch(`${FB_BASE}/${igUserId}/media_publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      creation_id: containerId,
+      access_token: accessToken,
+    }),
   })
-  // Meta expects params as query string
-  const url = `${FB_BASE}/${igUserId}/media_publish?${params.toString()}`
-  const res = await fetch(url, { method: 'POST' })
   if (!res.ok) {
     const err = await res.json()
     throw new Error(`Publish failed: ${JSON.stringify(err)}`)

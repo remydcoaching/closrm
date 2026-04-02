@@ -31,6 +31,13 @@ export async function POST(request: NextRequest) {
       pageAccessToken: account.page_access_token ?? undefined,
     }
 
+    console.log('[API /instagram/sync] Context:', {
+      igUserId: ctx.igUserId,
+      hasPageId: !!ctx.pageId,
+      hasPageAccessToken: !!ctx.pageAccessToken,
+      mode,
+    })
+
     if (mode === 'stories') {
       const count = await syncStories(ctx)
       return NextResponse.json({ data: { storiesCount: count } })
