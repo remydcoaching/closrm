@@ -112,7 +112,8 @@ export async function POST(request: NextRequest) {
     if (err instanceof Error && err.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
-    console.error('[API /instagram/account] Error:', err)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    const errMsg = err instanceof Error ? err.message : String(err)
+    console.error('[API /instagram/account] Error:', errMsg)
+    return NextResponse.json({ error: errMsg }, { status: 500 })
   }
 }
