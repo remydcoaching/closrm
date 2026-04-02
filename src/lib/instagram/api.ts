@@ -133,11 +133,9 @@ export async function createMediaContainer(
     params.set('image_url', imageUrl)
   }
 
-  const res = await fetch(`${FB_BASE}/${igUserId}/media`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  })
+  // Meta Content Publishing API expects params as query string, not body
+  const url = `${FB_BASE}/${igUserId}/media?${params.toString()}`
+  const res = await fetch(url, { method: 'POST' })
   if (!res.ok) {
     const err = await res.json()
     throw new Error(`Create container failed: ${JSON.stringify(err)}`)
@@ -174,11 +172,9 @@ export async function publishContainer(
     creation_id: containerId,
     access_token: accessToken,
   })
-  const res = await fetch(`${FB_BASE}/${igUserId}/media_publish`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  })
+  // Meta expects params as query string
+  const url = `${FB_BASE}/${igUserId}/media_publish?${params.toString()}`
+  const res = await fetch(url, { method: 'POST' })
   if (!res.ok) {
     const err = await res.json()
     throw new Error(`Publish failed: ${JSON.stringify(err)}`)
