@@ -244,6 +244,29 @@ Chaque amélioration suit ce format :
 **Description :** Pierre n'a pas accès au compte Supabase, donc il ne peut pas exécuter les migrations. Le CLI Supabase est installé mais non linkable sans les credentials.
 **Proposition :** Demander à Rémy de partager l'accès Supabase (invite membre) ou de configurer un access token partagé.
 
+### A-023-01 · Cron job pour la publication programmée Instagram
+**Priorité :** Haute
+**Contexte :** Identifié pendant T-023 — les drafts avec status 'scheduled' ne sont pas publiés automatiquement
+**Description :** Ajouter un cron job (via `/api/cron/`) qui vérifie toutes les 5 minutes les drafts avec `status = 'scheduled'` et `scheduled_at <= now()`, et les publie via le flow de publication existant.
+**Proposition :** Créer `/api/cron/publish-scheduled` et l'ajouter au vercel.json cron config.
+
+### A-023-02 · Webhook pour les DMs Instagram entrants
+**Priorité :** Haute
+**Contexte :** Identifié pendant T-023 — les messages reçus ne sont captés que lors du sync manuel
+**Description :** Configurer un webhook Meta pour recevoir les DMs en temps réel (event `messages`), insérer dans `ig_messages` et mettre à jour `ig_conversations.unread_count`.
+**Proposition :** Ajouter un endpoint `/api/webhooks/instagram/messages` et le configurer dans l'app Meta.
+
+### A-023-03 · Auto-match conversations Instagram → leads
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-023 — le champ `lead_id` sur `ig_conversations` est toujours null
+**Description :** Lors du sync conversations, tenter de matcher le `participant_username` ou `participant_name` avec un lead existant (par nom/prénom). Permettre aussi le linkage manuel dans l'UI.
+**Proposition :** Ajouter un bouton "Lier à un lead" dans le header de conversation + matching automatique à la sync.
+
+### A-023-04 · Refresh token Meta avant expiration
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-023 — le token long-lived expire après 60 jours
+**Description :** Ajouter un cron job qui vérifie `ig_accounts.token_expires_at` et refresh le token avant expiration via l'API Meta.
+
 ---
 
-*Mis à jour le 2026-03-31 par Claude Code — ClosRM*
+*Mis à jour le 2026-04-02 par Claude Code — ClosRM*

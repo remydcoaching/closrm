@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-04-01 (T-020 Emails + T-014 Automations v2 — Pierre)
+> Dernière mise à jour : 2026-04-02 (T-023 Instagram Social Module — Pierre)
 
 ---
 
@@ -10,7 +10,7 @@
 **Phase actuelle :** Développement V1
 **Version :** 0.3
 **Branche principale active :** `develop`
-**Branche feature active :** `feature/pierre-email-module`
+**Branche feature active :** `feature/pierre-funnel-builder`
 
 ---
 
@@ -41,6 +41,8 @@
 | **Module Emails (séquences + broadcast)** | **Pierre** | **🔄 En cours (code complet, tests restants)** | **T-020** |
 | Module Calendrier / Booking (type Calendly) | Pierre | 🔄 En cours (tests E2E restants) | T-022 |
 | Instagram Automations | Pierre | ⬜ Non démarré | T-021 |
+| **Module Réseaux Sociaux (Instagram)** | **Pierre** | **✅ Terminé** | **T-023** |
+| **Module Messages (DMs Instagram)** | **Pierre** | **✅ Terminé** | **T-023** |
 | V2 — Tunnels | — | 🔒 Bloqué (V2) | — |
 | V2 — Stripe | — | 🔒 Bloqué (V2) | — |
 | V2 — Multi-membres équipe | — | 🔒 Bloqué (V2) | — |
@@ -69,7 +71,8 @@
 | 2026-03-31 | Pierre | T-022 — Calendrier/Booking + Google Calendar + Planning Templates | `feature/pierre-automations` |
 | 2026-04-01 | Pierre | T-020 — Module Emails (domaines, templates, séquences, broadcasts, stats) | `feature/pierre-email-module` |
 | 2026-04-01 | Pierre | T-014 v2 — Automations : branching, wait_for_event, 13 actions, builder refait | `feature/pierre-email-module` |
+| 2026-04-02 | Pierre | T-023 — Module Réseaux Sociaux (Instagram) + Messages | `feature/pierre-funnel-builder` |
 
 ---
 
-*Mis à jour le 2026-04-01 par Claude Code — ClosRM*
+*Mis à jour le 2026-04-02 par Claude Code — ClosRM*
