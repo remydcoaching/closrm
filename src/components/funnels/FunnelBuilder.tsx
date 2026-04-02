@@ -62,30 +62,33 @@ export default function FunnelBuilder({ pages, activePageId, onPagesChange, mode
   const blocks = activePage?.blocks ?? []
   const selectedBlock = blocks.find(b => b.id === selectedBlockId) ?? null
 
-  const updateActivePageBlocks = useCallback((newBlocks: FunnelBlock[]) => {
+  function updateActivePageBlocks(updater: (currentBlocks: FunnelBlock[]) => FunnelBlock[]) {
+    const currentPage = pages.find(p => p.id === activePageId)
+    if (!currentPage) return
+    const newBlocks = updater(currentPage.blocks ?? [])
     onPagesChange(pages.map(p =>
       p.id === activePageId ? { ...p, blocks: newBlocks } : p
     ))
-  }, [pages, activePageId, onPagesChange])
+  }
 
-  const handleAddBlock = useCallback((type: FunnelBlockType) => {
+  function handleAddBlock(type: FunnelBlockType) {
     const newBlock: FunnelBlock = {
       id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       type,
       config: getDefaultConfig(type),
     }
-    updateActivePageBlocks([...blocks, newBlock])
+    updateActivePageBlocks(current => [...current, newBlock])
     setSelectedBlockId(newBlock.id)
-  }, [blocks, updateActivePageBlocks])
+  }
 
-  const handleDeleteBlock = useCallback((blockId: string) => {
-    updateActivePageBlocks(blocks.filter(b => b.id !== blockId))
+  function handleDeleteBlock(blockId: string) {
+    updateActivePageBlocks(current => current.filter(b => b.id !== blockId))
     if (selectedBlockId === blockId) setSelectedBlockId(null)
-  }, [blocks, selectedBlockId, updateActivePageBlocks])
+  }
 
-  const handleBlockChange = useCallback((updatedBlock: FunnelBlock) => {
-    updateActivePageBlocks(blocks.map(b => b.id === updatedBlock.id ? updatedBlock : b))
-  }, [blocks, updateActivePageBlocks])
+  function handleBlockChange(updatedBlock: FunnelBlock) {
+    updateActivePageBlocks(current => current.map(b => b.id === updatedBlock.id ? updatedBlock : b))
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -95,7 +98,7 @@ export default function FunnelBuilder({ pages, activePageId, onPagesChange, mode
     const newIndex = blocks.findIndex(b => b.id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
 
-    updateActivePageBlocks(arrayMove(blocks, oldIndex, newIndex))
+    updateActivePageBlocks(() => arrayMove(blocks, oldIndex, newIndex))
   }
 
   return (
@@ -109,15 +112,17 @@ export default function FunnelBuilder({ pages, activePageId, onPagesChange, mode
       </div>
 
       {/* Center: Preview */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <FunnelPagePreview
-          blocks={blocks}
-          selectedBlockId={selectedBlockId}
-          onSelectBlock={setSelectedBlockId}
-          onDeleteBlock={handleDeleteBlock}
-          mode={mode}
-        />
-      </DndContext>
+      <div style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <FunnelPagePreview
+            blocks={blocks}
+            selectedBlockId={selectedBlockId}
+            onSelectBlock={setSelectedBlockId}
+            onDeleteBlock={handleDeleteBlock}
+            mode={mode}
+          />
+        </DndContext>
+      </div>
 
       {/* Right: Config */}
       {selectedBlock && (
