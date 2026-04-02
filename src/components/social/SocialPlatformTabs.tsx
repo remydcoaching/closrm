@@ -1,9 +1,9 @@
 'use client'
 
-import { Instagram } from 'lucide-react'
+import { Camera } from 'lucide-react'
 
 const PLATFORMS = [
-  { key: 'instagram', label: 'Instagram', icon: Instagram, active: true },
+  { key: 'instagram', label: 'Instagram', icon: Camera, active: true },
 ] as const
 
 interface Props {

@@ -1,6 +1,6 @@
 'use client'
 
-import { Instagram } from 'lucide-react'
+import { Camera } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export default function IgNotConnected() {
@@ -13,7 +13,7 @@ export default function IgNotConnected() {
       background: 'var(--bg-secondary)', borderRadius: 12,
       border: '1px solid var(--border-primary)',
     }}>
-      <Instagram size={48} style={{ color: 'var(--text-tertiary)', marginBottom: 16 }} />
+      <Camera size={48} style={{ color: 'var(--text-tertiary)', marginBottom: 16 }} />
       <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
         Connectez votre compte Instagram
       </h3>
