@@ -135,7 +135,8 @@ export async function createMediaContainer(
 
   const res = await fetch(`${FB_BASE}/${igUserId}/media`, {
     method: 'POST',
-    body: params,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
   })
   if (!res.ok) {
     const err = await res.json()
@@ -175,7 +176,8 @@ export async function publishContainer(
   })
   const res = await fetch(`${FB_BASE}/${igUserId}/media_publish`, {
     method: 'POST',
-    body: params,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
   })
   if (!res.ok) {
     const err = await res.json()
