@@ -129,7 +129,10 @@ export async function syncSnapshot(ctx: SyncContext) {
 }
 
 export async function syncConversations(ctx: SyncContext) {
-  if (!ctx.pageId || !ctx.pageAccessToken) return 0
+  if (!ctx.pageId || !ctx.pageAccessToken) {
+    console.warn('[syncConversations] Skipped — missing:', !ctx.pageId ? 'pageId' : 'pageAccessToken')
+    return 0
+  }
   const token = ctx.pageAccessToken
   const convos = await fetchIgConversations(token, ctx.pageId)
   let synced = 0

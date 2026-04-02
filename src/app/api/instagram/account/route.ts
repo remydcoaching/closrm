@@ -47,25 +47,51 @@ export async function POST(request: NextRequest) {
     // Decrypt credentials
     const { decrypt } = await import('@/lib/crypto')
     const creds = JSON.parse(decrypt(integration.credentials_encrypted))
-    const accessToken = creds.user_access_token || creds.page_access_token
-    const pageId = integration.meta_page_id ?? creds.page_id
 
+    // user_access_token is required for /me/accounts endpoint
+    const userAccessToken = creds.user_access_token
+    if (!userAccessToken) {
+      return NextResponse.json(
+        { error: 'Jeton utilisateur absent. Reconnectez Meta dans Paramètres > Intégrations.' },
+        { status: 400 }
+      )
+    }
+
+    const pageId = integration.meta_page_id ?? creds.page_id
     if (!pageId) {
       return NextResponse.json({ error: 'Aucune Page Facebook liée. Reconnectez Meta.' }, { status: 400 })
     }
 
     // Step 0: Get Page Access Token (required for publishing + DMs)
     const pagesRes = await fetch(
-      `https://graph.facebook.com/v25.0/me/accounts?access_token=${accessToken}`
+      `https://graph.facebook.com/v25.0/me/accounts?access_token=${userAccessToken}`
     )
-    let pageAccessToken = accessToken
+    let pageAccessToken: string | null = null
     if (pagesRes.ok) {
       const pagesData = await pagesRes.json()
       const matchedPage = (pagesData.data ?? []).find((p: { id: string }) => p.id === pageId)
       if (matchedPage?.access_token) {
         pageAccessToken = matchedPage.access_token
+        console.log('[API /instagram/account] Page Access Token retrieved successfully')
+      } else {
+        console.error('[API /instagram/account] Page not found in /me/accounts. Available pages:', pagesData.data?.map((p: { id: string }) => p.id))
+      }
+    } else {
+      const err = await pagesRes.json().catch(() => ({}))
+      console.error('[API /instagram/account] Failed to get /me/accounts:', err)
+    }
+
+    // Fallback to stored page_access_token from OAuth callback
+    if (!pageAccessToken) {
+      pageAccessToken = creds.page_access_token ?? null
+      if (pageAccessToken) {
+        console.log('[API /instagram/account] Using fallback page_access_token from OAuth')
+      } else {
+        console.error('[API /instagram/account] No page_access_token available at all')
       }
     }
+
+    const accessToken = userAccessToken
 
     // Step 1: Get Instagram Business Account linked to the Facebook Page
     const pageRes = await fetch(
