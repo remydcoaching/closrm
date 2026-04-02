@@ -58,7 +58,7 @@ interface IgInsights {
 }
 
 export async function fetchReelInsights(token: string, mediaId: string): Promise<IgInsights> {
-  const url = `${IG_BASE}/${mediaId}/insights?metric=views,reach,saved,shares&access_token=${token}`
+  const url = `${FB_BASE}/${mediaId}/insights?metric=views,reach,saved,shares&access_token=${token}`
   const res = await fetch(url)
   if (!res.ok) return {}
   const json = await res.json()
@@ -103,7 +103,7 @@ interface IgStoryInsights {
 }
 
 export async function fetchStoryInsights(token: string, storyId: string): Promise<IgStoryInsights> {
-  const url = `${IG_BASE}/${storyId}/insights?metric=impressions,reach,replies,shares,total_interactions,navigation&access_token=${token}`
+  const url = `${FB_BASE}/${storyId}/insights?metric=impressions,reach,replies,shares,total_interactions,navigation&access_token=${token}`
   const res = await fetch(url)
   if (!res.ok) return {}
   const json = await res.json()
@@ -133,7 +133,7 @@ export async function createMediaContainer(
     params.set('image_url', imageUrl)
   }
 
-  const res = await fetch(`${IG_BASE}/${igUserId}/media`, {
+  const res = await fetch(`${FB_BASE}/${igUserId}/media`, {
     method: 'POST',
     body: params,
   })
@@ -153,7 +153,7 @@ export async function pollContainerStatus(
 ): Promise<'FINISHED' | 'ERROR'> {
   for (let i = 0; i < maxAttempts; i++) {
     const res = await fetch(
-      `${IG_BASE}/${containerId}?fields=status_code&access_token=${token}`
+      `${FB_BASE}/${containerId}?fields=status_code&access_token=${token}`
     )
     if (res.ok) {
       const json = await res.json()
@@ -173,7 +173,7 @@ export async function publishContainer(
     creation_id: containerId,
     access_token: accessToken,
   })
-  const res = await fetch(`${IG_BASE}/${igUserId}/media_publish`, {
+  const res = await fetch(`${FB_BASE}/${igUserId}/media_publish`, {
     method: 'POST',
     body: params,
   })
