@@ -18,9 +18,14 @@ export default function MessagesPage() {
   const fetchConversations = useCallback(async () => {
     setLoading(true)
     try {
-      const accRes = await fetch('/api/instagram/account')
-      const accJson = await accRes.json()
-      if (!accJson.data) { setHasAccount(false); setLoading(false); return }
+      let accRes = await fetch('/api/instagram/account')
+      let accJson = await accRes.json()
+      if (!accJson.data) {
+        // Try to create ig_account from existing Meta integration
+        accRes = await fetch('/api/instagram/account', { method: 'POST' })
+        accJson = await accRes.json()
+        if (!accJson.data) { setHasAccount(false); setLoading(false); return }
+      }
 
       const params = new URLSearchParams()
       if (search) params.set('search', search)

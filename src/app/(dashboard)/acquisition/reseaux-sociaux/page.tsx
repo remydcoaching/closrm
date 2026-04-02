@@ -20,7 +20,14 @@ export default function ReseauxSociauxPage() {
     try {
       const res = await fetch('/api/instagram/account')
       const json = await res.json()
-      setIgAccount(json.data ?? null)
+      if (json.data) {
+        setIgAccount(json.data)
+      } else {
+        // No ig_account yet — try to create one from existing Meta integration
+        const createRes = await fetch('/api/instagram/account', { method: 'POST' })
+        const createJson = await createRes.json()
+        setIgAccount(createJson.data ?? null)
+      }
     } catch { /* ignore */ }
     setLoading(false)
   }, [])
