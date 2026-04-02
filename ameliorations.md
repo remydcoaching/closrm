@@ -244,6 +244,63 @@ Chaque amélioration suit ce format :
 **Description :** Pierre n'a pas accès au compte Supabase, donc il ne peut pas exécuter les migrations. Le CLI Supabase est installé mais non linkable sans les credentials.
 **Proposition :** Demander à Rémy de partager l'accès Supabase (invite membre) ou de configurer un access token partagé.
 
+### A-023-01 · Cron job pour la publication programmée Instagram
+**Priorité :** Haute
+**Contexte :** Identifié pendant T-023 — les drafts avec status 'scheduled' ne sont pas publiés automatiquement
+**Description :** Ajouter un cron job (via `/api/cron/`) qui vérifie toutes les 5 minutes les drafts avec `status = 'scheduled'` et `scheduled_at <= now()`, et les publie via le flow de publication existant.
+**Proposition :** Créer `/api/cron/publish-scheduled` et l'ajouter au vercel.json cron config.
+
+### A-023-02 · Webhook pour les DMs Instagram entrants
+**Priorité :** Haute
+**Contexte :** Identifié pendant T-023 — les messages reçus ne sont captés que lors du sync manuel
+**Description :** Configurer un webhook Meta pour recevoir les DMs en temps réel (event `messages`), insérer dans `ig_messages` et mettre à jour `ig_conversations.unread_count`.
+**Proposition :** Ajouter un endpoint `/api/webhooks/instagram/messages` et le configurer dans l'app Meta.
+
+### A-023-03 · Auto-match conversations Instagram → leads
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-023 — le champ `lead_id` sur `ig_conversations` est toujours null
+**Description :** Lors du sync conversations, tenter de matcher le `participant_username` ou `participant_name` avec un lead existant (par nom/prénom). Permettre aussi le linkage manuel dans l'UI.
+**Proposition :** Ajouter un bouton "Lier à un lead" dans le header de conversation + matching automatique à la sync.
+
+### A-023-04 · Refresh token Meta avant expiration
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-023 — le token long-lived expire après 60 jours
+**Description :** Ajouter un cron job qui vérifie `ig_accounts.token_expires_at` et refresh le token avant expiration via l'API Meta.
+
 ---
 
-*Mis à jour le 2026-03-31 par Claude Code — ClosRM*
+## T-017 — Module Publicités (Meta Ads Dashboard)
+
+### A-017-01 · Cache des données Meta en DB
+**Priorité :** Moyenne
+**Contexte :** Identifié pendant T-017 (performance)
+**Description :** Chaque visite de la page Publicités appelle la Meta Marketing API en temps réel (~1-3s). Pour un coach qui consulte souvent, ajouter un cache court (5-15 min) en DB ou en mémoire.
+**Proposition :** Créer une table `meta_insights_cache` avec TTL, ou utiliser un cache edge (Vercel KV).
+
+### A-017-02 · Sélecteur de compte publicitaire UI
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-017 (multi-comptes)
+**Description :** La V1 auto-sélectionne le premier compte pub actif. Un coach avec plusieurs comptes pub ne peut pas choisir lequel afficher.
+**Proposition :** Ajouter un dropdown dans `/parametres/integrations` ou dans la page Publicités pour choisir le compte pub.
+
+### A-017-03 · Comparaison de périodes
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-017 (UX)
+**Description :** Le dashboard ne montre qu'une seule période. Ajouter la possibilité de comparer (ex: "cette semaine vs semaine dernière") avec des indicateurs % de variation.
+**Proposition :** Ajouter un mode comparaison dans le sélecteur de période, double appel API, affichage des deltas.
+
+### A-017-04 · Export des données pub en CSV
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-017 (fonctionnalité)
+**Description :** Pas d'export CSV pour les données de campagnes. Utile pour les coachs qui veulent partager les stats avec leur équipe.
+**Proposition :** Bouton "Exporter CSV" dans chaque onglet tableau.
+
+### A-017-05 · ROAS réel basé sur le revenu par deal
+**Priorité :** Haute
+**Contexte :** Identifié pendant T-017 (KPI)
+**Description :** Le ROAS est affiché "—" car il n'y a pas de suivi du revenu par deal. Nécessite l'ajout d'un champ `deal_value` sur les leads closés.
+**Proposition :** Ajouter `deal_value DECIMAL` à la table leads, un input dans la modale de closing, et calculer le ROAS = SUM(deal_value) / spend.
+
+---
+
+*Mis à jour le 2026-04-02 par Claude Code — ClosRM*

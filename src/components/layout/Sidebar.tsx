@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
   Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
-  CalendarDays, CalendarRange, Layers,
+  CalendarDays, CalendarRange, Layers, Share2, MessageCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -29,6 +29,8 @@ const NAV = [
       { label: 'Funnels', href: '/acquisition/funnels', icon: Layers },
       { label: 'Automations', href: '/acquisition/automations', icon: Zap },
       { label: 'Emails', href: '/acquisition/emails', icon: Mail },
+      { label: 'Réseaux sociaux', href: '/acquisition/reseaux-sociaux', icon: Share2 },
+      { label: 'Messages', href: '/acquisition/messages', icon: MessageCircle },
       { label: 'Publicités', href: '/acquisition/publicites', icon: Megaphone },
     ],
   },

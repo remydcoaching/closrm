@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { decrypt } from '@/lib/meta/encryption'
+import { getInsights, extractLeadCount, type MetaCredentials } from '@/lib/meta/client'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -205,19 +207,50 @@ export async function fetchSourceData(workspaceId: string, period: number): Prom
 
 export async function fetchMetaStats(workspaceId: string): Promise<MetaStats> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data: integration } = await supabase
     .from('integrations')
-    .select('id')
+    .select('credentials_encrypted')
     .eq('workspace_id', workspaceId)
     .eq('type', 'meta')
     .eq('is_active', true)
     .maybeSingle()
 
-  return {
-    isConnected: !!data,
-    // Données Meta temps réel non disponibles en V1
-    costPerLead: null,
-    roas: null,
-    budgetSpent: null,
+  if (!integration?.credentials_encrypted) {
+    return { isConnected: false, costPerLead: null, roas: null, budgetSpent: null }
+  }
+
+  try {
+    const credentials: MetaCredentials = JSON.parse(decrypt(integration.credentials_encrypted))
+
+    if (!credentials.ad_account_id) {
+      return { isConnected: true, costPerLead: null, roas: null, budgetSpent: null }
+    }
+
+    const now = new Date()
+    const from = new Date()
+    from.setDate(from.getDate() - 30)
+
+    const rows = await getInsights(credentials.ad_account_id, credentials.user_access_token, {
+      level: 'account',
+      dateFrom: from.toISOString().slice(0, 10),
+      dateTo: now.toISOString().slice(0, 10),
+    })
+
+    let totalSpend = 0
+    let totalLeads = 0
+    for (const row of rows) {
+      totalSpend += parseFloat(row.spend || '0')
+      totalLeads += extractLeadCount(row)
+    }
+
+    return {
+      isConnected: true,
+      costPerLead: totalLeads > 0 ? Math.round((totalSpend / totalLeads) * 100) / 100 : null,
+      roas: null,
+      budgetSpent: Math.round(totalSpend * 100) / 100,
+    }
+  } catch (err) {
+    console.warn('Failed to fetch Meta stats (non-blocking):', err)
+    return { isConnected: true, costPerLead: null, roas: null, budgetSpent: null }
   }
 }
