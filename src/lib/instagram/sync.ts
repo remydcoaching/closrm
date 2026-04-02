@@ -14,7 +14,7 @@ interface SyncContext {
 }
 
 export async function syncReels(ctx: SyncContext) {
-  const media = await fetchIgMedia(ctx.accessToken)
+  const media = await fetchIgMedia(ctx.accessToken, 50, ctx.igUserId)
   const reels = media.filter(m => m.media_type === 'VIDEO' || m.media_type === 'REELS')
 
   for (const reel of reels) {
@@ -51,7 +51,7 @@ export async function syncReels(ctx: SyncContext) {
 }
 
 export async function syncStories(ctx: SyncContext) {
-  const stories = await fetchIgStories(ctx.accessToken)
+  const stories = await fetchIgStories(ctx.accessToken, ctx.igUserId)
   let synced = 0
 
   for (const story of stories) {
@@ -82,7 +82,7 @@ export async function syncStories(ctx: SyncContext) {
 }
 
 export async function syncSnapshot(ctx: SyncContext) {
-  const profile = await fetchIgProfile(ctx.accessToken)
+  const profile = await fetchIgProfile(ctx.accessToken, ctx.igUserId)
 
   const { data: reels } = await ctx.supabase
     .from('ig_reels')
