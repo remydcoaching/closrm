@@ -694,3 +694,189 @@ export interface ContactFilters {
   reached: 'all' | 'true' | 'false'
   group_by: ContactGroupBy | ''
 }
+
+/* ───────────────────── Instagram Module ───────────────────── */
+
+export interface IgAccount {
+  id: string
+  workspace_id: string
+  ig_user_id: string
+  ig_username: string | null
+  access_token: string
+  token_expires_at: string | null
+  page_id: string | null
+  page_access_token: string | null
+  is_connected: boolean
+  starting_followers: number
+  starting_date: string | null
+  starting_monthly_views: number
+  starting_engagement: number
+  starting_best_reel: number
+  created_at: string
+}
+
+export interface IgStory {
+  id: string
+  workspace_id: string
+  ig_story_id: string
+  ig_media_url: string | null
+  thumbnail_url: string | null
+  caption: string | null
+  story_type: 'video' | 'image'
+  impressions: number
+  reach: number
+  replies: number
+  exits: number
+  taps_forward: number
+  taps_back: number
+  published_at: string
+  expires_at: string
+}
+
+export type StorySequenceType =
+  | 'confiance' | 'peur' | 'preuve_sociale' | 'urgence'
+  | 'autorite' | 'storytelling' | 'offre' | 'education'
+
+export interface StorySequence {
+  id: string
+  workspace_id: string
+  name: string
+  sequence_type: StorySequenceType
+  objective: string | null
+  notes: string | null
+  status: string
+  total_impressions: number
+  overall_dropoff_rate: number
+  total_replies: number
+  created_at: string
+  published_at: string | null
+}
+
+export interface StorySequenceItem {
+  id: string
+  sequence_id: string
+  story_id: string
+  position: number
+  impressions: number
+  replies: number
+  exits: number
+  story?: IgStory
+}
+
+export interface IgReel {
+  id: string
+  workspace_id: string
+  ig_media_id: string
+  caption: string | null
+  thumbnail_url: string | null
+  video_url: string | null
+  views: number
+  likes: number
+  comments: number
+  shares: number
+  saves: number
+  reach: number
+  plays: number
+  engagement_rate: number
+  format: 'talking_head' | 'text_overlay' | 'raw_documentary' | null
+  pillar_id: string | null
+  published_at: string
+}
+
+export interface IgContentPillar {
+  id: string
+  workspace_id: string
+  name: string
+  color: string
+  created_at: string
+}
+
+export type IgDraftStatus = 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed'
+export type IgMediaType = 'IMAGE' | 'VIDEO' | 'CAROUSEL'
+
+export interface IgDraft {
+  id: string
+  workspace_id: string
+  ig_account_id: string | null
+  caption: string | null
+  hashtags: string[]
+  media_urls: string[]
+  media_type: IgMediaType | null
+  status: IgDraftStatus
+  scheduled_at: string | null
+  published_at: string | null
+  ig_media_id: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface IgHashtagGroup {
+  id: string
+  workspace_id: string
+  name: string
+  hashtags: string[]
+  created_at: string
+}
+
+export type IgCaptionCategory =
+  | 'general' | 'education' | 'storytelling' | 'offre'
+  | 'preuve_sociale' | 'motivation' | 'behind_the_scenes'
+
+export interface IgCaptionTemplate {
+  id: string
+  workspace_id: string
+  title: string
+  body: string
+  category: IgCaptionCategory
+  hashtags: string[]
+  created_at: string
+}
+
+export interface IgSnapshot {
+  id: string
+  workspace_id: string
+  snapshot_date: string
+  followers: number
+  total_views: number
+  total_reach: number
+  new_followers: number
+}
+
+export interface IgGoal {
+  id: string
+  workspace_id: string
+  quarter: string
+  metric: string
+  target_value: number
+}
+
+export interface IgConversation {
+  id: string
+  workspace_id: string
+  ig_conversation_id: string
+  participant_ig_id: string | null
+  participant_username: string | null
+  participant_name: string | null
+  participant_avatar_url: string | null
+  lead_id: string | null
+  last_message_text: string | null
+  last_message_at: string | null
+  unread_count: number
+  created_at: string
+}
+
+export type IgMessageSenderType = 'user' | 'participant'
+
+export interface IgMessage {
+  id: string
+  workspace_id: string
+  conversation_id: string
+  ig_message_id: string | null
+  sender_type: IgMessageSenderType
+  text: string | null
+  media_url: string | null
+  media_type: 'image' | 'video' | 'audio' | 'sticker' | null
+  sent_at: string
+  is_read: boolean
+}
