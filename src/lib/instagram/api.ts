@@ -9,8 +9,11 @@ interface IgApiOptions {
 
 // ── Profile ──
 
-export async function fetchIgProfile(token: string) {
-  const url = `${IG_BASE}/me?fields=username,name,followers_count,follows_count,media_count,profile_picture_url&access_token=${token}`
+export async function fetchIgProfile(token: string, igUserId?: string) {
+  // Use Facebook Graph API with IG user ID (works with Facebook Login tokens)
+  const base = igUserId ? FB_BASE : IG_BASE
+  const id = igUserId ?? 'me'
+  const url = `${base}/${id}?fields=username,name,followers_count,follows_count,media_count,profile_picture_url&access_token=${token}`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`IG profile fetch failed: ${res.status}`)
   return res.json() as Promise<{
@@ -37,8 +40,10 @@ interface IgMediaItem {
   comments_count?: number
 }
 
-export async function fetchIgMedia(token: string, limit = 50): Promise<IgMediaItem[]> {
-  const url = `${IG_BASE}/me/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`
+export async function fetchIgMedia(token: string, limit = 50, igUserId?: string): Promise<IgMediaItem[]> {
+  const base = igUserId ? FB_BASE : IG_BASE
+  const id = igUserId ?? 'me'
+  const url = `${base}/${id}/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`IG media fetch failed: ${res.status}`)
   const json = await res.json()
@@ -78,8 +83,10 @@ interface IgStoryItem {
   timestamp: string
 }
 
-export async function fetchIgStories(token: string): Promise<IgStoryItem[]> {
-  const url = `${IG_BASE}/me/stories?fields=id,media_url,thumbnail_url,caption,media_type,timestamp&access_token=${token}`
+export async function fetchIgStories(token: string, igUserId?: string): Promise<IgStoryItem[]> {
+  const base = igUserId ? FB_BASE : IG_BASE
+  const id = igUserId ?? 'me'
+  const url = `${base}/${id}/stories?fields=id,media_url,thumbnail_url,caption,media_type,timestamp&access_token=${token}`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`IG stories fetch failed: ${res.status}`)
   const json = await res.json()
