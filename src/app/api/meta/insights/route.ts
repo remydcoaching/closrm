@@ -128,6 +128,18 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // === DEBUG LOGS ===
+    console.log('[META INSIGHTS] Request params:', {
+      level,
+      preset,
+      dateFrom: customFrom ?? 'from preset',
+      dateTo: customTo ?? 'from preset',
+      campaignId: campaignId ?? 'none',
+      adsetId: adsetId ?? 'none',
+      resolvedDateRange: { dateFrom, dateTo },
+      adAccountId: credentials.ad_account_id,
+    })
+
     // Fetch insights from Meta Marketing API
     const rows = await getInsights(credentials.ad_account_id, credentials.user_access_token, {
       level,
@@ -136,6 +148,19 @@ export async function GET(request: NextRequest) {
       campaignIds: campaignId ? [campaignId] : undefined,
       adsetIds: adsetId ? [adsetId] : undefined,
     })
+
+    console.log(`[META INSIGHTS] Insights returned: ${rows.length} rows`)
+    if (rows.length > 0 && rows.length <= 10) {
+      console.log('[META INSIGHTS] Insight rows:', rows.map(r => ({
+        campaign_id: r.campaign_id,
+        campaign_name: r.campaign_name,
+        adset_id: r.adset_id,
+        adset_name: r.adset_name,
+        ad_id: r.ad_id,
+        ad_name: r.ad_name,
+        spend: r.spend,
+      })))
+    }
 
     // Build response based on level
     if (level === 'account') {
@@ -190,9 +215,13 @@ export async function GET(request: NextRequest) {
     if (level === 'adset' && campaignId) parentId = campaignId
     if (level === 'ad' && adsetId) parentId = adsetId
 
+    console.log(`[META INSIGHTS] listAdObjects: level=${level}, parentId=${parentId ?? 'none'}`)
+
     const [allObjects] = await Promise.all([
       listAdObjects(credentials.ad_account_id, credentials.user_access_token, level as 'campaign' | 'adset' | 'ad', parentId),
     ])
+
+    console.log(`[META INSIGHTS] Objects returned: ${allObjects.length}`, allObjects.map(o => ({ id: o.id, name: o.name, status: o.effective_status })))
 
     // Build insights map by id
     const insightsMap = new Map<string, BreakdownRow>()
@@ -276,6 +305,8 @@ export async function GET(request: NextRequest) {
       // Fallback if listAdObjects failed — use insights only
       breakdown.push(...insightsMap.values())
     }
+
+    console.log(`[META INSIGHTS] Final breakdown: ${breakdown.length} items`, breakdown.map(b => ({ id: b.id, name: b.name, status: b.status, spend: b.spend })))
 
     const overallCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
 
