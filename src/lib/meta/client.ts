@@ -265,18 +265,12 @@ export async function listAdObjects(
     url = `${GRAPH_URL}/${adAccountId}/${edge}?fields=id,name,status,effective_status&limit=200&access_token=${token}`
   }
 
-  // Strip access_token from log
-  const logUrl = url.replace(/access_token=[^&]+/, 'access_token=***')
-  console.log(`[META LIST] Fetching ${level}s: ${logUrl}`)
-
   const res = await fetch(url)
   if (!res.ok) {
-    const errText = await res.text()
-    console.warn(`[META LIST] Failed to list ${level}s (${res.status}):`, errText)
+    console.warn(`Failed to list ${level}s:`, await res.text())
     return []
   }
   const data: { data: MetaAdObject[] } = await res.json()
-  console.log(`[META LIST] Got ${data.data?.length ?? 0} ${level}s`)
   return data.data ?? []
 }
 
@@ -331,15 +325,9 @@ export async function getInsights(
     searchParams.set('filtering', JSON.stringify(filtering))
   }
 
-  // Log the full request (minus token)
-  const insightUrl = `${GRAPH_URL}/${adAccountId}/insights?${searchParams.toString()}`
-  const logInsightUrl = insightUrl.replace(/access_token=[^&]+/, 'access_token=***')
-  console.log(`[META INSIGHTS API] ${params.level} request: ${logInsightUrl}`)
-  if (filtering.length > 0) {
-    console.log(`[META INSIGHTS API] Filtering:`, JSON.stringify(filtering))
-  }
-
-  const res = await fetch(insightUrl)
+  const res = await fetch(
+    `${GRAPH_URL}/${adAccountId}/insights?${searchParams.toString()}`
+  )
 
   if (!res.ok) {
     const err = await res.json()
