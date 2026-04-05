@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { IG_SEQ_TYPES } from './constants'
+import dynamic from 'next/dynamic'
 import type { StorySequence, StorySequenceItem } from '@/types'
-import IgStoriesSelector from './IgStoriesSelector'
+
+const IgStoriesSelector = dynamic(() => import('./IgStoriesSelector'), { ssr: false })
 
 interface Props {
   sequence: StorySequence

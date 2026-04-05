@@ -10,7 +10,7 @@ export const contactFiltersSchema = z.object({
   reached: z.enum(['true', 'false']).optional(),
   group_by: z.enum(['status', 'source']).optional(),
   page: z.coerce.number().int().min(1).default(1),
-  per_page: z.coerce.number().int().min(1).max(1000).default(25),
+  per_page: z.coerce.number().int().min(1).max(100).default(25),
 })
 
 export type ContactFiltersSchema = z.infer<typeof contactFiltersSchema>

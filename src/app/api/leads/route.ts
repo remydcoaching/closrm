@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('leads')
-      .select('*', { count: 'exact' })
+      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, created_at, updated_at', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .order(filters.sort, { ascending: filters.order === 'asc' })
 

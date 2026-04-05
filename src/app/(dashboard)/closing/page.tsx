@@ -74,7 +74,7 @@ export default function ClosingPage() {
     setCounts({ today: r[0], upcoming: r[1], overdue: r[2], done: r[3], cancelled: r[4] })
   }, [])
 
-  useEffect(() => { fetchCalls(); fetchCounts() }, [fetchCalls, fetchCounts])
+  useEffect(() => { Promise.all([fetchCalls(), fetchCounts()]) }, [fetchCalls, fetchCounts])
   useEffect(() => { setPage(1) }, [tab, filters])
 
   async function handleDelete() {

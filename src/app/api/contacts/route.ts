@@ -12,10 +12,10 @@ export async function GET(request: NextRequest) {
     const searchParams = Object.fromEntries(request.nextUrl.searchParams.entries())
     const filters = contactFiltersSchema.parse(searchParams)
 
-    // SELECT leads + calls agrégés via relation Supabase
+    // SELECT leads with call count aggregate (avoids fetching all call rows)
     let query = supabase
       .from('leads')
-      .select('*, calls(id, scheduled_at)', { count: 'exact' })
+      .select('id, workspace_id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, created_at, updated_at, calls(count)', { count: 'exact' })
       .eq('workspace_id', workspaceId)
 
     // Filtre statut
@@ -81,18 +81,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Transformer : agréger les calls en nb_calls + last_call_at
+    // Transformer : extract aggregated call count
     const contacts: ContactRow[] = (data ?? []).map((lead) => {
-      const { calls: rawCalls, ...leadFields } = lead
-      const calls = (rawCalls as { id: string; scheduled_at: string }[]) ?? []
-      const last_call_at = calls.length > 0
-        ? [...calls].sort((a, b) => b.scheduled_at.localeCompare(a.scheduled_at))[0].scheduled_at
-        : null
+      const { calls, ...leadFields } = lead as Record<string, unknown>
+      const callsAgg = calls as { count: number }[] | undefined
+      const nb_calls = callsAgg?.[0]?.count ?? 0
 
       return {
         ...leadFields,
-        nb_calls: calls.length,
-        last_call_at,
+        nb_calls,
+        last_call_at: null,
       } as ContactRow
     })
 

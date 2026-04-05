@@ -1,8 +1,22 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import dynamic from 'next/dynamic'
 import { Plus, X, Trash2, Edit2 } from 'lucide-react'
+
+function PieChartSkeleton() {
+  return (
+    <div style={{ width: '100%', height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 170, height: 170, borderRadius: '50%', background: 'var(--bg-elevated)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
+    </div>
+  )
+}
+
+const IgPillarPieChart = dynamic(
+  () => import('./IgPillarPieChartInner'),
+  { ssr: false, loading: () => <PieChartSkeleton /> },
+)
 import type { IgReel, IgContentPillar } from '@/types'
 
 function SkeletonBlock({ width, height }: { width: string | number; height: string | number }) {
@@ -251,14 +265,7 @@ export default function IgReelsTab() {
           <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column' }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>Distribution</h3>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={pillarCounts} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value" strokeWidth={0}>
-                    {pillarCounts.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid var(--border-primary)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }} />
-                </PieChart>
-              </ResponsiveContainer>
+              <IgPillarPieChart pillarCounts={pillarCounts} />
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12, justifyContent: 'center' }}>
               {pillarCounts.map((p, i) => (
