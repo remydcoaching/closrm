@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHmac } from 'crypto'
 import { createServiceClient } from '@/lib/supabase/service'
 
-const VERIFY_TOKEN = process.env.IG_WEBHOOK_VERIFY_TOKEN ?? 'closrm_ig_webhook_2026'
+const VERIFY_TOKEN = process.env.IG_WEBHOOK_VERIFY_TOKEN
+if (!VERIFY_TOKEN) console.warn('[Webhook] IG_WEBHOOK_VERIFY_TOKEN not set')
+
+function verifySignature(rawBody: string, signature: string | null): boolean {
+  if (!signature || !process.env.META_APP_SECRET) return false
+  const expected = 'sha256=' + createHmac('sha256', process.env.META_APP_SECRET).update(rawBody).digest('hex')
+  return signature === expected
+}
 
 // ─── GET : webhook verification (Meta sends this to validate the endpoint) ───
 
@@ -47,7 +55,15 @@ interface WebhookPayload {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as WebhookPayload
+    const rawBody = await request.text()
+    const signature = request.headers.get('x-hub-signature-256')
+
+    if (!verifySignature(rawBody, signature)) {
+      console.warn('[Webhook] Invalid signature')
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
+    }
+
+    const body = JSON.parse(rawBody) as WebhookPayload
 
     // Only process instagram events
     if (body.object !== 'instagram') {
@@ -81,7 +97,7 @@ export async function POST(request: NextRequest) {
         // Find or create conversation
         const { data: existingConvo } = await supabase
           .from('ig_conversations')
-          .select('id')
+          .select('id, unread_count')
           .eq('workspace_id', account.workspace_id)
           .eq('participant_ig_id', senderId)
           .single()
@@ -125,7 +141,7 @@ export async function POST(request: NextRequest) {
           .update({
             last_message_text: text ?? '📎 Média',
             last_message_at: new Date(event.timestamp).toISOString(),
-            unread_count: (existingConvo ? 1 : 1), // Will be incremented properly with RPC later
+            unread_count: existingConvo ? (existingConvo.unread_count ?? 0) + 1 : 1,
           })
           .eq('id', conversationId)
       }

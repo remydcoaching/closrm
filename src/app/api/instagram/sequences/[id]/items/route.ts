@@ -8,9 +8,19 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await getWorkspaceId()
+    const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
     const { id } = await params
+
+    // Verify sequence belongs to this workspace
+    const { data: seq } = await supabase
+      .from('story_sequences')
+      .select('id')
+      .eq('id', id)
+      .eq('workspace_id', workspaceId)
+      .maybeSingle()
+    if (!seq) return NextResponse.json({ error: 'Séquence introuvable' }, { status: 404 })
+
     const { data, error } = await supabase
       .from('story_sequence_items')
       .select('*, story:ig_stories(*)')

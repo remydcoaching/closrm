@@ -9,27 +9,64 @@ interface Props {
   onLinkAccount: () => void
 }
 
+function LoadingSkeleton() {
+  return (
+    <div>
+      {/* Period selector skeleton */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24 }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} style={{ width: 50, height: 30, background: 'var(--bg-elevated)', borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
+        ))}
+      </div>
+      {/* KPI row skeleton */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 32 }}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 12, padding: '16px 20px' }}>
+            <div style={{ width: '60%', height: 12, background: 'var(--bg-elevated)', borderRadius: 4, marginBottom: 10, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <div style={{ width: '80%', height: 24, background: 'var(--bg-elevated)', borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
+          </div>
+        ))}
+      </div>
+      {/* Chart skeleton */}
+      <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 12, padding: 20, marginBottom: 32 }}>
+        <div style={{ width: 180, height: 16, background: 'var(--bg-elevated)', borderRadius: 6, marginBottom: 16, animation: 'pulse 1.5s ease-in-out infinite' }} />
+        <div style={{ width: '100%', height: 250, background: 'var(--bg-elevated)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+      </div>
+    </div>
+  )
+}
+
 export default function IgGeneralTab({ onLinkAccount }: Props) {
   const [period, setPeriod] = useState('30d')
   const [snapshots, setSnapshots] = useState<IgSnapshot[]>([])
   const [reels, setReels] = useState<IgReel[]>([])
   const [goals, setGoals] = useState<IgGoal[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const [snapRes, reelsRes, goalsRes] = await Promise.all([
-      fetch('/api/instagram/snapshots'),
-      fetch('/api/instagram/reels?per_page=100'),
-      fetch('/api/instagram/goals'),
-    ])
-    const [snapJson, reelsJson, goalsJson] = await Promise.all([
-      snapRes.json(), reelsRes.json(), goalsRes.json(),
-    ])
-    setSnapshots(snapJson.data ?? [])
-    setReels(reelsJson.data ?? [])
-    setGoals(goalsJson.data ?? [])
-    setLoading(false)
+    setError(null)
+    try {
+      const [snapRes, reelsRes, goalsRes] = await Promise.all([
+        fetch('/api/instagram/snapshots'),
+        fetch('/api/instagram/reels?per_page=100'),
+        fetch('/api/instagram/goals'),
+      ])
+      if (!snapRes.ok || !reelsRes.ok || !goalsRes.ok) {
+        throw new Error('Erreur lors du chargement des données')
+      }
+      const [snapJson, reelsJson, goalsJson] = await Promise.all([
+        snapRes.json(), reelsRes.json(), goalsRes.json(),
+      ])
+      setSnapshots(snapJson.data ?? [])
+      setReels(reelsJson.data ?? [])
+      setGoals(goalsJson.data ?? [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossible de charger les données')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
@@ -63,24 +100,54 @@ export default function IgGeneralTab({ onLinkAccount }: Props) {
   const quarter = `${now.getFullYear()}-Q${Math.ceil((now.getMonth() + 1) / 3)}`
   const quarterGoals = goals.filter(g => g.quarter === quarter)
 
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-tertiary)', fontSize: 13 }}>Chargement...</div>
+  // Helper: get current value for any goal metric
+  const getCurrentValueForMetric = (metric: string): number => {
+    switch (metric) {
+      case 'followers':
+        return latestSnap?.followers ?? 0
+      case 'views':
+      case 'total_views':
+        return totalViews
+      case 'reach':
+      case 'total_reach':
+        return totalReach
+      case 'engagement':
+      case 'engagement_rate':
+        return Math.round(avgEngagement * 10) / 10
+      case 'reels':
+      case 'reels_count':
+        return filteredReels.length
+      case 'new_followers':
+        return latestSnap?.new_followers ?? 0
+      default:
+        return 0
+    }
   }
+
+  if (loading) return <LoadingSkeleton />
+
+  if (error) return (
+    <div style={{ textAlign: 'center', padding: 60, color: '#ef4444', fontSize: 13, background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border-primary)' }}>
+      {error}
+      <button onClick={fetchData} style={{ display: 'block', margin: '12px auto 0', padding: '6px 16px', fontSize: 12, color: 'var(--text-primary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer' }}>Réessayer</button>
+    </div>
+  )
 
   return (
     <div>
       {/* Period selector */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--bg-secondary)', borderRadius: 8, padding: 3, width: 'fit-content', border: '1px solid var(--border-primary)' }}>
         {IG_PERIODS.map(p => (
           <button
             key={p.value}
             onClick={() => setPeriod(p.value)}
             style={{
-              padding: '6px 12px', fontSize: 12, fontWeight: 500,
+              padding: '6px 14px', fontSize: 12, fontWeight: 600,
               color: period === p.value ? '#fff' : 'var(--text-tertiary)',
-              background: period === p.value ? 'var(--bg-elevated)' : 'transparent',
-              border: period === p.value ? '1px solid var(--border-primary)' : '1px solid transparent',
+              background: period === p.value ? 'var(--color-primary)' : 'transparent',
+              border: 'none',
               borderRadius: 6, cursor: 'pointer',
+              transition: 'all 0.2s ease',
             }}
           >
             {p.label}
@@ -101,16 +168,26 @@ export default function IgGeneralTab({ onLinkAccount }: Props) {
       {chartData.length > 1 && (
         <div style={{
           background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
-          borderRadius: 12, padding: 20, marginBottom: 32,
+          borderRadius: 12, padding: '24px 24px 16px', marginBottom: 32,
         }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
-            Tendance de croissance
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Tendance de croissance
+            </h3>
+            <div style={{ display: 'flex', gap: 16 }}>
+              {[{ label: 'Followers', color: '#3b82f6' }, { label: 'Vues', color: '#22c55e' }, { label: 'Reach', color: '#f97316' }].map(l => (
+                <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 10, height: 3, borderRadius: 2, background: l.color }} />
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{l.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={250}>
             <LineChart data={chartData}>
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#666' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#666' }} />
-              <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 8, fontSize: 12 }} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#666' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#666' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid var(--border-primary)', borderRadius: 8, fontSize: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }} />
               <Line type="monotone" dataKey="Followers" stroke="#3b82f6" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="Vues" stroke="#22c55e" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="Reach" stroke="#f97316" strokeWidth={2} dot={false} />
@@ -131,20 +208,23 @@ export default function IgGeneralTab({ onLinkAccount }: Props) {
           <div style={{ display: 'grid', gap: 12 }}>
             {quarterGoals.map(g => {
               const metricLabel = IG_GOAL_METRICS.find(m => m.value === g.metric)?.label ?? g.metric
-              const current = g.metric === 'followers' ? (latestSnap?.followers ?? 0) : 0
+              const current = getCurrentValueForMetric(g.metric)
               const pct = g.target_value > 0 ? Math.min(100, (current / g.target_value) * 100) : 0
               return (
                 <div key={g.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{metricLabel}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                      {current} / {g.target_value}
+                      {current.toLocaleString()} / {g.target_value.toLocaleString()}
                     </span>
                   </div>
-                  <div style={{ height: 6, background: 'var(--bg-primary)', borderRadius: 3 }}>
+                  <div style={{ height: 6, background: 'var(--bg-primary)', borderRadius: 3, overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', width: `${pct}%`, borderRadius: 3,
-                      background: pct >= 100 ? '#22c55e' : 'var(--color-primary)',
+                      background: pct >= 100
+                        ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                        : 'linear-gradient(90deg, var(--color-primary), #f97316)',
+                      transition: 'width 0.6s ease',
                     }} />
                   </div>
                 </div>
@@ -176,8 +256,11 @@ export default function IgGeneralTab({ onLinkAccount }: Props) {
               </thead>
               <tbody>
                 {topReels.map(r => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                    <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-primary)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <tr key={r.id} style={{ borderBottom: '1px solid var(--border-primary)', transition: 'background 0.15s ease', cursor: 'default' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <td style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-primary)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.caption?.slice(0, 60) ?? '—'}
                     </td>
                     <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-secondary)' }}>{r.views.toLocaleString()}</td>
@@ -201,8 +284,13 @@ function KpiCard({ label, value }: { label: string; value: string }) {
     <div style={{
       background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
       borderRadius: 12, padding: '16px 20px',
-    }}>
-      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8 }}>{label}</div>
+      transition: 'border-color 0.2s ease, transform 0.2s ease',
+      cursor: 'default',
+    }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary)'; e.currentTarget.style.transform = 'translateY(0)' }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{value}</div>
     </div>
   )

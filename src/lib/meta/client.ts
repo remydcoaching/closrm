@@ -288,13 +288,13 @@ export async function getInsights(
     'actions', 'cost_per_action_type',
   ]
 
-  // Add name fields based on level so Meta returns them
+  // Add ID + name fields based on level so Meta returns them
   if (params.level === 'campaign') {
-    baseFields.push('campaign_name')
+    baseFields.push('campaign_id', 'campaign_name')
   } else if (params.level === 'adset') {
-    baseFields.push('adset_name', 'campaign_name')
+    baseFields.push('adset_id', 'adset_name', 'campaign_id', 'campaign_name')
   } else if (params.level === 'ad') {
-    baseFields.push('ad_name', 'adset_name', 'campaign_name')
+    baseFields.push('ad_id', 'ad_name', 'adset_id', 'adset_name', 'campaign_id', 'campaign_name')
   }
 
   const fields = baseFields.join(',')
