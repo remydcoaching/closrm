@@ -5,10 +5,16 @@ import { createMediaContainer, pollContainerStatus, publishContainer } from '@/l
 export const maxDuration = 120 // Allow up to 2 minutes for video processing
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret
+  // Verify cron secret (supports both header and query param)
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const queryToken = request.nextUrl.searchParams.get('token')
+  const cronSecret = process.env.CRON_SECRET
+
+  if (cronSecret) {
+    // If CRON_SECRET is set, verify it
+    if (authHeader !== `Bearer ${cronSecret}` && queryToken !== cronSecret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
   }
 
   const supabase = createServiceClient()
