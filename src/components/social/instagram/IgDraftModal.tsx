@@ -177,7 +177,7 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
     setSaving(true)
     try {
       const hashtags = parseHashtags()
-      const scheduled_at = status === 'scheduled' && schedDate ? `${schedDate}T${schedTime}:00Z` : undefined
+      const scheduled_at = status === 'scheduled' && schedDate ? new Date(`${schedDate}T${schedTime}:00`).toISOString() : undefined
       const body = { caption, hashtags, media_urls: mediaUrls, media_type: mediaType, status, scheduled_at }
 
       if (draft) {
