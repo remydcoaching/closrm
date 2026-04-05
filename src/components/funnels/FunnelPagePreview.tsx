@@ -65,13 +65,16 @@ function SortableBlock({
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition || 'outline 0.15s ease, box-shadow 0.15s ease',
     position: 'relative',
     outline: isSelected
       ? '2px solid #3b82f6'
       : hovered
-        ? '2px solid rgba(59,130,246,0.4)'
+        ? '2px solid rgba(59,130,246,0.35)'
         : '2px solid transparent',
+    boxShadow: isSelected
+      ? '0 0 0 4px rgba(59,130,246,0.1)'
+      : 'none',
     borderRadius: 4,
     cursor: 'pointer',
   }
@@ -95,11 +98,14 @@ function SortableBlock({
           {...listeners}
           style={{
             position: 'absolute', top: 8, left: 8, zIndex: 10,
-            width: 24, height: 24, borderRadius: 4,
-            background: 'rgba(0,0,0,0.6)', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'grab',
+            width: 28, height: 28, borderRadius: 6,
+            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+            color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'grab', transition: 'background 0.15s ease',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.8)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.7)' }}
         >
           <GripVertical size={14} />
         </div>
@@ -114,13 +120,15 @@ function SortableBlock({
           }}
           style={{
             position: 'absolute', top: 8, right: 8, zIndex: 10,
-            width: 24, height: 24, borderRadius: 4,
-            background: 'rgba(0,0,0,0.6)', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 28, height: 28, borderRadius: 6,
+            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+            color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', border: 'none', padding: 0,
+            transition: 'all 0.15s ease',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#E53E3E' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.6)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#E53E3E'; e.currentTarget.style.transform = 'scale(1.05)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.7)'; e.currentTarget.style.transform = 'scale(1)' }}
         >
           <X size={14} />
         </button>
@@ -135,25 +143,46 @@ export default function FunnelPagePreview({ blocks, selectedBlockId, onSelectBlo
   return (
     <div
       style={{
-        flex: 1, overflow: 'auto', background: '#e5e5e5',
-        display: 'flex', justifyContent: 'center', padding: 24,
+        minHeight: '100%',
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%)',
+        display: 'flex', justifyContent: 'center',
+        padding: mode === 'mobile' ? '24px 16px' : 32,
+        transition: 'padding 0.3s ease',
       }}
       onClick={() => onSelectBlock(null)}
     >
       <div style={{
         width: '100%',
-        maxWidth: mode === 'mobile' ? 375 : undefined,
+        maxWidth: mode === 'mobile' ? 375 : 1200,
         background: '#fff',
         minHeight: '100%',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-        borderRadius: 8,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05)',
+        borderRadius: mode === 'mobile' ? 20 : 8,
         overflow: 'hidden',
+        transition: 'max-width 0.3s ease, border-radius 0.3s ease',
       }}>
         {blocks.length === 0 ? (
           <div style={{
-            padding: 60, textAlign: 'center', color: '#999', fontSize: 14,
+            padding: '80px 40px', textAlign: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
           }}>
-            Ajoutez des blocs depuis le panneau de gauche
+            <div style={{
+              width: 56, height: 56, borderRadius: 14,
+              background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: 4,
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="12" y1="8" x2="12" y2="16" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+              </svg>
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#333' }}>
+              Aucun bloc ajouté
+            </div>
+            <div style={{ fontSize: 13, color: '#999', maxWidth: 260, lineHeight: 1.5 }}>
+              Glissez des blocs depuis le panneau de gauche pour construire votre page
+            </div>
           </div>
         ) : (
           <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>

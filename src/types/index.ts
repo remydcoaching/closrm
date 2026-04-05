@@ -880,3 +880,18 @@ export interface IgMessage {
   sent_at: string
   is_read: boolean
 }
+
+export interface IgComment {
+  id: string
+  workspace_id: string
+  ig_comment_id: string
+  ig_media_id: string
+  media_caption: string | null
+  text: string
+  username: string | null
+  timestamp: string | null
+  is_hidden: boolean
+  parent_id: string | null
+  ig_parent_id: string | null
+  created_at: string
+}
