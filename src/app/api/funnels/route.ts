@@ -56,7 +56,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Le nom est requis' }, { status: 400 })
     }
 
-    const funnelSlug = slug ? slugify(slug) : slugify(name)
+    let funnelSlug = slug ? slugify(slug) : slugify(name)
+
+    // Check for duplicate slug and add suffix if needed
+    const { data: existing } = await supabase
+      .from('funnels')
+      .select('slug')
+      .eq('workspace_id', workspaceId)
+      .like('slug', `${funnelSlug}%`)
+
+    if (existing && existing.length > 0) {
+      const existingSlugs = new Set(existing.map(f => f.slug))
+      if (existingSlugs.has(funnelSlug)) {
+        let i = 2
+        while (existingSlugs.has(`${funnelSlug}-${i}`)) i++
+        funnelSlug = `${funnelSlug}-${i}`
+      }
+    }
 
     // Create the funnel
     const { data: funnel, error: funnelError } = await supabase

@@ -234,7 +234,7 @@ export async function sendIgMessage(
   recipientId: string,
   text: string
 ): Promise<string> {
-  const res = await fetch(`${FB_BASE}/${pageId}/messages`, {
+  const res = await fetch(`${FB_BASE}/${pageId}/messages?platform=instagram`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -244,8 +244,9 @@ export async function sendIgMessage(
     }),
   })
   if (!res.ok) {
-    const err = await res.json()
-    throw new Error(`Send DM failed: ${JSON.stringify(err)}`)
+    const err = await res.json().catch(() => ({}))
+    console.error('[sendIgMessage] Failed:', JSON.stringify(err))
+    throw new Error(`Send DM failed: ${err?.error?.message ?? res.status}`)
   }
   const json = await res.json()
   return json.message_id as string
