@@ -21,7 +21,7 @@ export async function POST(
 
     // 2. Get IG account — use page_access_token for publishing (required by Meta)
     const { data: account } = await supabase
-      .from('ig_accounts').select('*').eq('workspace_id', workspaceId).eq('is_connected', true).single()
+      .from('ig_accounts').select('*').eq('workspace_id', workspaceId).eq('is_connected', true).maybeSingle()
     if (!account) return NextResponse.json({ error: 'Aucun compte Instagram connecté' }, { status: 400 })
 
     const publishToken = account.page_access_token || account.access_token
@@ -34,31 +34,43 @@ export async function POST(
     if (draft.hashtags?.length) {
       fullCaption += '\n\n' + draft.hashtags.map((h: string) => (h.startsWith('#') ? h : `#${h}`)).join(' ')
     }
+    if (fullCaption.length > 2200) {
+      await supabase.from('ig_drafts').update({ status: 'draft' }).eq('id', id)
+      return NextResponse.json({ error: 'La légende + hashtags dépasse 2200 caractères' }, { status: 400 })
+    }
 
     try {
-      const isVideo = draft.media_type === 'VIDEO'
-      const opts = {
-        accessToken: publishToken,
-        igUserId: account.ig_user_id,
-        caption: fullCaption,
-        ...(isVideo ? { videoUrl: draft.media_urls[0] } : { imageUrl: draft.media_urls[0] }),
+      const publishPromise = async () => {
+        const isVideo = draft.media_type === 'VIDEO'
+        const opts = {
+          accessToken: publishToken,
+          igUserId: account.ig_user_id,
+          caption: fullCaption,
+          ...(isVideo ? { videoUrl: draft.media_urls[0] } : { imageUrl: draft.media_urls[0] }),
+        }
+
+        // 5. Create container
+        const containerId = await createMediaContainer(opts)
+
+        // 6. Poll for video processing
+        if (isVideo) {
+          const status = await pollContainerStatus(publishToken, containerId)
+          if (status === 'ERROR') throw new Error('Video processing failed')
+        }
+
+        // 7. Publish
+        return publishContainer({
+          accessToken: publishToken,
+          igUserId: account.ig_user_id,
+          containerId,
+        })
       }
 
-      // 5. Create container
-      const containerId = await createMediaContainer(opts)
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Publication expirée (30s)')), 30_000)
+      )
 
-      // 6. Poll for video processing
-      if (isVideo) {
-        const status = await pollContainerStatus(publishToken, containerId)
-        if (status === 'ERROR') throw new Error('Video processing failed')
-      }
-
-      // 7. Publish
-      const igMediaId = await publishContainer({
-        accessToken: publishToken,
-        igUserId: account.ig_user_id,
-        containerId,
-      })
+      const igMediaId = await Promise.race([publishPromise(), timeout])
 
       // 8. Update draft
       await supabase.from('ig_drafts').update({

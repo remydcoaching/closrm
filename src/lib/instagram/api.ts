@@ -250,3 +250,54 @@ export async function sendIgMessage(
   const json = await res.json()
   return json.message_id as string
 }
+
+// ── Comments ──
+
+export async function fetchMediaComments(
+  token: string,
+  mediaId: string
+): Promise<Array<{ id: string; text: string; username: string; timestamp: string; parent_id?: string }>> {
+  const url = `${FB_BASE}/${mediaId}/comments?fields=id,text,username,timestamp,parent_id&limit=100&access_token=${token}`
+  const res = await fetch(url)
+  if (!res.ok) return []
+  const json = await res.json()
+  return json.data ?? []
+}
+
+export async function replyToComment(
+  token: string,
+  commentId: string,
+  message: string
+): Promise<string> {
+  const res = await fetch(`${FB_BASE}/${commentId}/replies`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, access_token: token }),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(`Reply failed: ${JSON.stringify(err)}`)
+  }
+  const json = await res.json()
+  return json.id as string
+}
+
+export async function deleteComment(token: string, commentId: string): Promise<void> {
+  const res = await fetch(`${FB_BASE}/${commentId}?access_token=${token}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(`Delete comment failed: ${JSON.stringify(err)}`)
+  }
+}
+
+export async function hideComment(token: string, commentId: string, hide: boolean): Promise<void> {
+  const res = await fetch(`${FB_BASE}/${commentId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ hide, access_token: token }),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(`Hide comment failed: ${JSON.stringify(err)}`)
+  }
+}

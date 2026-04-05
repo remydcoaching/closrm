@@ -38,9 +38,23 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         const f = json.data as FunnelData
         setFunnel(f)
         setFunnelName(f.name)
-        const pgs = Array.isArray(f.pages) ? f.pages : []
+        let pgs = Array.isArray(f.pages) ? f.pages : []
+
+        // If no pages, create a default one
+        if (pgs.length === 0) {
+          const createRes = await fetch(`/api/funnels/${id}/pages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'Page 1', slug: 'page-1', blocks: [] }),
+          })
+          const createJson = await createRes.json()
+          if (createJson.data) {
+            pgs = [createJson.data]
+          }
+        }
+
         setPages(pgs)
-        if (pgs.length > 0 && !activePageId) {
+        if (pgs.length > 0) {
           setActivePageId(pgs[0].id)
         }
       }
@@ -49,7 +63,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
     } finally {
       setLoading(false)
     }
-  }, [id, activePageId])
+  }, [id])
 
   useEffect(() => { fetchFunnel() }, [fetchFunnel])
 
@@ -147,37 +161,70 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#555' }}>
-        Chargement...
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', gap: 16, background: 'var(--bg-primary, #0A0A0A)',
+      }}>
+        <div style={{
+          width: 32, height: 32, border: '3px solid #262626', borderTopColor: '#E53E3E',
+          borderRadius: '50%', animation: 'spin 0.8s linear infinite',
+        }} />
+        <span style={{ fontSize: 13, color: 'var(--text-secondary, #A0A0A0)', fontWeight: 500 }}>
+          Chargement du funnel...
+        </span>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     )
   }
 
   if (!funnel) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#555' }}>
-        Funnel introuvable
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', gap: 12, background: 'var(--bg-primary, #0A0A0A)',
+      }}>
+        <div style={{ fontSize: 32, opacity: 0.3 }}>🔍</div>
+        <span style={{ fontSize: 14, color: 'var(--text-secondary, #A0A0A0)', fontWeight: 500 }}>
+          Funnel introuvable
+        </span>
+        <button
+          onClick={() => router.push('/acquisition/funnels')}
+          style={{
+            marginTop: 8, padding: '8px 20px', fontSize: 13, fontWeight: 600,
+            background: 'transparent', color: '#E53E3E', border: '1px solid rgba(229,62,62,0.3)',
+            borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(229,62,62,0.08)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+        >
+          Retour aux funnels
+        </button>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary, #0A0A0A)' }}>
       {/* Top bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        height: 52, padding: '0 16px', flexShrink: 0,
-        background: '#141414', borderBottom: '1px solid #262626',
+        height: 56, padding: '0 16px', flexShrink: 0,
+        background: 'var(--bg-secondary, #141414)',
+        borderBottom: '1px solid var(--border-primary, #262626)',
+        backdropFilter: 'blur(12px)',
       }}>
         {/* Back */}
         <button
           onClick={() => router.push('/acquisition/funnels')}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 32, height: 32, borderRadius: 6,
-            background: 'transparent', border: '1px solid #333',
-            color: '#888', cursor: 'pointer', padding: 0, flexShrink: 0,
+            width: 34, height: 34, borderRadius: 8,
+            background: 'transparent', border: '1px solid var(--border-primary, #262626)',
+            color: 'var(--text-secondary, #A0A0A0)', cursor: 'pointer', padding: 0, flexShrink: 0,
+            transition: 'all 0.2s ease',
           }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary, #262626)'; e.currentTarget.style.color = 'var(--text-secondary, #A0A0A0)'; e.currentTarget.style.background = 'transparent' }}
         >
           <ArrowLeft size={16} />
         </button>
@@ -191,20 +238,22 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             onBlur={() => setEditingName(false)}
             onKeyDown={e => { if (e.key === 'Enter') setEditingName(false) }}
             style={{
-              fontSize: 14, fontWeight: 600, color: '#fff',
-              background: '#0a0a0a', border: '1px solid #333', borderRadius: 6,
-              padding: '4px 10px', outline: 'none', width: 200,
+              fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #fff)',
+              background: 'var(--bg-primary, #0a0a0a)', border: '1px solid #E53E3E',
+              borderRadius: 8, padding: '6px 12px', outline: 'none', width: 220,
+              transition: 'border-color 0.2s ease',
             }}
           />
         ) : (
           <button
             onClick={() => setEditingName(true)}
             style={{
-              fontSize: 14, fontWeight: 600, color: '#fff',
+              fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #fff)',
               background: 'transparent', border: 'none', cursor: 'pointer',
-              padding: '4px 8px', borderRadius: 6, flexShrink: 0,
+              padding: '6px 10px', borderRadius: 8, flexShrink: 0,
+              transition: 'background 0.15s ease',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#1a1a1a' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
           >
             {funnelName}
@@ -212,7 +261,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         )}
 
         {/* Separator */}
-        <div style={{ width: 1, height: 24, background: '#262626', flexShrink: 0 }} />
+        <div style={{ width: 1, height: 24, background: 'var(--border-primary, #262626)', flexShrink: 0 }} />
 
         {/* Page tabs */}
         <div style={{ flex: 1, overflow: 'auto' }}>
@@ -226,18 +275,22 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Separator */}
-        <div style={{ width: 1, height: 24, background: '#262626', flexShrink: 0 }} />
+        <div style={{ width: 1, height: 24, background: 'var(--border-primary, #262626)', flexShrink: 0 }} />
 
         {/* Desktop / Mobile toggle */}
-        <div style={{ display: 'flex', gap: 2, background: '#0a0a0a', borderRadius: 6, padding: 2, flexShrink: 0 }}>
+        <div style={{
+          display: 'flex', gap: 2, background: 'var(--bg-primary, #0a0a0a)',
+          borderRadius: 8, padding: 3, flexShrink: 0,
+          border: '1px solid var(--border-primary, #262626)',
+        }}>
           <button
             onClick={() => setMode('desktop')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 30, height: 28, borderRadius: 4, border: 'none',
-              background: mode === 'desktop' ? '#262626' : 'transparent',
-              color: mode === 'desktop' ? '#fff' : '#555',
-              cursor: 'pointer', padding: 0,
+              width: 32, height: 28, borderRadius: 6, border: 'none',
+              background: mode === 'desktop' ? 'rgba(229,62,62,0.15)' : 'transparent',
+              color: mode === 'desktop' ? '#E53E3E' : 'var(--text-secondary, #555)',
+              cursor: 'pointer', padding: 0, transition: 'all 0.2s ease',
             }}
           >
             <Monitor size={14} />
@@ -246,10 +299,10 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             onClick={() => setMode('mobile')}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 30, height: 28, borderRadius: 4, border: 'none',
-              background: mode === 'mobile' ? '#262626' : 'transparent',
-              color: mode === 'mobile' ? '#fff' : '#555',
-              cursor: 'pointer', padding: 0,
+              width: 32, height: 28, borderRadius: 6, border: 'none',
+              background: mode === 'mobile' ? 'rgba(229,62,62,0.15)' : 'transparent',
+              color: mode === 'mobile' ? '#E53E3E' : 'var(--text-secondary, #555)',
+              cursor: 'pointer', padding: 0, transition: 'all 0.2s ease',
             }}
           >
             <Smartphone size={14} />
@@ -262,14 +315,20 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           disabled={saving}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 14px', fontSize: 12, fontWeight: 600,
-            background: '#1a1a1a', color: saved ? '#38A169' : '#ccc',
-            border: '1px solid #333', borderRadius: 6,
+            padding: '7px 16px', fontSize: 12, fontWeight: 600,
+            background: saved ? 'rgba(56,161,105,0.1)' : 'rgba(255,255,255,0.04)',
+            color: saved ? '#38A169' : 'var(--text-primary, #ccc)',
+            border: saved ? '1px solid rgba(56,161,105,0.3)' : '1px solid var(--border-primary, #262626)',
+            borderRadius: 8,
             cursor: saving ? 'not-allowed' : 'pointer', flexShrink: 0,
+            opacity: saving ? 0.6 : 1,
+            transition: 'all 0.2s ease',
           }}
+          onMouseEnter={e => { if (!saving) e.currentTarget.style.borderColor = '#444' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = saved ? 'rgba(56,161,105,0.3)' : 'var(--border-primary, #262626)' }}
         >
           {saved ? <Check size={14} /> : <Save size={14} />}
-          {saving ? 'Sauvegarde...' : saved ? 'Sauvegarde' : 'Sauvegarder'}
+          {saving ? 'Sauvegarde...' : saved ? 'Sauvegardé' : 'Sauvegarder'}
         </button>
 
         {/* Publish */}
@@ -278,14 +337,19 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           disabled={publishing}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 14px', fontSize: 12, fontWeight: 600,
+            padding: '7px 16px', fontSize: 12, fontWeight: 600,
             background: published ? '#38A169' : '#E53E3E',
-            color: '#fff', border: 'none', borderRadius: 6,
+            color: '#fff', border: 'none', borderRadius: 8,
             cursor: publishing ? 'not-allowed' : 'pointer', flexShrink: 0,
+            opacity: publishing ? 0.7 : 1,
+            transition: 'all 0.2s ease',
+            boxShadow: published ? '0 0 12px rgba(56,161,105,0.3)' : '0 0 12px rgba(229,62,62,0.2)',
           }}
+          onMouseEnter={e => { if (!publishing) e.currentTarget.style.opacity = '0.9' }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = publishing ? '0.7' : '1' }}
         >
           <Globe size={14} />
-          {publishing ? 'Publication...' : published ? 'Publie !' : funnel.status === 'published' ? 'Depublier' : 'Publier'}
+          {publishing ? 'Publication...' : published ? 'Publié !' : funnel.status === 'published' ? 'Dépublier' : 'Publier'}
         </button>
       </div>
 

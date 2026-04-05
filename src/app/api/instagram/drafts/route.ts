@@ -48,6 +48,9 @@ export async function POST(request: NextRequest) {
     if (parsed.data.status === 'scheduled' && !parsed.data.scheduled_at) {
       return NextResponse.json({ error: 'Date de programmation requise' }, { status: 400 })
     }
+    if (parsed.data.status === 'scheduled' && parsed.data.scheduled_at && new Date(parsed.data.scheduled_at) <= new Date()) {
+      return NextResponse.json({ error: 'La date de programmation doit être dans le futur' }, { status: 400 })
+    }
 
     const { data, error } = await supabase
       .from('ig_drafts')

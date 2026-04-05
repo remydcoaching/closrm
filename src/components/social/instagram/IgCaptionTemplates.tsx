@@ -5,53 +5,108 @@ import { Plus, X, Trash2, Edit2 } from 'lucide-react'
 import { IG_CAPTION_CATEGORIES } from './constants'
 import type { IgCaptionTemplate } from '@/types'
 
+function LoadingSkeleton() {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ width: 160, height: 18, background: 'var(--bg-elevated)', borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
+        <div style={{ width: 150, height: 32, background: 'var(--bg-elevated)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+        {[1, 2, 3].map(i => (
+          <div key={i} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 12, padding: 16 }}>
+            <div style={{ width: '50%', height: 16, background: 'var(--bg-elevated)', borderRadius: 6, marginBottom: 10, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <div style={{ width: 60, height: 16, background: 'var(--bg-elevated)', borderRadius: 12, marginBottom: 10, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <div style={{ width: '100%', height: 36, background: 'var(--bg-elevated)', borderRadius: 6, marginBottom: 10, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[1, 2, 3].map(j => (
+                <div key={j} style={{ width: 50 + j * 8, height: 18, background: 'var(--bg-elevated)', borderRadius: 12, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function IgCaptionTemplates() {
   const [templates, setTemplates] = useState<IgCaptionTemplate[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<IgCaptionTemplate | null>(null)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('general')
   const [body, setBody] = useState('')
   const [hashtags, setHashtags] = useState('')
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/instagram/caption-templates')
-    const json = await res.json()
-    setTemplates(json.data ?? [])
-    setLoading(false)
+    setError(null)
+    try {
+      const res = await fetch('/api/instagram/caption-templates')
+      if (!res.ok) throw new Error(`Erreur ${res.status}`)
+      const json = await res.json()
+      setTemplates(json.data ?? [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossible de charger les templates')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { fetchTemplates() }, [fetchTemplates])
 
-  const openCreate = () => { setTitle(''); setCategory('general'); setBody(''); setHashtags(''); setEditing(null); setShowModal(true) }
-  const openEdit = (t: IgCaptionTemplate) => { setTitle(t.title); setCategory(t.category); setBody(t.body); setHashtags(t.hashtags.join(', ')); setEditing(t); setShowModal(true) }
+  const openCreate = () => { setTitle(''); setCategory('general'); setBody(''); setHashtags(''); setEditing(null); setSaveError(null); setShowModal(true) }
+  const openEdit = (t: IgCaptionTemplate) => { setTitle(t.title); setCategory(t.category); setBody(t.body); setHashtags(t.hashtags.join(', ')); setEditing(t); setSaveError(null); setShowModal(true) }
 
   const handleSave = async () => {
     if (!title.trim()) return
     const tags = hashtags.split(',').map(h => h.trim().replace(/^#/, '')).filter(Boolean)
     const data = { title: title.trim(), category, body, hashtags: tags }
-    if (editing) {
-      await fetch('/api/instagram/caption-templates', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...data }) })
-    } else {
-      await fetch('/api/instagram/caption-templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+    setSaveError(null)
+
+    try {
+      if (editing) {
+        const res = await fetch('/api/instagram/caption-templates', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, ...data }) })
+        if (!res.ok) throw new Error(`Erreur ${res.status}`)
+      } else {
+        const res = await fetch('/api/instagram/caption-templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+        if (!res.ok) throw new Error(`Erreur ${res.status}`)
+      }
+      setShowModal(false)
+      fetchTemplates()
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde')
     }
-    setShowModal(false); fetchTemplates()
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Supprimer ce template ?')) return
-    await fetch('/api/instagram/caption-templates', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
-    fetchTemplates()
+    try {
+      const res = await fetch('/api/instagram/caption-templates', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      if (!res.ok) throw new Error(`Erreur ${res.status}`)
+      fetchTemplates()
+    } catch {
+      alert('Erreur lors de la suppression')
+    }
   }
 
-  if (loading) return <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-tertiary)', fontSize: 13 }}>Chargement...</div>
+  if (loading) return <LoadingSkeleton />
+
+  if (error) return (
+    <div style={{ textAlign: 'center', padding: 60, color: '#ef4444', fontSize: 13, background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border-primary)' }}>
+      {error}
+      <button onClick={fetchTemplates} style={{ display: 'block', margin: '12px auto 0', padding: '6px 16px', fontSize: 12, color: 'var(--text-primary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer' }}>Réessayer</button>
+    </div>
+  )
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Templates de legende</h3>
+        <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Templates de légende</h3>
         <button onClick={openCreate} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: '#fff', background: 'var(--color-primary)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
           <Plus size={14} /> Nouveau template
         </button>
@@ -86,11 +141,16 @@ export default function IgCaptionTemplates() {
       {showModal && (
         <div onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 16, padding: 28, width: 520 }}>
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 16, padding: 28, width: 520, maxWidth: '90vw' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{editing ? 'Modifier' : 'Nouveau template'}</h3>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><X size={18} /></button>
             </div>
+            {saveError && (
+              <div style={{ padding: '8px 12px', marginBottom: 16, fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
+                {saveError}
+              </div>
+            )}
             <div style={{ display: 'grid', gap: 16 }}>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Titre</label>
@@ -98,7 +158,7 @@ export default function IgCaptionTemplates() {
                   style={{ width: '100%', padding: '10px 12px', fontSize: 13, background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, outline: 'none' }} />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Categorie</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Catégorie</label>
                 <select value={category} onChange={e => setCategory(e.target.value)}
                   style={{ width: '100%', padding: '10px 12px', fontSize: 13, background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, outline: 'none' }}>
                   {IG_CAPTION_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -117,7 +177,7 @@ export default function IgCaptionTemplates() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 24 }}>
               <button onClick={() => setShowModal(false)} style={{ padding: '8px 16px', fontSize: 13, color: 'var(--text-tertiary)', background: 'none', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={handleSave} disabled={!title.trim()} style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, color: '#fff', background: 'var(--color-primary)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>{editing ? 'Modifier' : 'Creer'}</button>
+              <button onClick={handleSave} disabled={!title.trim()} style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, color: '#fff', background: 'var(--color-primary)', border: 'none', borderRadius: 8, cursor: 'pointer' }}>{editing ? 'Modifier' : 'Créer'}</button>
             </div>
           </div>
         </div>
