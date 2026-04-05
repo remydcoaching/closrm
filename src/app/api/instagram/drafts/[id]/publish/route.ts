@@ -42,11 +42,27 @@ export async function POST(
     try {
       const publishPromise = async () => {
         const isVideo = draft.media_type === 'VIDEO'
+
+        // Generate a signed URL so Instagram can download the media (bucket may be private)
+        let mediaUrl = draft.media_urls[0] as string
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+        if (mediaUrl.includes(supabaseUrl) && mediaUrl.includes('/content-drafts/')) {
+          const filePath = mediaUrl.split('/content-drafts/').pop()
+          if (filePath) {
+            const { data: signedData } = await supabase.storage
+              .from('content-drafts')
+              .createSignedUrl(filePath, 600) // 10 min expiry
+            if (signedData?.signedUrl) {
+              mediaUrl = signedData.signedUrl
+            }
+          }
+        }
+
         const opts = {
           accessToken: publishToken,
           igUserId: account.ig_user_id,
           caption: fullCaption,
-          ...(isVideo ? { videoUrl: draft.media_urls[0] } : { imageUrl: draft.media_urls[0] }),
+          ...(isVideo ? { videoUrl: mediaUrl } : { imageUrl: mediaUrl }),
         }
 
         // 5. Create container
