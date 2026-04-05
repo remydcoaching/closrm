@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Upload, Trash2, Image, Video, Layers, Check, AlertCircle, RotateCcw } from 'lucide-react'
+import { X, Upload, Trash2, Image, Film, CircleDot, Check, AlertCircle, RotateCcw } from 'lucide-react'
 import type { IgDraft, IgHashtagGroup, IgCaptionTemplate } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 
@@ -160,7 +160,7 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
       if (!error) {
         const { data: { publicUrl } } = supabase.storage.from('content-drafts').getPublicUrl(path)
         setMediaUrls(prev => [...prev, publicUrl])
-        if (isVideo) setMediaType('VIDEO')
+        if (isVideo && mediaType === 'IMAGE') setMediaType('REELS')
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erreur lors de l\'upload')
@@ -306,10 +306,10 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
               <div style={{ display: 'grid', gap: 8 }}>
                 {mediaUrls.map((url, i) => (
                   <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-elevated)' }}>
-                    {mediaType === 'VIDEO' ? (
-                      <video src={url} controls style={{ width: '100%', maxHeight: 300 }} />
+                    {(mediaType === 'REELS' || mediaType === 'VIDEO' || mediaType === 'STORY') ? (
+                      <video src={url} controls style={{ width: '100%', maxHeight: 450, objectFit: 'contain', background: '#000' }} />
                     ) : (
-                      <img src={url} alt="" style={{ width: '100%', maxHeight: 300, objectFit: 'cover' }} />
+                      <img src={url} alt="" style={{ width: '100%', maxHeight: 400, objectFit: 'cover' }} />
                     )}
                     <button onClick={() => removeMedia(i)} style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Trash2 size={14} style={{ color: '#fff' }} />
@@ -405,7 +405,7 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Type de média</label>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {[{ v: 'IMAGE', icon: Image, label: 'Image' }, { v: 'VIDEO', icon: Video, label: 'Vidéo' }, { v: 'CAROUSEL', icon: Layers, label: 'Carousel' }].map(t => {
+                {[{ v: 'IMAGE', icon: Image, label: 'Post' }, { v: 'REELS', icon: Film, label: 'Reel' }, { v: 'STORY', icon: CircleDot, label: 'Story' }].map(t => {
                   const Icon = t.icon
                   const active = mediaType === t.v
                   return (
