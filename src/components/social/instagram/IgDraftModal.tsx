@@ -116,14 +116,14 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
     setPublishError(null)
     setShowPublishConfirm(false)
 
-    // 30 second client-side timeout
+    // 2 minute client-side timeout (videos need longer processing)
     publishTimeoutRef.current = setTimeout(() => {
       if (publishing) {
         setPublishStatus('error')
-        setPublishError('Délai dépassé (30s). La publication peut encore être en cours côté Instagram. Vérifiez dans quelques instants.')
+        setPublishError('Délai dépassé (2min). La publication peut encore être en cours côté Instagram. Vérifiez dans quelques instants.')
         setPublishing(false)
       }
-    }, 30000)
+    }, 120000)
 
     try {
       // Save first if new

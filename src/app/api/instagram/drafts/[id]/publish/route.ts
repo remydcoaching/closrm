@@ -67,7 +67,7 @@ export async function POST(
       }
 
       const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Publication expirée (30s)')), 30_000)
+        setTimeout(() => reject(new Error('Publication expirée (120s)')), 120_000)
       )
 
       const igMediaId = await Promise.race([publishPromise(), timeout])
