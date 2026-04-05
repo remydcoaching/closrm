@@ -36,114 +36,25 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-/** Check video dimensions and compress if > 1080p using canvas + MediaRecorder */
-async function compressVideo(
-  file: File,
-  onProgress: (pct: number, label: string) => void
-): Promise<File> {
-  return new Promise((resolve, reject) => {
+/** Check video dimensions — warn if > 1080p (no re-encoding to avoid format issues) */
+async function checkVideoDimensions(file: File): Promise<{ width: number; height: number; tooLarge: boolean }> {
+  return new Promise((resolve) => {
     const video = document.createElement('video')
-    video.muted = true
-    video.playsInline = true
     video.preload = 'metadata'
-
     const url = URL.createObjectURL(file)
     video.src = url
-
     video.onloadedmetadata = () => {
       const { videoWidth, videoHeight } = video
-      const MAX_W = 1920
-      const MAX_H = 1080
-
-      // No compression needed
-      if (videoWidth <= MAX_W && videoHeight <= MAX_H) {
-        URL.revokeObjectURL(url)
-        onProgress(100, 'Aucune compression nécessaire')
-        resolve(file)
-        return
-      }
-
-      // Calculate scaled dimensions preserving aspect ratio
-      const scale = Math.min(MAX_W / videoWidth, MAX_H / videoHeight)
-      const targetW = Math.round(videoWidth * scale)
-      const targetH = Math.round(videoHeight * scale)
-
-      onProgress(5, `Compression ${videoWidth}x${videoHeight} → ${targetW}x${targetH}...`)
-
-      const canvas = document.createElement('canvas')
-      canvas.width = targetW
-      canvas.height = targetH
-      const ctx = canvas.getContext('2d')!
-
-      // Use MediaRecorder to re-encode
-      const stream = canvas.captureStream(30)
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-        ? 'video/webm;codecs=vp9'
-        : MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
-          ? 'video/webm;codecs=vp8'
-          : 'video/webm'
-
-      const recorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: 4_000_000,
-      })
-
-      const chunks: Blob[] = []
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data)
-      }
-
-      recorder.onstop = () => {
-        URL.revokeObjectURL(url)
-        const blob = new Blob(chunks, { type: mimeType })
-        const compressed = new File(
-          [blob],
-          file.name.replace(/\.[^.]+$/, '.webm'),
-          { type: mimeType, lastModified: Date.now() }
-        )
-        onProgress(100, `Compression terminée (${formatFileSize(compressed.size)})`)
-        resolve(compressed)
-      }
-
-      recorder.onerror = () => {
-        URL.revokeObjectURL(url)
-        reject(new Error('Erreur lors de la compression vidéo'))
-      }
-
-      const duration = video.duration
-      let lastProgressUpdate = 0
-
-      const drawFrame = () => {
-        if (video.paused || video.ended) return
-        ctx.drawImage(video, 0, 0, targetW, targetH)
-
-        // Update progress based on current time
-        const now = Date.now()
-        if (now - lastProgressUpdate > 200) {
-          const pct = Math.min(95, Math.round((video.currentTime / duration) * 95) + 5)
-          onProgress(pct, `Compression en cours... ${Math.round(video.currentTime)}s/${Math.round(duration)}s`)
-          lastProgressUpdate = now
-        }
-
-        requestAnimationFrame(drawFrame)
-      }
-
-      video.onended = () => {
-        recorder.stop()
-      }
-
-      recorder.start()
-      video.play().then(() => {
-        drawFrame()
-      }).catch((err) => {
-        URL.revokeObjectURL(url)
-        reject(err)
+      URL.revokeObjectURL(url)
+      resolve({
+        width: videoWidth,
+        height: videoHeight,
+        tooLarge: videoWidth > 1920 || videoHeight > 1920,
       })
     }
-
     video.onerror = () => {
       URL.revokeObjectURL(url)
-      reject(new Error('Impossible de charger la vidéo'))
+      resolve({ width: 0, height: 0, tooLarge: false })
     }
   })
 }
@@ -164,9 +75,7 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
   const [templates, setTemplates] = useState<IgCaptionTemplate[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadInfo, setUploadInfo] = useState<string | null>(null)
-  const [compressing, setCompressing] = useState(false)
-  const [compressionProgress, setCompressionProgress] = useState(0)
-  const [compressionLabel, setCompressionLabel] = useState('')
+  const [videoWarning, setVideoWarning] = useState<string | null>(null)
   const [publishProgress, setPublishProgress] = useState<PublishProgress | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -225,23 +134,16 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
       return
     }
 
-    let fileToUpload = file
+    const fileToUpload = file
 
-    // Compress video if needed
+    // Check video dimensions and warn if too large
     if (isVideo) {
-      setCompressing(true)
-      setCompressionProgress(0)
-      setCompressionLabel('Analyse de la vidéo...')
-      try {
-        fileToUpload = await compressVideo(file, (pct, label) => {
-          setCompressionProgress(pct)
-          setCompressionLabel(label)
-        })
-      } catch (err) {
-        console.error('Video compression failed, using original:', err)
-        fileToUpload = file
-      } finally {
-        setCompressing(false)
+      const dims = await checkVideoDimensions(file)
+      if (dims.tooLarge) {
+        const proceed = confirm(
+          `Cette vidéo est en ${dims.width}x${dims.height}. Instagram recommande max 1080p.\n\nL'upload va continuer avec la vidéo originale. Pour de meilleurs résultats, compressez-la avant avec un outil comme HandBrake.`
+        )
+        if (!proceed) return
       }
     }
 
@@ -422,26 +324,6 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
               </div>
             )}
 
-            {/* Compression progress */}
-            {compressing && (
-              <div style={{ padding: 10, background: 'var(--bg-elevated)', borderRadius: 8, border: '1px solid var(--border-primary)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>Compression vidéo</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{compressionProgress}%</span>
-                </div>
-                <div style={{ height: 4, background: 'var(--bg-primary)', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${compressionProgress}%`,
-                    background: '#3b82f6',
-                    borderRadius: 2,
-                    transition: 'width 0.3s ease',
-                  }} />
-                </div>
-                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4, display: 'block' }}>{compressionLabel}</span>
-              </div>
-            )}
-
             {/* Upload progress info */}
             {uploading && uploadInfo && (
               <div style={{
@@ -467,14 +349,9 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
             )}
 
             <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleUpload} style={{ display: 'none' }} />
-            <button onClick={() => fileRef.current?.click()} disabled={uploading || compressing}
-              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: (uploading || compressing) ? 'wait' : 'pointer', opacity: (uploading || compressing) ? 0.7 : 1, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {compressing ? (
-                <>
-                  <span style={{ width: 14, height: 14, border: '2px solid var(--text-tertiary)', borderTopColor: 'var(--text-primary)', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
-                  Compression...
-                </>
-              ) : uploading ? (
+            <button onClick={() => fileRef.current?.click()} disabled={uploading}
+              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: uploading ? 'wait' : 'pointer', opacity: uploading ? 0.7 : 1, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              {uploading ? (
                 <>
                   <span style={{ width: 14, height: 14, border: '2px solid var(--text-tertiary)', borderTopColor: 'var(--text-primary)', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
                   Upload en cours...
