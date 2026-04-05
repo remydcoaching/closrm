@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { IG_SEQ_TYPES } from './constants'
+import dynamic from 'next/dynamic'
 import type { IgStory, StorySequence, StorySequenceItem } from '@/types'
-import IgSequenceModal from './IgSequenceModal'
+
+const IgSequenceModal = dynamic(() => import('./IgSequenceModal'), { ssr: false })
 import IgSequenceDetail from './IgSequenceDetail'
 
 function getWeekDays(offset: number) {

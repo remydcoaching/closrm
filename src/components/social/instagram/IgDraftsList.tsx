@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Edit2, Trash2 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import type { IgDraft } from '@/types'
-import IgDraftModal from './IgDraftModal'
+
+const IgDraftModal = dynamic(() => import('./IgDraftModal'), { ssr: false })
 
 interface Props {
   status: 'draft' | 'scheduled'

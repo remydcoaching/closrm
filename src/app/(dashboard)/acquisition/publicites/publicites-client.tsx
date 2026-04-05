@@ -122,8 +122,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     } catch { /* non-critical */ }
   }, [connectionState])
 
-  useEffect(() => { fetchInsights() }, [fetchInsights])
-  useEffect(() => { fetchClosedCount() }, [fetchClosedCount])
+  useEffect(() => { Promise.all([fetchInsights(), fetchClosedCount()]) }, [fetchInsights, fetchClosedCount])
 
   function handlePeriodChange(preset: PeriodPreset, customFrom?: string, customTo?: string) {
     setPeriod(preset)

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('ig_comments')
-      .select('*', { count: 'exact' })
+      .select('id, ig_comment_id, ig_media_id, text, username, timestamp, parent_id, ig_parent_id', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .order('timestamp', { ascending: false })
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('ig_media_id', mediaId)
     }
 
-    const { data, error, count } = await query.limit(500)
+    const { data, error, count } = await query.limit(100)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     return NextResponse.json({ data: data ?? [], meta: { total: count ?? 0 } })

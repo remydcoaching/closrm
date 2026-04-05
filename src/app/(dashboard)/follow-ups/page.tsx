@@ -94,7 +94,7 @@ export default function FollowUpsPage() {
     setCounts({ today: r[0], overdue: r[1], upcoming: r[2], done: r[3], all: r[4] })
   }, [])
 
-  useEffect(() => { fetchFU(); fetchCounts() }, [fetchFU, fetchCounts])
+  useEffect(() => { Promise.all([fetchFU(), fetchCounts()]) }, [fetchFU, fetchCounts])
   useEffect(() => { setPage(1) }, [tab, search])
 
   async function handleAction(fu: FUWithLead, action: FollowUpAction) {

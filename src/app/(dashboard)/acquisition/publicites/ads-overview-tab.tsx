@@ -1,7 +1,20 @@
 'use client'
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import dynamic from 'next/dynamic'
 import type { MetaInsightsResponse } from '@/app/api/meta/insights/route'
+
+function AdsChartSkeleton() {
+  return (
+    <div style={{ width: '100%', height: 200, background: 'var(--bg-elevated)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }}>
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
+    </div>
+  )
+}
+
+const AdsBarChart = dynamic(
+  () => import('./ads-chart-inner'),
+  { ssr: false, loading: () => <AdsChartSkeleton /> },
+)
 
 interface AdsOverviewTabProps {
   data: MetaInsightsResponse | null
@@ -58,35 +71,7 @@ export default function AdsOverviewTab({ data, closedCount, closedRevenue, loadi
           Leads / jour (Meta Ads)
         </div>
         {daily.length > 0 ? (
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={daily}>
-              <XAxis
-                dataKey="date"
-                tickFormatter={(d: string) => d.slice(5)}
-                tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-                width={30}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-primary)',
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-                labelFormatter={(d) => `Date : ${String(d)}`}
-                formatter={(value) => [String(value), 'Leads']}
-              />
-              <Bar dataKey="leads" fill="#1877F2" radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <AdsBarChart daily={daily} />
         ) : (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>
             Aucune donnée pour cette période
