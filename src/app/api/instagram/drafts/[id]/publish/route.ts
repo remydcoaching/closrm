@@ -41,7 +41,7 @@ export async function POST(
 
     try {
       const publishPromise = async () => {
-        const isVideo = draft.media_type === 'VIDEO'
+        const isVideo = draft.media_type === 'REELS' || draft.media_type === 'VIDEO' || draft.media_type === 'STORY'
 
         // Generate a signed URL so Instagram can download the media (bucket may be private)
         let mediaUrl = draft.media_urls[0] as string
@@ -62,7 +62,7 @@ export async function POST(
           accessToken: publishToken,
           igUserId: account.ig_user_id,
           caption: fullCaption,
-          ...(isVideo ? { videoUrl: mediaUrl } : { imageUrl: mediaUrl }),
+          ...(isVideo ? { videoUrl: mediaUrl, mediaType: draft.media_type } : { imageUrl: mediaUrl }),
         }
 
         // 5. Create container
