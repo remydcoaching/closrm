@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('ig_drafts')
-      .select('*', { count: 'exact' })
+      .select('id, caption, hashtags, media_urls, media_type, status, scheduled_at, created_at, updated_at', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .order('updated_at', { ascending: false })
 

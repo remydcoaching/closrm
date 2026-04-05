@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('ig_conversations')
-      .select('*', { count: 'exact' })
+      .select('id, participant_username, participant_name, participant_ig_id, last_message_at, last_message_text, unread_count', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .order('last_message_at', { ascending: false })
 

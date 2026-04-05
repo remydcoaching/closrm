@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Trash2, AlertTriangle } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import type { IgDraft } from '@/types'
-import IgDraftModal from './IgDraftModal'
+
+const IgDraftModal = dynamic(() => import('./IgDraftModal'), { ssr: false })
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const STATUS_COLORS: Record<string, string> = {

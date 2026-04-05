@@ -1,8 +1,6 @@
 'use client'
 
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-} from 'recharts'
+import dynamic from 'next/dynamic'
 import type { LeadsPerDay } from '@/lib/stats/queries'
 
 interface LeadsChartProps {
@@ -13,6 +11,19 @@ function formatDate(dateStr: string): string {
   const d = new Date(dateStr)
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
+
+function ChartSkeleton() {
+  return (
+    <div style={{ width: '100%', height: 140, background: 'var(--bg-elevated)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }}>
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
+    </div>
+  )
+}
+
+const LeadsBarChart = dynamic(
+  () => import('./leads-chart-inner').then(m => ({ default: m.default })),
+  { ssr: false, loading: () => <ChartSkeleton /> },
+)
 
 export default function LeadsChart({ data }: LeadsChartProps) {
   if (data.length === 0) {
@@ -25,40 +36,5 @@ export default function LeadsChart({ data }: LeadsChartProps) {
 
   const formatted = data.map(d => ({ ...d, dateLabel: formatDate(d.date) }))
 
-  return (
-    <ResponsiveContainer width="100%" height={140}>
-      <BarChart data={formatted} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-        <XAxis
-          dataKey="dateLabel"
-          tick={{ fontSize: 10, fill: '#555' }}
-          axisLine={false}
-          tickLine={false}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          tick={{ fontSize: 10, fill: '#555' }}
-          axisLine={false}
-          tickLine={false}
-          allowDecimals={false}
-        />
-        <Tooltip
-          contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid #2a2a35', borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: 'var(--text-tertiary)' }}
-          itemStyle={{ color: 'var(--color-primary)' }}
-          cursor={{ fill: 'var(--bg-subtle)' }}
-        />
-        <Bar dataKey="count" name="Leads" radius={[4, 4, 0, 0]}>
-          {formatted.map((entry, index) => (
-            <Cell
-              key={entry.date}
-              fill="var(--color-primary)"
-              fillOpacity={index === formatted.length - 1 ? 0.5 : 0.19}
-              stroke="var(--color-primary)"
-              strokeWidth={1}
-            />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  )
+  return <LeadsBarChart formatted={formatted} />
 }

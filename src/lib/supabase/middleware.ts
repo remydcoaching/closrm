@@ -32,6 +32,15 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
+  const pathname = request.nextUrl.pathname
+
+  // Skip the expensive getUser() call for API routes — they handle their own
+  // auth via getWorkspaceId(). The Supabase client above still processes cookies
+  // for session token refresh, but we avoid the 200-500ms network round-trip.
+  if (pathname.startsWith('/api/')) {
+    return supabaseResponse
+  }
+
   let user = null
   try {
     const { data } = await supabase.auth.getUser()
@@ -39,8 +48,6 @@ export async function updateSession(request: NextRequest) {
   } catch {
     // Si Supabase est down, laisser passer — le layout serveur fera un second check
   }
-
-  const pathname = request.nextUrl.pathname
 
   if (!user && !isPublicRoute(pathname)) {
     const url = request.nextUrl.clone()
