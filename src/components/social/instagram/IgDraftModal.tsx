@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { X, Upload, Trash2, Image, Video, Layers } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { X, Upload, Trash2, Image, Video, Layers, Check, AlertCircle, RotateCcw } from 'lucide-react'
 import type { IgDraft, IgHashtagGroup, IgCaptionTemplate } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 
@@ -10,6 +10,142 @@ interface Props {
   draft?: IgDraft
   onClose: () => void
   onSaved: () => void
+}
+
+type PublishStep = 'saving' | 'uploading' | 'processing' | 'publishing' | 'done'
+
+interface PublishProgress {
+  step: PublishStep
+  label: string
+  startedAt: number
+}
+
+const PUBLISH_STEPS: Record<PublishStep, string> = {
+  saving: 'Création du brouillon...',
+  uploading: 'Upload vers Instagram...',
+  processing: 'Traitement en cours...',
+  publishing: 'Publication...',
+  done: 'Publié !',
+}
+
+const STEP_ORDER: PublishStep[] = ['saving', 'uploading', 'processing', 'publishing', 'done']
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** Check video dimensions and compress if > 1080p using canvas + MediaRecorder */
+async function compressVideo(
+  file: File,
+  onProgress: (pct: number, label: string) => void
+): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.muted = true
+    video.playsInline = true
+    video.preload = 'metadata'
+
+    const url = URL.createObjectURL(file)
+    video.src = url
+
+    video.onloadedmetadata = () => {
+      const { videoWidth, videoHeight } = video
+      const MAX_W = 1920
+      const MAX_H = 1080
+
+      // No compression needed
+      if (videoWidth <= MAX_W && videoHeight <= MAX_H) {
+        URL.revokeObjectURL(url)
+        onProgress(100, 'Aucune compression nécessaire')
+        resolve(file)
+        return
+      }
+
+      // Calculate scaled dimensions preserving aspect ratio
+      const scale = Math.min(MAX_W / videoWidth, MAX_H / videoHeight)
+      const targetW = Math.round(videoWidth * scale)
+      const targetH = Math.round(videoHeight * scale)
+
+      onProgress(5, `Compression ${videoWidth}x${videoHeight} → ${targetW}x${targetH}...`)
+
+      const canvas = document.createElement('canvas')
+      canvas.width = targetW
+      canvas.height = targetH
+      const ctx = canvas.getContext('2d')!
+
+      // Use MediaRecorder to re-encode
+      const stream = canvas.captureStream(30)
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
+          ? 'video/webm;codecs=vp8'
+          : 'video/webm'
+
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: 4_000_000,
+      })
+
+      const chunks: Blob[] = []
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data)
+      }
+
+      recorder.onstop = () => {
+        URL.revokeObjectURL(url)
+        const blob = new Blob(chunks, { type: mimeType })
+        const compressed = new File(
+          [blob],
+          file.name.replace(/\.[^.]+$/, '.webm'),
+          { type: mimeType, lastModified: Date.now() }
+        )
+        onProgress(100, `Compression terminée (${formatFileSize(compressed.size)})`)
+        resolve(compressed)
+      }
+
+      recorder.onerror = () => {
+        URL.revokeObjectURL(url)
+        reject(new Error('Erreur lors de la compression vidéo'))
+      }
+
+      const duration = video.duration
+      let lastProgressUpdate = 0
+
+      const drawFrame = () => {
+        if (video.paused || video.ended) return
+        ctx.drawImage(video, 0, 0, targetW, targetH)
+
+        // Update progress based on current time
+        const now = Date.now()
+        if (now - lastProgressUpdate > 200) {
+          const pct = Math.min(95, Math.round((video.currentTime / duration) * 95) + 5)
+          onProgress(pct, `Compression en cours... ${Math.round(video.currentTime)}s/${Math.round(duration)}s`)
+          lastProgressUpdate = now
+        }
+
+        requestAnimationFrame(drawFrame)
+      }
+
+      video.onended = () => {
+        recorder.stop()
+      }
+
+      recorder.start()
+      video.play().then(() => {
+        drawFrame()
+      }).catch((err) => {
+        URL.revokeObjectURL(url)
+        reject(err)
+      })
+    }
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Impossible de charger la vidéo'))
+    }
+  })
 }
 
 export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
@@ -27,8 +163,15 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
   const [hashtagGroups, setHashtagGroups] = useState<IgHashtagGroup[]>([])
   const [templates, setTemplates] = useState<IgCaptionTemplate[]>([])
   const [uploading, setUploading] = useState(false)
+  const [uploadInfo, setUploadInfo] = useState<string | null>(null)
+  const [compressing, setCompressing] = useState(false)
+  const [compressionProgress, setCompressionProgress] = useState(0)
+  const [compressionLabel, setCompressionLabel] = useState('')
+  const [publishProgress, setPublishProgress] = useState<PublishProgress | null>(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
   const publishTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const elapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -42,39 +185,86 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
     })
   }, [])
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (publishTimeoutRef.current) clearTimeout(publishTimeoutRef.current)
+      if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current)
     }
   }, [])
 
+  // Elapsed time ticker for publish progress
+  useEffect(() => {
+    if (publishProgress && publishProgress.step !== 'done') {
+      setElapsedSeconds(0)
+      const start = publishProgress.startedAt
+      elapsedIntervalRef.current = setInterval(() => {
+        setElapsedSeconds(Math.floor((Date.now() - start) / 1000))
+      }, 1000)
+      return () => {
+        if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current)
+      }
+    } else {
+      if (elapsedIntervalRef.current) clearInterval(elapsedIntervalRef.current)
+    }
+  }, [publishProgress])
+
   const parseHashtags = () => hashtagsText.split(',').map(h => h.trim().replace(/^#/, '')).filter(Boolean)
+
+  const setPublishStep = useCallback((step: PublishStep) => {
+    setPublishProgress({ step, label: PUBLISH_STEPS[step], startedAt: Date.now() })
+  }, [])
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const maxSize = file.type.startsWith('video/') ? 200 * 1024 * 1024 : 10 * 1024 * 1024
-    if (file.size > maxSize) { alert(`Fichier trop volumineux (max ${file.type.startsWith('video/') ? '200' : '10'} MB)`); return }
+    const isVideo = file.type.startsWith('video/')
+    const maxSize = isVideo ? 200 * 1024 * 1024 : 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      alert(`Fichier trop volumineux (max ${isVideo ? '200' : '10'} MB)`)
+      return
+    }
+
+    let fileToUpload = file
+
+    // Compress video if needed
+    if (isVideo) {
+      setCompressing(true)
+      setCompressionProgress(0)
+      setCompressionLabel('Analyse de la vidéo...')
+      try {
+        fileToUpload = await compressVideo(file, (pct, label) => {
+          setCompressionProgress(pct)
+          setCompressionLabel(label)
+        })
+      } catch (err) {
+        console.error('Video compression failed, using original:', err)
+        fileToUpload = file
+      } finally {
+        setCompressing(false)
+      }
+    }
 
     setUploading(true)
+    setUploadInfo(`Upload en cours... (${formatFileSize(fileToUpload.size)})`)
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop()
+      const ext = fileToUpload.name.split('.').pop()
       const path = `${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from('content-drafts').upload(path, file, {
-        contentType: file.type,
+      const { error } = await supabase.storage.from('content-drafts').upload(path, fileToUpload, {
+        contentType: fileToUpload.type,
         upsert: false,
       })
       if (!error) {
         const { data: { publicUrl } } = supabase.storage.from('content-drafts').getPublicUrl(path)
         setMediaUrls(prev => [...prev, publicUrl])
-        if (file.type.startsWith('video/')) setMediaType('VIDEO')
+        if (isVideo) setMediaType('VIDEO')
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Erreur lors de l\'upload')
     } finally {
       setUploading(false)
+      setUploadInfo(null)
       if (fileRef.current) fileRef.current.value = ''
     }
   }
@@ -122,13 +312,15 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
         setPublishStatus('error')
         setPublishError('Délai dépassé (2min). La publication peut encore être en cours côté Instagram. Vérifiez dans quelques instants.')
         setPublishing(false)
+        setPublishProgress(null)
       }
     }, 120000)
 
     try {
-      // Save first if new
+      // Step 1: Save draft if new
       let draftId = draft?.id
       if (!draftId) {
+        setPublishStep('saving')
         const hashtags = parseHashtags()
         const res = await fetch('/api/instagram/drafts', {
           method: 'POST',
@@ -143,12 +335,23 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
         throw new Error('Impossible de créer le brouillon')
       }
 
+      // Step 2: Upload to Instagram
+      setPublishStep('uploading')
+
       const res = await fetch(`/api/instagram/drafts/${draftId}/publish`, { method: 'POST' })
+
+      // Step 3: Processing (video may take time)
+      if (mediaType === 'VIDEO') {
+        setPublishStep('processing')
+      }
+
       if (publishTimeoutRef.current) clearTimeout(publishTimeoutRef.current)
 
       if (res.ok) {
+        // Step 4: Publishing complete
+        setPublishStep('done')
         setPublishStatus('success')
-        setTimeout(() => onSaved(), 2000)
+        setTimeout(() => onSaved(), 2500)
       } else {
         const errJson = await res.json().catch(() => ({}))
         throw new Error(errJson.error || `Erreur ${res.status}`)
@@ -158,6 +361,7 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
       setPublishStatus('error')
       setPublishError(err instanceof Error ? err.message : 'Erreur lors de la publication')
       setPublishing(false)
+      setPublishProgress(null)
     }
   }
 
@@ -176,10 +380,18 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
     setHashtagsText(merged.join(', '))
   }
 
+  const currentStepIndex = publishProgress ? STEP_ORDER.indexOf(publishProgress.step) : -1
+
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16, backdropFilter: 'blur(4px)' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes progressPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes checkPop { 0% { transform: scale(0); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes progressBar { from { width: 0%; } to { width: 100%; } }
+      `}</style>
       <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 16, width: 950, maxWidth: '90vw', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 48px rgba(0,0,0,0.4)' }}>
         {/* Responsive container: row on desktop, column on mobile */}
         <div style={{ display: 'flex', flexWrap: 'wrap', flex: 1, minHeight: 0 }}>
@@ -210,10 +422,59 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
               </div>
             )}
 
+            {/* Compression progress */}
+            {compressing && (
+              <div style={{ padding: 10, background: 'var(--bg-elevated)', borderRadius: 8, border: '1px solid var(--border-primary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>Compression vidéo</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{compressionProgress}%</span>
+                </div>
+                <div style={{ height: 4, background: 'var(--bg-primary)', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${compressionProgress}%`,
+                    background: '#3b82f6',
+                    borderRadius: 2,
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4, display: 'block' }}>{compressionLabel}</span>
+              </div>
+            )}
+
+            {/* Upload progress info */}
+            {uploading && uploadInfo && (
+              <div style={{
+                padding: 10,
+                background: 'var(--bg-elevated)',
+                borderRadius: 8,
+                border: '1px solid var(--border-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <span style={{
+                  width: 14, height: 14,
+                  border: '2px solid var(--text-tertiary)',
+                  borderTopColor: '#3b82f6',
+                  borderRadius: '50%',
+                  display: 'inline-block',
+                  animation: 'spin 0.8s linear infinite',
+                  flexShrink: 0,
+                }} />
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)', animation: 'progressPulse 1.5s ease-in-out infinite' }}>{uploadInfo}</span>
+              </div>
+            )}
+
             <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleUpload} style={{ display: 'none' }} />
-            <button onClick={() => fileRef.current?.click()} disabled={uploading}
-              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: uploading ? 'wait' : 'pointer', opacity: uploading ? 0.7 : 1, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {uploading ? (
+            <button onClick={() => fileRef.current?.click()} disabled={uploading || compressing}
+              style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: (uploading || compressing) ? 'wait' : 'pointer', opacity: (uploading || compressing) ? 0.7 : 1, transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              {compressing ? (
+                <>
+                  <span style={{ width: 14, height: 14, border: '2px solid var(--text-tertiary)', borderTopColor: 'var(--text-primary)', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+                  Compression...
+                </>
+              ) : uploading ? (
                 <>
                   <span style={{ width: 14, height: 14, border: '2px solid var(--text-tertiary)', borderTopColor: 'var(--text-primary)', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
                   Upload en cours...
@@ -294,27 +555,156 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
               </div>
             </div>
 
+            {/* Publish progress indicator */}
+            {publishProgress && publishStatus === 'loading' && (
+              <div style={{
+                padding: 16,
+                background: 'var(--bg-elevated)',
+                borderRadius: 10,
+                border: '1px solid var(--border-primary)',
+                animation: 'slideIn 0.2s ease',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Publication en cours</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{elapsedSeconds}s</span>
+                </div>
+
+                {/* Step indicators */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {STEP_ORDER.filter(s => s !== 'done').map((step, i) => {
+                    const isActive = publishProgress.step === step
+                    const isDone = currentStepIndex > i
+                    const isPending = currentStepIndex < i
+                    // Skip processing step for non-video
+                    if (step === 'processing' && mediaType !== 'VIDEO') return null
+
+                    return (
+                      <div key={step} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        opacity: isPending ? 0.4 : 1,
+                        transition: 'opacity 0.3s ease',
+                      }}>
+                        {/* Step dot / check */}
+                        <div style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          background: isDone ? '#16a34a' : isActive ? '#3b82f6' : 'var(--bg-primary)',
+                          border: isDone ? 'none' : isActive ? '2px solid #3b82f6' : '1px solid var(--border-primary)',
+                          transition: 'all 0.3s ease',
+                        }}>
+                          {isDone ? (
+                            <Check size={12} style={{ color: '#fff' }} />
+                          ) : isActive ? (
+                            <span style={{
+                              width: 8, height: 8,
+                              borderRadius: '50%',
+                              background: '#fff',
+                              animation: 'progressPulse 1s ease-in-out infinite',
+                            }} />
+                          ) : (
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)' }} />
+                          )}
+                        </div>
+
+                        {/* Step label */}
+                        <span style={{
+                          fontSize: 12,
+                          color: isActive ? 'var(--text-primary)' : isDone ? '#16a34a' : 'var(--text-tertiary)',
+                          fontWeight: isActive ? 600 : 400,
+                        }}>
+                          {PUBLISH_STEPS[step]}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Progress bar */}
+                <div style={{ marginTop: 12, height: 3, background: 'var(--bg-primary)', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #3b82f6, #22c55e)',
+                    borderRadius: 2,
+                    animation: 'progressBar 2s ease-in-out infinite',
+                  }} />
+                </div>
+              </div>
+            )}
+
+            {/* Publish success */}
+            {publishStatus === 'success' && (
+              <div style={{
+                padding: 16,
+                background: 'rgba(22,163,106,0.1)',
+                borderRadius: 10,
+                border: '1px solid rgba(22,163,106,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                animation: 'slideIn 0.3s ease',
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: '#16a34a',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  animation: 'checkPop 0.4s ease',
+                }}>
+                  <Check size={18} style={{ color: '#fff' }} />
+                </div>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a', display: 'block' }}>Publié avec succès !</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Le post est maintenant visible sur Instagram</span>
+                </div>
+              </div>
+            )}
+
             {/* Publish error message */}
             {publishError && (
-              <div style={{ padding: '8px 12px', fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
-                {publishError}
+              <div style={{
+                padding: 12,
+                background: 'rgba(239,68,68,0.1)',
+                borderRadius: 10,
+                border: '1px solid rgba(239,68,68,0.2)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                animation: 'slideIn 0.2s ease',
+              }}>
+                <AlertCircle size={16} style={{ color: '#ef4444', flexShrink: 0, marginTop: 1 }} />
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 12, color: '#ef4444', display: 'block', lineHeight: 1.4 }}>{publishError}</span>
+                </div>
               </div>
             )}
 
             {/* Actions */}
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-              <button onClick={() => saveDraft('draft')} disabled={saving}
-                style={{ padding: '10px 20px', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s ease' }}>
+              <button onClick={() => saveDraft('draft')} disabled={saving || publishing}
+                style={{ padding: '10px 20px', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s ease', opacity: publishing ? 0.5 : 1 }}>
                 {saving ? '...' : 'Brouillon'}
               </button>
-              <button onClick={() => saveDraft('scheduled')} disabled={saving || !schedDate}
-                style={{ padding: '10px 20px', fontSize: 13, fontWeight: 600, color: '#fff', background: '#3b82f6', border: 'none', borderRadius: 8, cursor: !schedDate ? 'not-allowed' : 'pointer', opacity: !schedDate ? 0.5 : 1, transition: 'all 0.2s ease' }}>
+              <button onClick={() => saveDraft('scheduled')} disabled={saving || !schedDate || publishing}
+                style={{ padding: '10px 20px', fontSize: 13, fontWeight: 600, color: '#fff', background: '#3b82f6', border: 'none', borderRadius: 8, cursor: (!schedDate || publishing) ? 'not-allowed' : 'pointer', opacity: (!schedDate || publishing) ? 0.5 : 1, transition: 'all 0.2s ease' }}>
                 {saving ? '...' : 'Programmer'}
               </button>
-              <button onClick={() => setShowPublishConfirm(true)} disabled={publishing || !mediaUrls.length}
-                style={{ padding: '10px 20px', fontSize: 13, fontWeight: 600, color: '#fff', background: publishStatus === 'success' ? '#16a34a' : publishStatus === 'error' ? '#ef4444' : '#22c55e', border: 'none', borderRadius: 8, cursor: !mediaUrls.length ? 'not-allowed' : 'pointer', opacity: !mediaUrls.length ? 0.5 : 1, transition: 'all 0.2s ease' }}>
-                {publishStatus === 'loading' ? 'Publication...' : publishStatus === 'success' ? 'Publié !' : publishStatus === 'error' ? 'Réessayer' : 'Publier'}
-              </button>
+              {publishStatus === 'error' ? (
+                <button onClick={() => { setPublishStatus('idle'); setPublishError(null); setShowPublishConfirm(true) }}
+                  style={{ padding: '10px 20px', fontSize: 13, fontWeight: 600, color: '#fff', background: '#ef4444', border: 'none', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <RotateCcw size={14} /> Réessayer
+                </button>
+              ) : (
+                <button onClick={() => setShowPublishConfirm(true)} disabled={publishing || !mediaUrls.length}
+                  style={{ padding: '10px 20px', fontSize: 13, fontWeight: 600, color: '#fff', background: publishStatus === 'success' ? '#16a34a' : '#22c55e', border: 'none', borderRadius: 8, cursor: (!mediaUrls.length || publishing) ? 'not-allowed' : 'pointer', opacity: (!mediaUrls.length || publishing) ? 0.5 : 1, transition: 'all 0.2s ease' }}>
+                  {publishStatus === 'loading' ? 'Publication...' : publishStatus === 'success' ? 'Publié !' : 'Publier'}
+                </button>
+              )}
             </div>
           </div>
         </div>
