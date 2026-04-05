@@ -34,7 +34,7 @@ export const createDraftSchema = z.object({
   caption: z.string().max(2200).optional().default(''),
   hashtags: z.array(z.string()).max(30).optional().default([]),
   media_urls: z.array(z.string()).optional().default([]),
-  media_type: z.enum(['IMAGE', 'VIDEO', 'CAROUSEL']).optional(),
+  media_type: z.enum(['IMAGE', 'VIDEO', 'CAROUSEL', 'REELS', 'STORY']).optional(),
   status: z.enum(['draft', 'scheduled']).default('draft'),
   scheduled_at: z.string().optional(),
 })
