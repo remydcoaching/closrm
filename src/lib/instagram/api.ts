@@ -122,9 +122,9 @@ export async function fetchStoryInsights(token: string, storyId: string): Promis
 // ── Publishing ──
 
 export async function createMediaContainer(
-  opts: IgApiOptions & { imageUrl?: string; videoUrl?: string; caption: string }
+  opts: IgApiOptions & { imageUrl?: string; videoUrl?: string; caption: string; mediaType?: string }
 ): Promise<string> {
-  const { accessToken, igUserId, imageUrl, videoUrl, caption } = opts
+  const { accessToken, igUserId, imageUrl, videoUrl, caption, mediaType } = opts
 
   // Use JSON body — avoids URLSearchParams double-encoding of URLs
   const body: Record<string, string> = {
@@ -133,7 +133,12 @@ export async function createMediaContainer(
   }
   if (videoUrl) {
     body.video_url = videoUrl
-    body.media_type = 'REELS'
+    // STORY uses STORIES media_type, REELS/VIDEO use REELS
+    if (mediaType === 'STORY') {
+      body.media_type = 'STORIES'
+    } else {
+      body.media_type = 'REELS'
+    }
   } else if (imageUrl) {
     body.image_url = imageUrl
   }
