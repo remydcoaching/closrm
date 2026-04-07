@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { BookingCalendar, WeekAvailability, FormField } from '@/types'
 import AvailabilityEditor from '@/components/booking-calendars/AvailabilityEditor'
 import FormFieldsEditor from '@/components/booking-calendars/FormFieldsEditor'
+import LocationEditor from '@/components/booking-calendars/LocationEditor'
 
 const DEFAULT_AVAILABILITY: WeekAvailability = {
   monday: [{ start: '09:00', end: '17:00' }],
@@ -37,6 +38,8 @@ export default function EditCalendarPage() {
   const [color, setColor] = useState('#E53E3E')
   const [availability, setAvailability] = useState<WeekAvailability>(DEFAULT_AVAILABILITY)
   const [formFields, setFormFields] = useState<FormField[]>([])
+  const [locationIds, setLocationIds] = useState<string[]>([])
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
 
   useEffect(() => {
     async function fetchCalendar() {
@@ -54,6 +57,7 @@ export default function EditCalendarPage() {
         setColor(cal.color)
         setAvailability(cal.availability ?? DEFAULT_AVAILABILITY)
         setFormFields(cal.form_fields ?? [])
+        setLocationIds(cal.location_ids ?? [])
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur inconnue')
       } finally {
@@ -61,6 +65,15 @@ export default function EditCalendarPage() {
       }
     }
     fetchCalendar()
+
+    // Check Google Calendar integration status
+    fetch('/api/integrations?type=google_calendar')
+      .then((res) => res.ok ? res.json() : null)
+      .then((json) => {
+        const integration = json?.data?.[0] ?? json?.data
+        setGoogleCalendarConnected(!!integration?.is_active)
+      })
+      .catch(() => {})
   }, [id])
 
   async function handleSave() {
@@ -80,6 +93,7 @@ export default function EditCalendarPage() {
           color,
           availability,
           form_fields: formFields,
+          location_ids: locationIds,
         }),
       })
       if (!res.ok) {
@@ -315,6 +329,36 @@ export default function EditCalendarPage() {
           }}
         >
           <AvailabilityEditor availability={availability} onChange={setAvailability} />
+        </div>
+      </section>
+
+      {/* Section: Lieux */}
+      <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Lieux
+        </h2>
+        <div
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 10,
+            padding: 24,
+          }}
+        >
+          <LocationEditor
+            selectedLocationIds={locationIds}
+            onChange={setLocationIds}
+            googleCalendarConnected={googleCalendarConnected}
+          />
         </div>
       </section>
 

@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateBookingSchema } from '@/lib/validations/bookings'
-import { deleteGoogleCalendarEvent } from '@/lib/google/calendar'
+import { deleteGoogleCalendarEvent, updateGoogleCalendarEvent } from '@/lib/google/calendar'
 
-const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, location), lead:leads(id, first_name, last_name, phone, email)'
+const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
 
 export async function GET(
   _request: NextRequest,
@@ -45,15 +45,21 @@ export async function PATCH(
 
     const { data: existing } = await supabase
       .from('bookings')
-      .select('id, google_event_id, status')
+      .select('id, google_event_id, status, scheduled_at, duration_minutes')
       .eq('id', id)
       .eq('workspace_id', workspaceId)
       .single()
     if (!existing) return NextResponse.json({ error: 'Réservation non trouvée' }, { status: 404 })
 
+    // If cancelling, also clear the meet_url
+    const updatePayload = { ...parsed.data } as Record<string, unknown>
+    if (parsed.data.status === 'cancelled' && existing.status !== 'cancelled') {
+      updatePayload.meet_url = null
+    }
+
     const { data, error } = await supabase
       .from('bookings')
-      .update(parsed.data)
+      .update(updatePayload)
       .eq('id', id)
       .eq('workspace_id', workspaceId)
       .select(BOOKING_SELECT)
@@ -68,6 +74,22 @@ export async function PATCH(
       existing.google_event_id
     ) {
       deleteGoogleCalendarEvent(workspaceId, existing.google_event_id).catch(() => {})
+    }
+
+    // If rescheduled (scheduled_at changed) and has a Google event, update it (non-blocking)
+    if (
+      parsed.data.scheduled_at &&
+      parsed.data.scheduled_at !== existing.scheduled_at &&
+      existing.google_event_id &&
+      parsed.data.status !== 'cancelled'
+    ) {
+      const newStart = new Date(parsed.data.scheduled_at)
+      const dur = parsed.data.duration_minutes ?? existing.duration_minutes ?? 30
+      const newEnd = new Date(newStart.getTime() + dur * 60_000)
+      updateGoogleCalendarEvent(workspaceId, existing.google_event_id, {
+        start: { dateTime: newStart.toISOString() },
+        end: { dateTime: newEnd.toISOString() },
+      }).catch(() => {})
     }
 
     return NextResponse.json({ data })

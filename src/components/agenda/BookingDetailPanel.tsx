@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { X, MapPin, Clock, Calendar, User, Trash2, Phone, Mail, Tag, PhoneCall, Bell } from 'lucide-react'
+import { X, MapPin, Clock, Calendar, User, Trash2, Phone, Mail, Tag, PhoneCall, Bell, Video } from 'lucide-react'
 import { BookingWithCalendar, BookingStatus, Lead, Call, FollowUp } from '@/types'
 
 interface BookingDetailPanelProps {
@@ -162,6 +162,34 @@ export function BookingDetailPanel({
                   <span style={{ color: 'var(--text-secondary)', fontSize: 12, display: 'block' }}>{booking.location.address}</span>
                 )}
               </DetailRow>
+            )}
+            {/* Google Meet link */}
+            {booking.meet_url && (
+              <div>
+                <a
+                  href={booking.meet_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '8px 16px', borderRadius: 8,
+                    background: 'rgba(56,161,105,0.12)', border: '1px solid #38A169',
+                    color: '#38A169', fontSize: 13, fontWeight: 600,
+                    textDecoration: 'none', cursor: 'pointer', transition: 'opacity 0.15s',
+                  }}
+                >
+                  <Video size={15} /> Rejoindre le Meet
+                </a>
+              </div>
+            )}
+            {!booking.meet_url && booking.location?.location_type === 'online' && (
+              <div style={{
+                background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+                borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#3b82f6',
+                lineHeight: 1.5,
+              }}>
+                Lien Meet non disponible — connectez Google Calendar
+              </div>
             )}
             {booking.lead && (
               <DetailRow icon={<User size={15} />} label="Lead">

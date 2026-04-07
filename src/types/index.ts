@@ -278,6 +278,7 @@ export interface BookingLocation {
   workspace_id: string
   name: string
   address: string | null
+  location_type: 'in_person' | 'online'
   is_active: boolean
   created_at: string
 }
@@ -302,6 +303,7 @@ export interface Booking {
   notes: string | null
   google_event_id: string | null
   location_id: string | null
+  meet_url: string | null
   is_personal: boolean
   created_at: string
 }
@@ -309,7 +311,7 @@ export interface Booking {
 export interface BookingWithCalendar extends Booking {
   booking_calendar: Pick<BookingCalendar, 'name' | 'color'> | null
   lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email'> | null
-  location: Pick<BookingLocation, 'id' | 'name' | 'address'> | null
+  location: Pick<BookingLocation, 'id' | 'name' | 'address' | 'location_type'> | null
 }
 
 // ── Planning Template ────────────────────────────────────────────────────────

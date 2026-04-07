@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X } from 'lucide-react'
+import { X, Info } from 'lucide-react'
 import { BookingCalendar, Lead, BookingLocation } from '@/types'
 
 interface NewBookingModalProps {
@@ -69,6 +69,8 @@ export default function NewBookingModal({
   )
   const [notes, setNotes] = useState('')
 
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState<boolean | null>(null)
+
   const overlayRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -76,6 +78,20 @@ export default function NewBookingModal({
   const availableLocations = locations.filter(
     (l) => l.is_active && selectedCalendar?.location_ids?.includes(l.id)
   )
+
+  const selectedLocation = availableLocations.find((l) => l.id === locationId)
+  const isOnlineLocation = selectedLocation?.location_type === 'online'
+
+  // Check Google Calendar connection status
+  useEffect(() => {
+    fetch('/api/integrations?type=google_calendar')
+      .then((res) => res.ok ? res.json() : null)
+      .then((json) => {
+        const integration = json?.data?.[0] ?? json?.data
+        setGoogleCalendarConnected(!!integration?.is_active)
+      })
+      .catch(() => setGoogleCalendarConnected(false))
+  }, [])
 
   // Update duration when calendar changes
   useEffect(() => {
@@ -373,9 +389,24 @@ export default function NewBookingModal({
                     >
                       <option value="">Sélectionnez un lieu</option>
                       {availableLocations.map((l) => (
-                        <option key={l.id} value={l.id}>{l.name}</option>
+                        <option key={l.id} value={l.id}>
+                          {l.name} {l.location_type === 'online' ? '(en ligne)' : ''}
+                        </option>
                       ))}
                     </select>
+                    {isOnlineLocation && googleCalendarConnected === false && (
+                      <div style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 8,
+                        marginTop: 8, padding: '10px 12px', borderRadius: 8,
+                        background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+                        fontSize: 12, color: '#3b82f6', lineHeight: 1.5,
+                      }}>
+                        <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                        <span>
+                          Connectez Google Calendar dans les parametres pour generer automatiquement un lien Google Meet pour vos rendez-vous en ligne.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </>

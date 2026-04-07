@@ -1,0 +1,145 @@
+import { sendEmail } from '@/lib/email/client'
+
+interface BookingConfirmationParams {
+  to: string
+  coachName: string
+  prospectName: string
+  date: string
+  time: string
+  meetUrl?: string
+  locationName?: string
+  locationAddress?: string
+}
+
+function buildBookingConfirmationHtml(params: BookingConfirmationParams): string {
+  const { coachName, prospectName, date, time, meetUrl, locationName, locationAddress } = params
+
+  const meetSection = meetUrl
+    ? `
+      <tr>
+        <td style="padding: 20px 0 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+            <tr>
+              <td style="padding: 16px 20px;">
+                <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #166534;">
+                  Rejoindre la reunion
+                </p>
+                <a href="${meetUrl}" target="_blank" style="display: inline-block; background: #38A169; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 600;">
+                  Ouvrir Google Meet
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`
+    : ''
+
+  const locationSection =
+    locationName && !meetUrl
+      ? `
+      <tr>
+        <td style="padding: 20px 0 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <tr>
+              <td style="padding: 16px 20px;">
+                <p style="margin: 0 0 4px; font-size: 14px; font-weight: 600; color: #1e293b;">
+                  Lieu
+                </p>
+                <p style="margin: 0; font-size: 14px; color: #475569;">
+                  ${locationName}${locationAddress ? `<br/>${locationAddress}` : ''}
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`
+      : ''
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin: 0; padding: 0; background: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background: #f4f4f5; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background: #ffffff; border-radius: 12px; overflow: hidden;">
+          <!-- Header -->
+          <tr>
+            <td style="background: #0A0A0A; padding: 28px 32px;">
+              <p style="margin: 0; font-size: 18px; font-weight: 700; color: #ffffff;">
+                Rendez-vous confirme
+              </p>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 32px;">
+              <p style="margin: 0 0 20px; font-size: 15px; color: #374151; line-height: 1.6;">
+                Bonjour ${prospectName || 'there'},
+              </p>
+              <p style="margin: 0 0 24px; font-size: 15px; color: #374151; line-height: 1.6;">
+                Votre rendez-vous avec <strong>${coachName}</strong> est confirme.
+              </p>
+              <!-- Details -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #6b7280; width: 80px; vertical-align: top;">Date</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #111827; font-weight: 500;">${date}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #6b7280; vertical-align: top;">Heure</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #111827; font-weight: 500;">${time}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 4px 0; font-size: 13px; color: #6b7280; vertical-align: top;">Coach</td>
+                        <td style="padding: 4px 0; font-size: 14px; color: #111827; font-weight: 500;">${coachName}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              ${meetSection}
+              ${locationSection}
+              <!-- Footer -->
+              <tr>
+                <td style="padding: 28px 0 0;">
+                  <p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.5;">
+                    A bientot !
+                  </p>
+                </td>
+              </tr>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+}
+
+/**
+ * Send a booking confirmation email via Resend.
+ */
+export async function sendBookingConfirmationEmail(
+  params: BookingConfirmationParams
+): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return
+
+  const html = buildBookingConfirmationHtml(params)
+  const subject = `Votre rendez-vous avec ${params.coachName} est confirme`
+
+  await sendEmail(
+    { apiKey },
+    params.to,
+    subject,
+    html,
+  )
+}

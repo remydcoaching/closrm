@@ -31,6 +31,7 @@ export const bookingFiltersSchema = z.object({
 export const publicBookingSchema = z.object({
   scheduled_at: z.string().min(1, 'La date est requise.'),
   form_data: z.record(z.string(), z.string()),
+  location_id: z.string().uuid().optional().nullable(),
 })
 
 export type CreateBookingData = z.infer<typeof createBookingSchema>

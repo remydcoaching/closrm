@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { publicBookingSchema } from '@/lib/validations/bookings'
 import { getAvailableSlots } from '@/lib/bookings/availability'
+import { createGoogleCalendarEvent } from '@/lib/google/calendar'
+import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
 import { startOfMonth, endOfMonth, parseISO, addMinutes } from 'date-fns'
 
 type Params = Promise<{ workspaceSlug: string; calendarSlug: string }>
@@ -163,7 +165,7 @@ export async function POST(
     )
   }
 
-  const { scheduled_at, form_data } = parsed.data
+  const { scheduled_at, form_data, location_id } = parsed.data
 
   // Anti-double-booking: check for overlapping confirmed bookings
   const bookingStart = parseISO(scheduled_at)
@@ -262,6 +264,7 @@ export async function POST(
       source: 'booking_page',
       form_data,
       is_personal: false,
+      location_id: location_id ?? null,
     })
     .select('id, scheduled_at, duration_minutes, status')
     .single()
@@ -278,6 +281,100 @@ export async function POST(
       calendar_name: calendar.name,
       scheduled_at: booking.scheduled_at,
     }).catch(() => {})
+  }
+
+  // Determine location type for Google Meet
+  let isOnlineLocation = false
+  let locationName: string | null = null
+  let locationAddress: string | null = null
+  if (location_id) {
+    const { data: loc } = await supabase
+      .from('booking_locations')
+      .select('location_type, name, address')
+      .eq('id', location_id)
+      .eq('workspace_id', calendar.workspace_id)
+      .single()
+    if (loc) {
+      isOnlineLocation = loc.location_type === 'online'
+      locationName = loc.name
+      locationAddress = loc.address
+    }
+  }
+
+  // Create Google Calendar event with optional Meet (non-blocking)
+  const bookingStartDt = new Date(booking.scheduled_at)
+  const bookingEndDt = addMinutes(bookingStartDt, booking.duration_minutes)
+  createGoogleCalendarEvent(
+    calendar.workspace_id,
+    {
+      summary: title,
+      start: { dateTime: bookingStartDt.toISOString() },
+      end: { dateTime: bookingEndDt.toISOString() },
+    },
+    { withMeet: isOnlineLocation },
+  )
+    .then(async (result) => {
+      if (result?.eventId) {
+        await supabase
+          .from('bookings')
+          .update({
+            google_event_id: result.eventId,
+            ...(result.meetUrl ? { meet_url: result.meetUrl } : {}),
+          })
+          .eq('id', booking.id)
+          .eq('workspace_id', calendar.workspace_id)
+
+        // Send confirmation email with meet_url if available
+        if (email) {
+          const ownerRes = await supabase
+            .from('users')
+            .select('full_name')
+            .eq('workspace_id', calendar.workspace_id)
+            .eq('role', 'coach')
+            .maybeSingle()
+
+          sendBookingConfirmationEmail({
+            to: email,
+            coachName: ownerRes.data?.full_name ?? 'Votre coach',
+            prospectName: `${firstName} ${lastName}`.trim(),
+            date: bookingStartDt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+            time: bookingStartDt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            meetUrl: result.meetUrl ?? undefined,
+            locationName: locationName ?? undefined,
+            locationAddress: locationAddress ?? undefined,
+          }).catch(() => {})
+        }
+      }
+    })
+    .catch(() => {})
+
+  // Send confirmation email even without Google Calendar (no Meet link)
+  if (email) {
+    const { data: gcIntegration } = await supabase
+      .from('integrations')
+      .select('is_active')
+      .eq('workspace_id', calendar.workspace_id)
+      .eq('type', 'google_calendar')
+      .maybeSingle()
+
+    if (!gcIntegration?.is_active) {
+      const ownerRes = await supabase
+        .from('users')
+        .select('full_name')
+        .eq('workspace_id', calendar.workspace_id)
+        .eq('role', 'coach')
+        .maybeSingle()
+
+      sendBookingConfirmationEmail({
+        to: email,
+        coachName: ownerRes.data?.full_name ?? 'Votre coach',
+        prospectName: `${firstName} ${lastName}`.trim(),
+        date: bookingStartDt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+        time: bookingStartDt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        locationName: locationName ?? undefined,
+        locationAddress: locationAddress ?? undefined,
+      }).catch(() => {})
+    }
   }
 
   return NextResponse.json({ booking }, { status: 201 })
