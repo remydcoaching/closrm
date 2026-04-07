@@ -303,4 +303,45 @@ Chaque amélioration suit ce format :
 
 ---
 
-*Mis à jour le 2026-04-02 par Claude Code — ClosRM*
+---
+
+## Améliorations identifiées pendant T-024 (2026-04-05→07)
+
+### A-024-01 · Token Meta refresh automatique
+**Priorité :** Haute
+**Contexte :** Les tokens Meta expirent. Risque de panne silencieuse.
+**Proposition :** Cron qui vérifie `ig_accounts.token_expires_at` et refresh via `fb_exchange_token` avant expiration.
+
+### A-024-02 · Trigger workflow comment_keyword (backend)
+**Priorité :** Moyenne
+**Contexte :** Le trigger existe en UI mais le backend n'est pas implémenté.
+**Proposition :** Ajouter la logique dans le webhook Instagram pour détecter les mots-clés dans les commentaires et déclencher les workflows.
+
+### A-024-03 · Publication Stories via API
+**Priorité :** Moyenne
+**Contexte :** Le type STORY est supporté côté UI mais l'API Meta pour les Stories a des limitations (pas de caption, 24h max).
+**Proposition :** Adapter le flow de publication pour les contraintes spécifiques des Stories.
+
+### A-024-04 · Carousel Instagram
+**Priorité :** Basse
+**Contexte :** Le type CAROUSEL a été retiré de l'UI mais pourrait être utile.
+**Proposition :** Réimplémenter avec le flow multi-container de l'API Meta.
+
+### A-024-05 · Convertir page Agenda en Server Component
+**Priorité :** Basse
+**Contexte :** Dernière page majeure encore en client-side fetch.
+**Proposition :** Même pattern que les 8 autres pages converties.
+
+### A-024-06 · Memoization inline styles/callbacks
+**Priorité :** Basse
+**Contexte :** 15+ pages créent des nouveaux objets style à chaque render.
+**Proposition :** Extraire les styles constants, utiliser useCallback/useMemo.
+
+### A-024-07 · Notes reels en base (pas localStorage)
+**Priorité :** Basse
+**Contexte :** Les notes sur les reels sont en localStorage, perdues si on change de navigateur.
+**Proposition :** Ajouter colonne `notes TEXT` à `ig_reels` + endpoint PATCH.
+
+---
+
+*Mis à jour le 2026-04-07 par Claude Code — ClosRM*
