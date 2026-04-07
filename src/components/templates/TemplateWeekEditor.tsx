@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { TemplateBlock, DayOfWeek } from '@/types'
 import BlockModal from './BlockModal'
 
@@ -78,11 +78,68 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
   const [addState, setAddState] = useState<AddState | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   const isDragging = useRef(false)
+  const [copiedBlock, setCopiedBlock] = useState<TemplateBlock | null>(null)
+  const [hoverCell, setHoverCell] = useState<{ day: DayOfWeek; slotIndex: number } | null>(null)
+  const [selectedBlockIndex, setSelectedBlockIndex] = useState<number | null>(null)
+
+  // Keyboard shortcuts: Cmd+C to copy, Cmd+V to paste
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Cmd+C or Ctrl+C — copy selected block
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && selectedBlockIndex !== null) {
+        e.preventDefault()
+        setCopiedBlock({ ...blocks[selectedBlockIndex] })
+      }
+      // Cmd+V or Ctrl+V — paste at hover position
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v' && copiedBlock && hoverCell) {
+        e.preventDefault()
+        const duration = timeToMinutes(copiedBlock.end) - timeToMinutes(copiedBlock.start)
+        const newStart = slotIndexToTime(hoverCell.slotIndex)
+        const newEndMin = timeToMinutes(newStart) + duration
+        // Clamp to grid end
+        const clampedEndMin = Math.min(newEndMin, END_HOUR * 60)
+        const newEnd = `${String(Math.floor(clampedEndMin / 60)).padStart(2, '0')}:${String(clampedEndMin % 60).padStart(2, '0')}`
+        const pastedBlock: TemplateBlock = {
+          ...copiedBlock,
+          day: hoverCell.day,
+          start: newStart,
+          end: newEnd,
+        }
+        onChange([...blocks, pastedBlock])
+        setSelectedBlockIndex(blocks.length) // select the new block
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedBlockIndex, copiedBlock, hoverCell, blocks, onChange])
+
+  const [dragBlockIndex, setDragBlockIndex] = useState<number | null>(null)
 
   function handleBlockClick(e: React.MouseEvent, block: TemplateBlock, index: number) {
     e.stopPropagation()
     setEditState({ block, index })
+    setSelectedBlockIndex(index)
     setAddState(null)
+  }
+
+  function handleBlockDragStart(e: React.DragEvent, index: number) {
+    setDragBlockIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
+  }
+
+  function handleCellDrop(day: DayOfWeek, slotIndex: number) {
+    if (dragBlockIndex === null) return
+    const block = blocks[dragBlockIndex]
+    if (!block) return
+    const duration = timeToMinutes(block.end) - timeToMinutes(block.start)
+    const newStart = slotIndexToTime(slotIndex)
+    const newEndMin = Math.min(timeToMinutes(newStart) + duration, END_HOUR * 60)
+    const newEnd = `${String(Math.floor(newEndMin / 60)).padStart(2, '0')}:${String(newEndMin % 60).padStart(2, '0')}`
+    const next = [...blocks]
+    next[dragBlockIndex] = { ...block, day, start: newStart, end: newEnd }
+    onChange(next)
+    setDragBlockIndex(null)
   }
 
   function handleCellMouseDown(day: DayOfWeek, slotIndex: number) {
@@ -102,6 +159,7 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
   }
 
   const handleCellMouseEnter = useCallback((day: DayOfWeek, slotIndex: number) => {
+    setHoverCell({ day, slotIndex })
     if (!isDragging.current || !drag) return
     if (day !== drag.day) return
     setDrag(prev => prev ? { ...prev, currentSlot: slotIndex } : null)
@@ -237,6 +295,8 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
                       key={`${day}-${slotIdx}`}
                       onMouseDown={() => handleCellMouseDown(day, slotIdx)}
                       onMouseEnter={() => handleCellMouseEnter(day, slotIdx)}
+                      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                      onDrop={() => handleCellDrop(day, slotIdx)}
                       style={{
                         height: CELL_HEIGHT,
                         borderRight: GRID_BORDER,
@@ -277,6 +337,8 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
                       return (
                         <div
                           key={b._index}
+                          draggable
+                          onDragStart={e => handleBlockDragStart(e, b._index)}
                           onClick={e => handleBlockClick(e, b, b._index)}
                           style={{
                             position: 'absolute',
@@ -293,6 +355,8 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
                             borderBottom: '1px solid rgba(0,0,0,0.15)',
                             borderTop: '1px solid rgba(255,255,255,0.1)',
                             boxSizing: 'border-box',
+                            outline: selectedBlockIndex === b._index ? '2px solid #fff' : 'none',
+                            outlineOffset: -2,
                             transition: 'filter 0.1s',
                           }}
                           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1.15)' }}
