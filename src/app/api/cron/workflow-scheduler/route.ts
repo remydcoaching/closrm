@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
       const { data: overdueBookings } = await supabase
         .from('bookings')
-        .select('id, lead_id, workspace_id, calendar_id')
+        .select('id, lead_id, workspace_id, calendar_id, call_id')
         .eq('status', 'confirmed')
         .lt('scheduled_at', oneHourAgo)
 
@@ -159,6 +159,44 @@ export async function GET(request: NextRequest) {
                 calendar_id: booking.calendar_id,
               })
               results.booking_no_show_fired++
+
+              // Sync to linked call if exists
+              if (booking.call_id) {
+                const { data: linkedCall } = await supabase
+                  .from('calls')
+                  .select('id, type')
+                  .eq('id', booking.call_id)
+                  .single()
+
+                if (linkedCall) {
+                  await supabase
+                    .from('calls')
+                    .update({ outcome: 'no_show' })
+                    .eq('id', linkedCall.id)
+
+                  const noShowStatus = linkedCall.type === 'setting' ? 'no_show_setting' : 'no_show_closing'
+                  await supabase
+                    .from('leads')
+                    .update({ status: noShowStatus })
+                    .eq('id', booking.lead_id)
+                    .eq('workspace_id', booking.workspace_id)
+
+                  // Create follow-up
+                  const tomorrow = new Date()
+                  tomorrow.setDate(tomorrow.getDate() + 1)
+                  tomorrow.setHours(9, 0, 0, 0)
+                  await supabase
+                    .from('follow_ups')
+                    .insert({
+                      workspace_id: booking.workspace_id,
+                      lead_id: booking.lead_id,
+                      reason: 'No-show RDV — à relancer',
+                      scheduled_at: tomorrow.toISOString(),
+                      channel: 'whatsapp',
+                      status: 'en_attente',
+                    })
+                }
+              }
             }
           } catch (err) {
             results.errors.push(`Booking no-show ${booking.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
