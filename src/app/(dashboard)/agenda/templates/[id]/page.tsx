@@ -37,6 +37,17 @@ export default function TemplateEditorPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [blocks, setBlocks] = useState<TemplateBlock[]>([])
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [initialState, setInitialState] = useState<{ name: string; description: string; blocks: TemplateBlock[] } | null>(null)
+
+  // Warn on browser back/close with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) { e.preventDefault() }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [hasUnsavedChanges])
 
   const fetchTemplate = useCallback(async () => {
     try {
@@ -47,6 +58,8 @@ export default function TemplateEditorPage() {
       setName(t.name)
       setDescription(t.description ?? '')
       setBlocks(t.blocks)
+      setInitialState({ name: t.name, description: t.description ?? '', blocks: t.blocks })
+      setHasUnsavedChanges(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue')
     } finally {
@@ -81,6 +94,8 @@ export default function TemplateEditorPage() {
       }
 
       setSuccess(true)
+      setHasUnsavedChanges(false)
+      setInitialState({ name: name.trim(), description: description.trim(), blocks })
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue')
@@ -102,7 +117,7 @@ export default function TemplateEditorPage() {
       <div style={{ padding: 32 }}>
         <p style={{ color: '#ef4444', fontSize: 14 }}>{error}</p>
         <button
-          onClick={() => router.push('/agenda/templates')}
+          onClick={() => { if (!hasUnsavedChanges || confirm('Vous avez des modifications non sauvegardées. Quitter sans sauvegarder ?')) router.push('/agenda/templates') }}
           style={{
             marginTop: 12,
             background: 'none',
@@ -124,7 +139,7 @@ export default function TemplateEditorPage() {
     <div style={{ padding: '20px 24px' }}>
       {/* Back link */}
       <button
-        onClick={() => router.push('/agenda/templates')}
+        onClick={() => { if (!hasUnsavedChanges || confirm('Vous avez des modifications non sauvegardées. Quitter sans sauvegarder ?')) router.push('/agenda/templates') }}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -149,7 +164,7 @@ export default function TemplateEditorPage() {
             <input
               type="text"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={e => { setName(e.target.value); setHasUnsavedChanges(true) }}
               required
               placeholder="Ex: Semaine type intense"
               style={{
@@ -171,7 +186,7 @@ export default function TemplateEditorPage() {
             <label style={labelStyle}>Description (optionnelle)</label>
             <textarea
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={e => { setDescription(e.target.value); setHasUnsavedChanges(true) }}
               placeholder="Décrivez ce template..."
               rows={2}
               style={{ ...inputStyle, fontSize: 13, resize: 'vertical' }}
@@ -190,7 +205,7 @@ export default function TemplateEditorPage() {
               borderRadius: 4,
               overflow: 'hidden',
             }}>
-              <TemplateWeekEditor blocks={blocks} onChange={setBlocks} />
+              <TemplateWeekEditor blocks={blocks} onChange={(b) => { setBlocks(b); setHasUnsavedChanges(true) }} />
             </div>
           </div>
 
