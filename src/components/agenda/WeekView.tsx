@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { startOfWeek, addDays, isSameDay, isToday, parseISO, format, getHours, getMinutes } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { BookingWithCalendar } from '@/types'
@@ -73,6 +73,28 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBooki
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const [drag, setDrag] = useState<DragState | null>(null)
   const isDragging = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Current time indicator
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Auto-scroll to current time on mount
+  useEffect(() => {
+    if (containerRef.current) {
+      const currentHour = new Date().getHours()
+      const scrollTop = Math.max((currentHour - START_HOUR - 1) * CELL_HEIGHT, 0)
+      containerRef.current.scrollTop = scrollTop
+    }
+  }, [])
+
+  const todayIndex = days.findIndex((d) => isToday(d))
+  const currentTimeTop = todayIndex >= 0
+    ? (now.getHours() - START_HOUR) * CELL_HEIGHT + (now.getMinutes() / 60) * CELL_HEIGHT
+    : -1
 
   const GRID_BORDER = '1px solid var(--agenda-grid-border, rgba(128,128,128,0.15))'
   const HOUR_COL_WIDTH = 72
@@ -111,6 +133,7 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBooki
 
   return (
     <div
+      ref={containerRef}
       style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto', position: 'relative', userSelect: 'none' }}
       onMouseUp={handleMouseUp}
       onMouseLeave={() => { if (isDragging.current) handleMouseUp() }}
@@ -222,7 +245,7 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBooki
           pointerEvents: 'none', height: TOTAL_HEIGHT,
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', height: '100%' }}>
-            {days.map((day) => {
+            {days.map((day, dayIdx) => {
               const dayBookings = bookings.filter((b) => isSameDay(parseISO(b.scheduled_at), day))
               const positioned = resolveOverlaps(dayBookings)
               return (
@@ -245,6 +268,38 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBooki
                       />
                     )
                   })}
+                  {/* Current time indicator — only on today's column */}
+                  {dayIdx === todayIndex && currentTimeTop >= 0 && currentTimeTop <= TOTAL_HEIGHT && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: currentTimeTop,
+                        left: 0,
+                        right: 0,
+                        pointerEvents: 'none',
+                        zIndex: 4,
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: -5,
+                          left: -5,
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: 'var(--color-primary)',
+                        }}
+                      />
+                      <div
+                        style={{
+                          height: 2,
+                          background: 'var(--color-primary)',
+                          width: '100%',
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               )
             })}

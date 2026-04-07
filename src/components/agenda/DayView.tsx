@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
-import { isSameDay, parseISO, format, getHours, getMinutes } from 'date-fns'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { isSameDay, isToday, parseISO, format, getHours, getMinutes } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { BookingWithCalendar } from '@/types'
 import { BookingBlock } from './BookingBlock'
@@ -38,6 +38,28 @@ export function DayView({ date, bookings, onBookingClick, onSlotSelect, onBookin
   const dayBookings = bookings.filter((b) => isSameDay(parseISO(b.scheduled_at), date))
   const [drag, setDrag] = useState<DragState | null>(null)
   const isDragging = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Current time indicator
+  const [now, setNow] = useState(new Date())
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Auto-scroll to current time on mount
+  useEffect(() => {
+    if (containerRef.current && isToday(date)) {
+      const currentHour = new Date().getHours()
+      const scrollTop = Math.max((currentHour - START_HOUR - 1) * CELL_HEIGHT, 0)
+      containerRef.current.scrollTop = scrollTop
+    }
+  }, [date])
+
+  const showTimeLine = isToday(date)
+  const currentTimeTop = showTimeLine
+    ? (now.getHours() - START_HOUR) * CELL_HEIGHT + (now.getMinutes() / 60) * CELL_HEIGHT
+    : -1
 
   const GRID_BORDER = '1px solid var(--agenda-grid-border, rgba(128,128,128,0.15))'
   const HOUR_COL_WIDTH = 72
@@ -74,6 +96,7 @@ export function DayView({ date, bookings, onBookingClick, onSlotSelect, onBookin
 
   return (
     <div
+      ref={containerRef}
       style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto', userSelect: 'none' }}
       onMouseUp={handleMouseUp}
       onMouseLeave={() => { if (isDragging.current) handleMouseUp() }}
@@ -161,6 +184,38 @@ export function DayView({ date, bookings, onBookingClick, onSlotSelect, onBookin
                 />
               )
             })}
+            {/* Current time indicator */}
+            {showTimeLine && currentTimeTop >= 0 && currentTimeTop <= TOTAL_HEIGHT && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: currentTimeTop,
+                  left: 0,
+                  right: 0,
+                  pointerEvents: 'none',
+                  zIndex: 4,
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: -5,
+                    left: -5,
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    background: 'var(--color-primary)',
+                  }}
+                />
+                <div
+                  style={{
+                    height: 2,
+                    background: 'var(--color-primary)',
+                    width: '100%',
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

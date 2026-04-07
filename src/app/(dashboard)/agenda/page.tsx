@@ -23,6 +23,7 @@ import { WeekView } from '@/components/agenda/WeekView'
 import { MonthView } from '@/components/agenda/MonthView'
 import NewBookingModal from '@/components/agenda/NewBookingModal'
 import { BookingDetailPanel } from '@/components/agenda/BookingDetailPanel'
+import { BookingNotifications } from '@/components/agenda/BookingNotifications'
 
 type ViewMode = 'day' | 'week' | 'month'
 
@@ -493,6 +494,9 @@ export default function AgendaPage() {
               </div>
             )}
           </div>
+
+          {/* Notification bell */}
+          <BookingNotifications bookings={filteredBookings} />
 
           {/* Filter panel toggle */}
           <button
