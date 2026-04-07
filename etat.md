@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-04-02 (T-023 Instagram Social Module — Pierre)
+> Dernière mise à jour : 2026-04-04 (T-024 Follow Ads Classification — Rémy)
 
 ---
 
@@ -37,6 +37,7 @@
 | Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | ✅ Terminé (webhook Meta non livré en mode Dev) | T-013 |
 | Intégration Google Calendar | Pierre | ✅ Terminé | T-022 |
 | Module Publicités (Meta Ads dashboard) | Rémy | ✅ Terminé | T-017 |
+| **Module Publicités v2 — Leadform/Follow Ads + santé** | **Rémy** | **✅ Terminé** | **T-024** |
 | **Module Emails (séquences + broadcast)** | **Pierre** | **🔄 En cours (code complet, tests restants)** | **T-020** |
 | Module Calendrier / Booking (type Calendly) | Pierre | 🔄 En cours (tests E2E restants) | T-022 |
 | Instagram Automations | Pierre | ⬜ Non démarré | T-021 |
@@ -72,7 +73,8 @@
 | 2026-04-01 | Pierre | T-014 v2 — Automations : branching, wait_for_event, 13 actions, builder refait | `feature/pierre-email-module` |
 | 2026-04-01 | Rémy | T-017 — Module Publicités (Meta Ads Dashboard — Bloc B) | `feature/remy-meta-ads` |
 | 2026-04-02 | Pierre | T-023 — Module Réseaux Sociaux (Instagram) + Messages | `feature/pierre-funnel-builder` |
+| 2026-04-04 | Rémy | T-024 — Follow Ads Classification + KPIs adaptés + indicateurs de santé | `feature/remy-follow-ads-classification` |
 
 ---
 
-*Mis à jour le 2026-04-02 par Claude Code — ClosRM*
+*Mis à jour le 2026-04-04 par Claude Code — ClosRM*
