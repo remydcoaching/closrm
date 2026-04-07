@@ -131,6 +131,7 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
               <option value="manuel">Manuel</option>
               <option value="facebook_ads">Facebook Ads</option>
               <option value="instagram_ads">Instagram Ads</option>
+              <option value="follow_ads">Follow Ads</option>
               <option value="formulaire">Formulaire</option>
             </select>
           </div>

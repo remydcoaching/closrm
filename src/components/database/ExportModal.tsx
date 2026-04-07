@@ -28,6 +28,7 @@ const EXPORT_FIELDS: ExportField[] = [
 const SOURCE_LABELS: Record<string, string> = {
   facebook_ads: 'Facebook Ads',
   instagram_ads: 'Instagram Ads',
+  follow_ads: 'Follow Ads',
   formulaire: 'Formulaire',
   manuel: 'Manuel',
 }

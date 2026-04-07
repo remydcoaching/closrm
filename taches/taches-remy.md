@@ -1,7 +1,7 @@
 # Tâches Rémy — ClosRM V1
 
 > Toutes les tâches de Rémy, dans l'ordre. Chaque module = API + Frontend, autonome.
-> Dernière mise à jour : 2026-03-30
+> Dernière mise à jour : 2026-04-07
 
 ---
 
@@ -62,53 +62,60 @@
 
 ### 5. T-013 · Intégration Meta Ads — Bloc A (OAuth + Webhook Leads)
 **Priorité :** Haute
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-03-30)
 
-- [ ] OAuth Meta Business (bouton Connecter dans Paramètres > Intégrations)
-- [ ] Callback OAuth → stocker access_token chiffré dans table integrations
-- [ ] Webhook /api/webhooks/meta — vérification token (GET) + réception leads (POST)
-- [ ] Mapping Meta lead form → table leads (source: facebook_ads / instagram_ads)
-- [ ] Page Paramètres > Intégrations : statut Meta connecté/déconnecté + bouton
-
-**Fichiers à créer :**
-- `src/app/api/integrations/meta/route.ts` (OAuth callback)
-- `src/app/api/webhooks/meta/route.ts` (webhook leads)
-- `src/lib/meta/client.ts` (helpers Meta API)
-- `src/app/(dashboard)/parametres/integrations/page.tsx` (page intégrations)
+- [x] OAuth Meta Business
+- [x] Callback OAuth → access_token chiffré
+- [x] Webhook /api/webhooks/meta — vérification + réception leads
+- [x] Mapping Meta lead form → table leads
+- [x] Page Paramètres > Intégrations
 
 ---
 
-### 6. T-015 · Intégration Google Agenda
+### 6. T-017 · Module Publicités (dashboard Meta Ads)
 **Priorité :** Moyenne
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-04-01)
 
-- [ ] OAuth Google (bouton dans Paramètres)
-- [ ] Call planifié dans ClosRM → créer événement Google Agenda
-- [ ] Call reprogrammé/annulé → update/delete événement
-- [ ] Optionnel : lire events Google pour les afficher dans calendrier
-
-**Fichiers à créer :**
-- `src/app/api/integrations/google/route.ts`
-- `src/lib/google/client.ts`
+- [x] Client Meta Marketing API
+- [x] Endpoint stats campagnes (budget, dépensé, CPL, leads générés)
+- [x] Performance par plateforme / Campagne / Ad Set / Ad
+- [x] Graphique leads/jour Meta + funnel marketing visuel
+- [x] Section Meta Ads dans /statistiques
 
 ---
 
-### 7. T-017 · Module Publicités (dashboard Meta Ads) — Bloc B Meta
-**Priorité :** Moyenne (dépend de T-013)
-**Statut :** ⬜ Non démarré
+### 7. T-025 · Follow Ads Classification + KPIs adaptés + Indicateurs de santé
+**Priorité :** Haute
+**Statut :** ✅ Terminé (2026-04-07)
 
-- [ ] Client Meta Marketing API (lib/meta/client.ts — partagé avec T-013)
-- [ ] Endpoint stats campagnes (budget, dépensé, CPL, leads générés)
-- [ ] Budget pub du mois + dépensé
-- [ ] Performance par plateforme (Facebook / Instagram)
-- [ ] Performance par Campagne / Ad Set / Ad (tableau drill-down)
-- [ ] Graphique leads/jour Meta
-- [ ] Funnel marketing visuel
-- [ ] Brancher section Meta Ads dans /statistiques (MetaStats avec vraies données)
+- [x] Classification campagnes Leadform vs Follow Ads (objective Meta)
+- [x] Toggle 3 positions (Leadform / Follow Ads / Tout)
+- [x] KPIs adaptatifs par type de campagne
+- [x] Indicateurs de santé color-codés (CPL, CTR, ROAS, CPM, Coût/clic)
+- [x] Encadré croissance Instagram (snapshots)
+- [x] Mode "Tout" avec sections empilées
 
 ---
 
-### ~~8. T-020 · Module Emails~~ → **Transféré à Pierre (fait le 01/04)**
+### 8. A-007 · Sources `follow_ads` + Channel `instagram_dm`
+**Priorité :** Haute (suite directe de T-025)
+**Statut :** ✅ Terminé (2026-04-07)
+
+- [x] Migration SQL 014 (CHECK constraints leads.source + follow_ups.channel)
+- [x] Types TS LeadSource + FollowUpChannel + validations Zod
+- [x] SourceBadge + LeadFilters + LeadForm + DatabaseFilters/Table + ExportModal
+- [x] BroadcastFilterBuilder + TriggerConfigPanel
+- [x] ChannelBadge + AddFollowUpModal + ActionConfigPanel (workflows)
+- [x] lib/stats/queries.ts + lib/utils.ts + lib/dashboard/queries.ts
+- [x] publicites-client : inclure `follow_ads` dans le filtre lead source
+
+---
+
+### 9. T-026 · Vision V2 — Followers comme prospects (ManyChat-like)
+**Priorité :** Moyenne (V2)
+**Statut :** ⬜ Non démarré — fiche T-026 à valider
+
+Voir `taches/tache-026-followers-as-prospects.md`.
 
 ---
 
@@ -120,11 +127,14 @@
 | 2 | Dashboard (T-003) | Haute | ✅ |
 | 3 | Statistiques (T-011) | Moyenne | ✅ |
 | 4 | Base de données (T-012) | Moyenne | ✅ |
-| 5 | Intégration Meta Ads (T-013) | Haute | ⬜ |
-| 6 | Intégration Google Agenda (T-015) | Moyenne | ⬜ |
-| 7 | Publicités dashboard (T-017) | Moyenne | ⬜ |
-| 8 | ~~Emails (T-020)~~ | — | → Pierre ✅ |
+| 5 | Intégration Meta Ads (T-013) | Haute | ✅ |
+| 6 | Publicités dashboard (T-017) | Moyenne | ✅ |
+| 7 | Follow Ads classification (T-025) | Haute | ✅ |
+| 8 | Sources + channels A-007 | Haute | ✅ |
+| 9 | Followers-as-prospects (T-026) | Moyenne | ⬜ |
+| — | ~~Emails (T-020)~~ | — | → Pierre ✅ |
+| — | ~~Google Agenda (T-015)~~ | — | → Pierre (T-022) ✅ |
 
 ---
 
-*Mis à jour le 2026-03-30 — ClosRM*
+*Mis à jour le 2026-04-07 — ClosRM*

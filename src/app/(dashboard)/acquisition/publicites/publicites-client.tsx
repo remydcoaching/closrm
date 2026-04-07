@@ -115,7 +115,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     try {
       const params = new URLSearchParams({
         status: 'clos',
-        source: 'facebook_ads,instagram_ads',
+        source: 'facebook_ads,instagram_ads,follow_ads',
         page: '1',
         per_page: '1',
       })

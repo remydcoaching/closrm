@@ -34,6 +34,7 @@ export type LeadStatus =
 export type LeadSource =
   | 'facebook_ads'
   | 'instagram_ads'
+  | 'follow_ads'
   | 'formulaire'
   | 'manuel'
   | 'funnel'
@@ -82,7 +83,7 @@ export interface Call {
 
 // ─── Follow-up ───────────────────────────────────────────────────────────────
 
-export type FollowUpChannel = 'whatsapp' | 'email' | 'manuel'
+export type FollowUpChannel = 'whatsapp' | 'email' | 'instagram_dm' | 'manuel'
 export type FollowUpStatus = 'en_attente' | 'fait' | 'annule'
 
 export interface FollowUp {

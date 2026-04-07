@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-04-07 (T-025 Follow Ads Classification — Rémy / T-024 Audit Instagram + Performance — Pierre)
+> Dernière mise à jour : 2026-04-07 (A-007 sources `follow_ads` + channel `instagram_dm` — Rémy)
 
 ---
 
@@ -38,6 +38,7 @@
 | Intégration Google Calendar | Pierre | ✅ Terminé | T-022 |
 | Module Publicités (Meta Ads dashboard) | Rémy | ✅ Terminé | T-017 |
 | **Module Publicités v2 — Leadform/Follow Ads + santé** | **Rémy** | **✅ Terminé** | **T-025** |
+| **Source `follow_ads` + channel `instagram_dm`** | **Rémy** | **✅ Terminé** | **A-007** |
 | Module Emails (séquences + broadcast) | Pierre | ✅ Terminé | T-020 |
 | Module Calendrier / Booking | Pierre | ✅ Terminé | T-022 |
 | Module Réseaux Sociaux (Instagram) | Pierre | ✅ Terminé | T-023, T-024 |
@@ -82,7 +83,8 @@
 | 2026-04-02 | Pierre | T-023 — Module Réseaux Sociaux (Instagram) + Messages | `feature/pierre-funnel-builder` |
 | 2026-04-05→07 | Pierre | T-024 — Audit Instagram + Performance + 90 PRs | `feature/pierre-funnel-builder` |
 | 2026-04-04→07 | Rémy | T-025 — Follow Ads Classification + KPIs adaptés + indicateurs de santé | `feature/remy-follow-ads-classification` |
+| 2026-04-07 | Rémy | A-007 — Source `follow_ads` + channel `instagram_dm` (migration 014, types, UI) | `feature/remy-follow-ads-source-channel` |
 
 ---
 
-*Mis à jour le 2026-04-07 par Claude Code — ClosRM*
+*Mis à jour le 2026-04-07 par Claude Code — ClosRM (A-007 + fiche T-026 créée)*
