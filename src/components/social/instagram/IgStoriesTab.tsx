@@ -231,7 +231,7 @@ function RetentionFunnel({ items }: { items: StorySequenceItem[] }) {
 
 export default function IgStoriesTab() {
   const [weekOffset, setWeekOffset] = useState(0)
-  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const [selectedDay, setSelectedDay] = useState<string | null>(new Date().toISOString().slice(0, 10))
   const [stories, setStories] = useState<IgStory[]>([])
   const [sequences, setSequences] = useState<StorySequence[]>([])
   const [seqItems, setSeqItems] = useState<Record<string, StorySequenceItem[]>>({})
