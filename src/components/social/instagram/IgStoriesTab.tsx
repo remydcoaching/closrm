@@ -67,8 +67,20 @@ function StoryCard({
   const profileVisits = story?.taps_forward ?? 0
   const imgSrc = story?.thumbnail_url || story?.ig_media_url || ''
 
+  const exits = story?.exits ?? 0
+
+  const statRow = (icon: React.ReactNode, label: string, value: number | string, color?: string) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+        {icon} {label}
+      </div>
+      <span style={{ fontSize: 13, fontWeight: 700, color: color || 'var(--text-primary)' }}>{value}</span>
+    </div>
+  )
+
   return (
     <div style={{ width, flexShrink: 0 }}>
+      {/* Story image */}
       <div style={{
         width, height, borderRadius: 14, overflow: 'hidden',
         background: 'var(--bg-elevated)',
@@ -89,47 +101,6 @@ function StoryCard({
             </span>
           </div>
         )}
-
-        {/* Gradient overlay for readability */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          height: '55%',
-          background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
-          borderRadius: '0 0 14px 14px',
-        }} />
-
-        {/* Data overlay — big and readable */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          padding: '16px 14px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <Eye size={18} style={{ color: '#fff' }} />
-            <span style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: -0.5, textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
-              {impressions.toLocaleString()}
-            </span>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>vues</span>
-          </div>
-          <div style={{ display: 'flex', gap: 12, fontSize: 13, color: '#fff', fontWeight: 600 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.4)', padding: '3px 8px', borderRadius: 6 }}>
-              <Users size={13} /> {reach.toLocaleString()}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.4)', padding: '3px 8px', borderRadius: 6 }}>
-              <MessageCircle size={13} /> {replies}
-            </span>
-            {profileVisits > 0 && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(59,130,246,0.3)', padding: '3px 8px', borderRadius: 6, color: '#60a5fa' }}>
-                {profileVisits} profil
-              </span>
-            )}
-            {follows > 0 && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(34,197,94,0.3)', padding: '3px 8px', borderRadius: 6, color: '#22c55e' }}>
-                +{follows} abo
-              </span>
-            )}
-          </div>
-        </div>
-
         {/* Position badge */}
         <div style={{
           position: 'absolute', top: 10, left: 10,
@@ -139,6 +110,25 @@ function StoryCard({
         }}>
           {position}
         </div>
+      </div>
+
+      {/* Data card below the story */}
+      <div style={{
+        marginTop: 8, padding: 12, borderRadius: 12,
+        background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
+      }}>
+        {/* Big view count */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid var(--border-primary)' }}>
+          <Eye size={16} style={{ color: 'var(--color-primary)' }} />
+          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{impressions.toLocaleString()}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>vues</span>
+        </div>
+
+        {statRow(<Users size={13} />, 'Reach', reach.toLocaleString())}
+        {statRow(<MessageCircle size={13} />, 'Réponses', replies)}
+        {statRow(<LogOut size={13} />, 'Sorties', exits)}
+        {statRow(<Users size={13} />, 'Visites profil', profileVisits, profileVisits > 0 ? '#60a5fa' : undefined)}
+        {statRow(<UserPlus size={13} />, 'Abonnés', follows > 0 ? `+${follows}` : '0', follows > 0 ? '#22c55e' : undefined)}
       </div>
     </div>
   )
