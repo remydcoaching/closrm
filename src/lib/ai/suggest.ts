@@ -59,7 +59,7 @@ export async function generateSuggestion(
   const prompt = buildSuggestionPrompt({ brief, lead: lead as Lead, messages, goldenExamples })
 
   // 7. Call Claude — Haiku pour conversations courtes, Sonnet pour longues
-  const model = messages.length > 10 ? 'claude-sonnet-4-5-20250514' : 'claude-haiku-4-5-20251001'
+  const model = messages.length > 10 ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001'
   const raw = await callClaude(prompt, apiKey, model)
 
   // 8. Parse response

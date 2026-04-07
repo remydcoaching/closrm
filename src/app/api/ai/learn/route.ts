@@ -17,7 +17,7 @@ export async function POST() {
     const prompt = `Voici le brief actuel d'un coach :\n\n${brief.generated_brief}\n\nVoici ${wins.length} conversations qui ont abouti a une vente :\n\n${wins.map((w, i) => `--- Conversation ${i + 1} ---\n${w.messages}`).join('\n\n')}\n\nAffine le brief en integrant les patterns qui fonctionnent dans ces conversations. Garde le meme format, meme longueur (200 mots max). Ameliore la strategie et les phrases types basees sur ce qui a reellement converti.`
 
     if (!brief.api_key) return NextResponse.json({ error: 'Cle API non configuree' }, { status: 400 })
-    const updatedBrief = await callClaude(prompt, brief.api_key, 'claude-sonnet-4-5-20250514')
+    const updatedBrief = await callClaude(prompt, brief.api_key, 'claude-sonnet-4-20250514')
 
     await supabase
       .from('ai_coach_briefs')

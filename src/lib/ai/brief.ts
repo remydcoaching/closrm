@@ -37,7 +37,7 @@ export async function saveBrief(
 
   // Generate brief from answers
   const prompt = buildBriefGenerationPrompt(answers)
-  const generatedBrief = await callClaude(prompt, apiKey, 'claude-sonnet-4-5-20250514')
+  const generatedBrief = await callClaude(prompt, apiKey, 'claude-sonnet-4-20250514')
 
   const { data, error } = await supabase
     .from('ai_coach_briefs')

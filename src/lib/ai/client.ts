@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 export async function callClaude(
   prompt: string,
   apiKey: string,
-  model: 'claude-haiku-4-5-20251001' | 'claude-sonnet-4-5-20250514' = 'claude-haiku-4-5-20251001'
+  model: string = 'claude-haiku-4-5-20251001'
 ): Promise<string> {
   const client = new Anthropic({ apiKey })
   const response = await client.messages.create({

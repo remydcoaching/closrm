@@ -523,6 +523,7 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
           approach,
           example_messages: examples,
           goal,
+          api_key: editApiKey || brief.api_key,
         }),
       })
       if (!res.ok) throw new Error('Erreur')
