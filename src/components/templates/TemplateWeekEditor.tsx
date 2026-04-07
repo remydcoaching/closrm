@@ -9,12 +9,12 @@ interface TemplateWeekEditorProps {
   onChange: (blocks: TemplateBlock[]) => void
 }
 
-const CELL_HEIGHT = 28
+const CELL_HEIGHT = 30
 const START_HOUR = 6
 const END_HOUR = 23
 const SLOTS_COUNT = (END_HOUR - START_HOUR) * 2 // 34 half-hour slots
 const TOTAL_HEIGHT = SLOTS_COUNT * CELL_HEIGHT
-const HOUR_COL_WIDTH = 52
+const HOUR_COL_WIDTH = 72
 
 const DAY_KEYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -222,9 +222,9 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
                   }}>
                     {isFullHour && (
                       <span style={{
-                        position: 'absolute', top: -7, right: 6,
-                        fontSize: 9, fontWeight: 600, lineHeight: 1,
-                        color: 'var(--text-secondary)', fontFamily: 'monospace',
+                        position: 'absolute', top: -8, right: 10,
+                        fontSize: 11, fontWeight: 500, lineHeight: 1,
+                        color: 'var(--text-secondary)',
                         background: '#0d0d0d', paddingTop: 2, paddingBottom: 2,
                       }}>
                         {String(hour).padStart(2, '0')}:00
