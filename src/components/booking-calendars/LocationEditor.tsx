@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, Trash2, MapPin, Video, Info } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { MapPin, Video, Link as LinkIcon, Info, AlertTriangle, Plus, X, Check } from 'lucide-react'
 import { BookingLocation } from '@/types'
+
+type LocationMode = 'in_person' | 'google_meet' | 'custom_link'
 
 interface LocationEditorProps {
   selectedLocationIds: string[]
@@ -22,6 +24,33 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 }
 
+function locationToMode(loc: BookingLocation): LocationMode {
+  if (loc.location_type === 'in_person') return 'in_person'
+  if (loc.address && loc.address.trim().length > 0) return 'custom_link'
+  return 'google_meet'
+}
+
+const CARDS: { mode: LocationMode; label: string; description: string; icon: React.ReactNode }[] = [
+  {
+    mode: 'in_person',
+    label: 'Présentiel',
+    description: 'Rendez-vous en personne à une adresse physique',
+    icon: <MapPin size={20} />,
+  },
+  {
+    mode: 'google_meet',
+    label: 'Google Meet',
+    description: 'Lien Meet généré automatiquement',
+    icon: <Video size={20} />,
+  },
+  {
+    mode: 'custom_link',
+    label: 'Visio personnalisée',
+    description: 'Zoom, Teams ou autre lien de visio',
+    icon: <LinkIcon size={20} />,
+  },
+]
+
 export default function LocationEditor({
   selectedLocationIds,
   onChange,
@@ -29,11 +58,28 @@ export default function LocationEditor({
 }: LocationEditorProps) {
   const [locations, setLocations] = useState<BookingLocation[]>([])
   const [loading, setLoading] = useState(true)
-  const [showCreate, setShowCreate] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newAddress, setNewAddress] = useState('')
-  const [newLocationType, setNewLocationType] = useState<'in_person' | 'online'>('in_person')
-  const [creating, setCreating] = useState(false)
+  const [newPlaceName, setNewPlaceName] = useState('')
+  const [newPlaceAddress, setNewPlaceAddress] = useState('')
+  const [showAddPlace, setShowAddPlace] = useState(false)
+  const [customLink, setCustomLink] = useState('')
+  const [forcedMode, setForcedMode] = useState<LocationMode | null>(null)
+
+  // Determine active mode from selected locations or forced mode
+  const selectedLocations = locations.filter((l) => selectedLocationIds.includes(l.id))
+  const derivedMode: LocationMode | null = selectedLocations.length > 0
+    ? locationToMode(selectedLocations[0])
+    : null
+  const activeMode = forcedMode ?? derivedMode
+
+  // All in_person locations available in the workspace
+  const inPersonLocations = locations.filter((l) => l.location_type === 'in_person')
+
+  // Sync custom link field when selection changes
+  useEffect(() => {
+    if (activeMode === 'custom_link' && selectedLocations.length > 0) {
+      setCustomLink(selectedLocations[0].address ?? '')
+    }
+  }, [activeMode, selectedLocations])
 
   useEffect(() => {
     fetchLocations()
@@ -53,237 +99,441 @@ export default function LocationEditor({
     }
   }
 
-  async function handleCreate() {
-    if (!newName.trim()) return
-    setCreating(true)
-    try {
+  const selectMode = useCallback(
+    async (mode: LocationMode) => {
+      setForcedMode(mode)
+
+      if (mode === 'in_person') {
+        // Keep currently selected in_person ids, don't auto-select all
+        const currentInPerson = selectedLocationIds.filter((id) => {
+          const loc = locations.find((l) => l.id === id)
+          return loc && loc.location_type === 'in_person'
+        })
+        onChange(currentInPerson)
+        // If no places exist yet, open the add form automatically
+        if (inPersonLocations.length === 0) {
+          setShowAddPlace(true)
+        }
+        return
+      }
+
+      // For google_meet and custom_link: find or create a single location
+      const locationType: 'in_person' | 'online' = 'online'
+      const locationAddress: string | null = mode === 'custom_link' ? (customLink || null) : null
+      const locationName = mode === 'google_meet' ? 'Google Meet' : 'Visio personnalisée'
+
+      const existing = locations.find((l) => locationToMode(l) === mode)
+      if (existing) {
+        onChange([existing.id])
+        return
+      }
+
       const res = await fetch('/api/booking-locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newName.trim(),
-          address: newAddress.trim() || null,
-          location_type: newLocationType,
-        }),
+        body: JSON.stringify({ name: locationName, address: locationAddress, location_type: locationType }),
       })
       if (res.ok) {
         const json = await res.json()
         const created = json.data as BookingLocation
         setLocations((prev) => [...prev, created])
-        onChange([...selectedLocationIds, created.id])
-        setNewName('')
-        setNewAddress('')
-        setNewLocationType('in_person')
-        setShowCreate(false)
+        onChange([created.id])
       }
-    } catch {
-      // ignore
-    } finally {
-      setCreating(false)
-    }
+    },
+    [locations, inPersonLocations, customLink, onChange]
+  )
+
+  // Toggle a single in_person location on/off
+  function toggleInPersonLocation(locId: string) {
+    const current = selectedLocationIds.filter((id) => {
+      const loc = locations.find((l) => l.id === id)
+      return loc && loc.location_type === 'in_person'
+    })
+    const isSelected = current.includes(locId)
+    const next = isSelected
+      ? current.filter((id) => id !== locId)
+      : [...current, locId]
+    onChange(next)
   }
 
-  async function handleDelete(id: string) {
-    const res = await fetch(`/api/booking-locations/${id}`, { method: 'DELETE' })
+  async function addNewPlace() {
+    if (!newPlaceName.trim()) return
+    const res = await fetch('/api/booking-locations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: newPlaceName.trim(),
+        address: newPlaceAddress.trim() || null,
+        location_type: 'in_person',
+      }),
+    })
     if (res.ok) {
-      setLocations((prev) => prev.filter((l) => l.id !== id))
-      onChange(selectedLocationIds.filter((lid) => lid !== id))
+      const json = await res.json()
+      const created = json.data as BookingLocation
+      setLocations((prev) => [...prev, created])
+      // Auto-select the new location
+      onChange([...selectedLocationIds, created.id])
+      setNewPlaceName('')
+      setNewPlaceAddress('')
+      setShowAddPlace(false)
     }
   }
 
-  function toggleLocation(id: string) {
-    if (selectedLocationIds.includes(id)) {
-      onChange(selectedLocationIds.filter((lid) => lid !== id))
-    } else {
-      onChange([...selectedLocationIds, id])
+  async function removePlace(locId: string) {
+    const res = await fetch(`/api/booking-locations/${locId}`, { method: 'DELETE' })
+    if (res.ok) {
+      setLocations((prev) => prev.filter((l) => l.id !== locId))
+      onChange(selectedLocationIds.filter((id) => id !== locId))
     }
   }
+
+  const handleCustomLinkBlur = useCallback(async () => {
+    if (activeMode !== 'custom_link' || selectedLocations.length === 0) return
+    const loc = selectedLocations[0]
+    if (loc.address === customLink) return
+    await fetch(`/api/booking-locations/${loc.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address: customLink }),
+    })
+    setLocations((prev) =>
+      prev.map((l) => (l.id === loc.id ? { ...l, address: customLink } : l))
+    )
+  }, [activeMode, selectedLocations, customLink])
 
   if (loading) {
-    return <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Chargement des lieux...</div>
+    return <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Chargement...</div>
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {locations.map((loc) => {
-        const isSelected = selectedLocationIds.includes(loc.id)
-        const isOnline = loc.location_type === 'online'
-        return (
-          <div
-            key={loc.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '10px 12px',
-              borderRadius: 8,
-              border: `1px solid ${isSelected ? 'var(--color-primary, #E53E3E)' : 'var(--border-primary)'}`,
-              background: isSelected ? 'rgba(229,62,62,0.06)' : 'transparent',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-            onClick={() => toggleLocation(loc.id)}
-          >
-            <div style={{ color: isOnline ? '#3b82f6' : 'var(--text-secondary)', flexShrink: 0 }}>
-              {isOnline ? <Video size={16} /> : <MapPin size={16} />}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {loc.name}
-                <span style={{
-                  fontSize: 11, fontWeight: 400, marginLeft: 6,
-                  color: isOnline ? '#3b82f6' : 'var(--text-muted)',
-                }}>
-                  {isOnline ? 'En ligne' : 'Presentiel'}
-                </span>
-              </div>
-              {loc.address && !isOnline && (
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{loc.address}</div>
-              )}
-            </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+        Comment se dérouleront les rendez-vous ?
+      </p>
+
+      {/* 3 selectable cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {CARDS.map((card) => {
+          const isSelected = activeMode === card.mode
+          return (
             <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDelete(loc.id)
-              }}
+              key={card.mode}
+              type="button"
+              onClick={() => selectMode(card.mode)}
               style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-muted)', padding: 4, flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                padding: '14px 16px',
+                borderRadius: 10,
+                border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--border-primary)'}`,
+                background: isSelected ? 'rgba(var(--color-primary-rgb, 0,200,83), 0.06)' : 'transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                textAlign: 'left',
+                width: '100%',
               }}
-              aria-label="Supprimer le lieu"
             >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        )
-      })}
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  background: isSelected ? 'rgba(var(--color-primary-rgb, 0,200,83), 0.12)' : 'var(--bg-active, rgba(255,255,255,0.04))',
+                  color: isSelected
+                    ? 'var(--color-primary)'
+                    : card.mode === 'google_meet'
+                      ? '#3b82f6'
+                      : card.mode === 'custom_link'
+                        ? '#a78bfa'
+                        : 'var(--text-secondary)',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {card.icon}
+              </div>
 
-      {!showCreate && (
-        <button
-          onClick={() => setShowCreate(true)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'none', border: '1px dashed var(--border-primary)',
-            borderRadius: 8, padding: '10px 12px', cursor: 'pointer',
-            color: 'var(--text-secondary)', fontSize: 13,
-          }}
-        >
-          <Plus size={14} /> Ajouter un lieu
-        </button>
-      )}
-
-      {showCreate && (
-        <div
-          style={{
-            border: '1px solid var(--border-primary)',
-            borderRadius: 8,
-            padding: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
-        >
-          {/* Location type toggle */}
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
-              Type de lieu
-            </label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {([
-                { value: 'in_person' as const, label: 'Presentiel', icon: <MapPin size={14} /> },
-                { value: 'online' as const, label: 'En ligne', icon: <Video size={14} /> },
-              ]).map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setNewLocationType(opt.value)}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '7px 14px', borderRadius: 8, fontSize: 13,
-                    cursor: 'pointer', transition: 'all 0.15s',
-                    border: `1px solid ${newLocationType === opt.value ? 'var(--color-primary, #E53E3E)' : 'var(--border-primary)'}`,
-                    background: newLocationType === opt.value ? 'rgba(229,62,62,0.08)' : 'transparent',
-                    color: newLocationType === opt.value ? 'var(--color-primary, #E53E3E)' : 'var(--text-secondary)',
-                    fontWeight: newLocationType === opt.value ? 600 : 400,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: isSelected ? 'var(--color-primary)' : 'var(--text-primary)',
+                    marginBottom: 2,
                   }}
                 >
-                  {opt.icon} {opt.label}
-                </button>
-              ))}
+                  {card.label}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                  {card.description}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  border: `2px solid ${isSelected ? 'var(--color-primary)' : 'var(--border-primary)'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'all 0.15s',
+                }}
+              >
+                {isSelected && (
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: 'var(--color-primary)',
+                    }}
+                  />
+                )}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* In-person: multi-location picker */}
+      {activeMode === 'in_person' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 4 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block' }}>
+            Lieux disponibles
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> — le prospect pourra choisir</span>
+          </label>
+
+          {inPersonLocations.length === 0 && !showAddPlace && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              Aucun lieu ajouté. Ajoutez vos adresses ci-dessous.
             </div>
-          </div>
+          )}
 
-          {/* Name */}
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
-              Nom
-            </label>
-            <input
-              type="text"
-              placeholder={newLocationType === 'online' ? 'Ex: Google Meet' : 'Ex: Bureau Paris'}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
+          {/* Existing in-person locations as checkboxes */}
+          {inPersonLocations.map((loc) => {
+            const isChecked = selectedLocationIds.includes(loc.id)
+            return (
+              <div
+                key={loc.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--border-primary)'}`,
+                  background: isChecked ? 'rgba(var(--color-primary-rgb, 0,200,83), 0.04)' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onClick={() => toggleInPersonLocation(loc.id)}
+              >
+                {/* Checkbox */}
+                <div style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 4,
+                  border: `2px solid ${isChecked ? 'var(--color-primary)' : 'var(--border-primary)'}`,
+                  background: isChecked ? 'var(--color-primary)' : 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'all 0.15s',
+                }}>
+                  {isChecked && <Check size={12} color="#000" strokeWidth={3} />}
+                </div>
 
-          {/* Address — only for in_person */}
-          {newLocationType === 'in_person' && (
-            <div>
-              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
-                Adresse <span style={{ color: 'var(--text-muted)' }}>(optionnel)</span>
-              </label>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{loc.name}</div>
+                  {loc.address && (
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{loc.address}</div>
+                  )}
+                </div>
+
+                {/* Delete button */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); removePlace(loc.id) }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    padding: 4,
+                    borderRadius: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="Supprimer ce lieu"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )
+          })}
+
+          {/* Add new place form */}
+          {showAddPlace ? (
+            <div style={{
+              padding: 12,
+              borderRadius: 8,
+              border: '1px solid var(--border-primary)',
+              background: 'var(--bg-elevated)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}>
               <input
                 type="text"
-                placeholder="123 Rue de la Paix, Paris"
-                value={newAddress}
-                onChange={(e) => setNewAddress(e.target.value)}
+                placeholder="Nom du lieu (ex: Fitness Park Lampertheim)"
+                value={newPlaceName}
+                onChange={(e) => setNewPlaceName(e.target.value)}
+                style={inputStyle}
+                autoFocus
+              />
+              <input
+                type="text"
+                placeholder="Adresse (optionnel)"
+                value={newPlaceAddress}
+                onChange={(e) => setNewPlaceAddress(e.target.value)}
                 style={inputStyle}
               />
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddPlace(false); setNewPlaceName(''); setNewPlaceAddress('') }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    border: '1px solid var(--border-primary)',
+                    background: 'transparent',
+                    color: 'var(--text-tertiary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={addNewPlace}
+                  disabled={!newPlaceName.trim()}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    border: 'none',
+                    background: newPlaceName.trim() ? 'var(--color-primary)' : 'var(--border-primary)',
+                    color: newPlaceName.trim() ? '#000' : 'var(--text-muted)',
+                    cursor: newPlaceName.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Ajouter
+                </button>
+              </div>
             </div>
-          )}
-
-          {/* Info message for online without Google Calendar */}
-          {newLocationType === 'online' && !googleCalendarConnected && (
-            <div style={{
-              display: 'flex', alignItems: 'flex-start', gap: 8,
-              padding: '10px 12px', borderRadius: 8,
-              background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
-              fontSize: 12, color: '#3b82f6', lineHeight: 1.5,
-            }}>
-              <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span>
-                Connectez Google Calendar dans les parametres pour generer automatiquement un lien Google Meet pour vos rendez-vous en ligne.
-              </span>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          ) : (
             <button
               type="button"
-              onClick={() => { setShowCreate(false); setNewName(''); setNewAddress(''); setNewLocationType('in_person') }}
+              onClick={() => setShowAddPlace(true)}
               style={{
-                background: 'none', border: '1px solid var(--border-primary)',
-                borderRadius: 8, padding: '7px 14px', fontSize: 13,
-                color: 'var(--text-secondary)', cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: '1px dashed var(--border-primary)',
+                background: 'transparent',
+                color: 'var(--text-tertiary)',
+                cursor: 'pointer',
+                fontSize: 12,
+                transition: 'all 0.15s',
               }}
             >
-              Annuler
+              <Plus size={14} />
+              Ajouter un lieu
             </button>
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={creating || !newName.trim()}
-              style={{
-                background: 'var(--color-primary, #E53E3E)', border: 'none',
-                borderRadius: 8, padding: '7px 16px', fontSize: 13, fontWeight: 600,
-                color: '#fff', cursor: creating ? 'not-allowed' : 'pointer',
-                opacity: creating || !newName.trim() ? 0.5 : 1,
-              }}
+          )}
+        </div>
+      )}
+
+      {activeMode === 'google_meet' && !googleCalendarConnected && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+            padding: '10px 12px',
+            borderRadius: 8,
+            background: 'rgba(214,158,46,0.06)',
+            border: '1px solid rgba(214,158,46,0.2)',
+            fontSize: 12,
+            color: '#D69E2E',
+            lineHeight: 1.5,
+          }}
+        >
+          <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>
+            Google Calendar n&apos;est pas connecté. Connectez-le dans{' '}
+            <a
+              href="/parametres/integrations"
+              style={{ color: '#D69E2E', textDecoration: 'underline', fontWeight: 500 }}
             >
-              {creating ? 'Ajout...' : 'Ajouter'}
-            </button>
-          </div>
+              Paramètres &gt; Intégrations
+            </a>{' '}
+            pour générer automatiquement un lien Google Meet.
+          </span>
+        </div>
+      )}
+
+      {activeMode === 'google_meet' && googleCalendarConnected && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+            padding: '10px 12px',
+            borderRadius: 8,
+            background: 'rgba(56,161,105,0.06)',
+            border: '1px solid rgba(56,161,105,0.2)',
+            fontSize: 12,
+            color: '#38A169',
+            lineHeight: 1.5,
+          }}
+        >
+          <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>
+            Un lien Google Meet sera généré automatiquement pour chaque réservation.
+          </span>
+        </div>
+      )}
+
+      {activeMode === 'custom_link' && (
+        <div style={{ paddingLeft: 4 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+            Lien de la visio
+          </label>
+          <input
+            type="url"
+            placeholder="https://zoom.us/j/123456789"
+            value={customLink}
+            onChange={(e) => setCustomLink(e.target.value)}
+            onBlur={handleCustomLinkBlur}
+            style={inputStyle}
+          />
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+            Ce lien sera partagé avec le prospect lors de la réservation
+          </span>
         </div>
       )}
     </div>

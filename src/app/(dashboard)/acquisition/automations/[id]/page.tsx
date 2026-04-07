@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Play, Pause, Loader2, FlaskConical, History } from 'lucide-react'
+import { ArrowLeft, Save, Play, Pause, Loader2, FlaskConical, ChevronLeft } from 'lucide-react'
 import { Workflow, WorkflowStep, WorkflowStepType } from '@/types'
 import WorkflowBuilder from '@/components/automations/WorkflowBuilder'
+import WorkflowStatusBadge from '@/components/automations/WorkflowStatusBadge'
 import TriggerConfigPanel from '@/components/automations/TriggerConfigPanel'
 import ActionConfigPanel from '@/components/automations/ActionConfigPanel'
 import DelayConfigPanel from '@/components/automations/DelayConfigPanel'
@@ -12,6 +13,14 @@ import ConditionConfigPanel from '@/components/automations/ConditionConfigPanel'
 import WaitForEventConfigPanel from '@/components/automations/WaitForEventConfigPanel'
 import ExecutionHistoryPanel from '@/components/automations/ExecutionHistoryPanel'
 import DryRunDialog from '@/components/automations/DryRunDialog'
+
+type RightTab = 'config' | 'history' | 'settings'
+
+const TAB_CONFIG: { key: RightTab; label: string }[] = [
+  { key: 'config', label: 'Configuration' },
+  { key: 'history', label: 'Historique' },
+  { key: 'settings', label: 'Parametres' },
+]
 
 export default function WorkflowEditorPage() {
   const params = useParams()
@@ -27,7 +36,9 @@ export default function WorkflowEditorPage() {
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState('')
   const [showDryRun, setShowDryRun] = useState(false)
-  const [rightPanelTab, setRightPanelTab] = useState<'config' | 'history' | 'settings'>('config')
+  const [rightPanelTab, setRightPanelTab] = useState<RightTab>('config')
+  const [saveBtnHovered, setSaveBtnHovered] = useState(false)
+  const [testBtnHovered, setTestBtnHovered] = useState(false)
 
   const fetchWorkflow = useCallback(async () => {
     try {
@@ -54,7 +65,6 @@ export default function WorkflowEditorPage() {
     if (!workflow) return
     setSaving(true)
     try {
-      // Save workflow metadata
       await fetch(`/api/workflows/${workflowId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -67,7 +77,6 @@ export default function WorkflowEditorPage() {
         }),
       })
 
-      // Save each step's config
       for (const step of steps) {
         await fetch(`/api/workflows/${workflowId}/steps/${step.id}`, {
           method: 'PATCH',
@@ -107,7 +116,7 @@ export default function WorkflowEditorPage() {
         )
       }
     } catch {
-      console.error('Erreur activation/désactivation')
+      console.error('Erreur activation/desactivation')
     }
   }
 
@@ -135,20 +144,17 @@ export default function WorkflowEditorPage() {
     }
 
     try {
-      console.log('Adding step:', JSON.stringify(newStep))
       const res = await fetch(`/api/workflows/${workflowId}/steps`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newStep),
       })
-      const resBody = await res.json()
-      console.log('Add step response:', res.status, JSON.stringify(resBody))
       if (res.ok) {
         await fetchWorkflow()
         setHasUnsavedChanges(true)
       }
     } catch (err) {
-      console.error('Erreur ajout étape', err)
+      console.error('Erreur ajout etape', err)
     }
   }
 
@@ -163,7 +169,7 @@ export default function WorkflowEditorPage() {
         setHasUnsavedChanges(true)
       }
     } catch {
-      console.error('Erreur suppression étape')
+      console.error('Erreur suppression etape')
     }
   }
 
@@ -176,10 +182,11 @@ export default function WorkflowEditorPage() {
           justifyContent: 'center',
           height: '100vh',
           color: 'var(--text-tertiary)',
+          gap: 10,
         }}
       >
-        <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
-        <span style={{ marginLeft: 8, fontSize: 14 }}>Chargement...</span>
+        <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+        <span style={{ fontSize: 14 }}>Chargement du workflow...</span>
       </div>
     )
   }
@@ -189,14 +196,34 @@ export default function WorkflowEditorPage() {
       <div
         style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           height: '100vh',
-          color: 'var(--text-tertiary)',
-          fontSize: 14,
+          gap: 16,
         }}
       >
-        Workflow introuvable
+        <div style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
+          Workflow introuvable
+        </div>
+        <button
+          onClick={() => router.push('/acquisition/automations')}
+          style={{
+            background: 'var(--bg-hover)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 8,
+            padding: '8px 16px',
+            color: 'var(--text-secondary)',
+            fontSize: 13,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <ChevronLeft size={14} />
+          Retour aux automations
+        </button>
       </div>
     )
   }
@@ -211,18 +238,19 @@ export default function WorkflowEditorPage() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '16px 24px',
+          padding: '14px 24px',
           borderBottom: '1px solid var(--border-primary)',
           flexShrink: 0,
+          background: 'var(--bg-elevated)',
         }}
       >
-        {/* Left: back + name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Left: back + name + badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/acquisition/automations')}
             style={{
-              width: 32,
-              height: 32,
+              width: 34,
+              height: 34,
               borderRadius: 8,
               border: '1px solid var(--border-primary)',
               background: 'transparent',
@@ -231,10 +259,16 @@ export default function WorkflowEditorPage() {
               justifyContent: 'center',
               cursor: 'pointer',
               color: 'var(--text-tertiary)',
+              transition: 'all 0.15s',
             }}
           >
             <ArrowLeft size={16} />
           </button>
+
+          <div style={{
+            width: 1, height: 24,
+            background: 'var(--border-primary)',
+          }} />
 
           {editingName ? (
             <input
@@ -246,76 +280,86 @@ export default function WorkflowEditorPage() {
               onBlur={() => setEditingName(false)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') setEditingName(false)
+                if (e.key === 'Escape') { setNameValue(workflow.name); setEditingName(false) }
               }}
               autoFocus
               style={{
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: 600,
-                background: 'transparent',
+                background: 'var(--bg-input)',
                 color: 'var(--text-primary)',
                 border: '1px solid var(--border-primary)',
-                borderRadius: 6,
-                padding: '4px 8px',
+                borderRadius: 8,
+                padding: '6px 10px',
                 outline: 'none',
-                minWidth: 200,
+                minWidth: 240,
               }}
             />
           ) : (
             <span
               onClick={() => setEditingName(true)}
               style={{
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: 600,
                 color: 'var(--text-primary)',
                 cursor: 'text',
+                padding: '6px 2px',
+                borderRadius: 6,
+                transition: 'background 0.15s',
               }}
+              title="Cliquer pour modifier le nom"
             >
               {nameValue}
             </span>
           )}
-        </div>
 
-        {/* Right: status + buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <WorkflowStatusBadge status={workflow.status} />
+
           {hasUnsavedChanges && (
             <span
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: 5,
                 fontSize: 11,
                 color: '#D69E2E',
+                fontWeight: 500,
               }}
             >
               <span
                 style={{
-                  width: 6,
-                  height: 6,
+                  width: 5,
+                  height: 5,
                   borderRadius: '50%',
                   background: '#D69E2E',
-                  display: 'inline-block',
                 }}
               />
-              Brouillon
+              Non sauvegarde
             </span>
           )}
+        </div>
 
+        {/* Right: buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={handleSave}
             disabled={saving}
+            onMouseEnter={() => setSaveBtnHovered(true)}
+            onMouseLeave={() => setSaveBtnHovered(false)}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: 'var(--border-primary)',
+              background: saveBtnHovered ? 'var(--bg-hover)' : 'var(--bg-primary)',
               color: 'var(--text-primary)',
               borderRadius: 8,
               padding: '8px 16px',
-              border: 'none',
+              border: '1px solid var(--border-primary)',
               fontSize: 13,
               fontWeight: 500,
               cursor: saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.6 : 1,
+              transition: 'all 0.15s',
             }}
           >
             {saving ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={14} />}
@@ -324,11 +368,13 @@ export default function WorkflowEditorPage() {
 
           <button
             onClick={() => setShowDryRun(true)}
+            onMouseEnter={() => setTestBtnHovered(true)}
+            onMouseLeave={() => setTestBtnHovered(false)}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: 'transparent',
+              background: testBtnHovered ? 'rgba(214,158,46,0.08)' : 'transparent',
               color: 'var(--text-secondary)',
               borderRadius: 8,
               padding: '8px 16px',
@@ -336,6 +382,7 @@ export default function WorkflowEditorPage() {
               fontSize: 13,
               fontWeight: 500,
               cursor: 'pointer',
+              transition: 'all 0.15s',
             }}
           >
             <FlaskConical size={14} />
@@ -348,18 +395,21 @@ export default function WorkflowEditorPage() {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: workflow.status === 'actif' ? 'rgba(214,158,46,0.2)' : 'var(--color-primary)',
-              color: workflow.status === 'actif' ? '#D69E2E' : '#000',
+              background: workflow.status === 'actif'
+                ? 'rgba(214,158,46,0.12)'
+                : '#E53E3E',
+              color: workflow.status === 'actif' ? '#D69E2E' : '#fff',
               borderRadius: 8,
-              padding: '8px 16px',
-              border: 'none',
+              padding: '8px 18px',
+              border: workflow.status === 'actif' ? '1px solid rgba(214,158,46,0.25)' : 'none',
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
+              transition: 'all 0.15s',
             }}
           >
             {workflow.status === 'actif' ? <Pause size={14} /> : <Play size={14} />}
-            {workflow.status === 'actif' ? 'Désactiver' : 'Activer'}
+            {workflow.status === 'actif' ? 'Desactiver' : 'Activer'}
           </button>
         </div>
       </div>
@@ -367,7 +417,11 @@ export default function WorkflowEditorPage() {
       {/* Main content */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Left: builder canvas */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          background: 'var(--bg-primary)',
+        }}>
           <WorkflowBuilder
             workflow={workflow}
             steps={steps}
@@ -386,9 +440,9 @@ export default function WorkflowEditorPage() {
         {/* Right: config panel with tabs */}
         <div
           style={{
-            width: 360,
+            width: 380,
             borderLeft: '1px solid var(--border-primary)',
-            background: 'var(--bg-secondary)',
+            background: 'var(--bg-elevated)',
             overflowY: 'auto',
             flexShrink: 0,
             display: 'flex',
@@ -396,29 +450,30 @@ export default function WorkflowEditorPage() {
           }}
         >
           {/* Tab bar */}
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border-primary)', flexShrink: 0 }}>
-            {([
-              { key: 'config' as const, label: 'Config' },
-              { key: 'history' as const, label: 'Historique', icon: History },
-              { key: 'settings' as const, label: 'Parametres' },
-            ]).map(tab => (
+          <div style={{
+            display: 'flex',
+            borderBottom: '1px solid var(--border-primary)',
+            flexShrink: 0,
+            padding: '0 4px',
+          }}>
+            {TAB_CONFIG.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setRightPanelTab(tab.key)}
                 style={{
                   flex: 1,
-                  padding: '10px 8px',
+                  padding: '12px 8px',
                   background: 'transparent',
                   border: 'none',
-                  borderBottom: rightPanelTab === tab.key ? '2px solid var(--color-primary)' : '2px solid transparent',
-                  color: rightPanelTab === tab.key ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  borderBottom: rightPanelTab === tab.key
+                    ? '2px solid #E53E3E'
+                    : '2px solid transparent',
+                  color: rightPanelTab === tab.key ? 'var(--text-primary)' : 'var(--text-label)',
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
+                  transition: 'all 0.15s',
+                  letterSpacing: '0.01em',
                 }}
               >
                 {tab.label}
@@ -473,8 +528,25 @@ export default function WorkflowEditorPage() {
                     />
                   )
                 ) : (
-                  <div style={{ fontSize: 13, color: 'var(--text-label)' }}>
-                    Selectionnez un element pour le configurer.
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '40px 20px',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{
+                      width: 48, height: 48, borderRadius: 12,
+                      background: 'var(--bg-hover)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      marginBottom: 12,
+                    }}>
+                      <FlaskConical size={20} style={{ color: 'var(--text-label)' }} />
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                      Selectionnez un element du workflow pour le configurer.
+                    </div>
                   </div>
                 )}
               </>
@@ -486,11 +558,56 @@ export default function WorkflowEditorPage() {
 
             {rightPanelTab === 'settings' && (
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20 }}>
+                <div style={{
+                  fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20,
+                }}>
                   Parametres du workflow
                 </div>
 
+                {/* Description */}
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{
+                    fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)',
+                    marginBottom: 6, display: 'block',
+                  }}>
+                    Description
+                  </label>
+                  <textarea
+                    value={workflow.description ?? ''}
+                    onChange={(e) => {
+                      setWorkflow(prev => prev ? { ...prev, description: e.target.value } : prev)
+                      setHasUnsavedChanges(true)
+                    }}
+                    placeholder="Decrivez ce que fait ce workflow..."
+                    style={{
+                      background: 'var(--bg-input)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      color: 'var(--text-primary)',
+                      fontSize: 13,
+                      width: '100%',
+                      minHeight: 60,
+                      resize: 'vertical' as const,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
+                {/* Separator */}
+                <div style={{
+                  borderTop: '1px solid var(--border-primary)',
+                  margin: '20px 0',
+                }} />
+
                 {/* Notify on failure */}
+                <div style={{
+                  fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
+                  marginBottom: 14,
+                }}>
+                  Notifications
+                </div>
+
                 <div style={{ marginBottom: 16 }}>
                   <label
                     style={{
@@ -512,21 +629,22 @@ export default function WorkflowEditorPage() {
                         height: 18,
                         borderRadius: 4,
                         border: workflow.notify_on_failure
-                          ? '1px solid var(--color-primary)'
+                          ? '1px solid #E53E3E'
                           : '1px solid var(--border-primary)',
                         background: workflow.notify_on_failure
-                          ? 'rgba(229,62,62,0.2)'
+                          ? 'rgba(229,62,62,0.15)'
                           : 'var(--bg-hover)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
                         cursor: 'pointer',
+                        transition: 'all 0.15s',
                       }}
                     >
                       {workflow.notify_on_failure && (
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2.5 6L5 8.5L9.5 3.5" stroke="var(--color-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M2.5 6L5 8.5L9.5 3.5" stroke="#E53E3E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
                     </div>
@@ -535,8 +653,11 @@ export default function WorkflowEditorPage() {
                 </div>
 
                 {workflow.notify_on_failure && (
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, display: 'block' }}>
+                  <div style={{ marginBottom: 14, paddingLeft: 28 }}>
+                    <label style={{
+                      fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)',
+                      marginBottom: 6, display: 'block',
+                    }}>
                       Canal de notification
                     </label>
                     <select
@@ -553,6 +674,7 @@ export default function WorkflowEditorPage() {
                         color: 'var(--text-primary)',
                         fontSize: 13,
                         width: '100%',
+                        appearance: 'none' as const,
                       }}
                     >
                       <option value="">Selectionner...</option>

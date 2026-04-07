@@ -182,7 +182,25 @@ export function BookingDetailPanel({
                 </a>
               </div>
             )}
-            {!booking.meet_url && booking.location?.location_type === 'online' && (
+            {!booking.meet_url && booking.location?.location_type === 'online' && booking.location.address && (
+              <div>
+                <a
+                  href={booking.location.address}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '8px 16px', borderRadius: 8,
+                    background: 'rgba(167,139,250,0.12)', border: '1px solid #a78bfa',
+                    color: '#a78bfa', fontSize: 13, fontWeight: 600,
+                    textDecoration: 'none', cursor: 'pointer', transition: 'opacity 0.15s',
+                  }}
+                >
+                  <Video size={15} /> Rejoindre la visio
+                </a>
+              </div>
+            )}
+            {!booking.meet_url && booking.location?.location_type === 'online' && !booking.location.address && (
               <div style={{
                 background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
                 borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#3b82f6',

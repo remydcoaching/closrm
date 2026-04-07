@@ -44,6 +44,7 @@ export const createBookingCalendarSchema = z.object({
     friday: [], saturday: [], sunday: [],
   }),
   buffer_minutes: z.number().int().min(0).max(120).default(0),
+  location_ids: z.array(z.string().uuid()).default([]),
   is_active: z.boolean().default(true),
 })
 

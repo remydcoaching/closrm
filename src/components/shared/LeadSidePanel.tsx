@@ -216,6 +216,26 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                 </div>
               )}
             </div>
+
+            {/* Supprimer */}
+            <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-primary)' }}>
+              <button onClick={async () => {
+                if (!confirm('Supprimer definitivement ce lead et toutes ses donnees (appels, follow-ups, notes) ? Cette action est irreversible.')) return
+                const res = await fetch(`/api/leads/${leadId}`, { method: 'DELETE' })
+                if (res.ok) {
+                  onClose()
+                  window.location.reload()
+                }
+              }} style={{
+                display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center',
+                padding: '10px 0', borderRadius: 10, fontSize: 12, fontWeight: 500,
+                border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)',
+                color: '#ef4444', cursor: 'pointer',
+              }}>
+                <Trash2 size={13} />
+                Supprimer definitivement ce lead
+              </button>
+            </div>
           </div>
         )}
       </div>

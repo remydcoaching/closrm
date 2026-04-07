@@ -125,10 +125,12 @@ export type WorkflowTriggerType =
   | 'new_follower'
   | 'dm_keyword'
   | 'comment_keyword'
-  // BOOKING
+  // BOOKING / RENDEZ-VOUS
   | 'booking_created'
   | 'booking_cancelled'
   | 'booking_no_show'
+  | 'booking_completed'
+  | 'booking_in_x_hours'
 
 export type WorkflowActionType =
   | 'send_email'

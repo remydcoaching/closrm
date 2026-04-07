@@ -1,159 +1,215 @@
 'use client'
 
-import { X, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { X, RotateCcw, MessageCircle, Plus, Check } from 'lucide-react'
 import { LeadSource } from '@/types'
-import { WorkflowInlineStep, WORKFLOW_TEMPLATES_BY_SOURCE } from '@/lib/leads/workflow-templates'
-import { useEffect, useRef } from 'react'
+import { WorkflowInlineStep } from '@/lib/leads/workflow-templates'
 
-interface InlineWorkflowEditorProps {
+interface Props {
   source: LeadSource
   steps: WorkflowInlineStep[]
   onStepsChange: (steps: WorkflowInlineStep[]) => void
 }
 
-const CHANNEL_COLORS: Record<string, string> = {
-  whatsapp: '#22c55e',
-  email: '#3b82f6',
-  instagram_dm: '#e879f9',
-  manuel: '#6b7280',
+const CHANNEL_FOR_SOURCE: Record<string, 'whatsapp' | 'email' | 'instagram_dm' | 'manuel'> = {
+  instagram_ads: 'instagram_dm',
+  follow_ads: 'instagram_dm',
+  facebook_ads: 'whatsapp',
+  formulaire: 'email',
+  funnel: 'email',
+  manuel: 'manuel',
 }
 
-const CHANNEL_LABELS: Record<string, string> = {
-  whatsapp: 'WhatsApp',
-  email: 'Email',
-  instagram_dm: 'Instagram DM',
-  manuel: 'Manuel',
-}
+export default function InlineWorkflowEditor({ source, steps, onStepsChange }: Props) {
+  const [relanceDays, setRelanceDays] = useState<number | null>(null)
+  const [relanceCustom, setRelanceCustom] = useState(5)
+  const [relanceReason, setRelanceReason] = useState('')
+  const [nurturingDays, setNurturingDays] = useState<number | null>(null)
+  const [nurturingCustom, setNurturingCustom] = useState(45)
+  const [nurturingReason, setNurturingReason] = useState('')
 
-const inputStyle = {
-  boxSizing: 'border-box' as const,
-  padding: '6px 10px',
-  background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-  borderRadius: 6, color: 'var(--text-primary)', fontSize: 12, outline: 'none',
-}
+  const defaultChannel = CHANNEL_FOR_SOURCE[source] ?? 'manuel'
 
-export default function InlineWorkflowEditor({ source, steps, onStepsChange }: InlineWorkflowEditorProps) {
-  const prevSource = useRef(source)
+  function addRelance() {
+    const d = relanceDays === -1 ? relanceCustom : relanceDays
+    if (!d) return
+    onStepsChange([...steps, { channel: defaultChannel, delay_days: d, template_text: relanceReason || `Relance J+${d}` }])
+    setRelanceDays(null)
+    setRelanceReason('')
+  }
 
-  useEffect(() => {
-    if (source !== prevSource.current && steps.length === 0) {
-      const templates = WORKFLOW_TEMPLATES_BY_SOURCE[source] ?? []
-      if (templates.length > 0) {
-        onStepsChange([...templates])
-      }
-    }
-    prevSource.current = source
-  }, [source, steps.length, onStepsChange])
-
-  function updateStep(index: number, field: keyof WorkflowInlineStep, value: string | number) {
-    const updated = steps.map((s, i) => i === index ? { ...s, [field]: value } : s)
-    onStepsChange(updated)
+  function addNurturing() {
+    const d = nurturingDays === -1 ? nurturingCustom : nurturingDays
+    if (!d) return
+    onStepsChange([...steps, { channel: defaultChannel, delay_days: d, template_text: nurturingReason || `Nurturing J+${d}` }])
+    setNurturingDays(null)
+    setNurturingReason('')
   }
 
   function removeStep(index: number) {
     onStepsChange(steps.filter((_, i) => i !== index))
   }
 
-  function addStep() {
-    onStepsChange([...steps, { channel: 'whatsapp', delay_days: 1, template_text: '' }])
+  const inputS: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box', padding: '8px 12px',
+    background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+    borderRadius: 10, color: 'var(--text-primary)', fontSize: 12, outline: 'none',
+  }
+
+  function Chip({ label, active, color, onClick }: { label: string; active: boolean; color: string; onClick: () => void }) {
+    const [hovered, setHovered] = useState(false)
+    return (
+      <button type="button" onClick={onClick} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{
+        padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        border: active ? `2px solid ${color}` : `1px solid ${hovered ? color + '60' : 'var(--border-primary)'}`,
+        background: active ? `${color}15` : hovered ? `${color}08` : 'transparent',
+        color: active ? color : hovered ? color : 'var(--text-tertiary)',
+        transition: 'all 0.2s',
+        boxShadow: active ? `0 0 12px ${color}20` : 'none',
+      }}>
+        {label}
+      </button>
+    )
   }
 
   return (
     <div style={{
-      border: '1px solid var(--border-primary)', borderRadius: 10,
-      padding: 14, background: 'rgba(20,20,20,0.5)',
+      border: '1px solid var(--border-primary)', borderRadius: 14,
+      background: 'linear-gradient(180deg, rgba(20,20,20,0.6) 0%, rgba(10,10,10,0.4) 100%)',
+      overflow: 'hidden',
     }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
-        Etapes du workflow
-      </p>
-
-      {steps.length === 0 && (
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>
-          Aucune etape. Cliquez ci-dessous pour en ajouter.
-        </p>
+      {/* Steps planifies */}
+      {steps.length > 0 && (
+        <div style={{ padding: '14px 16px 0 16px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Check size={12} />
+            Relances planifiees ({steps.length})
+          </div>
+          {steps.map((step, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+              borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+              marginBottom: 6, transition: 'all 0.15s',
+            }}>
+              <div style={{
+                fontSize: 11, fontWeight: 800, color: '#3b82f6', minWidth: 38, textAlign: 'center',
+                padding: '3px 0', borderRadius: 6, background: 'rgba(59,130,246,0.1)',
+              }}>
+                J+{step.delay_days}
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1, lineHeight: 1.3 }}>{step.template_text}</span>
+              <button type="button" onClick={() => removeStep(i)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                padding: 4, borderRadius: 6, opacity: 0.4, transition: 'all 0.15s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#ef4444' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = 'var(--text-muted)' }}
+              ><X size={14} /></button>
+            </div>
+          ))}
+        </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {steps.map((step, i) => {
-          const color = CHANNEL_COLORS[step.channel] ?? '#6b7280'
-          return (
-            <div key={i} style={{
-              display: 'flex', flexDirection: 'column', gap: 8,
-              padding: 10, borderRadius: 8,
-              background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {/* Channel badge */}
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-                  background: `${color}15`, color, border: `1px solid ${color}30`,
-                  whiteSpace: 'nowrap',
-                }}>
-                  {CHANNEL_LABELS[step.channel] ?? step.channel}
-                </span>
+      {/* Programmer une relance */}
+      <div style={{ padding: '14px 16px 0 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(59,130,246,0.12)' }}>
+            <RotateCcw size={13} color="#3b82f6" />
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.03em' }}>Programmer une relance</span>
+        </div>
 
-                {/* Channel select */}
-                <select
-                  value={step.channel}
-                  onChange={e => updateStep(i, 'channel', e.target.value)}
-                  style={{ ...inputStyle, flex: 1, cursor: 'pointer', minWidth: 0 }}
-                >
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="email">Email</option>
-                  <option value="instagram_dm">Instagram DM</option>
-                  <option value="manuel">Manuel</option>
-                </select>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+          {[
+            { label: 'J+1', d: 1 },
+            { label: 'J+2', d: 2 },
+            { label: 'J+7', d: 7 },
+            { label: 'J+14', d: 14 },
+            { label: 'J+30', d: 30 },
+          ].map(p => (
+            <Chip key={p.d} label={p.label} active={relanceDays === p.d} color="#3b82f6" onClick={() => setRelanceDays(relanceDays === p.d ? null : p.d)} />
+          ))}
+          <Chip label="Autre" active={relanceDays === -1} color="#3b82f6" onClick={() => setRelanceDays(relanceDays === -1 ? null : -1)} />
+        </div>
 
-                {/* Delay */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>J+</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={step.delay_days}
-                    onChange={e => updateStep(i, 'delay_days', parseInt(e.target.value) || 0)}
-                    style={{ ...inputStyle, width: 50, textAlign: 'center' }}
-                  />
-                </div>
+        {/* Custom days input */}
+        {relanceDays === -1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>J+</span>
+            <input type="number" min={1} value={relanceCustom} onChange={e => setRelanceCustom(parseInt(e.target.value) || 1)} style={{ ...inputS, width: 65, textAlign: 'center', fontWeight: 700 }} />
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>jours</span>
+          </div>
+        )}
 
-                {/* Remove button */}
-                <button
-                  type="button"
-                  onClick={() => removeStep(i)}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--text-muted)', padding: 2, flexShrink: 0,
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              {/* Template text */}
-              <textarea
-                value={step.template_text}
-                onChange={e => updateStep(i, 'template_text', e.target.value)}
-                rows={2}
-                placeholder="Message template... (variables: {{prenom}}, {{nom}})"
-                style={{ ...inputStyle, width: '100%', resize: 'vertical', lineHeight: 1.5 }}
-              />
-            </div>
-          )
-        })}
+        {/* Reason + add button */}
+        {relanceDays !== null && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'stretch' }}>
+            <input value={relanceReason} onChange={e => setRelanceReason(e.target.value)} placeholder="Raison (optionnel)" style={{ ...inputS, flex: 1 }} />
+            <button type="button" onClick={addRelance} style={{
+              padding: '0 16px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+              background: 'linear-gradient(135deg, #3b82f6, #2563eb)', border: 'none',
+              color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+              boxShadow: '0 2px 8px rgba(59,130,246,0.3)', whiteSpace: 'nowrap',
+              transition: 'transform 0.1s',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              <Plus size={13} />Ajouter
+            </button>
+          </div>
+        )}
       </div>
 
-      <button
-        type="button"
-        onClick={addStep}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 5, marginTop: 10,
-          padding: '6px 12px', borderRadius: 7, fontSize: 12,
-          border: '1px dashed var(--border-primary)', background: 'transparent',
-          color: 'var(--text-muted)', cursor: 'pointer', width: '100%', justifyContent: 'center',
-        }}
-      >
-        <Plus size={13} /> Ajouter une etape
-      </button>
+      {/* Separator */}
+      <div style={{ height: 1, background: 'var(--border-primary)', margin: '14px 16px' }} />
+
+      {/* Nurturing */}
+      <div style={{ padding: '0 16px 16px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245,158,11,0.12)' }}>
+            <MessageCircle size={13} color="#f59e0b" />
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.03em' }}>Nurturing</span>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+          {[
+            { label: '1 mois', d: 30 },
+            { label: '2 mois', d: 60 },
+            { label: '3 mois', d: 90 },
+          ].map(p => (
+            <Chip key={p.d} label={p.label} active={nurturingDays === p.d} color="#f59e0b" onClick={() => setNurturingDays(nurturingDays === p.d ? null : p.d)} />
+          ))}
+          <Chip label="Autre" active={nurturingDays === -1} color="#f59e0b" onClick={() => setNurturingDays(nurturingDays === -1 ? null : -1)} />
+        </div>
+
+        {nurturingDays === -1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>J+</span>
+            <input type="number" min={1} value={nurturingCustom} onChange={e => setNurturingCustom(parseInt(e.target.value) || 1)} style={{ ...inputS, width: 65, textAlign: 'center', fontWeight: 700 }} />
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>jours</span>
+          </div>
+        )}
+
+        {nurturingDays !== null && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'stretch' }}>
+            <input value={nurturingReason} onChange={e => setNurturingReason(e.target.value)} placeholder="Raison (optionnel)" style={{ ...inputS, flex: 1 }} />
+            <button type="button" onClick={addNurturing} style={{
+              padding: '0 16px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+              background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none',
+              color: '#000', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+              boxShadow: '0 2px 8px rgba(245,158,11,0.3)', whiteSpace: 'nowrap',
+              transition: 'transform 0.1s',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              <Plus size={13} />Ajouter
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

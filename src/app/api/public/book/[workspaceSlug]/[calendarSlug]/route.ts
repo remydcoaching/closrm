@@ -118,6 +118,18 @@ export async function GET(
     .eq('role', 'coach')
     .maybeSingle()
 
+  // Fetch location details for the calendar
+  let locationsList: { id: string; name: string; address: string | null; location_type: string }[] = []
+  if (calendar.location_ids && calendar.location_ids.length > 0) {
+    const { data: locs } = await supabase
+      .from('booking_locations')
+      .select('id, name, address, location_type')
+      .in('id', calendar.location_ids)
+      .eq('is_active', true)
+
+    locationsList = locs ?? []
+  }
+
   return NextResponse.json({
     calendar: {
       name: calendar.name,
@@ -132,6 +144,7 @@ export async function GET(
       owner_name: ownerRow?.full_name ?? null,
       avatar_url: ownerRow?.avatar_url ?? null,
     },
+    locations: locationsList,
     slots,
   })
 }
@@ -278,6 +291,7 @@ export async function POST(
     fireTriggersForEvent(calendar.workspace_id, 'booking_created', {
       lead_id: leadId,
       booking_id: booking.id,
+      calendar_id: calendar.id,
       calendar_name: calendar.name,
       scheduled_at: booking.scheduled_at,
     }).catch(() => {})
@@ -311,7 +325,7 @@ export async function POST(
       start: { dateTime: bookingStartDt.toISOString() },
       end: { dateTime: bookingEndDt.toISOString() },
     },
-    { withMeet: isOnlineLocation },
+    { withMeet: isOnlineLocation && !locationAddress },
   )
     .then(async (result) => {
       if (result?.eventId) {

@@ -37,6 +37,13 @@ interface WorkspaceInfo {
   avatar_url: string | null
 }
 
+interface LocationInfo {
+  id: string
+  name: string
+  address: string | null
+  location_type: string
+}
+
 interface SlotData {
   date: string   // "2026-04-07"
   slots: string[] // ["09:00", "09:30", ...]
@@ -45,6 +52,18 @@ interface SlotData {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+
+const fieldInputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-secondary)',
+  borderRadius: '8px',
+  padding: '10px 12px',
+  color: 'var(--text-primary)',
+  fontSize: '14px',
+  outline: 'none',
+  boxSizing: 'border-box',
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -55,6 +74,7 @@ export default function PublicBookingPage() {
   // Data
   const [calendar, setCalendar] = useState<CalendarInfo | null>(null)
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null)
+  const [locations, setLocations] = useState<LocationInfo[]>([])
   const [slots, setSlots] = useState<SlotData[]>([])
 
   // UI state
@@ -62,6 +82,7 @@ export default function PublicBookingPage() {
   const [viewMonth, setViewMonth] = useState<Date>(startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -96,6 +117,11 @@ export default function PublicBookingPage() {
       setCalendar(data.calendar)
       setWorkspace(data.workspace)
       setSlots(data.slots ?? [])
+      const locs: LocationInfo[] = data.locations ?? []
+      setLocations(locs)
+      // Auto-select if only one in_person location
+      const inPerson = locs.filter(l => l.location_type === 'in_person')
+      if (inPerson.length === 1) setSelectedLocationId(inPerson[0].id)
     } catch {
       setError('Erreur réseau. Veuillez réessayer.')
     } finally {
@@ -135,6 +161,12 @@ export default function PublicBookingPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedDate || !selectedTime || !calendar) return
+    // Require location selection if multiple in_person locations
+    const inPersonLocs = locations.filter(l => l.location_type === 'in_person')
+    if (inPersonLocs.length > 1 && !selectedLocationId) {
+      setError('Veuillez choisir un lieu pour le rendez-vous.')
+      return
+    }
 
     // Build ISO datetime: combine date + time
     const dateStr = format(selectedDate, 'yyyy-MM-dd')
@@ -148,7 +180,7 @@ export default function PublicBookingPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scheduled_at: scheduledAt, form_data: formData }),
+          body: JSON.stringify({ scheduled_at: scheduledAt, form_data: formData, location_id: selectedLocationId }),
         },
       )
       if (!res.ok) {
@@ -258,7 +290,96 @@ export default function PublicBookingPage() {
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {calendar.form_fields.map((field) => (
+            {/* Location picker — only for multiple in_person locations */}
+            {(() => {
+              const inPersonLocs = locations.filter(l => l.location_type === 'in_person')
+              if (inPersonLocs.length <= 1) return null
+              return (
+                <div>
+                  <label style={{
+                    display: 'block', fontSize: '13px', color: 'var(--text-primary)',
+                    marginBottom: '8px', fontWeight: 500,
+                  }}>
+                    Lieu du rendez-vous <span style={{ color: accent, marginLeft: '2px' }}>*</span>
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {inPersonLocs.map((loc) => {
+                      const isSelected = selectedLocationId === loc.id
+                      return (
+                        <button
+                          key={loc.id}
+                          type="button"
+                          onClick={() => setSelectedLocationId(loc.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: `1.5px solid ${isSelected ? accent : 'var(--border-secondary)'}`,
+                            background: isSelected ? accent + '10' : 'var(--bg-elevated)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            transition: 'all 0.15s',
+                            width: '100%',
+                          }}
+                        >
+                          <div style={{
+                            width: 16, height: 16, borderRadius: '50%',
+                            border: `2px solid ${isSelected ? accent : 'var(--border-secondary)'}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0,
+                          }}>
+                            {isSelected && (
+                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: accent }} />
+                            )}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{loc.name}</div>
+                            {loc.address && (
+                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>{loc.address}</div>
+                            )}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* ── Champs de base (toujours affichés) ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label htmlFor="_first_name" style={{ display: 'block', fontSize: '13px', color: 'var(--text-primary)', marginBottom: '6px', fontWeight: 500 }}>
+                  Prénom <span style={{ color: accent }}>*</span>
+                </label>
+                <input id="_first_name" type="text" required value={formData['first_name'] ?? ''} onChange={(e) => setFormData((prev) => ({ ...prev, first_name: e.target.value }))} style={fieldInputStyle} />
+              </div>
+              <div>
+                <label htmlFor="_last_name" style={{ display: 'block', fontSize: '13px', color: 'var(--text-primary)', marginBottom: '6px', fontWeight: 500 }}>
+                  Nom <span style={{ color: accent }}>*</span>
+                </label>
+                <input id="_last_name" type="text" required value={formData['last_name'] ?? ''} onChange={(e) => setFormData((prev) => ({ ...prev, last_name: e.target.value }))} style={fieldInputStyle} />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="_email" style={{ display: 'block', fontSize: '13px', color: 'var(--text-primary)', marginBottom: '6px', fontWeight: 500 }}>
+                Email <span style={{ color: accent }}>*</span>
+              </label>
+              <input id="_email" type="email" required value={formData['email'] ?? ''} onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))} style={fieldInputStyle} />
+            </div>
+            <div>
+              <label htmlFor="_phone" style={{ display: 'block', fontSize: '13px', color: 'var(--text-primary)', marginBottom: '6px', fontWeight: 500 }}>
+                Téléphone <span style={{ color: accent }}>*</span>
+              </label>
+              <input id="_phone" type="tel" required value={formData['phone'] ?? ''} onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))} style={fieldInputStyle} />
+            </div>
+
+            {/* ── Champs custom du calendrier (hors les 4 de base déjà affichés) ── */}
+            {calendar.form_fields
+              .filter((field) => !['first_name', 'last_name', 'email', 'phone'].includes(field.key))
+              .map((field) => (
               <div key={field.key}>
                 <label
                   htmlFor={field.key}
@@ -285,18 +406,7 @@ export default function PublicBookingPage() {
                       setFormData((prev) => ({ ...prev, [field.key]: e.target.value }))
                     }
                     rows={3}
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-elevated)',
-                      border: '1px solid var(--border-secondary)',
-                      borderRadius: '8px',
-                      padding: '10px 12px',
-                      color: 'var(--text-primary)',
-                      fontSize: '14px',
-                      resize: 'vertical',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
+                    style={{ ...fieldInputStyle, resize: 'vertical' as const }}
                   />
                 ) : field.type === 'select' && field.options ? (
                   <select
@@ -307,15 +417,8 @@ export default function PublicBookingPage() {
                       setFormData((prev) => ({ ...prev, [field.key]: e.target.value }))
                     }
                     style={{
-                      width: '100%',
-                      background: 'var(--bg-elevated)',
-                      border: '1px solid var(--border-secondary)',
-                      borderRadius: '8px',
-                      padding: '10px 12px',
+                      ...fieldInputStyle,
                       color: formData[field.key] ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxSizing: 'border-box',
                     }}
                   >
                     <option value="" disabled>Sélectionner…</option>
@@ -332,17 +435,7 @@ export default function PublicBookingPage() {
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, [field.key]: e.target.value }))
                     }
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-elevated)',
-                      border: '1px solid var(--border-secondary)',
-                      borderRadius: '8px',
-                      padding: '10px 12px',
-                      color: 'var(--text-primary)',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
+                    style={fieldInputStyle}
                   />
                 )}
               </div>

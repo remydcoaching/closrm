@@ -102,6 +102,7 @@ export async function PATCH(
       fireTriggersForEvent(workspaceId, 'booking_no_show', {
         lead_id: data.lead_id,
         booking_id: data.id,
+        calendar_id: data.calendar_id,
       }).catch(() => {})
     }
 

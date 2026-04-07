@@ -96,9 +96,18 @@ export default function ExecutionHistoryPanel({ workflowId }: Props) {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
-          Historique des executions
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid var(--border-primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8,
+            background: 'var(--bg-hover)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <RefreshCw size={14} style={{ color: 'var(--text-tertiary)' }} />
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Historique
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* Filter */}

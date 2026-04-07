@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const createLeadSchema = z.object({
-  first_name: z.string().min(1, 'Le prénom est requis.').max(100),
+  first_name: z.string().max(100).optional().default(''),
   last_name: z.string().max(100).optional().default(''),
   phone: z.string().max(30).optional().default(''),
   email: z.string().email("Format d'email invalide.").optional().or(z.literal('')),

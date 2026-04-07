@@ -53,9 +53,21 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
   }
 
   function handleInstagramChange(value: string) {
-    // Strip @ at the start
     const cleaned = value.replace(/^@/, '')
-    setForm(prev => ({ ...prev, instagram_handle: cleaned }))
+    setForm(prev => {
+      const next = { ...prev, instagram_handle: cleaned }
+      if (cleaned && prev.source === 'manuel') {
+        next.source = 'instagram_ads'
+        if (workflowEnabled && workflowSteps.length === 0) {
+          const templates = WORKFLOW_TEMPLATES_BY_SOURCE['instagram_ads'] ?? []
+          setWorkflowSteps([...templates])
+        }
+      }
+      if (!cleaned && (prev.source === 'follow_ads' || prev.source === 'instagram_ads')) {
+        next.source = 'manuel'
+      }
+      return next
+    })
     if (errors.instagram_handle) setErrors(prev => { const e = { ...prev }; delete e.instagram_handle; return e })
   }
 
@@ -94,7 +106,7 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
     setLoading(true)
     try {
       const payload: Record<string, unknown> = { ...parsed.data }
-      if (workflowEnabled && workflowSteps.length > 0) {
+      if (workflowSteps.length > 0) {
         payload.inline_workflow = { steps: workflowSteps }
       }
 
@@ -124,11 +136,8 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
         }))
         setTagInput('')
         setErrors({})
-        // Re-fill workflow steps from template for next lead
-        if (workflowEnabled) {
-          const templates = WORKFLOW_TEMPLATES_BY_SOURCE[form.source] ?? []
-          setWorkflowSteps([...templates])
-        }
+        // Reset workflow steps for next lead
+        setWorkflowSteps([])
         // Focus first name input
         setTimeout(() => firstNameRef.current?.focus(), 50)
       } else {
@@ -164,7 +173,7 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={labelStyle}>Prenom *</label>
+              <label style={labelStyle}>Prenom</label>
               <input ref={firstNameRef} style={{ ...inputStyle, borderColor: errors.first_name ? '#ef4444' : 'var(--border-primary)' }}
                 value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="Jean" />
               {errors.first_name && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.first_name}</p>}
@@ -200,11 +209,6 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
               />
             </div>
             {errors.instagram_handle && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.instagram_handle}</p>}
-            {form.instagram_handle && form.source === 'manuel' && (
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>
-                Astuce : changez la source en Instagram Ads ou Follow Ads
-              </p>
-            )}
           </div>
 
           <div>
@@ -220,36 +224,12 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
             </select>
           </div>
 
-          {/* Workflow Inline Toggle */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px 12px', borderRadius: 8,
-            background: workflowEnabled ? 'rgba(229,62,62,0.06)' : 'transparent',
-            border: `1px solid ${workflowEnabled ? 'rgba(229,62,62,0.2)' : 'var(--border-primary)'}`,
-            cursor: 'pointer',
-          }} onClick={toggleWorkflow}>
-            <div style={{
-              width: 36, height: 20, borderRadius: 10, position: 'relative',
-              background: workflowEnabled ? '#E53E3E' : 'var(--border-primary)',
-              transition: 'background 0.2s',
-            }}>
-              <div style={{
-                width: 16, height: 16, borderRadius: '50%', background: '#fff',
-                position: 'absolute', top: 2,
-                left: workflowEnabled ? 18 : 2,
-                transition: 'left 0.2s',
-              }} />
-            </div>
-            <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>Creer un workflow de relance</span>
-          </div>
-
-          {workflowEnabled && (
-            <InlineWorkflowEditor
-              source={form.source}
-              steps={workflowSteps}
-              onStepsChange={setWorkflowSteps}
-            />
-          )}
+          {/* Relances */}
+          <InlineWorkflowEditor
+            source={form.source}
+            steps={workflowSteps}
+            onStepsChange={setWorkflowSteps}
+          />
 
           <div>
             <label style={labelStyle}>Tags</label>

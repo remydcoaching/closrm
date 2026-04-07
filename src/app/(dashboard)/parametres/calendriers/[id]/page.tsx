@@ -344,7 +344,7 @@ export default function EditCalendarPage() {
             borderBottom: '1px solid var(--border-primary)',
           }}
         >
-          Lieux
+          Type de rendez-vous
         </h2>
         <div
           style={{

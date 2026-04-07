@@ -468,15 +468,28 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
 
   return (
     <div>
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: 'var(--text-primary)',
-          marginBottom: 20,
-        }}
-      >
-        Configuration de l&apos;action
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 22, paddingBottom: 14,
+        borderBottom: '1px solid var(--border-primary)',
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: 'rgba(91,155,245,0.08)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b9bf5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Action
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Ce qui se passe a cette etape
+          </div>
+        </div>
       </div>
 
       <div style={{ marginBottom: 18 }}>

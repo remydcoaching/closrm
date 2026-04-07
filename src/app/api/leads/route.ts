@@ -110,6 +110,9 @@ export async function POST(request: NextRequest) {
       ? parsed.data.instagram_handle.replace(/^@/, '')
       : null
 
+    // Use instagram handle as first_name fallback if not provided
+    const firstName = parsed.data.first_name || instagramHandle || 'Inconnu'
+
     const { data, error } = await supabase
       .from('leads')
       .insert({
@@ -118,6 +121,7 @@ export async function POST(request: NextRequest) {
         call_attempts: 0,
         reached: false,
         ...parsed.data,
+        first_name: firstName,
         email: parsed.data.email || null,
         notes: parsed.data.notes || null,
         instagram_handle: instagramHandle || null,
@@ -146,57 +150,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create inline workflow if provided
+    // Create follow-ups directly for this lead if inline workflow provided
     if (inlineWorkflow && inlineWorkflow.steps && inlineWorkflow.steps.length > 0) {
-      const { data: workflow, error: wfError } = await supabase
-        .from('workflows')
-        .insert({
+      const now = new Date()
+      const followUpsToInsert = inlineWorkflow.steps.map((step) => {
+        const scheduledAt = new Date(now)
+        scheduledAt.setDate(scheduledAt.getDate() + step.delay_days)
+        if (step.delay_days > 0) {
+          scheduledAt.setHours(9, 0, 0, 0)
+        }
+        return {
           workspace_id: workspaceId,
-          name: `Relance auto — ${data.first_name} ${data.last_name}`.trim(),
-          trigger_type: 'new_lead',
-          trigger_config: { source: data.source },
-          status: 'actif',
-        })
-        .select('id')
-        .single()
-
-      if (!wfError && workflow) {
-        let stepOrder = 1
-        const stepsToInsert: Record<string, unknown>[] = []
-
-        for (const step of inlineWorkflow.steps) {
-          // Insert delay step before action if delay > 0
-          if (step.delay_days > 0) {
-            stepsToInsert.push({
-              workflow_id: workflow.id,
-              step_order: stepOrder++,
-              step_type: 'delay',
-              action_type: null,
-              action_config: {},
-              delay_value: step.delay_days,
-              delay_unit: 'days',
-            })
-          }
-
-          stepsToInsert.push({
-            workflow_id: workflow.id,
-            step_order: stepOrder++,
-            step_type: 'action',
-            action_type: 'create_followup',
-            action_config: {
-              channel: step.channel,
-              delay_days: step.delay_days,
-              reason: step.template_text,
-            },
-            delay_value: null,
-            delay_unit: null,
-          })
+          lead_id: data.id,
+          reason: step.template_text,
+          scheduled_at: scheduledAt.toISOString(),
+          channel: step.channel,
+          status: 'en_attente',
+          notes: null,
         }
+      })
 
-        if (stepsToInsert.length > 0) {
-          await supabase.from('workflow_steps').insert(stepsToInsert)
-        }
-      }
+      await supabase.from('follow_ups').insert(followUpsToInsert)
     }
 
     // Fire workflow triggers (non-blocking)

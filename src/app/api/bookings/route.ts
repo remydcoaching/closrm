@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
       fireTriggersForEvent(workspaceId, 'booking_created', {
         lead_id: data.lead_id,
         booking_id: data.id,
+        calendar_id: data.calendar_id,
         calendar_name: (data.booking_calendar as { name?: string } | null)?.name,
         scheduled_at: data.scheduled_at,
       }).catch(() => {})
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
         start: { dateTime: scheduledAt.toISOString() },
         end: { dateTime: endAt.toISOString() },
       },
-      { withMeet: isOnlineLocation },
+      { withMeet: isOnlineLocation && !locationAddress },
     )
       .then(async (result) => {
         if (result?.eventId) {
