@@ -72,14 +72,14 @@ Chaque amélioration suit ce format :
 - **Description :** Ajouter `follow_ads` comme source de lead + `instagram_dm` comme channel de follow-up. Permet de filtrer les relances Instagram dans la page follow-ups. Simple à implémenter (ajout dans les enums SQL + types TS + filtres UI).
 - **Priorité estimée :** Haute
 - **Effort estimé :** Faible
-- **Statut :** En attente de validation
+- **Statut :** ✅ Implémentée le 2026-04-07 par Rémy (migration 014, types TS, validations Zod, badges, filtres, exports, workflows). Suite directe de T-025.
 
 ### A-008 — Import auto des leads Follow Ads via API Instagram
 - **Contexte :** Discussion avec Pierre pendant T-007
 - **Description :** À terme, les prospects qui follow le compte via une pub seront loggés automatiquement comme leads via l'API Instagram/Meta. Nécessite l'intégration de l'API Instagram Graph pour détecter les nouveaux followers issus des pubs.
 - **Priorité estimée :** Moyenne
 - **Effort estimé :** Élevé
-- **Statut :** En attente de validation
+- **Statut :** Fiche T-026 créée le 2026-04-07 (`taches/tache-026-followers-as-prospects.md`). En attente de validation pour démarrage.
 
 ### A-010 — Dashboard : variations % par rapport à la période précédente
 - **Contexte :** Identifié pendant T-003 (dashboard)

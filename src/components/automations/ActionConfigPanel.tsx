@@ -133,6 +133,7 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
               >
                 <option value="whatsapp">WhatsApp</option>
                 <option value="email">Email</option>
+                <option value="instagram_dm">Instagram DM</option>
                 <option value="manuel">Manuel</option>
               </select>
             </div>

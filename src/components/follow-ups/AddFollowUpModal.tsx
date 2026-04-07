@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Loader2, Calendar, Clock, MessageCircle, Mail, User } from 'lucide-react'
+import { X, Loader2, Calendar, Clock, MessageCircle, Mail, User, AtSign } from 'lucide-react'
 import { Lead, FollowUpChannel } from '@/types'
 
 interface Props {
@@ -48,6 +48,7 @@ export default function AddFollowUpModal({ onClose, onCreated, preselectedLead }
   const channels: { value: FollowUpChannel; label: string; icon: typeof MessageCircle; color: string }[] = [
     { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, color: '#22c55e' },
     { value: 'email', label: 'Email', icon: Mail, color: '#3b82f6' },
+    { value: 'instagram_dm', label: 'Instagram DM', icon: AtSign, color: '#e879f9' },
     { value: 'manuel', label: 'Manuel', icon: User, color: 'var(--text-tertiary)' },
   ]
 

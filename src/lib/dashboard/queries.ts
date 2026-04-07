@@ -22,7 +22,7 @@ export interface OverdueFollowUp {
   id: string
   lead_id: string
   lead_name: string
-  channel: 'whatsapp' | 'email' | 'manuel'
+  channel: 'whatsapp' | 'email' | 'instagram_dm' | 'manuel'
   scheduled_at: string
   days_overdue: number
 }
@@ -136,7 +136,7 @@ export async function fetchOverdueFollowUps(workspaceId: string): Promise<Overdu
       id: row.id,
       lead_id: row.lead_id,
       lead_name: `${lead.first_name} ${lead.last_name}`,
-      channel: row.channel as 'whatsapp' | 'email' | 'manuel',
+      channel: row.channel as 'whatsapp' | 'email' | 'instagram_dm' | 'manuel',
       scheduled_at: row.scheduled_at,
       days_overdue: daysOverdue,
     }

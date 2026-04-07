@@ -172,6 +172,7 @@ export async function fetchFunnelData(workspaceId: string, period: number): Prom
 const SOURCE_META: Record<string, { label: string; color: string }> = {
   facebook_ads:  { label: 'Facebook Ads',   color: '#1877F2' },
   instagram_ads: { label: 'Instagram Ads',  color: '#E1306C' },
+  follow_ads:    { label: 'Follow Ads',     color: '#a855f7' },
   formulaire:    { label: 'Formulaire',     color: '#f59e0b' },
   manuel:        { label: 'Manuel',         color: '#555' },
 }

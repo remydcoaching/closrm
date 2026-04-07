@@ -17,6 +17,7 @@ const STATUSES: { value: LeadStatus; label: string; color: string }[] = [
 const SOURCES: { value: LeadSource; label: string }[] = [
   { value: 'facebook_ads', label: 'Facebook Ads' },
   { value: 'instagram_ads', label: 'Instagram Ads' },
+  { value: 'follow_ads', label: 'Follow Ads' },
   { value: 'formulaire', label: 'Formulaire' },
   { value: 'manuel', label: 'Manuel' },
 ]

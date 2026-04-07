@@ -151,6 +151,7 @@ export default function TriggerConfigPanel({ triggerType, triggerConfig, onChang
               <option value="">Toutes</option>
               <option value="facebook_ads">Facebook Ads</option>
               <option value="instagram_ads">Instagram Ads</option>
+              <option value="follow_ads">Follow Ads</option>
               <option value="formulaire">Formulaire</option>
               <option value="manuel">Manuel</option>
             </select>

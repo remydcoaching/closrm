@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-04-07 (T-025 Follow Ads Classification — Rémy / T-024 Audit Instagram + Performance — Pierre)
+> Dernière mise à jour : 2026-04-07 (planification T-027 → T-031 + abandon T-026)
 
 ---
 
@@ -38,6 +38,7 @@
 | Intégration Google Calendar | Pierre | ✅ Terminé | T-022 |
 | Module Publicités (Meta Ads dashboard) | Rémy | ✅ Terminé | T-017 |
 | **Module Publicités v2 — Leadform/Follow Ads + santé** | **Rémy** | **✅ Terminé** | **T-025** |
+| **Source `follow_ads` + channel `instagram_dm`** | **Rémy** | **✅ Terminé** | **A-007** |
 | Module Emails (séquences + broadcast) | Pierre | ✅ Terminé | T-020 |
 | Module Calendrier / Booking | Pierre | ✅ Terminé | T-022 |
 | Module Réseaux Sociaux (Instagram) | Pierre | ✅ Terminé | T-023, T-024 |
@@ -50,6 +51,12 @@
 | Agenda : ligne de temps + notifications | Pierre | ✅ Terminé | T-024 |
 | Templates agenda : copier-coller + drag & drop | Pierre | ✅ Terminé | T-024 |
 | Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non démarré | T-021 |
+| **Lead++ (workflow inline + pseudo IG + chaîne + Messages)** ⚠️ touche module Leads de Rémy | **Pierre** (réassignée le 2026-04-07) | **⬜ Non démarré** | **T-027** |
+| **Funnels v2 (refonte builder + analytics + templates)** | **Rémy** | **⬜ Non démarré** | **T-028** |
+| **Automations v2 (triggers/actions, observability)** | **Pierre** | **⬜ Non démarré** | **T-029** |
+| **Booking → auto Google Meet (en ligne)** | **Pierre** | **⬜ Non démarré** | **T-030** |
+| **Import portefeuille leads (CSV + alternatives)** | **Rémy** | **⬜ Non démarré** | **T-031** |
+| Followers-as-prospects (V2) | Rémy | ❌ Abandonné (API IG) | T-026 |
 | V2 — Tunnels | — | 🔒 Bloqué (V2) | — |
 | V2 — Stripe | — | 🔒 Bloqué (V2) | — |
 | V2 — Multi-membres équipe | — | 🔒 Bloqué (V2) | — |
@@ -82,7 +89,8 @@
 | 2026-04-02 | Pierre | T-023 — Module Réseaux Sociaux (Instagram) + Messages | `feature/pierre-funnel-builder` |
 | 2026-04-05→07 | Pierre | T-024 — Audit Instagram + Performance + 90 PRs | `feature/pierre-funnel-builder` |
 | 2026-04-04→07 | Rémy | T-025 — Follow Ads Classification + KPIs adaptés + indicateurs de santé | `feature/remy-follow-ads-classification` |
+| 2026-04-07 | Rémy | A-007 — Source `follow_ads` + channel `instagram_dm` (migration 014, types, UI) | `feature/remy-follow-ads-source-channel` |
 
 ---
 
-*Mis à jour le 2026-04-07 par Claude Code — ClosRM*
+*Mis à jour le 2026-04-07 par Claude Code — ClosRM (planning T-027→T-031, T-026 abandonnée)*
