@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
     resumed_executions: 0,
     call_reminders_fired: 0,
     followup_reminders_fired: 0,
+    booking_no_show_fired: 0,
+    lead_inactive_fired: 0,
     errors: [] as string[],
   }
 
@@ -125,6 +127,84 @@ export async function GET(request: NextRequest) {
                 results.followup_reminders_fired++
               } catch (err) {
                 results.errors.push(`Followup ${fu.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
+              }
+            }
+          }
+        }
+      }
+    }
+    // ─── 4. Auto-detect booking no-shows ──────────────────────────────────
+    // Bookings confirmed but scheduled_at < now() - 1 hour → mark as no_show
+    {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+      const { data: overdueBookings } = await supabase
+        .from('bookings')
+        .select('id, lead_id, workspace_id')
+        .eq('status', 'confirmed')
+        .lt('scheduled_at', oneHourAgo)
+
+      if (overdueBookings) {
+        for (const booking of overdueBookings) {
+          try {
+            await supabase
+              .from('bookings')
+              .update({ status: 'no_show' })
+              .eq('id', booking.id)
+
+            if (booking.lead_id) {
+              await fireTriggersForEvent(booking.workspace_id, 'booking_no_show', {
+                lead_id: booking.lead_id,
+                booking_id: booking.id,
+              })
+              results.booking_no_show_fired++
+            }
+          } catch (err) {
+            results.errors.push(`Booking no-show ${booking.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
+          }
+        }
+      }
+    }
+
+    // ─── 5. Fire lead_inactive_x_days triggers ─────────────────────────────
+    {
+      const { data: inactiveWorkflows } = await supabase
+        .from('workflows')
+        .select('id, workspace_id, trigger_config')
+        .eq('status', 'actif')
+        .eq('trigger_type', 'lead_inactive_x_days')
+
+      if (inactiveWorkflows) {
+        for (const wf of inactiveWorkflows) {
+          const days = (wf.trigger_config as Record<string, unknown>)?.days as number || 30
+          const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+
+          const { data: inactiveLeads } = await supabase
+            .from('leads')
+            .select('id')
+            .eq('workspace_id', wf.workspace_id)
+            .lt('last_activity_at', cutoff)
+
+          if (inactiveLeads) {
+            for (const lead of inactiveLeads) {
+              // Anti-duplicate: check no execution for this lead+workflow in the last {days} days
+              const antiDupeCutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+              const { count } = await supabase
+                .from('workflow_executions')
+                .select('*', { count: 'exact', head: true })
+                .eq('workflow_id', wf.id)
+                .eq('lead_id', lead.id)
+                .gte('started_at', antiDupeCutoff)
+
+              if ((count ?? 0) === 0) {
+                try {
+                  await fireTriggersForEvent(wf.workspace_id, 'lead_inactive_x_days', {
+                    lead_id: lead.id,
+                    days_inactive: days,
+                  })
+                  results.lead_inactive_fired++
+                } catch (err) {
+                  results.errors.push(`Lead inactive ${lead.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
+                }
               }
             }
           }

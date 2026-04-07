@@ -2,10 +2,13 @@ import { z } from 'zod'
 
 const workflowTriggerTypes = [
   'new_lead',
+  'lead_imported',
   'lead_status_changed',
   'tag_added',
   'tag_removed',
   'deal_won',
+  'lead_with_ig_handle',
+  'lead_inactive_x_days',
   'call_scheduled',
   'call_in_x_hours',
   'call_no_show',
@@ -16,6 +19,7 @@ const workflowTriggerTypes = [
   'comment_keyword',
   'booking_created',
   'booking_cancelled',
+  'booking_no_show',
 ] as const
 
 const workflowActionTypes = [
@@ -33,6 +37,9 @@ const workflowActionTypes = [
   'set_reached',
   'schedule_call',
   'webhook',
+  'create_google_meet',
+  'update_lead_field',
+  'wait_until_date',
 ] as const
 
 export const createWorkflowSchema = z.object({
@@ -48,6 +55,8 @@ export const updateWorkflowSchema = z.object({
   trigger_type: z.enum(workflowTriggerTypes, { message: 'Type de déclencheur invalide.' }).optional(),
   trigger_config: z.record(z.string(), z.unknown()).optional(),
   status: z.enum(['brouillon', 'actif', 'inactif']).optional(),
+  notify_on_failure: z.boolean().optional(),
+  failure_notification_channel: z.string().max(50).nullable().optional(),
 })
 
 export const workflowFiltersSchema = z.object({

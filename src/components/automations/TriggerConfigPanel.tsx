@@ -158,6 +158,53 @@ export default function TriggerConfigPanel({ triggerType, triggerConfig, onChang
           </div>
         )
 
+      case 'lead_imported':
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Source (optionnel)</label>
+            <select
+              style={selectStyle}
+              value={(triggerConfig.source as string) || ''}
+              onChange={(e) => updateConfig('source', e.target.value || null)}
+            >
+              <option value="">Toutes</option>
+              <option value="facebook_ads">Facebook Ads</option>
+              <option value="instagram_ads">Instagram Ads</option>
+              <option value="follow_ads">Follow Ads</option>
+              <option value="formulaire">Formulaire</option>
+              <option value="manuel">Manuel</option>
+            </select>
+          </div>
+        )
+
+      case 'lead_with_ig_handle':
+        return (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            Se declenche quand un lead est cree avec un pseudo Instagram.
+          </div>
+        )
+
+      case 'booking_no_show':
+        return (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            Se declenche quand un prospect ne se presente pas au rendez-vous.
+          </div>
+        )
+
+      case 'lead_inactive_x_days':
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Inactif depuis (jours)</label>
+            <input
+              type="number"
+              style={inputStyle}
+              min={1}
+              value={(triggerConfig.days as number) ?? 30}
+              onChange={(e) => updateConfig('days', parseInt(e.target.value) || 30)}
+            />
+          </div>
+        )
+
       default:
         return (
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
@@ -189,10 +236,13 @@ export default function TriggerConfigPanel({ triggerType, triggerConfig, onChang
         >
           <optgroup label="LEADS">
             <option value="new_lead">Nouveau lead</option>
+            <option value="lead_imported">Leads importes en bulk</option>
             <option value="lead_status_changed">Changement de statut</option>
-            <option value="tag_added">Tag ajouté</option>
-            <option value="tag_removed">Tag supprimé</option>
-            <option value="deal_won">Deal gagné</option>
+            <option value="tag_added">Tag ajoute</option>
+            <option value="tag_removed">Tag supprime</option>
+            <option value="deal_won">Deal gagne</option>
+            <option value="lead_with_ig_handle">Lead avec pseudo Instagram</option>
+            <option value="lead_inactive_x_days">Lead inactif depuis X jours</option>
           </optgroup>
           <optgroup label="APPELS">
             <option value="call_scheduled">Appel planifié</option>
@@ -208,9 +258,10 @@ export default function TriggerConfigPanel({ triggerType, triggerConfig, onChang
             <option value="dm_keyword">DM avec mot-clé</option>
             <option value="comment_keyword">Commentaire avec mot-clé</option>
           </optgroup>
-          <optgroup label="RÉSERVATIONS">
-            <option value="booking_created">Réservation créée</option>
-            <option value="booking_cancelled">Réservation annulée</option>
+          <optgroup label="RESERVATIONS">
+            <option value="booking_created">Reservation creee</option>
+            <option value="booking_cancelled">Reservation annulee</option>
+            <option value="booking_no_show">No-show reservation</option>
           </optgroup>
         </select>
       </div>

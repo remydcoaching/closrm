@@ -92,6 +92,27 @@ function matchesTriggerConfig(
       return true
     }
 
+    case 'lead_imported': {
+      // Optional source filter
+      if (config.source && config.source !== data.source) return false
+      return true
+    }
+
+    case 'lead_with_ig_handle':
+      // No config — fires whenever a lead is created with an instagram_handle
+      return true
+
+    case 'booking_no_show':
+      // No config — fires when a booking becomes no_show
+      return true
+
+    case 'lead_inactive_x_days': {
+      // Config has `days`, triggerData has `days_inactive`
+      const configDays = (config.days as number) ?? 30
+      const inactiveDays = (data.days_inactive as number) ?? 0
+      return inactiveDays >= configDays
+    }
+
     case 'booking_created':
       // No config matching needed — fire for any booking_created trigger
       return true
