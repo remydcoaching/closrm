@@ -269,6 +269,8 @@ export interface WeekAvailability {
 
 export type DayOfWeek = keyof WeekAvailability
 
+export type CalendarPurpose = 'setting' | 'closing' | 'other'
+
 export interface BookingCalendar {
   id: string
   workspace_id: string
@@ -281,6 +283,7 @@ export interface BookingCalendar {
   form_fields: FormField[]
   availability: WeekAvailability
   buffer_minutes: number
+  purpose: CalendarPurpose
   is_active: boolean
   created_at: string
   updated_at: string

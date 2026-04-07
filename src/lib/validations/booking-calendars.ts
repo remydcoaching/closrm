@@ -45,6 +45,7 @@ export const createBookingCalendarSchema = z.object({
   }),
   buffer_minutes: z.number().int().min(0).max(120).default(0),
   location_ids: z.array(z.string().uuid()).default([]),
+  purpose: z.enum(['setting', 'closing', 'other']).default('other'),
   is_active: z.boolean().default(true),
 })
 
