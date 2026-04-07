@@ -1,9 +1,20 @@
 # Tâche 026 — Vision V2 : Followers Instagram comme prospects (ManyChat-like)
 
-> **Statut :** ⬜ Non démarré — fiche à valider avec Rémy/Pierre avant ouverture
-> **Développeur :** Rémy
+> **Statut :** ❌ ABANDONNÉE le 2026-04-07
+> **Développeur :** Rémy (initialement)
 > **Date de création :** 2026-04-07
-> **Branche Git prévue :** `feature/remy-followers-as-prospects`
+> **Date d'abandon :** 2026-04-07
+> **Raison de l'abandon :** Après vérification avec Pierre, l'API Instagram Graph
+> ne donne **pas les droits** nécessaires pour lister les followers d'un compte
+> business ni pour détecter les nouveaux followers de manière fiable. Meta a
+> drastiquement restreint ces endpoints depuis 2018 (Cambridge Analytica) et
+> ne les ouvre qu'à des partenaires Marketing API très spécifiques. La détection
+> automatique follower → lead n'est donc pas réalisable techniquement.
+>
+> **Pivot :** Le besoin réel (qualifier rapidement les nouveaux followers et
+> les relancer en DM) est partiellement adressé par T-027 (saisie lead avec
+> pseudo IG + workflow inline + lien vers la conversation IG existante via le
+> module Messages de Pierre). Voir `taches/tache-027-lead-plus-plus.md`.
 
 ---
 

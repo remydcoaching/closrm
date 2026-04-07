@@ -1,7 +1,7 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-04-07 (A-007 sources `follow_ads` + channel `instagram_dm` — Rémy)
+> Dernière mise à jour : 2026-04-07 (planification T-027 → T-031 + abandon T-026)
 
 ---
 
@@ -51,6 +51,12 @@
 | Agenda : ligne de temps + notifications | Pierre | ✅ Terminé | T-024 |
 | Templates agenda : copier-coller + drag & drop | Pierre | ✅ Terminé | T-024 |
 | Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non démarré | T-021 |
+| **Lead++ (workflow inline + pseudo IG + chaîne + Messages)** | **Rémy** | **⬜ Non démarré** | **T-027** |
+| **Funnels v2 (refonte builder + analytics + templates)** | **Rémy** | **⬜ Non démarré** | **T-028** |
+| **Automations v2 (triggers/actions, observability)** | **Pierre** | **⬜ Non démarré** | **T-029** |
+| **Booking → auto Google Meet (en ligne)** | **Pierre** | **⬜ Non démarré** | **T-030** |
+| **Import portefeuille leads (CSV + alternatives)** | **Rémy** | **⬜ Non démarré** | **T-031** |
+| Followers-as-prospects (V2) | Rémy | ❌ Abandonné (API IG) | T-026 |
 | V2 — Tunnels | — | 🔒 Bloqué (V2) | — |
 | V2 — Stripe | — | 🔒 Bloqué (V2) | — |
 | V2 — Multi-membres équipe | — | 🔒 Bloqué (V2) | — |
@@ -87,4 +93,4 @@
 
 ---
 
-*Mis à jour le 2026-04-07 par Claude Code — ClosRM (A-007 + fiche T-026 créée)*
+*Mis à jour le 2026-04-07 par Claude Code — ClosRM (planning T-027→T-031, T-026 abandonnée)*
