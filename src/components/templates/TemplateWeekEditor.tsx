@@ -117,9 +117,15 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
 
   function handleBlockClick(e: React.MouseEvent, block: TemplateBlock, index: number) {
     e.stopPropagation()
-    setEditState({ block, index })
-    setSelectedBlockIndex(index)
-    setAddState(null)
+    // Single click = select only, double click = open edit modal
+    if (selectedBlockIndex === index) {
+      // Already selected → open edit
+      setEditState({ block, index })
+      setAddState(null)
+    } else {
+      // First click → just select
+      setSelectedBlockIndex(index)
+    }
   }
 
   function handleBlockDragStart(e: React.DragEvent, index: number) {
