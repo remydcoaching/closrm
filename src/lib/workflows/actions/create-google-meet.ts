@@ -27,15 +27,11 @@ export async function execute(
 
   const end = new Date(start.getTime() + durationMinutes * 60 * 1000)
 
-  // T-030: withMeet option — when T-030 is merged, createGoogleCalendarEvent accepts
-  // a third argument { withMeet: true } and returns { eventId, meetUrl }.
-  // On current develop, the signature only takes (workspaceId, event).
-  // We pass the conferenceData directly in the event payload for Meet link creation.
   const event = await createGoogleCalendarEvent(context.workspaceId, {
     summary: title,
     start: { dateTime: start.toISOString() },
     end: { dateTime: end.toISOString() },
-  })
+  }, { withMeet: true })
 
   if (!event) {
     return { success: false, error: 'Failed to create Google Calendar event (Google not connected or API error)' }
@@ -44,9 +40,8 @@ export async function execute(
   return {
     success: true,
     result: {
-      eventId: event.id,
-      // T-030: meetUrl will be available once T-030 is merged
-      meetUrl: null,
+      eventId: event.eventId,
+      meetUrl: event.meetUrl,
       title,
       durationMinutes,
     },
