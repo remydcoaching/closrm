@@ -299,7 +299,9 @@ export default function IgStoriesTab() {
 
   // Day-filtered stories & orphans
   const dayStories = useMemo(() => {
-    return stories.filter(s => s.published_at.slice(0, 10) === selectedDay)
+    return stories
+      .filter(s => s.published_at.slice(0, 10) === selectedDay)
+      .sort((a, b) => new Date(a.published_at).getTime() - new Date(b.published_at).getTime())
   }, [stories, selectedDay])
 
   const dayOrphanStories = useMemo(() => {
@@ -308,7 +310,9 @@ export default function IgStoriesTab() {
 
   // ALL orphan stories (any day, not in a sequence)
   const allOrphanStories = useMemo(() => {
-    return stories.filter(s => !allSeqStoryIds.has(s.id))
+    return stories
+      .filter(s => !allSeqStoryIds.has(s.id))
+      .sort((a, b) => new Date(a.published_at).getTime() - new Date(b.published_at).getTime())
   }, [stories, allSeqStoryIds])
 
   // Orphans NOT in the current day (to show in the "all orphans" section)
