@@ -55,6 +55,7 @@ export interface Lead {
   meta_campaign_id: string | null
   meta_adset_id: string | null
   meta_ad_id: string | null
+  instagram_handle: string | null
   email_unsubscribed: boolean
   email_unsubscribed_at: string | null
   created_at: string

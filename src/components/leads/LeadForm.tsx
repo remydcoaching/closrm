@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Loader2, Plus } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Loader2, Plus, AtSign } from 'lucide-react'
 import { createLeadSchema } from '@/lib/validations/leads'
-import { Lead } from '@/types'
+import { Lead, LeadSource } from '@/types'
+import { WorkflowInlineStep, WORKFLOW_TEMPLATES_BY_SOURCE } from '@/lib/leads/workflow-templates'
+import InlineWorkflowEditor from './InlineWorkflowEditor'
 
 interface LeadFormProps {
   onClose: () => void
@@ -23,19 +25,47 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [tagInput, setTagInput] = useState('')
+  const [workflowEnabled, setWorkflowEnabled] = useState(false)
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowInlineStep[]>([])
+  const firstNameRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
     phone: '',
     email: '',
-    source: 'manuel' as const,
+    instagram_handle: '',
+    source: 'manuel' as LeadSource,
     tags: [] as string[],
     notes: '',
   })
 
   function set(field: string, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }))
+    setForm(prev => {
+      const next = { ...prev, [field]: value }
+      // When source changes and workflow steps are empty, pre-fill from templates
+      if (field === 'source' && workflowEnabled && workflowSteps.length === 0) {
+        const templates = WORKFLOW_TEMPLATES_BY_SOURCE[value] ?? []
+        setWorkflowSteps([...templates])
+      }
+      return next
+    })
     if (errors[field]) setErrors(prev => { const e = { ...prev }; delete e[field]; return e })
+  }
+
+  function handleInstagramChange(value: string) {
+    // Strip @ at the start
+    const cleaned = value.replace(/^@/, '')
+    setForm(prev => ({ ...prev, instagram_handle: cleaned }))
+    if (errors.instagram_handle) setErrors(prev => { const e = { ...prev }; delete e.instagram_handle; return e })
+  }
+
+  function toggleWorkflow() {
+    const next = !workflowEnabled
+    setWorkflowEnabled(next)
+    if (next && workflowSteps.length === 0) {
+      const templates = WORKFLOW_TEMPLATES_BY_SOURCE[form.source] ?? []
+      setWorkflowSteps([...templates])
+    }
   }
 
   function addTag() {
@@ -50,8 +80,7 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
     setForm(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function submitForm(continueMode: boolean) {
     const parsed = createLeadSchema.safeParse(form)
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {}
@@ -64,21 +93,55 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
 
     setLoading(true)
     try {
+      const payload: Record<string, unknown> = { ...parsed.data }
+      if (workflowEnabled && workflowSteps.length > 0) {
+        payload.inline_workflow = { steps: workflowSteps }
+      }
+
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(payload),
       })
       const json = await res.json()
       if (!res.ok) {
-        setErrors({ general: json.error?.formErrors?.[0] ?? 'Erreur lors de la création.' })
+        setErrors({ general: json.error?.formErrors?.[0] ?? 'Erreur lors de la creation.' })
         return
       }
       onCreated(json.data)
-      onClose()
+
+      if (continueMode) {
+        // Reset form but keep source and workflow toggle
+        setForm(prev => ({
+          first_name: '',
+          last_name: '',
+          phone: '',
+          email: '',
+          instagram_handle: '',
+          source: prev.source,
+          tags: [],
+          notes: '',
+        }))
+        setTagInput('')
+        setErrors({})
+        // Re-fill workflow steps from template for next lead
+        if (workflowEnabled) {
+          const templates = WORKFLOW_TEMPLATES_BY_SOURCE[form.source] ?? []
+          setWorkflowSteps([...templates])
+        }
+        // Focus first name input
+        setTimeout(() => firstNameRef.current?.focus(), 50)
+      } else {
+        onClose()
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    submitForm(false)
   }
 
   return (
@@ -88,7 +151,7 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
     }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div style={{
         background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-        borderRadius: 14, padding: 28, width: '100%', maxWidth: 480,
+        borderRadius: 14, padding: 28, width: '100%', maxWidth: 520,
         maxHeight: '90vh', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -101,8 +164,8 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={labelStyle}>Prénom *</label>
-              <input style={{ ...inputStyle, borderColor: errors.first_name ? '#ef4444' : 'var(--border-primary)' }}
+              <label style={labelStyle}>Prenom *</label>
+              <input ref={firstNameRef} style={{ ...inputStyle, borderColor: errors.first_name ? '#ef4444' : 'var(--border-primary)' }}
                 value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="Jean" />
               {errors.first_name && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.first_name}</p>}
             </div>
@@ -113,7 +176,7 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
           </div>
 
           <div>
-            <label style={labelStyle}>Téléphone</label>
+            <label style={labelStyle}>Telephone</label>
             <input style={inputStyle} type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+33 6 00 00 00 00" />
           </div>
 
@@ -122,6 +185,26 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
             <input style={{ ...inputStyle, borderColor: errors.email ? '#ef4444' : 'var(--border-primary)' }}
               type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="jean@exemple.fr" />
             {errors.email && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.email}</p>}
+          </div>
+
+          {/* Instagram Handle */}
+          <div>
+            <label style={labelStyle}>Pseudo Instagram</label>
+            <div style={{ position: 'relative' }}>
+              <AtSign size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input
+                style={{ ...inputStyle, paddingLeft: 30, borderColor: errors.instagram_handle ? '#ef4444' : 'var(--border-primary)' }}
+                value={form.instagram_handle}
+                onChange={e => handleInstagramChange(e.target.value)}
+                placeholder="nom.utilisateur"
+              />
+            </div>
+            {errors.instagram_handle && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.instagram_handle}</p>}
+            {form.instagram_handle && form.source === 'manuel' && (
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>
+                Astuce : changez la source en Instagram Ads ou Follow Ads
+              </p>
+            )}
           </div>
 
           <div>
@@ -133,8 +216,40 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
               <option value="instagram_ads">Instagram Ads</option>
               <option value="follow_ads">Follow Ads</option>
               <option value="formulaire">Formulaire</option>
+              <option value="funnel">Funnel</option>
             </select>
           </div>
+
+          {/* Workflow Inline Toggle */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 12px', borderRadius: 8,
+            background: workflowEnabled ? 'rgba(229,62,62,0.06)' : 'transparent',
+            border: `1px solid ${workflowEnabled ? 'rgba(229,62,62,0.2)' : 'var(--border-primary)'}`,
+            cursor: 'pointer',
+          }} onClick={toggleWorkflow}>
+            <div style={{
+              width: 36, height: 20, borderRadius: 10, position: 'relative',
+              background: workflowEnabled ? '#E53E3E' : 'var(--border-primary)',
+              transition: 'background 0.2s',
+            }}>
+              <div style={{
+                width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                position: 'absolute', top: 2,
+                left: workflowEnabled ? 18 : 2,
+                transition: 'left 0.2s',
+              }} />
+            </div>
+            <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>Creer un workflow de relance</span>
+          </div>
+
+          {workflowEnabled && (
+            <InlineWorkflowEditor
+              source={form.source}
+              steps={workflowSteps}
+              onStepsChange={setWorkflowSteps}
+            />
+          )}
 
           <div>
             <label style={labelStyle}>Tags</label>
@@ -187,6 +302,15 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
               color: 'var(--text-tertiary)', cursor: 'pointer',
             }}>
               Annuler
+            </button>
+            <button type="button" disabled={loading} onClick={() => submitForm(true)} style={{
+              padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              border: '1px solid var(--border-primary)', background: 'transparent',
+              color: 'var(--text-primary)', cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              {loading && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
+              Ajouter et continuer
             </button>
             <button type="submit" disabled={loading} style={{
               padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,

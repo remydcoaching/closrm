@@ -57,6 +57,7 @@ create table leads (
   meta_campaign_id text,
   meta_adset_id text,
   meta_ad_id text,
+  instagram_handle text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
