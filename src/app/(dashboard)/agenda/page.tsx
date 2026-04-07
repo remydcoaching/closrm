@@ -179,6 +179,20 @@ export default function AgendaPage() {
     fetchBookings()
   }, [fetchBookings])
 
+  // Keyboard shortcut: Backspace/Delete to remove selected booking
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.key === 'Backspace' || e.key === 'Delete') && selectedBooking) {
+        e.preventDefault()
+        if (confirm(`Supprimer "${selectedBooking.title}" ?`)) {
+          handleDeleteBooking(selectedBooking.id)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedBooking]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Navigation
   function navigatePrev() {
     if (viewMode === 'day') setCurrentDate((d) => addDays(d, -1))
