@@ -6,7 +6,7 @@ import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
 
-const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
+const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, purpose), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
 
 export async function GET(request: NextRequest) {
   try {
@@ -79,6 +79,59 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Auto-create call if calendar has purpose setting/closing
+    if (data.lead_id && data.calendar_id) {
+      const calPurpose = (data.booking_calendar as { purpose?: string } | null)?.purpose
+      if (calPurpose === 'setting' || calPurpose === 'closing') {
+        // Count existing calls for attempt_number
+        const { count: callCount } = await supabase
+          .from('calls')
+          .select('*', { count: 'exact', head: true })
+          .eq('workspace_id', workspaceId)
+          .eq('lead_id', data.lead_id)
+          .eq('type', calPurpose)
+
+        const calName = (data.booking_calendar as { name?: string } | null)?.name ?? ''
+        const { data: newCall } = await supabase
+          .from('calls')
+          .insert({
+            workspace_id: workspaceId,
+            lead_id: data.lead_id,
+            type: calPurpose,
+            scheduled_at: data.scheduled_at,
+            outcome: 'pending',
+            attempt_number: (callCount ?? 0) + 1,
+            reached: false,
+            notes: `Via calendrier : ${calName}`,
+          })
+          .select('id')
+          .single()
+
+        if (newCall) {
+          // Link call to booking
+          await supabase
+            .from('bookings')
+            .update({ call_id: newCall.id })
+            .eq('id', data.id)
+
+          // Update lead status
+          const newStatus = calPurpose === 'setting' ? 'setting_planifie' : 'closing_planifie'
+          await supabase
+            .from('leads')
+            .update({ status: newStatus })
+            .eq('id', data.lead_id)
+            .eq('workspace_id', workspaceId)
+
+          // Fire call_scheduled trigger
+          fireTriggersForEvent(workspaceId, 'call_scheduled', {
+            lead_id: data.lead_id,
+            call_id: newCall.id,
+            call_type: calPurpose,
+          }).catch(() => {})
+        }
+      }
+    }
 
     // Fire workflow triggers (non-blocking)
     if (data.lead_id) {
