@@ -160,7 +160,7 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBooki
                 color: 'var(--text-secondary)', borderRight: GRID_BORDER,
                 position: 'relative',
               }}>
-                <span style={{ position: 'absolute', bottom: -8, right: 10, lineHeight: 1, background: 'var(--bg-primary)', paddingTop: 2, paddingBottom: 2 }}>
+                <span style={{ position: 'absolute', top: -8, right: 10, lineHeight: 1, background: 'var(--bg-primary)', paddingTop: 2, paddingBottom: 2 }}>
                   {String(hour).padStart(2, '0')}:00
                 </span>
               </div>
