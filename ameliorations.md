@@ -305,7 +305,7 @@ Chaque amélioration suit ce format :
 
 ---
 
-## Améliorations identifiées pendant T-024 (2026-04-05→07)
+## Améliorations identifiées pendant T-024 — Audit Instagram + Performance (Pierre, 2026-04-05→07)
 
 ### A-024-01 · Token Meta refresh automatique
 **Priorité :** Haute
@@ -341,6 +341,47 @@ Chaque amélioration suit ce format :
 **Priorité :** Basse
 **Contexte :** Les notes sur les reels sont en localStorage, perdues si on change de navigateur.
 **Proposition :** Ajouter colonne `notes TEXT` à `ig_reels` + endpoint PATCH.
+
+---
+
+## T-025 — Follow Ads Classification (Rémy)
+
+### A-025-01 · Followers comme prospects (vision ManyChat-like) ⭐ VISION PROJET MAJEURE
+**Priorité :** Haute (V2)
+**Contexte :** Identifié pendant T-025. Demande explicite du fondateur — direction stratégique du produit.
+**Description :** À terme, les nouveaux followers Instagram doivent être traités comme des prospects à part entière dans le CRM. Ça transforme ClosRM en outil de nurturing automatisé style ManyChat. Le flow visé :
+1. **Détection auto** des nouveaux followers Instagram (webhook ou polling toutes les X minutes)
+2. **Création d'un lead** dans le CRM avec source `follow_ads_instagram`
+3. **Workflow d'automations** déclenché : DM de bienvenue, séquence nurturing, qualification (questions), proposition de RDV
+4. **Attribution** : si possible, relier le follower à la campagne Follow Ads qui l'a amené (via timing + heuristique)
+5. Le follower entre dans le pipeline standard (Nouveau lead → Setting → Closing → Closé)
+**Pourquoi c'est important :** Combine acquisition payante (Follow Ads), nurturing automatisé (DMs Instagram), et closing (CRM) en un seul workflow. C'est la promesse différenciante du produit pour les coachs.
+**Dépendances :** Nécessite l'API Instagram avec scope `instagram_basic` + `pages_messaging` + tracking des nouveaux followers (pas d'événement webhook natif, donc polling).
+**Proposition :** Créer une nouvelle tâche dédiée qui couvre : détection followers, création leads, intégration au moteur d'automations existant (T-014), attribution heuristique.
+
+### A-025-02 · Seuils de santé configurables par le coach
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-025 (config UI)
+**Description :** Les seuils des indicateurs de santé (CPL, CTR, ROAS, CPM, Coût/clic) sont actuellement codés en dur dans `health-thresholds.ts`. Un coach pourrait vouloir des seuils différents selon sa niche.
+**Proposition :** Ajouter une section dans Paramètres > Réglages "Seuils de performance" avec un input par KPI. Stocker en DB par workspace.
+
+### A-025-03 · Attribution followers → campagnes Follow Ads
+**Priorité :** Moyenne (V2)
+**Contexte :** Identifié pendant T-025 (croissance Instagram)
+**Description :** Actuellement on affiche les nouveaux followers Instagram totaux dans la section Follow Ads, sans pouvoir dire quelle campagne a amené quels followers. Meta ne donne pas cette info directement.
+**Proposition :** Heuristique temporelle : croiser les pics de followers (snapshot daily) avec les pics de spend des campagnes Follow Ads sur la même période. Permet une attribution approximative mais utile.
+
+### A-025-04 · Différencier `reach` et `impressions` dans Follow Ads
+**Priorité :** Basse
+**Contexte :** Identifié pendant T-025 (KPI Follow Ads)
+**Description :** Actuellement le KPI "Reach" affiche la même valeur que "Impressions" (limitation API actuelle). Meta retourne un champ `reach` distinct mais on ne le requête pas.
+**Proposition :** Ajouter `reach` aux fields demandés dans `getInsights()`, ajouter `reach: number` dans `MetaInsightRow` et `BreakdownRow`.
+
+### A-025-05 · Performance Insights IA (recommandations auto)
+**Priorité :** Basse (V2)
+**Contexte :** Identifié pendant le brainstorming T-025 (couche 3 reportée)
+**Description :** Couche IA avec recommandations actionnables : "Ton CPL est à 18€, voici 3 actions pour le baisser". Inspiré des screenshots du benchmark.
+**Proposition :** Module séparé "Performance Insights" avec règles métier (heuristiques) ou appel à un LLM. Action steps + expected impact + statut (Action Required / On Track).
 
 ---
 

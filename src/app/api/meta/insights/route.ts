@@ -9,7 +9,12 @@ import {
   extractCostPerLead,
   type MetaCredentials,
   type InsightsParams,
+  type MetaInsightRow,
 } from '@/lib/meta/client'
+import {
+  classifyCampaignObjective,
+  type CampaignType,
+} from '@/app/(dashboard)/acquisition/publicites/health-thresholds'
 
 interface KpisData {
   spend: number
@@ -24,6 +29,7 @@ interface BreakdownRow {
   id: string
   name: string
   status: string
+  campaign_type: CampaignType
   spend: number
   impressions: number
   clicks: number
@@ -44,6 +50,47 @@ export interface MetaInsightsResponse {
   kpis: KpisData
   breakdown: BreakdownRow[]
   daily: DailyRow[]
+  campaignTypeFilter: CampaignType | 'all'
+  // Per-type aggregated data (only populated at account level when filter='all')
+  leadformKpis?: KpisData
+  followAdsKpis?: KpisData
+  leadformDaily?: DailyRow[]
+  followAdsDaily?: DailyRow[]
+}
+
+// ─── Aggregation helpers ────────────────────────────────────────────────────
+
+function aggregateKpis(rows: MetaInsightRow[]): KpisData {
+  let spend = 0, impressions = 0, clicks = 0, leads = 0
+  for (const row of rows) {
+    spend += parseFloat(row.spend || '0')
+    impressions += parseInt(row.impressions || '0', 10)
+    clicks += parseInt(row.clicks || '0', 10)
+    leads += extractLeadCount(row)
+  }
+  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0
+  return {
+    spend: Math.round(spend * 100) / 100,
+    impressions,
+    clicks,
+    ctr: Math.round(ctr * 100) / 100,
+    leads,
+    cpl: leads > 0 ? Math.round((spend / leads) * 100) / 100 : null,
+  }
+}
+
+function aggregateDaily(rows: MetaInsightRow[]): DailyRow[] {
+  const daily: DailyRow[] = []
+  for (const row of rows) {
+    daily.push({
+      date: row.date_start,
+      spend: parseFloat(row.spend || '0'),
+      leads: extractLeadCount(row),
+      impressions: parseInt(row.impressions || '0', 10),
+      clicks: parseInt(row.clicks || '0', 10),
+    })
+  }
+  return daily.sort((a, b) => a.date.localeCompare(b.date))
 }
 
 function formatDate(d: Date): string {
@@ -92,6 +139,7 @@ export async function GET(request: NextRequest) {
     const customTo = searchParams.get('date_to')
     const campaignId = searchParams.get('campaign_id')
     const adsetId = searchParams.get('adset_id')
+    const campaignTypeFilter = (searchParams.get('campaign_type') ?? 'all') as CampaignType | 'all'
 
     // Validate level
     if (!['account', 'campaign', 'adset', 'ad'].includes(level)) {
@@ -128,6 +176,91 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // ── ACCOUNT LEVEL ──────────────────────────────────────────────────────
+    if (level === 'account') {
+      // For non-'all' filters or 'all', we always need the campaign type map
+      // to know which campaigns belong to which type.
+      const campaigns = await listAdObjects(
+        credentials.ad_account_id,
+        credentials.user_access_token,
+        'campaign'
+      )
+
+      const leadformIds: string[] = []
+      const followAdsIds: string[] = []
+      for (const c of campaigns) {
+        const type = classifyCampaignObjective(c.objective)
+        if (type === 'leadform') leadformIds.push(c.id)
+        else if (type === 'follow_ads') followAdsIds.push(c.id)
+      }
+
+      // Determine which campaign IDs to fetch insights for based on filter
+      let mainCampaignIds: string[] | undefined
+      if (campaignTypeFilter === 'leadform') mainCampaignIds = leadformIds
+      else if (campaignTypeFilter === 'follow_ads') mainCampaignIds = followAdsIds
+      // 'all' → undefined (no filter, all campaigns)
+
+      // If filter is set but no campaigns match, return empty response
+      if (mainCampaignIds && mainCampaignIds.length === 0) {
+        return NextResponse.json({
+          kpis: { spend: 0, impressions: 0, clicks: 0, ctr: 0, leads: 0, cpl: null },
+          breakdown: [],
+          daily: [],
+          campaignTypeFilter,
+        } satisfies MetaInsightsResponse)
+      }
+
+      // Fetch main insights
+      const mainRows = await getInsights(credentials.ad_account_id, credentials.user_access_token, {
+        level: 'account',
+        dateFrom,
+        dateTo,
+        campaignIds: mainCampaignIds,
+      })
+
+      const response: MetaInsightsResponse = {
+        kpis: aggregateKpis(mainRows),
+        breakdown: [],
+        daily: aggregateDaily(mainRows),
+        campaignTypeFilter,
+      }
+
+      // For 'all' filter, also fetch per-type aggregates so the dual-section
+      // overview can render both Leadform and Follow Ads separately.
+      if (campaignTypeFilter === 'all') {
+        const [leadformRows, followAdsRows] = await Promise.all([
+          leadformIds.length > 0
+            ? getInsights(credentials.ad_account_id, credentials.user_access_token, {
+                level: 'account', dateFrom, dateTo, campaignIds: leadformIds,
+              })
+            : Promise.resolve([]),
+          followAdsIds.length > 0
+            ? getInsights(credentials.ad_account_id, credentials.user_access_token, {
+                level: 'account', dateFrom, dateTo, campaignIds: followAdsIds,
+              })
+            : Promise.resolve([]),
+        ])
+        response.leadformKpis = aggregateKpis(leadformRows)
+        response.followAdsKpis = aggregateKpis(followAdsRows)
+        response.leadformDaily = aggregateDaily(leadformRows)
+        response.followAdsDaily = aggregateDaily(followAdsRows)
+      }
+
+      return NextResponse.json(response)
+    }
+
+    // ── CAMPAIGN / ADSET / AD LEVEL ─────────────────────────────────────────
+    // Build campaign type map for classification (needed for all non-account levels)
+    const campaignsForMap = await listAdObjects(
+      credentials.ad_account_id,
+      credentials.user_access_token,
+      'campaign'
+    )
+    const campaignTypeMap = new Map<string, CampaignType>()
+    for (const c of campaignsForMap) {
+      campaignTypeMap.set(c.id, classifyCampaignObjective(c.objective))
+    }
+
     // Fetch insights from Meta Marketing API
     const rows = await getInsights(credentials.ad_account_id, credentials.user_access_token, {
       level,
@@ -137,70 +270,43 @@ export async function GET(request: NextRequest) {
       adsetIds: adsetId ? [adsetId] : undefined,
     })
 
-    // Build response based on level
-    if (level === 'account') {
-      // Aggregate KPIs from daily rows
-      let totalSpend = 0
-      let totalImpressions = 0
-      let totalClicks = 0
-      let totalLeads = 0
-      const daily: DailyRow[] = []
-
-      for (const row of rows) {
-        const spend = parseFloat(row.spend || '0')
-        const impressions = parseInt(row.impressions || '0', 10)
-        const clicks = parseInt(row.clicks || '0', 10)
-        const leads = extractLeadCount(row)
-
-        totalSpend += spend
-        totalImpressions += impressions
-        totalClicks += clicks
-        totalLeads += leads
-
-        daily.push({
-          date: row.date_start,
-          spend,
-          leads,
-          impressions,
-          clicks,
-        })
-      }
-
-      const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
-
-      const response: MetaInsightsResponse = {
-        kpis: {
-          spend: totalSpend,
-          impressions: totalImpressions,
-          clicks: totalClicks,
-          ctr: Math.round(ctr * 100) / 100,
-          leads: totalLeads,
-          cpl: totalLeads > 0 ? Math.round((totalSpend / totalLeads) * 100) / 100 : null,
-        },
-        breakdown: [],
-        daily: daily.sort((a, b) => a.date.localeCompare(b.date)),
-      }
-
-      return NextResponse.json(response)
-    }
-
-    // Campaign / AdSet / Ad level — fetch all objects + merge with insights
     // Determine parent for listAdObjects
     let parentId: string | undefined
     if (level === 'adset' && campaignId) parentId = campaignId
     if (level === 'ad' && adsetId) parentId = adsetId
 
-    const [allObjects] = await Promise.all([
-      listAdObjects(credentials.ad_account_id, credentials.user_access_token, level as 'campaign' | 'adset' | 'ad', parentId),
-    ])
+    // Reuse campaignsForMap when level === 'campaign' to avoid double fetch
+    const allObjects = level === 'campaign'
+      ? campaignsForMap
+      : await listAdObjects(credentials.ad_account_id, credentials.user_access_token, level, parentId)
+
+    // Helper to determine campaign_type for a row
+    const getRowType = (
+      objId: string,
+      insightCampaignId?: string,
+      objObjective?: string
+    ): CampaignType => {
+      if (level === 'campaign') {
+        return classifyCampaignObjective(objObjective)
+      }
+      // For adsets/ads, look up via insight's campaign_id
+      if (insightCampaignId) {
+        return campaignTypeMap.get(insightCampaignId) ?? 'other'
+      }
+      // Fallback: try to look up via the object's id (if we can find a matching insight)
+      const matchingInsight = rows.find(r => {
+        if (level === 'adset') return r.adset_id === objId
+        if (level === 'ad') return r.ad_id === objId
+        return false
+      })
+      if (matchingInsight?.campaign_id) {
+        return campaignTypeMap.get(matchingInsight.campaign_id) ?? 'other'
+      }
+      return 'other'
+    }
 
     // Build insights map by id
     const insightsMap = new Map<string, BreakdownRow>()
-    let totalSpend = 0
-    let totalImpressions = 0
-    let totalClicks = 0
-    let totalLeads = 0
-
     for (const row of rows) {
       const spend = parseFloat(row.spend || '0')
       const impressions = parseInt(row.impressions || '0', 10)
@@ -208,11 +314,6 @@ export async function GET(request: NextRequest) {
       const leads = extractLeadCount(row)
       const cpl = extractCostPerLead(row)
       const rowCtr = parseFloat(row.ctr || '0')
-
-      totalSpend += spend
-      totalImpressions += impressions
-      totalClicks += clicks
-      totalLeads += leads
 
       let id = ''
       let name = ''
@@ -227,10 +328,21 @@ export async function GET(request: NextRequest) {
         name = row.ad_name ?? 'Sans nom'
       }
 
+      // Classify
+      let campaign_type: CampaignType = 'other'
+      if (level === 'campaign') {
+        // Find matching object to get its objective
+        const obj = allObjects.find(o => o.id === id)
+        campaign_type = classifyCampaignObjective(obj?.objective)
+      } else if (row.campaign_id) {
+        campaign_type = campaignTypeMap.get(row.campaign_id) ?? 'other'
+      }
+
       insightsMap.set(id, {
         id,
         name,
         status: 'ACTIVE',
+        campaign_type,
         spend: Math.round(spend * 100) / 100,
         impressions,
         clicks,
@@ -256,6 +368,7 @@ export async function GET(request: NextRequest) {
             id: obj.id,
             name: obj.name,
             status: obj.effective_status,
+            campaign_type: getRowType(obj.id, undefined, obj.objective),
             spend: 0,
             impressions: 0,
             clicks: 0,
@@ -266,7 +379,6 @@ export async function GET(request: NextRequest) {
         }
       }
       // Add remaining insights only if we're NOT scoped to a parent
-      // (when scoped, unmatched insights are from other parents and should be excluded)
       if (!parentId) {
         for (const row of insightsMap.values()) {
           breakdown.push(row)
@@ -277,19 +389,33 @@ export async function GET(request: NextRequest) {
       breakdown.push(...insightsMap.values())
     }
 
+    // Filter by campaign_type
+    const filteredBreakdown = campaignTypeFilter === 'all'
+      ? breakdown
+      : breakdown.filter(row => row.campaign_type === campaignTypeFilter)
+
+    // Recalculate KPIs from the filtered breakdown
+    let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalLeads = 0
+    for (const row of filteredBreakdown) {
+      totalSpend += row.spend
+      totalImpressions += row.impressions
+      totalClicks += row.clicks
+      totalLeads += row.leads
+    }
     const overallCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
 
     const response: MetaInsightsResponse = {
       kpis: {
-        spend: totalSpend,
+        spend: Math.round(totalSpend * 100) / 100,
         impressions: totalImpressions,
         clicks: totalClicks,
         ctr: Math.round(overallCtr * 100) / 100,
         leads: totalLeads,
         cpl: totalLeads > 0 ? Math.round((totalSpend / totalLeads) * 100) / 100 : null,
       },
-      breakdown: breakdown.sort((a, b) => b.spend - a.spend),
+      breakdown: filteredBreakdown.sort((a, b) => b.spend - a.spend),
       daily: [],
+      campaignTypeFilter,
     }
 
     return NextResponse.json(response)
