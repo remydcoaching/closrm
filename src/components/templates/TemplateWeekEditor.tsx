@@ -213,21 +213,23 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
 
               return (
                 <div key={slotIdx} style={{ display: 'contents' }}>
-                  {/* Hour label — only on full hours */}
+                  {/* Hour label — only on full hours, positioned on the grid line */}
                   <div style={{
                     height: CELL_HEIGHT,
                     borderRight: GRID_BORDER,
                     borderBottom,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    paddingRight: 6,
-                    fontSize: 9,
-                    fontWeight: 600,
-                    color: isFullHour ? 'var(--text-secondary)' : 'transparent',
-                    fontFamily: 'monospace',
+                    position: 'relative',
                   }}>
-                    {isFullHour ? `${String(hour).padStart(2, '0')}:00` : ''}
+                    {isFullHour && (
+                      <span style={{
+                        position: 'absolute', bottom: -7, right: 6,
+                        fontSize: 9, fontWeight: 600, lineHeight: 1,
+                        color: 'var(--text-secondary)', fontFamily: 'monospace',
+                        background: 'var(--bg-primary)', paddingTop: 2, paddingBottom: 2,
+                      }}>
+                        {String(hour).padStart(2, '0')}:00
+                      </span>
+                    )}
                   </div>
                   {/* Day cells */}
                   {DAY_KEYS.map(day => (
