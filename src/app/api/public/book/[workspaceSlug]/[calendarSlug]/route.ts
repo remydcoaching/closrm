@@ -20,6 +20,7 @@ interface CalendarRow {
   form_fields: unknown
   availability: unknown
   buffer_minutes: number
+  purpose: string
 }
 
 async function getCalendarBySlug(
@@ -41,7 +42,7 @@ async function getCalendarBySlug(
   const { data: calendar, error: calError } = await supabase
     .from('booking_calendars')
     .select(
-      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes',
+      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose',
     )
     .eq('workspace_id', slugRow.workspace_id)
     .eq('slug', calendarSlug)
@@ -284,6 +285,55 @@ export async function POST(
 
   if (bookingError || !booking) {
     return NextResponse.json({ error: 'Erreur lors de la création de la réservation.' }, { status: 500 })
+  }
+
+  // Auto-create call if calendar has purpose setting/closing
+  if (leadId && (calendar.purpose === 'setting' || calendar.purpose === 'closing')) {
+    // Count existing calls for attempt_number
+    const { count: callCount } = await supabase
+      .from('calls')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', calendar.workspace_id)
+      .eq('lead_id', leadId)
+      .eq('type', calendar.purpose)
+
+    const { data: newCall } = await supabase
+      .from('calls')
+      .insert({
+        workspace_id: calendar.workspace_id,
+        lead_id: leadId,
+        type: calendar.purpose,
+        scheduled_at: scheduled_at,
+        outcome: 'pending',
+        attempt_number: (callCount ?? 0) + 1,
+        reached: false,
+        notes: `Via calendrier : ${calendar.name}`,
+      })
+      .select('id')
+      .single()
+
+    if (newCall) {
+      // Link call to booking
+      await supabase
+        .from('bookings')
+        .update({ call_id: newCall.id })
+        .eq('id', booking.id)
+
+      // Update lead status
+      const newStatus = calendar.purpose === 'setting' ? 'setting_planifie' : 'closing_planifie'
+      await supabase
+        .from('leads')
+        .update({ status: newStatus })
+        .eq('id', leadId)
+        .eq('workspace_id', calendar.workspace_id)
+
+      // Fire call_scheduled trigger
+      fireTriggersForEvent(calendar.workspace_id, 'call_scheduled', {
+        lead_id: leadId,
+        call_id: newCall.id,
+        call_type: calendar.purpose,
+      }).catch(() => {})
+    }
   }
 
   // Fire workflow trigger (non-blocking)
