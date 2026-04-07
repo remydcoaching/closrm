@@ -348,6 +348,7 @@ export default function IgReelsTab() {
 
         return (
           <div
+            key={reel.id}
             ref={panelRef}
             style={{
               flex: '0 0 45%',
