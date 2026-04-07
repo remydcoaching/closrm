@@ -16,6 +16,7 @@ interface WizardAnswers {
   approach: string
   example_messages: string
   goal: Goal
+  api_key: string
 }
 
 const APPROACH_OPTIONS = [
@@ -151,6 +152,7 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
     approach: existingBrief?.approach || '',
     example_messages: existingBrief?.example_messages || '',
     goal: existingBrief?.goal || 'book_call',
+    api_key: existingBrief?.api_key || '',
   })
 
   const steps = [
@@ -160,6 +162,7 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
     { title: 'Votre approche', description: 'Comment abordez-vous la conversation avec un nouveau lead ?' },
     { title: 'Exemples de messages', description: 'Collez 2-3 messages que vous envoyez habituellement a vos prospects.' },
     { title: 'Votre objectif', description: 'Que voulez-vous accomplir avec vos messages ?' },
+    { title: 'Cle API Claude', description: 'Entrez votre cle API Anthropic pour activer l\'assistant IA. Obtenez-la sur console.anthropic.com' },
   ]
 
   const canProceed = (): boolean => {
@@ -170,6 +173,7 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
       case 3: return answers.approach.trim().length > 0
       case 4: return true
       case 5: return true
+      case 6: return answers.api_key.trim().length > 10
       default: return false
     }
   }
@@ -411,6 +415,22 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
             })}
           </div>
         )}
+
+        {/* Step 6 — API Key */}
+        {step === 6 && (
+          <div>
+            <input
+              type="password"
+              value={answers.api_key}
+              onChange={e => updateAnswer('api_key', e.target.value)}
+              placeholder="sk-ant-api03-..."
+              style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 13 }}
+            />
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, lineHeight: 1.6 }}>
+              Creez un compte sur <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" style={{ color: '#a855f7', textDecoration: 'none' }}>console.anthropic.com</a>, puis allez dans Settings &gt; API Keys pour generer votre cle. Votre cle est stockee de facon securisee et utilisee uniquement pour generer des suggestions.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
@@ -488,6 +508,7 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
   const [approach, setApproach] = useState(brief.approach || '')
   const [examples, setExamples] = useState(brief.example_messages || '')
   const [goal, setGoal] = useState<Goal>(brief.goal)
+  const [editApiKey, setEditApiKey] = useState(brief.api_key || '')
 
   async function handleRegenerate() {
     setSaving(true)
@@ -752,6 +773,32 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
             </div>
           ))}
         </div>
+      </div>
+
+      {/* API Key */}
+      <div style={cardStyle}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>Cle API Claude</div>
+        <input
+          type="password"
+          value={editApiKey}
+          onChange={e => setEditApiKey(e.target.value)}
+          placeholder="sk-ant-api03-..."
+          style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 13, marginBottom: 8 }}
+        />
+        {editApiKey !== (brief.api_key || '') && (
+          <button onClick={async () => {
+            await fetch('/api/ai/brief', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...brief, api_key: editApiKey }),
+            })
+          }} style={{ ...primaryBtn, padding: '8px 16px', fontSize: 12 }}>
+            Sauvegarder la cle
+          </button>
+        )}
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
+          Obtenez votre cle sur <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" style={{ color: '#a855f7', textDecoration: 'none' }}>console.anthropic.com</a>
+        </p>
       </div>
 
       {/* Actions */}

@@ -14,10 +14,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'lead_id requis' }, { status: 400 })
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json({ error: 'ANTHROPIC_API_KEY non configuree' }, { status: 500 })
-    }
-
     const suggestion = await generateSuggestion(workspaceId, leadId, conversationId)
     return NextResponse.json({ data: suggestion })
   } catch (err) {

@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       approach: body.approach || '',
       example_messages: body.example_messages || '',
       goal: body.goal || 'book_call',
+      api_key: body.api_key,
     })
 
     return NextResponse.json({ data: brief }, { status: 201 })

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { AiSuggestion, Lead, IgMessage } from '@/types'
 import { callClaude } from './client'
 import { buildSuggestionPrompt } from './prompts'
-import { getBrief, getWinningConversations } from './brief'
+import { getBrief, getApiKey, getWinningConversations } from './brief'
 
 export async function generateSuggestion(
   workspaceId: string,
@@ -11,8 +11,10 @@ export async function generateSuggestion(
 ): Promise<AiSuggestion> {
   const supabase = await createClient()
 
-  // 1. Fetch brief
+  // 1. Fetch brief + API key
   const brief = await getBrief(workspaceId)
+  const apiKey = await getApiKey(workspaceId)
+  if (!apiKey) throw new Error('Cle API non configuree. Allez dans Parametres > Assistant IA.')
 
   // 2. Fetch lead
   const { data: lead } = await supabase
@@ -58,7 +60,7 @@ export async function generateSuggestion(
 
   // 7. Call Claude — Haiku pour conversations courtes, Sonnet pour longues
   const model = messages.length > 10 ? 'claude-sonnet-4-5-20250514' : 'claude-haiku-4-5-20251001'
-  const raw = await callClaude(prompt, model)
+  const raw = await callClaude(prompt, apiKey, model)
 
   // 8. Parse response
   let parsed: { guidance: string; message: string; status_suggestion?: { to: string; reason: string } }

@@ -13,6 +13,11 @@ export async function getBrief(workspaceId: string): Promise<AiCoachBrief | null
   return data
 }
 
+export async function getApiKey(workspaceId: string): Promise<string | null> {
+  const brief = await getBrief(workspaceId)
+  return brief?.api_key || null
+}
+
 export async function saveBrief(
   workspaceId: string,
   answers: {
@@ -22,19 +27,29 @@ export async function saveBrief(
     approach: string
     example_messages: string
     goal: 'book_call' | 'sell_dm' | 'both'
+    api_key?: string
   }
 ): Promise<AiCoachBrief> {
   const supabase = await createClient()
 
+  const apiKey = answers.api_key
+  if (!apiKey) throw new Error('Cle API requise pour generer le brief')
+
   // Generate brief from answers
   const prompt = buildBriefGenerationPrompt(answers)
-  const generatedBrief = await callClaude(prompt, 'claude-sonnet-4-5-20250514')
+  const generatedBrief = await callClaude(prompt, apiKey, 'claude-sonnet-4-5-20250514')
 
   const { data, error } = await supabase
     .from('ai_coach_briefs')
     .upsert({
       workspace_id: workspaceId,
-      ...answers,
+      offer_description: answers.offer_description,
+      target_audience: answers.target_audience,
+      tone: answers.tone,
+      approach: answers.approach,
+      example_messages: answers.example_messages,
+      goal: answers.goal,
+      api_key: apiKey,
       generated_brief: generatedBrief,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'workspace_id' })
@@ -80,7 +95,6 @@ export async function recordOutcome(
 ): Promise<void> {
   const supabase = await createClient()
 
-  // Fetch messages snapshot
   const { data: messages } = await supabase
     .from('ig_messages')
     .select('sender_type, text, sent_at')
