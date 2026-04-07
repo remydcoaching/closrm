@@ -156,13 +156,11 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBooki
           {HOURS.map((hour) => (
             <div key={hour} style={{ display: 'contents' }}>
               <div style={{
-                height: CELL_HEIGHT, padding: '0 10px 0 0', textAlign: 'right', fontSize: 11, fontWeight: 500,
+                height: CELL_HEIGHT, textAlign: 'right', fontSize: 11, fontWeight: 500,
                 color: 'var(--text-secondary)', borderRight: GRID_BORDER,
-                borderBottom: GRID_BORDER,
-                display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end',
                 position: 'relative',
               }}>
-                <span style={{ position: 'absolute', top: -7, right: 10 }}>
+                <span style={{ position: 'absolute', bottom: -8, right: 10, lineHeight: 1, background: 'var(--bg-primary)', paddingTop: 2, paddingBottom: 2 }}>
                   {String(hour).padStart(2, '0')}:00
                 </span>
               </div>
