@@ -209,7 +209,7 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
             {slots.map(slotIdx => {
               const isFullHour = slotIdx % 2 === 0
               const hour = Math.floor(slotIdx / 2) + START_HOUR
-              const borderBottom = isFullHour ? GRID_BORDER : GRID_BORDER_DASHED
+              const borderBottom = isFullHour ? GRID_BORDER_DASHED : GRID_BORDER
 
               return (
                 <div key={slotIdx} style={{ display: 'contents' }}>
@@ -222,10 +222,10 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
                   }}>
                     {isFullHour && (
                       <span style={{
-                        position: 'absolute', bottom: -7, right: 6,
+                        position: 'absolute', top: -7, right: 6,
                         fontSize: 9, fontWeight: 600, lineHeight: 1,
                         color: 'var(--text-secondary)', fontFamily: 'monospace',
-                        background: 'var(--bg-primary)', paddingTop: 2, paddingBottom: 2,
+                        background: '#0d0d0d', paddingTop: 2, paddingBottom: 2,
                       }}>
                         {String(hour).padStart(2, '0')}:00
                       </span>
