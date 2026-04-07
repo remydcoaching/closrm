@@ -392,22 +392,22 @@ export default function IgReelsTab() {
             <div style={{ padding: '20px' }}>
               {/* Video / Thumbnail Preview */}
               <div style={{
-                width: '100%', borderRadius: 12, overflow: 'hidden',
+                width: '100%', maxWidth: 320, margin: '0 auto', borderRadius: 12, overflow: 'hidden',
                 background: '#000', marginBottom: 20, position: 'relative',
-                aspectRatio: '9 / 16', maxHeight: 400,
+                aspectRatio: '9 / 16',
               }}>
                 {reel.video_url ? (
                   <video
                     src={reel.video_url}
                     poster={reel.thumbnail_url ?? undefined}
                     controls
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : reel.thumbnail_url ? (
                   <img
                     src={reel.thumbnail_url}
                     alt={reel.caption?.slice(0, 60) ?? 'Reel'}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : (
                   <div style={{
