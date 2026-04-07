@@ -46,7 +46,7 @@ export async function PATCH(
 
     const { data: existing } = await supabase
       .from('bookings')
-      .select('id, google_event_id, status, scheduled_at, duration_minutes')
+      .select('id, google_event_id, status, scheduled_at, duration_minutes, call_id, lead_id, calendar_id')
       .eq('id', id)
       .eq('workspace_id', workspaceId)
       .single()
@@ -91,6 +91,79 @@ export async function PATCH(
         start: { dateTime: newStart.toISOString() },
         end: { dateTime: newEnd.toISOString() },
       }).catch(() => {})
+    }
+
+    // Sync booking status to linked call + create follow-up
+    if (existing.call_id && data.lead_id) {
+      // Fetch the call to know its type
+      const { data: linkedCall } = await supabase
+        .from('calls')
+        .select('id, type')
+        .eq('id', existing.call_id)
+        .single()
+
+      if (linkedCall) {
+        if (parsed.data.status === 'no_show' && existing.status !== 'no_show') {
+          // Call → no_show
+          await supabase
+            .from('calls')
+            .update({ outcome: 'no_show' })
+            .eq('id', linkedCall.id)
+
+          // Lead → no_show_setting or no_show_closing
+          const noShowStatus = linkedCall.type === 'setting' ? 'no_show_setting' : 'no_show_closing'
+          await supabase
+            .from('leads')
+            .update({ status: noShowStatus })
+            .eq('id', data.lead_id)
+            .eq('workspace_id', workspaceId)
+
+          // Create follow-up
+          const tomorrow = new Date()
+          tomorrow.setDate(tomorrow.getDate() + 1)
+          tomorrow.setHours(9, 0, 0, 0)
+          await supabase
+            .from('follow_ups')
+            .insert({
+              workspace_id: workspaceId,
+              lead_id: data.lead_id,
+              reason: 'No-show RDV — à relancer',
+              scheduled_at: tomorrow.toISOString(),
+              channel: 'whatsapp',
+              status: 'en_attente',
+            })
+
+          // Fire call_no_show trigger
+          fireTriggersForEvent(workspaceId, 'call_no_show', {
+            lead_id: data.lead_id,
+            call_id: linkedCall.id,
+            call_type: linkedCall.type,
+          }).catch(() => {})
+        }
+
+        if (parsed.data.status === 'cancelled' && existing.status !== 'cancelled') {
+          // Call → cancelled (lead status unchanged)
+          await supabase
+            .from('calls')
+            .update({ outcome: 'cancelled' })
+            .eq('id', linkedCall.id)
+
+          // Create follow-up
+          const tomorrow = new Date()
+          tomorrow.setDate(tomorrow.getDate() + 1)
+          tomorrow.setHours(9, 0, 0, 0)
+          await supabase
+            .from('follow_ups')
+            .insert({
+              workspace_id: workspaceId,
+              lead_id: data.lead_id,
+              reason: 'RDV annulé — à relancer',
+              scheduled_at: tomorrow.toISOString(),
+              channel: 'whatsapp',
+              status: 'en_attente',
+            })
+        }
+      }
     }
 
     // Fire workflow trigger when status changes to no_show (non-blocking)
