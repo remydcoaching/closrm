@@ -36,6 +36,33 @@
 
 ---
 
+### T-027 · Lead++ — workflow inline + pseudo IG + saisie en chaîne + Messages tab ⭐ NOUVELLE (réassignée depuis Rémy)
+**Priorité :** Haute
+**Statut :** ⬜ Non démarré
+**Fiche détaillée :** `taches/tache-027-lead-plus-plus.md`
+
+> ⚠️ **Touche le module Leads de Rémy** — exception assumée à la séparation
+> des modules. Pierre prend cette tâche car il maîtrise déjà le module
+> Instagram (`ig_conversations`, `ig_messages`) et le moteur Workflows.
+> **Coordination obligatoire avec Rémy** avant tout push sur :
+> `LeadForm.tsx`, `api/leads/route.ts`, `types/index.ts`, migration `leads`.
+
+**Résumé :**
+- Modale "Ajouter un lead" : nouveau champ pseudo Instagram → auto-détection
+  source `instagram_ads` / `follow_ads`
+- Toggle "Créer un workflow de relance" sous la source → suggestion pré-remplie
+  par source (DM IG J0 + DM IG J+2 pour follow ads, etc.) — éditeur compact
+- Bouton "Ajouter et continuer" qui valide + reset le form pour saisie en chaîne
+- Lien automatique avec une `ig_conversation` existante via le pseudo
+  (UPDATE `ig_conversations.lead_id`)
+- Nouvel onglet "Messagerie" sur la fiche lead — read-only via les endpoints
+  `/api/instagram/conversations/[id]/messages`
+- Migration SQL : `leads.instagram_handle` (à annoncer à Rémy)
+- Décision d'archi : workflow inline = option A (vrai workflow via
+  `/api/workflows`) à privilégier — c'est ton moteur
+
+---
+
 ### T-029 · Automations v2 — Refonte / extensions ⭐ NOUVELLE
 **Priorité :** Haute (en parallèle de T-028 Rémy Funnels v2)
 **Statut :** ⬜ Non démarré
@@ -82,6 +109,7 @@
 | # | Tâche | Priorité | Statut |
 |---|-------|----------|--------|
 | T-021 | Instagram Automations | Moyenne | ⬜ |
+| **T-027** | **Lead++ (réassignée depuis Rémy)** | **Haute** | **⬜** |
 | **T-029** | **Automations v2** | **Haute** | **⬜** |
 | **T-030** | **Booking → auto Google Meet** | **Haute** | **⬜** |
 | Polish T-014 / T-020 / T-022 | Backlog | Basse | ⬜ |

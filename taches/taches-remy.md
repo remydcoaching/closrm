@@ -24,25 +24,10 @@
 
 ## Tâches à venir
 
-### T-027 · Lead++ — workflow inline + pseudo IG + saisie en chaîne + Messages tab ⭐ PRIORITAIRE
-**Priorité :** Haute
-**Statut :** ⬜ Non démarré
-**Fiche détaillée :** `taches/tache-027-lead-plus-plus.md`
-
-**Résumé :**
-- Modale "Ajouter un lead" : nouveau champ pseudo Instagram → auto-détection
-  source `instagram_ads`
-- Toggle "Créer un workflow de relance" sous la source → suggestion pré-remplie
-  par source (DM IG J0 + DM IG J+2 pour follow ads, etc.) — éditeur compact
-- Bouton "Ajouter et continuer" qui valide + reset le form pour saisie en chaîne
-- Lien automatique avec une `ig_conversation` existante via le pseudo
-- Nouvel onglet "Messagerie" sur la fiche lead (read-only, lit les `ig_messages`
-  côté Pierre)
-- Migration SQL : `leads.instagram_handle`
-- **Coordination Pierre :** format payload workflow inline + lecture des
-  endpoints `/api/instagram/conversations/[id]/messages`
-
----
+> ℹ️ T-027 (Lead++) a été **réassignée à Pierre** le 2026-04-07. Voir
+> `taches/taches-pierre.md`. C'est une exception assumée : Pierre la prend
+> car il maîtrise déjà le module Instagram et le moteur Workflows.
+> Coordination requise avec Rémy avant tout push sur le module Leads.
 
 ### T-028 · Funnels v2 — refonte builder + analytics + templates ⭐ EN PARALLÈLE T-029 PIERRE
 **Priorité :** Haute
@@ -83,7 +68,6 @@
 
 | # | Tâche | Priorité | Statut |
 |---|-------|----------|--------|
-| **T-027** | **Lead++ workflow inline + IG pseudo + chaîne + Messages tab** | **Haute** | **⬜** |
 | **T-028** | **Funnels v2 (refonte builder + analytics + templates)** | **Haute** | **⬜** |
 | **T-031** | **Import portefeuille leads (CSV + alternatives)** | **Moyenne** | **⬜** |
 
@@ -91,13 +75,14 @@
 
 ## Ordre de bataille suggéré
 
-1. **T-027 d'abord** — débloque l'usage réel d'A-007 (sources/channels) et
-   du module Instagram de Pierre. Aligne avec Pierre sur le payload workflow
-   inline pendant qu'il démarre T-029.
-2. **T-028 ensuite (en parallèle de T-029 Pierre)** — gros morceau, à
-   découper en sous-tâches après audit.
-3. **T-031 en dernier** — bloque sur le trigger `lead_imported` que Pierre
+1. **T-028 d'abord (en parallèle de T-029 Pierre)** — gros morceau,
+   à découper en sous-tâches après audit Phase 1.
+2. **T-031 ensuite** — bloque sur le trigger `lead_imported` que Pierre
    doit exposer en T-029. Démarrable dès qu'il a poussé son côté du contrat.
+
+**À surveiller côté T-027 (Pierre)** : il va toucher au module Leads (LeadForm,
+API leads, types, migration `leads.instagram_handle`). Te coordonner avec lui
+avant chaque push sur ces fichiers pour éviter les conflits.
 
 ---
 

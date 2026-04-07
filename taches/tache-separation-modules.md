@@ -37,6 +37,7 @@ listés en bas de ce fichier (logique métier transverse).
 | Funnels v1 (builder initial) | ✅ Terminé | T-023 |
 | Dark/Light Mode + Branding dynamique | ✅ Terminé | — |
 | Instagram Automations (`comment_keyword`) | ⬜ Non démarré | T-021 |
+| **Lead++ (workflow inline + pseudo IG + chaîne + Messages)** ⚠️ touche module Leads de Rémy | ⬜ Non démarré | **T-027** |
 | **Automations v2** (nouveaux triggers/actions, observability) | ⬜ Non démarré | **T-029** |
 | **Booking → auto Google Meet** (en ligne) | ⬜ Non démarré | **T-030** |
 
@@ -54,9 +55,13 @@ listés en bas de ce fichier (logique métier transverse).
 | Follow Ads classification + KPIs santé | ✅ Terminé | T-025 |
 | Source `follow_ads` + channel `instagram_dm` | ✅ Terminé | A-007 |
 | Followers-as-prospects (V2) | ❌ Abandonné | T-026 |
-| **Lead++ : workflow inline + pseudo IG + saisie en chaîne + Messages tab** | ⬜ Non démarré | **T-027** |
 | **Funnels v2** (refonte builder + analytics + templates) | ⬜ Non démarré | **T-028** |
 | **Import portefeuille leads** (CSV + alternatives) | ⬜ Non démarré | **T-031** |
+
+> ℹ️ T-027 (Lead++) initialement prévue pour Rémy a été **réassignée à Pierre**
+> le 2026-04-07. Cette tâche touche au module Leads (territoire de Rémy) :
+> c'est une exception assumée car Pierre maîtrise déjà le module Instagram et
+> le moteur Workflows. Coordination obligatoire avec Rémy avant tout push.
 
 ---
 
@@ -217,10 +222,10 @@ la sienne.
 
 | Tâche | Doit aligner avec | Sur quoi |
 |-------|-------------------|----------|
-| **T-027** (Rémy) | Pierre | Format payload "workflow inline" (option A : POST `/api/workflows`, option B : POST N follow-ups). Lecture `ig_conversations` + `ig_messages` côté fiche lead. |
+| **T-027** (Pierre) ⚠️ | Rémy | Touche le module Leads de Rémy : Pierre doit annoncer toute modif sur `LeadForm.tsx`, `api/leads/route.ts`, `types/index.ts` et la migration `leads.instagram_handle`. Synchroniser pour éviter les conflits avec T-031 (Rémy). |
 | **T-029** (Pierre) | Rémy | Trigger `lead_imported` à exposer pour T-031. Action `create_google_meet` pour T-030. |
 | **T-030** (Pierre) | — | Auto-suffisant côté Pierre (Google Calendar lib + bookings). |
-| **T-031** (Rémy) | Pierre | Fire le trigger `lead_imported` quand T-029 l'aura exposé. |
+| **T-031** (Rémy) | Pierre | Fire le trigger `lead_imported` quand T-029 l'aura exposé. **Conflit potentiel avec T-027** (les deux touchent `LeadForm` / migration `leads`) — séquencer ou se coordonner sur les fichiers. |
 | **T-028** (Rémy) | Pierre | Refonte du module Funnels initialement créé par Pierre. Valider le périmètre (Rémy refait les blocs / Pierre garde le moteur ?). |
 
 ---

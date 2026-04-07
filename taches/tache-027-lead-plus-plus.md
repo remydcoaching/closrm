@@ -1,9 +1,17 @@
 # Tâche 027 — Lead++ : workflow inline, pseudo IG, saisie en chaîne, onglet Messages
 
 > **Statut :** ⬜ Non démarré
-> **Développeur :** Rémy
+> **Développeur :** Pierre (réassigné le 2026-04-07 — initialement prévu pour Rémy)
 > **Date de création :** 2026-04-07
-> **Branche Git prévue :** `feature/remy-lead-plus-plus`
+> **Branche Git prévue :** `feature/pierre-lead-plus-plus`
+>
+> ⚠️ Cette tâche touche le module Leads de Rémy. C'est une **exception
+> assumée** au principe de séparation : Pierre est mieux placé car il maîtrise
+> le module Instagram (`ig_conversations`, `ig_messages`) et le moteur
+> Workflows (option A pour le workflow inline). Coordination obligatoire
+> avec Rémy avant de toucher à `src/components/leads/LeadForm.tsx`,
+> `src/app/api/leads/route.ts`, et `supabase/migrations/` (colonne
+> `leads.instagram_handle`).
 
 ---
 
@@ -122,29 +130,35 @@ la **prise en charge follow-up** dès la création :
 
 ## Notes techniques
 
-### Coordination avec Pierre — points à valider avant de coder
+### Coordination avec Rémy — points à valider avant de coder
 
-1. **Stockage du workflow inline** — deux options :
-   - Option A : créer un vrai `workflow` via `/api/workflows` (lourd, mais
-     réutilise tout le moteur de Pierre, statuts, exécutions, etc.)
-   - Option B : créer N `follow_ups` (plus léger, mais on perd la notion de
-     "ce workflow vient de la création du lead X")
-   - **Reco :** Option A si Pierre a une route `POST /api/workflows` qui
-     accepte des steps en bulk. Sinon Option B en fallback.
+1. **Toucher au module Leads** — Pierre doit prévenir Rémy avant chaque
+   modification de :
+   - `src/components/leads/LeadForm.tsx` (ajout champ pseudo + bouton chaîne + toggle workflow)
+   - `src/app/api/leads/route.ts` (insert pseudo + lien `ig_conversations` + création workflow)
+   - `src/app/(dashboard)/leads/[id]/page.tsx` (onglet Messagerie)
+   - `src/types/index.ts` (Lead += `instagram_handle`)
+   - Migration SQL sur `leads`
 
-2. **Schéma `ig_conversations.lead_id`** — déjà présent, pas besoin de changement.
-   Mais Pierre doit garder cette colonne stable et l'utiliser de son côté
-   quand un message arrive (pas géré par cette fiche).
+2. **Stockage du workflow inline** — Pierre tranche, c'est son moteur :
+   - Option A : créer un vrai `workflow` via `/api/workflows` (réutilise
+     son moteur, statuts, exécutions). À privilégier puisque Pierre maîtrise
+     le code.
+   - Option B : créer N `follow_ups` directement (plus léger, mais perd la
+     notion de "workflow"). Fallback si Option A trop lourde.
 
-3. **Onglet Messagerie** — utiliser l'API existante de Pierre côté Read.
-   Lister les endpoints disponibles avec lui avant de coder.
+3. **Schéma `ig_conversations.lead_id`** — déjà présent (T-023), Pierre
+   l'utilise déjà côté DM. Réutiliser tel quel.
+
+4. **Onglet Messagerie** — Pierre réutilise ses propres endpoints
+   `/api/instagram/conversations/[id]/messages` en read-only.
 
 ### Migration : ajout `instagram_handle`
 
 - Colonne nullable, pas de default
 - Index simple (pas unique — plusieurs leads peuvent avoir le même pseudo IG
   s'il y a doublon dans le pipeline, à ne pas bloquer)
-- À mentionner à Pierre car c'est la table `leads` qu'on touche
+- ⚠️ Touche la table `leads` (module de Rémy) : prévenir Rémy avant push
 
 ### Templates de relance par source — proposition
 
