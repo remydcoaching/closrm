@@ -7,6 +7,7 @@ import AdsMetaBanner from './ads-meta-banner'
 import AdsPeriodSelector, { type PeriodPreset } from './ads-period-selector'
 import AdsOverviewTab from './ads-overview-tab'
 import AdsTableTab from './ads-table-tab'
+import AdsCampaignTypeToggle, { type CampaignTypeFilter } from './ads-campaign-type-toggle'
 
 type TabKey = 'overview' | 'campaigns' | 'adsets' | 'ads'
 
@@ -43,6 +44,7 @@ function getDefaultDates(): { dateFrom: string; dateTo: string } {
 export default function PublicitesClient({ connectionState }: PublicitesClientProps) {
   const [tab, setTab] = useState<TabKey>('overview')
   const [drillDown, setDrillDown] = useState<DrillDown>({})
+  const [campaignType, setCampaignType] = useState<CampaignTypeFilter>('all')
   const [period, setPeriod] = useState<PeriodPreset>('7d')
   const [dateFrom, setDateFrom] = useState(getDefaultDates().dateFrom)
   const [dateTo, setDateTo] = useState(getDefaultDates().dateTo)
@@ -78,6 +80,9 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
         params.set('adset_id', drillDown.adsetId)
       }
 
+      // Campaign type filter
+      params.set('campaign_type', campaignType)
+
       const res = await fetch(`/api/meta/insights?${params.toString()}`)
 
       if (!res.ok) {
@@ -103,7 +108,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     } finally {
       setLoading(false)
     }
-  }, [connectionState, tab, period, dateFrom, dateTo, drillDown])
+  }, [connectionState, tab, period, dateFrom, dateTo, drillDown, campaignType])
 
   const fetchClosedCount = useCallback(async () => {
     if (connectionState !== 'connected') return
@@ -197,17 +202,20 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
   return (
     <div style={{ padding: 32 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>Publicités</h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Performance de tes campagnes Meta Ads</p>
         </div>
-        <AdsPeriodSelector
-          value={period}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onChange={handlePeriodChange}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <AdsCampaignTypeToggle value={campaignType} onChange={setCampaignType} />
+          <AdsPeriodSelector
+            value={period}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onChange={handlePeriodChange}
+          />
+        </div>
       </div>
 
       {/* Tabs */}
@@ -309,6 +317,9 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
           closedCount={closedCount}
           closedRevenue={closedRevenue}
           loading={loading}
+          campaignType={campaignType}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
         />
       )}
       {!error && tab !== 'overview' && (
@@ -316,6 +327,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
           data={data}
           loading={loading}
           tabKey={tab}
+          campaignType={campaignType}
           onRowClick={
             tab === 'campaigns'
               ? (id, name) => handleDrillIntoCampaign(id, name)
