@@ -410,7 +410,7 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
                   const active = mediaType === t.v
                   return (
                     <button key={t.v} onClick={() => setMediaType(t.v)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 12, fontWeight: 500, color: active ? '#fff' : 'var(--text-tertiary)', background: active ? 'var(--bg-elevated)' : 'transparent', border: active ? '1px solid var(--border-primary)' : '1px solid transparent', borderRadius: 6, cursor: 'pointer' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 12, fontWeight: 500, color: active ? '#fff' : 'var(--text-tertiary)', background: active ? 'var(--color-primary)' : 'transparent', border: active ? '1px solid var(--color-primary)' : '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer' }}>
                       <Icon size={14} /> {t.label}
                     </button>
                   )
