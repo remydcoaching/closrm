@@ -97,25 +97,27 @@ function StoryCard({
           borderRadius: '0 0 14px 14px',
         }} />
 
-        {/* Big impressions number */}
+        {/* Data overlay — big and readable */}
         <div style={{
-          position: 'absolute', bottom: 12, left: 12, right: 12,
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          padding: '16px 14px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 6 }}>
-            <Eye size={14} style={{ color: '#fff', opacity: 0.8, position: 'relative', top: 2 }} />
-            <span style={{ fontSize: 22, fontWeight: 800, color: '#fff', letterSpacing: -0.5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <Eye size={18} style={{ color: '#fff' }} />
+            <span style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: -0.5, textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
               {impressions.toLocaleString()}
             </span>
+            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>vues</span>
           </div>
-          <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'rgba(255,255,255,0.75)', fontWeight: 500 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Users size={11} /> {reach.toLocaleString()}
+          <div style={{ display: 'flex', gap: 12, fontSize: 13, color: '#fff', fontWeight: 600 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.4)', padding: '3px 8px', borderRadius: 6 }}>
+              <Users size={13} /> {reach.toLocaleString()}
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <MessageCircle size={11} /> {replies}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.4)', padding: '3px 8px', borderRadius: 6 }}>
+              <MessageCircle size={13} /> {replies}
             </span>
             {follows > 0 && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#22c55e' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(34,197,94,0.3)', padding: '3px 8px', borderRadius: 6, color: '#22c55e' }}>
                 +{follows} abo
               </span>
             )}
@@ -512,12 +514,20 @@ export default function IgStoriesTab() {
                 </span>
               )}
               <div style={{ flex: 1 }} />
-              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                <span>{seq.total_impressions.toLocaleString()} impressions</span>
-                <span style={{ color: seq.overall_dropoff_rate > 30 ? '#ef4444' : seq.overall_dropoff_rate > 15 ? '#f97316' : '#22c55e' }}>
-                  {Math.min(100, Math.max(0, Math.round(seq.overall_dropoff_rate)))}% drop-off
-                </span>
-              </div>
+              {(() => {
+                const totalImpr = items.reduce((s, i) => s + (i.story?.impressions ?? 0), 0)
+                const firstImpr = items[0]?.story?.impressions ?? 0
+                const lastImpr = items[items.length - 1]?.story?.impressions ?? 0
+                const dropoff = firstImpr > 0 ? Math.round((1 - lastImpr / firstImpr) * 100) : 0
+                const clampedDrop = Math.min(100, Math.max(0, dropoff))
+                const dropColor = clampedDrop > 30 ? '#ef4444' : clampedDrop > 15 ? '#f97316' : '#22c55e'
+                return (
+                  <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                    <span>{totalImpr.toLocaleString()} impressions</span>
+                    <span style={{ color: dropColor }}>{clampedDrop}% drop-off</span>
+                  </div>
+                )
+              })()}
             </div>
             {seq.objective && (
               <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16, lineHeight: 1.4 }}>{seq.objective}</p>
@@ -543,7 +553,7 @@ export default function IgStoriesTab() {
                     {idx > 0 && <DropOffArrow percentage={rawDropPct} />}
                     <StoryCard
                       story={story}
-                      position={item.position}
+                      position={idx + 1}
                       width={200}
                       height={356}
                     />
