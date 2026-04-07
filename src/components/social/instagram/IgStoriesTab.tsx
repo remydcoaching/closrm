@@ -444,7 +444,7 @@ export default function IgStoriesTab() {
       </div>
 
       {/* KPI cards — expanded with reach & exits */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10, marginBottom: 28 }}>
         {[
           { label: 'Stories', value: dayStories.length, icon: <Eye size={14} /> },
           { label: 'Impressions', value: dayImpressions.toLocaleString(), icon: <Eye size={14} /> },
