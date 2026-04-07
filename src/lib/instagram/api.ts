@@ -103,18 +103,19 @@ interface IgStoryInsights {
 }
 
 export async function fetchStoryInsights(token: string, storyId: string): Promise<IgStoryInsights> {
-  const url = `${FB_BASE}/${storyId}/insights?metric=impressions,reach,replies,shares,total_interactions,navigation&access_token=${token}`
+  // Note: 'impressions' was removed in Meta API v22.0+, use 'views' instead
+  const url = `${FB_BASE}/${storyId}/insights?metric=views,reach,replies,shares,navigation,follows,profile_visits&access_token=${token}`
   const res = await fetch(url)
   if (!res.ok) return {}
   const json = await res.json()
   const result: IgStoryInsights = {}
   for (const item of json.data ?? []) {
-    if (item.name === 'impressions') result.impressions = item.values?.[0]?.value ?? 0
+    if (item.name === 'views') result.impressions = item.values?.[0]?.value ?? 0
     if (item.name === 'reach') result.reach = item.values?.[0]?.value ?? 0
     if (item.name === 'replies') result.replies = item.values?.[0]?.value ?? 0
     if (item.name === 'navigation') result.exits = item.values?.[0]?.value ?? 0
-    if (item.name === 'total_interactions') result.taps_forward = item.values?.[0]?.value ?? 0
-    if (item.name === 'shares') result.taps_back = item.values?.[0]?.value ?? 0
+    if (item.name === 'shares') result.taps_forward = item.values?.[0]?.value ?? 0
+    if (item.name === 'follows') result.taps_back = item.values?.[0]?.value ?? 0
   }
   return result
 }
