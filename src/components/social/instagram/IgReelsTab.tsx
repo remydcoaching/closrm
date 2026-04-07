@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { Plus, X, Trash2, Edit2 } from 'lucide-react'
+import { Plus, X, Trash2, Edit2, Eye, Users, Heart, MessageCircle, Share2, Bookmark, TrendingUp, Play, ExternalLink } from 'lucide-react'
 
 function PieChartSkeleton() {
   return (
@@ -58,6 +58,39 @@ export default function IgReelsTab() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  // Detail panel state
+  const [selectedReel, setSelectedReel] = useState<IgReel | null>(null)
+  const [reelNotes, setReelNotes] = useState('')
+  const [notesSaved, setNotesSaved] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // Load notes from localStorage when selecting a reel
+  useEffect(() => {
+    if (selectedReel) {
+      const saved = localStorage.getItem(`reel-notes-${selectedReel.ig_media_id}`)
+      setReelNotes(saved ?? '')
+      setNotesSaved(false)
+    }
+  }, [selectedReel])
+
+  // Close panel on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedReel) {
+        setSelectedReel(null)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedReel])
+
+  const handleSaveNotes = () => {
+    if (!selectedReel) return
+    localStorage.setItem(`reel-notes-${selectedReel.ig_media_id}`, reelNotes)
+    setNotesSaved(true)
+    setTimeout(() => setNotesSaved(false), 2000)
+  }
 
   // KPIs
   const totalViews = reels.reduce((s, r) => s + r.views, 0)
@@ -147,7 +180,14 @@ export default function IgReelsTab() {
   }
 
   return (
-    <div>
+    <div style={{ display: 'flex', gap: 0, position: 'relative' }}>
+      {/* Main content */}
+      <div style={{
+        flex: selectedReel ? '0 0 55%' : '1 1 100%',
+        transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        minWidth: 0,
+        overflow: 'hidden',
+      }}>
       {/* Error banner */}
       {error && (
         <div style={{
@@ -191,15 +231,24 @@ export default function IgReelsTab() {
             <tbody>
               {reels.map(r => {
                 const pillar = pillars.find(p => p.id === r.pillar_id)
+                const isSelected = selectedReel?.id === r.id
                 return (
-                  <tr key={r.id} style={{ borderBottom: '1px solid var(--border-primary)', transition: 'background 0.15s ease' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  <tr key={r.id}
+                    onClick={() => setSelectedReel(isSelected ? null : r)}
+                    style={{
+                      borderBottom: '1px solid var(--border-primary)',
+                      transition: 'background 0.15s ease, border-color 0.15s ease',
+                      cursor: 'pointer',
+                      background: isSelected ? 'var(--bg-active, var(--bg-elevated))' : 'transparent',
+                      borderLeft: isSelected ? '3px solid var(--color-primary)' : '3px solid transparent',
+                    }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--bg-elevated)' }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
                   >
                     <td style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-primary)', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.caption?.slice(0, 60) ?? '—'}
                     </td>
-                    <td style={{ padding: '8px 12px' }}>
+                    <td style={{ padding: '8px 12px' }} onClick={e => e.stopPropagation()}>
                       <select
                         value={r.pillar_id ?? ''}
                         onChange={e => handleAssignPillar(r.id, e.target.value || null)}
@@ -278,6 +327,240 @@ export default function IgReelsTab() {
           </div>
         )}
       </div>
+
+      </div>{/* End main content */}
+
+      {/* Detail Panel */}
+      {selectedReel && (() => {
+        const reel = selectedReel
+        const pillar = pillars.find(p => p.id === reel.pillar_id)
+        const engColor = reel.engagement_rate >= 5 ? '#38A169' : reel.engagement_rate >= 2 ? '#D69E2E' : 'var(--text-secondary)'
+
+        const statCards: { label: string; value: string; icon: React.ReactNode; color?: string }[] = [
+          { label: 'Vues', value: reel.views.toLocaleString(), icon: <Eye size={18} /> },
+          { label: 'Reach', value: reel.reach.toLocaleString(), icon: <Users size={18} /> },
+          { label: 'Likes', value: reel.likes.toLocaleString(), icon: <Heart size={18} /> },
+          { label: 'Commentaires', value: reel.comments.toLocaleString(), icon: <MessageCircle size={18} /> },
+          { label: 'Partages', value: reel.shares.toLocaleString(), icon: <Share2 size={18} /> },
+          { label: 'Saves', value: reel.saves.toLocaleString(), icon: <Bookmark size={18} /> },
+          { label: 'Engagement', value: `${reel.engagement_rate.toFixed(1)}%`, icon: <TrendingUp size={18} />, color: engColor },
+        ]
+
+        return (
+          <div
+            ref={panelRef}
+            style={{
+              flex: '0 0 45%',
+              borderLeft: '2px solid var(--border-primary)',
+              background: 'var(--bg-secondary)',
+              height: 'calc(100vh - 120px)',
+              overflowY: 'auto',
+              position: 'sticky',
+              top: 0,
+              animation: 'slideInPanel 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          >
+            <style>{`
+              @keyframes slideInPanel {
+                from { opacity: 0; transform: translateX(30px); }
+                to { opacity: 1; transform: translateX(0); }
+              }
+            `}</style>
+
+            {/* Header */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '16px 20px', borderBottom: '1px solid var(--border-primary)',
+              position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 10,
+            }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Detail du Reel</h3>
+              <button
+                onClick={() => setSelectedReel(null)}
+                style={{
+                  background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                  borderRadius: 8, padding: 6, cursor: 'pointer', color: 'var(--text-secondary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--color-primary)' }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border-primary)' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              {/* Video / Thumbnail Preview */}
+              <div style={{
+                width: '100%', borderRadius: 12, overflow: 'hidden',
+                background: '#000', marginBottom: 20, position: 'relative',
+                aspectRatio: '9 / 16', maxHeight: 400,
+              }}>
+                {reel.video_url ? (
+                  <video
+                    src={reel.video_url}
+                    poster={reel.thumbnail_url ?? undefined}
+                    controls
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : reel.thumbnail_url ? (
+                  <img
+                    src={reel.thumbnail_url}
+                    alt={reel.caption?.slice(0, 60) ?? 'Reel'}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--text-tertiary)', flexDirection: 'column', gap: 8,
+                  }}>
+                    <Play size={40} />
+                    <span style={{ fontSize: 12 }}>Pas de preview disponible</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Stats Grid */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 20,
+              }}>
+                {statCards.map(s => (
+                  <div key={s.label} style={{
+                    background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                    borderRadius: 10, padding: '12px 10px', textAlign: 'center',
+                    transition: 'border-color 0.15s ease',
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = s.color ?? 'var(--color-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary)' }}
+                  >
+                    <div style={{ color: s.color ?? 'var(--text-tertiary)', marginBottom: 6, display: 'flex', justifyContent: 'center' }}>
+                      {s.icon}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: s.color ?? 'var(--text-primary)', lineHeight: 1.1 }}>
+                      {s.value}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {s.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Content Section */}
+              <div style={{
+                background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                borderRadius: 12, padding: 16, marginBottom: 20,
+              }}>
+                <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Contenu
+                </h4>
+                {/* Caption */}
+                <p style={{
+                  fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6, margin: '0 0 12px 0',
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                }}>
+                  {reel.caption ?? 'Pas de caption'}
+                </p>
+                {/* Meta badges */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <span style={{
+                    fontSize: 11, padding: '3px 10px', borderRadius: 20,
+                    background: 'var(--bg-elevated, var(--bg-secondary))', color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-primary)',
+                  }}>
+                    {new Date(reel.published_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                  {reel.format && (
+                    <span style={{
+                      fontSize: 11, padding: '3px 10px', borderRadius: 20,
+                      background: 'var(--bg-elevated, var(--bg-secondary))', color: 'var(--text-secondary)',
+                      border: '1px solid var(--border-primary)',
+                    }}>
+                      {reel.format.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                  {pillar && (
+                    <span style={{
+                      fontSize: 11, padding: '3px 10px', borderRadius: 20,
+                      background: `${pillar.color}22`, color: pillar.color,
+                      border: `1px solid ${pillar.color}44`,
+                      fontWeight: 600,
+                    }}>
+                      {pillar.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes Section */}
+              <div style={{
+                background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                borderRadius: 12, padding: 16, marginBottom: 20,
+              }}>
+                <h4 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Notes
+                </h4>
+                <textarea
+                  value={reelNotes}
+                  onChange={e => { setReelNotes(e.target.value); setNotesSaved(false) }}
+                  placeholder={"Ce qui a marche...\nA ameliorer...\nIdees pour la prochaine fois..."}
+                  style={{
+                    width: '100%', minHeight: 120, padding: 12, fontSize: 13,
+                    background: 'var(--bg-secondary)', color: 'var(--text-primary)',
+                    border: '1px solid var(--border-primary)', borderRadius: 8,
+                    outline: 'none', resize: 'vertical', lineHeight: 1.6,
+                    boxSizing: 'border-box', fontFamily: 'inherit',
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-primary)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-primary)' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                  {notesSaved && (
+                    <span style={{ fontSize: 11, color: '#38A169', fontWeight: 500 }}>Sauvegarde !</span>
+                  )}
+                  <button
+                    onClick={handleSaveNotes}
+                    style={{
+                      padding: '7px 18px', fontSize: 12, fontWeight: 600,
+                      color: '#fff', background: 'var(--color-primary)',
+                      border: 'none', borderRadius: 8, cursor: 'pointer',
+                      transition: 'opacity 0.15s ease',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+                  >
+                    Sauvegarder
+                  </button>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {reel.ig_media_id && (
+                  <a
+                    href={`https://www.instagram.com/reel/${reel.ig_media_id}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '8px 16px', fontSize: 12, fontWeight: 600,
+                      color: 'var(--text-primary)', background: 'var(--bg-primary)',
+                      border: '1px solid var(--border-primary)', borderRadius: 8,
+                      textDecoration: 'none', cursor: 'pointer',
+                      transition: 'border-color 0.15s ease',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary)' }}
+                  >
+                    <ExternalLink size={14} />
+                    Ouvrir sur Instagram
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Pillar modal */}
       {showPillarModal && (
