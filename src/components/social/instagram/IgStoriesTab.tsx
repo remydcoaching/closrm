@@ -507,11 +507,12 @@ export default function IgStoriesTab() {
               <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16, lineHeight: 1.4 }}>{seq.objective}</p>
             )}
 
-            {/* Stories horizontal scroll — BIG 160x284 thumbnails with drop-off arrows */}
+            {/* Stories — BIG centered thumbnails with drop-off arrows */}
             <div style={{
               display: 'flex', gap: 0, alignItems: 'center',
-              overflowX: 'auto', paddingBottom: 8, paddingTop: 4,
-              scrollbarWidth: 'thin',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              paddingBottom: 12, paddingTop: 8,
             }}>
               {items.map((item, idx) => {
                 const story = item.story
@@ -527,8 +528,8 @@ export default function IgStoriesTab() {
                     <StoryCard
                       story={story}
                       position={item.position}
-                      width={160}
-                      height={284}
+                      width={200}
+                      height={356}
                     />
                   </div>
                 )
