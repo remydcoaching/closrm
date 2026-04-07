@@ -63,7 +63,8 @@ function StoryCard({
   const impressions = story?.impressions ?? 0
   const reach = story?.reach ?? 0
   const replies = story?.replies ?? 0
-  const follows = story?.taps_back ?? 0  // taps_back stores follows count
+  const follows = story?.taps_back ?? 0
+  const profileVisits = story?.taps_forward ?? 0
   const imgSrc = story?.thumbnail_url || story?.ig_media_url || ''
 
   return (
@@ -116,6 +117,11 @@ function StoryCard({
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.4)', padding: '3px 8px', borderRadius: 6 }}>
               <MessageCircle size={13} /> {replies}
             </span>
+            {profileVisits > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(59,130,246,0.3)', padding: '3px 8px', borderRadius: 6, color: '#60a5fa' }}>
+                {profileVisits} profil
+              </span>
+            )}
             {follows > 0 && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(34,197,94,0.3)', padding: '3px 8px', borderRadius: 6, color: '#22c55e' }}>
                 +{follows} abo
@@ -339,6 +345,7 @@ export default function IgStoriesTab() {
   const dayReplies = dayStories.reduce((s, st) => s + st.replies, 0)
   const dayExits = dayStories.reduce((s, st) => s + st.exits, 0)
   const dayFollows = dayStories.reduce((s, st) => s + (st.taps_back ?? 0), 0)
+  const dayProfileVisits = dayStories.reduce((s, st) => s + (st.taps_forward ?? 0), 0)
 
   if (detailSeq) {
     return (
@@ -454,6 +461,7 @@ export default function IgStoriesTab() {
           { label: 'Reach', value: dayReach.toLocaleString(), icon: <Users size={14} /> },
           { label: 'Replies', value: dayReplies, icon: <MessageCircle size={14} /> },
           { label: 'Exits', value: dayExits, icon: <LogOut size={14} /> },
+          { label: 'Profil', value: dayProfileVisits, icon: <Users size={14} /> },
           { label: 'Abonnés', value: dayFollows > 0 ? `+${dayFollows}` : '0', icon: <UserPlus size={14} /> },
         ].map(kpi => (
           <div key={kpi.label} style={{

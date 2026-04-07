@@ -261,7 +261,7 @@ export default function AgendaPage() {
     const res = await fetch(`/api/planning-templates/${templateId}/import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ week_start: format(weekStart, 'yyyy-MM-dd') }),
+      body: JSON.stringify({ week_start: format(weekStart, 'yyyy-MM-dd'), timezone_offset: new Date().getTimezoneOffset() }),
     })
     if (res.ok) {
       fetchBookings()

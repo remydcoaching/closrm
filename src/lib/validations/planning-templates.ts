@@ -18,4 +18,5 @@ export const updatePlanningTemplateSchema = createPlanningTemplateSchema.partial
 
 export const importTemplateSchema = z.object({
   week_start: z.string().min(1, 'La date de début de semaine est requise.'),
+  timezone_offset: z.number().optional(), // minutes from UTC, e.g. -120 for GMT+2
 })
