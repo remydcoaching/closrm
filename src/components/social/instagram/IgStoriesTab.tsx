@@ -467,7 +467,11 @@ export default function IgStoriesTab() {
       {/*  DAY SEQUENCES — Big cards with horizontal story scroll      */}
       {/* ============================================================ */}
       {daySequences.map(seq => {
-        const items = seqItems[seq.id] ?? []
+        const items = [...(seqItems[seq.id] ?? [])].sort((a, b) => {
+          const dateA = a.story?.published_at ? new Date(a.story.published_at).getTime() : 0
+          const dateB = b.story?.published_at ? new Date(b.story.published_at).getTime() : 0
+          return dateA - dateB
+        })
         const seqType = IG_SEQ_TYPES[seq.sequence_type as keyof typeof IG_SEQ_TYPES]
         return (
           <div
