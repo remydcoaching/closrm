@@ -159,12 +159,26 @@ export async function syncConversations(ctx: SyncContext) {
 }
 
 export async function syncAll(ctx: SyncContext) {
-  const [reelsCount, storiesCount, snapshot, convosCount] = await Promise.all([
+  const results = await Promise.allSettled([
     syncReels(ctx),
     syncStories(ctx),
     syncSnapshot(ctx),
     syncConversations(ctx),
   ])
 
-  return { reelsCount, storiesCount, snapshot, convosCount }
+  const errors: string[] = []
+  const getValue = <T>(r: PromiseSettledResult<T>, label: string, fallback: T): T => {
+    if (r.status === 'fulfilled') return r.value
+    console.error(`[syncAll] ${label} failed:`, r.reason)
+    errors.push(label)
+    return fallback
+  }
+
+  return {
+    reelsCount: getValue(results[0], 'reels', 0),
+    storiesCount: getValue(results[1], 'stories', 0),
+    snapshot: getValue(results[2], 'snapshot', { followers: 0, newFollowers: 0 }),
+    convosCount: getValue(results[3], 'conversations', 0),
+    errors: errors.length > 0 ? errors : undefined,
+  }
 }
