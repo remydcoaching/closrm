@@ -12,7 +12,7 @@ interface BookingBlockProps {
 
 export function BookingBlock({ booking, onClick, style, draggable = true }: BookingBlockProps) {
   const color = booking.is_personal
-    ? '#6b7280'
+    ? (booking.form_data?.color as string) || '#6b7280'
     : booking.booking_calendar?.color || '#3b82f6'
 
   const leadName = booking.lead
