@@ -208,7 +208,7 @@ interface IgConversationRaw {
 
 export async function fetchIgConversations(token: string, pageId: string): Promise<IgConversationRaw[]> {
   // Step 1: Get conversation IDs (lightweight, avoids Meta 500 errors)
-  const listUrl = `${FB_BASE}/${pageId}/conversations?platform=instagram&limit=20&access_token=${token}`
+  const listUrl = `${FB_BASE}/${pageId}/conversations?platform=instagram&limit=5&access_token=${token}`
   const listRes = await fetch(listUrl)
   if (!listRes.ok) throw new Error(`IG conversations list failed: ${listRes.status}`)
   const listJson = await listRes.json()
