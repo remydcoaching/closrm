@@ -240,6 +240,7 @@ export interface MetaAdObject {
   name: string
   status: string           // ACTIVE, PAUSED, DELETED, ARCHIVED
   effective_status: string  // ACTIVE, PAUSED, CAMPAIGN_PAUSED, IN_PROCESS, WITH_ISSUES, etc.
+  objective?: string        // Only on campaigns: OUTCOME_LEADS, OUTCOME_AWARENESS, etc.
 }
 
 const LEVEL_TO_EDGE: Record<string, string> = {
@@ -254,15 +255,19 @@ export async function listAdObjects(
   level: 'campaign' | 'adset' | 'ad',
   parentId?: string // campaign_id for adsets, adset_id for ads
 ): Promise<MetaAdObject[]> {
+  const baseFields = 'id,name,status,effective_status'
+  // Add objective for campaigns (used for Leadform/Follow Ads classification)
+  const fields = level === 'campaign' ? `${baseFields},objective` : baseFields
+
   // If we have a parent, fetch from the parent's edge instead of account level
   let url: string
   if (parentId && level === 'adset') {
-    url = `${GRAPH_URL}/${parentId}/adsets?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+    url = `${GRAPH_URL}/${parentId}/adsets?fields=${fields}&limit=200&access_token=${token}`
   } else if (parentId && level === 'ad') {
-    url = `${GRAPH_URL}/${parentId}/ads?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+    url = `${GRAPH_URL}/${parentId}/ads?fields=${fields}&limit=200&access_token=${token}`
   } else {
     const edge = LEVEL_TO_EDGE[level]
-    url = `${GRAPH_URL}/${adAccountId}/${edge}?fields=id,name,status,effective_status&limit=200&access_token=${token}`
+    url = `${GRAPH_URL}/${adAccountId}/${edge}?fields=${fields}&limit=200&access_token=${token}`
   }
 
   const res = await fetch(url)
