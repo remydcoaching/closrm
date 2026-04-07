@@ -29,8 +29,8 @@ export default function IgCalendarTab() {
             style={{
               padding: '6px 14px', fontSize: 12, fontWeight: 500,
               color: tab === t.key ? '#fff' : 'var(--text-tertiary)',
-              background: tab === t.key ? 'var(--bg-elevated)' : 'transparent',
-              border: tab === t.key ? '1px solid var(--border-primary)' : '1px solid transparent',
+              background: tab === t.key ? 'var(--color-primary)' : 'transparent',
+              border: tab === t.key ? '1px solid var(--color-primary)' : '1px solid var(--border-primary)',
               borderRadius: 6, cursor: 'pointer',
             }}
           >
