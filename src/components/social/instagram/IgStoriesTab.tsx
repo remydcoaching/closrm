@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Eye, Users, MessageCircle, LogOut, TrendingDown, ChevronDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Eye, Users, MessageCircle, LogOut, TrendingDown, ChevronDown, UserPlus } from 'lucide-react'
 import { IG_SEQ_TYPES } from './constants'
 import dynamic from 'next/dynamic'
 import type { IgStory, StorySequence, StorySequenceItem } from '@/types'
@@ -63,6 +63,7 @@ function StoryCard({
   const impressions = story?.impressions ?? 0
   const reach = story?.reach ?? 0
   const replies = story?.replies ?? 0
+  const follows = story?.taps_back ?? 0  // taps_back stores follows count
   const imgSrc = story?.thumbnail_url || story?.ig_media_url || ''
 
   return (
@@ -113,6 +114,11 @@ function StoryCard({
             <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
               <MessageCircle size={11} /> {replies}
             </span>
+            {follows > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#22c55e' }}>
+                +{follows} abo
+              </span>
+            )}
           </div>
         </div>
 
@@ -330,6 +336,7 @@ export default function IgStoriesTab() {
   const dayReach = dayStories.reduce((s, st) => s + st.reach, 0)
   const dayReplies = dayStories.reduce((s, st) => s + st.replies, 0)
   const dayExits = dayStories.reduce((s, st) => s + st.exits, 0)
+  const dayFollows = dayStories.reduce((s, st) => s + (st.taps_back ?? 0), 0)
 
   if (detailSeq) {
     return (
@@ -445,6 +452,7 @@ export default function IgStoriesTab() {
           { label: 'Reach', value: dayReach.toLocaleString(), icon: <Users size={14} /> },
           { label: 'Replies', value: dayReplies, icon: <MessageCircle size={14} /> },
           { label: 'Exits', value: dayExits, icon: <LogOut size={14} /> },
+          { label: 'Abonnés', value: dayFollows > 0 ? `+${dayFollows}` : '0', icon: <UserPlus size={14} /> },
         ].map(kpi => (
           <div key={kpi.label} style={{
             background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
