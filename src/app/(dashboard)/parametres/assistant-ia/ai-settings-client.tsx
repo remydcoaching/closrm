@@ -15,6 +15,7 @@ interface WizardAnswers {
   tone: Tone
   approach: string
   example_messages: string
+  lead_magnets: string
   goal: Goal
   api_key: string
 }
@@ -151,6 +152,7 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
     tone: existingBrief?.tone || 'tu',
     approach: existingBrief?.approach || '',
     example_messages: existingBrief?.example_messages || '',
+    lead_magnets: existingBrief?.lead_magnets || '',
     goal: existingBrief?.goal || 'book_call',
     api_key: existingBrief?.api_key || '',
   })
@@ -161,6 +163,7 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
     { title: 'Votre ton', description: 'Comment vous adressez-vous a vos prospects ?' },
     { title: 'Votre approche', description: 'Comment abordez-vous la conversation avec un nouveau lead ?' },
     { title: 'Exemples de messages', description: 'Collez 2-3 messages que vous envoyez habituellement a vos prospects.' },
+    { title: 'Vos contenus', description: 'Listez vos lead magnets, videos, ressources que vous partagez a vos prospects. Un par ligne.' },
     { title: 'Votre objectif', description: 'Que voulez-vous accomplir avec vos messages ?' },
     { title: 'Cle API Claude', description: 'Entrez votre cle API Anthropic pour activer l\'assistant IA. Obtenez-la sur console.anthropic.com' },
   ]
@@ -173,7 +176,8 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
       case 3: return answers.approach.trim().length > 0
       case 4: return true
       case 5: return true
-      case 6: return answers.api_key.trim().length > 10
+      case 6: return true
+      case 7: return answers.api_key.trim().length > 10
       default: return false
     }
   }
@@ -367,8 +371,20 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
           />
         )}
 
-        {/* Step 5 — Goal */}
+        {/* Step 5 — Lead Magnets */}
         {step === 5 && (
+          <textarea
+            value={answers.lead_magnets}
+            onChange={e => updateAnswer('lead_magnets', e.target.value)}
+            rows={6}
+            placeholder={"Video \"Comment perdre 10kg en 10 semaines\"\nPDF \"5 erreurs qui ruinent ta progression\"\nMasterclass gratuite \"Les bases de la nutrition\"\nGuide \"Plan alimentaire 7 jours\""}
+            style={{ ...inputStyle, resize: 'vertical' as const }}
+            autoFocus
+          />
+        )}
+
+        {/* Step 6 — Goal */}
+        {step === 6 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {([
               { value: 'book_call' as Goal, label: 'Booker un appel', desc: 'L\'objectif est de planifier un appel de setting ou closing' },
@@ -416,8 +432,8 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
           </div>
         )}
 
-        {/* Step 6 — API Key */}
-        {step === 6 && (
+        {/* Step 7 — API Key */}
+        {step === 7 && (
           <div>
             <input
               type="password"
@@ -507,6 +523,7 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
   const [tone, setTone] = useState<Tone>(brief.tone)
   const [approach, setApproach] = useState(brief.approach || '')
   const [examples, setExamples] = useState(brief.example_messages || '')
+  const [leadMagnets, setLeadMagnets] = useState(brief.lead_magnets || '')
   const [goal, setGoal] = useState<Goal>(brief.goal)
   const [editApiKey, setEditApiKey] = useState(brief.api_key || '')
 
@@ -522,6 +539,7 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
           tone,
           approach,
           example_messages: examples,
+          lead_magnets: brief.lead_magnets || '',
           goal,
           api_key: editApiKey || brief.api_key,
         }),
@@ -666,6 +684,19 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
           value={examples}
           onChange={e => setExamples(e.target.value)}
           rows={5}
+          style={{ ...inputStyle, resize: 'vertical' as const }}
+        />
+      ),
+    },
+    {
+      id: 'lead_magnets',
+      label: 'Mes contenus / lead magnets',
+      content: (
+        <textarea
+          value={leadMagnets}
+          onChange={e => setLeadMagnets(e.target.value)}
+          rows={5}
+          placeholder={"Video \"Comment perdre 10kg\"\nPDF \"5 erreurs nutrition\"\nMasterclass gratuite"}
           style={{ ...inputStyle, resize: 'vertical' as const }}
         />
       ),

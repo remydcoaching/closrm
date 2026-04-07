@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       tone: body.tone || 'tu',
       approach: body.approach || '',
       example_messages: body.example_messages || '',
+      lead_magnets: body.lead_magnets || '',
       goal: body.goal || 'book_call',
       api_key: body.api_key,
     })
