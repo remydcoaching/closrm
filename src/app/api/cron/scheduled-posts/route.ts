@@ -84,12 +84,12 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const isVideo = draft.media_type === 'VIDEO'
+      const isVideo = draft.media_type === 'VIDEO' || draft.media_type === 'REELS' || draft.media_type === 'STORY'
       const opts = {
         accessToken: publishToken,
         igUserId: account.ig_user_id,
         caption: fullCaption,
-        ...(isVideo ? { videoUrl: mediaUrl } : { imageUrl: mediaUrl }),
+        ...(isVideo ? { videoUrl: mediaUrl, mediaType: draft.media_type } : { imageUrl: mediaUrl }),
       }
 
       // Create container
