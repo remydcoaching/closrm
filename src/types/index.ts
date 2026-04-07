@@ -58,6 +58,7 @@ export interface Lead {
   instagram_handle: string | null
   email_unsubscribed: boolean
   email_unsubscribed_at: string | null
+  last_activity_at: string | null
   created_at: string
   updated_at: string
 }
@@ -106,10 +107,13 @@ export type WorkflowStatus = 'brouillon' | 'actif' | 'inactif'
 export type WorkflowTriggerType =
   // LEADS
   | 'new_lead'
+  | 'lead_imported'
   | 'lead_status_changed'
   | 'tag_added'
   | 'tag_removed'
   | 'deal_won'
+  | 'lead_with_ig_handle'
+  | 'lead_inactive_x_days'
   // CALLS
   | 'call_scheduled'
   | 'call_in_x_hours'
@@ -121,9 +125,10 @@ export type WorkflowTriggerType =
   | 'new_follower'
   | 'dm_keyword'
   | 'comment_keyword'
-  // BOOKING (future T-022)
+  // BOOKING
   | 'booking_created'
   | 'booking_cancelled'
+  | 'booking_no_show'
 
 export type WorkflowActionType =
   | 'send_email'
@@ -140,6 +145,9 @@ export type WorkflowActionType =
   | 'set_reached'
   | 'schedule_call'
   | 'webhook'
+  | 'create_google_meet'
+  | 'update_lead_field'
+  | 'wait_until_date'
 
 export type WorkflowStepType = 'action' | 'delay' | 'condition' | 'wait_for_event'
 
@@ -164,6 +172,8 @@ export interface Workflow {
   execution_count: number
   last_run_at: string | null
   template_id: string | null
+  notify_on_failure: boolean
+  failure_notification_channel: string | null
   created_at: string
   updated_at: string
 }

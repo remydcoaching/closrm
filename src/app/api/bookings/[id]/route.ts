@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateBookingSchema } from '@/lib/validations/bookings'
 import { deleteGoogleCalendarEvent, updateGoogleCalendarEvent } from '@/lib/google/calendar'
+import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 
 const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
 
@@ -89,6 +90,18 @@ export async function PATCH(
       updateGoogleCalendarEvent(workspaceId, existing.google_event_id, {
         start: { dateTime: newStart.toISOString() },
         end: { dateTime: newEnd.toISOString() },
+      }).catch(() => {})
+    }
+
+    // Fire workflow trigger when status changes to no_show (non-blocking)
+    if (
+      parsed.data.status === 'no_show' &&
+      existing.status !== 'no_show' &&
+      data.lead_id
+    ) {
+      fireTriggersForEvent(workspaceId, 'booking_no_show', {
+        lead_id: data.lead_id,
+        booking_id: data.id,
       }).catch(() => {})
     }
 

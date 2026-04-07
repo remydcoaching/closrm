@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Play, Pause, Loader2 } from 'lucide-react'
+import { ArrowLeft, Save, Play, Pause, Loader2, FlaskConical, History } from 'lucide-react'
 import { Workflow, WorkflowStep, WorkflowStepType } from '@/types'
 import WorkflowBuilder from '@/components/automations/WorkflowBuilder'
 import TriggerConfigPanel from '@/components/automations/TriggerConfigPanel'
@@ -10,6 +10,8 @@ import ActionConfigPanel from '@/components/automations/ActionConfigPanel'
 import DelayConfigPanel from '@/components/automations/DelayConfigPanel'
 import ConditionConfigPanel from '@/components/automations/ConditionConfigPanel'
 import WaitForEventConfigPanel from '@/components/automations/WaitForEventConfigPanel'
+import ExecutionHistoryPanel from '@/components/automations/ExecutionHistoryPanel'
+import DryRunDialog from '@/components/automations/DryRunDialog'
 
 export default function WorkflowEditorPage() {
   const params = useParams()
@@ -24,6 +26,8 @@ export default function WorkflowEditorPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState('')
+  const [showDryRun, setShowDryRun] = useState(false)
+  const [rightPanelTab, setRightPanelTab] = useState<'config' | 'history' | 'settings'>('config')
 
   const fetchWorkflow = useCallback(async () => {
     try {
@@ -58,6 +62,8 @@ export default function WorkflowEditorPage() {
           name: nameValue,
           trigger_type: workflow.trigger_type,
           trigger_config: workflow.trigger_config,
+          notify_on_failure: workflow.notify_on_failure,
+          failure_notification_channel: workflow.failure_notification_channel,
         }),
       })
 
@@ -317,6 +323,26 @@ export default function WorkflowEditorPage() {
           </button>
 
           <button
+            onClick={() => setShowDryRun(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              borderRadius: 8,
+              padding: '8px 16px',
+              border: '1px solid var(--border-primary)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            <FlaskConical size={14} />
+            Tester
+          </button>
+
+          <button
             onClick={handleActivate}
             style={{
               display: 'flex',
@@ -357,66 +383,195 @@ export default function WorkflowEditorPage() {
           />
         </div>
 
-        {/* Right: config panel */}
+        {/* Right: config panel with tabs */}
         <div
           style={{
             width: 360,
             borderLeft: '1px solid var(--border-primary)',
             background: 'var(--bg-secondary)',
-            padding: 24,
             overflowY: 'auto',
             flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          {selectedBlockId === null ? (
-            <TriggerConfigPanel
-              triggerType={workflow.trigger_type}
-              triggerConfig={workflow.trigger_config}
-              onChange={(triggerType, triggerConfig) => {
-                setWorkflow((prev) => prev ? { ...prev, trigger_type: triggerType, trigger_config: triggerConfig } : prev)
-                setHasUnsavedChanges(true)
-              }}
-            />
-          ) : selectedStep ? (
-            selectedStep.step_type === 'action' ? (
-              <ActionConfigPanel
-                step={selectedStep}
-                onChange={(updates) => {
-                  setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))
-                  setHasUnsavedChanges(true)
+          {/* Tab bar */}
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border-primary)', flexShrink: 0 }}>
+            {([
+              { key: 'config' as const, label: 'Config' },
+              { key: 'history' as const, label: 'Historique', icon: History },
+              { key: 'settings' as const, label: 'Parametres' },
+            ]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setRightPanelTab(tab.key)}
+                style={{
+                  flex: 1,
+                  padding: '10px 8px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: rightPanelTab === tab.key ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  color: rightPanelTab === tab.key ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
                 }}
-              />
-            ) : selectedStep.step_type === 'delay' ? (
-              <DelayConfigPanel
-                step={selectedStep}
-                onChange={(updates) => {
-                  setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))
-                  setHasUnsavedChanges(true)
-                }}
-              />
-            ) : selectedStep.step_type === 'wait_for_event' ? (
-              <WaitForEventConfigPanel
-                step={selectedStep}
-                onChange={(updates) => {
-                  setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))
-                  setHasUnsavedChanges(true)
-                }}
-              />
-            ) : (
-              <ConditionConfigPanel
-                step={selectedStep}
-                onChange={(updates) => {
-                  setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))
-                  setHasUnsavedChanges(true)
-                }}
-              />
-            )
-          ) : (
-            <div style={{ fontSize: 13, color: 'var(--text-label)' }}>
-              Sélectionnez un élément pour le configurer.
-            </div>
-          )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
+            {rightPanelTab === 'config' && (
+              <>
+                {selectedBlockId === null ? (
+                  <TriggerConfigPanel
+                    triggerType={workflow.trigger_type}
+                    triggerConfig={workflow.trigger_config}
+                    onChange={(triggerType, triggerConfig) => {
+                      setWorkflow((prev) => prev ? { ...prev, trigger_type: triggerType, trigger_config: triggerConfig } : prev)
+                      setHasUnsavedChanges(true)
+                    }}
+                  />
+                ) : selectedStep ? (
+                  selectedStep.step_type === 'action' ? (
+                    <ActionConfigPanel
+                      step={selectedStep}
+                      onChange={(updates) => {
+                        setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))
+                        setHasUnsavedChanges(true)
+                      }}
+                    />
+                  ) : selectedStep.step_type === 'delay' ? (
+                    <DelayConfigPanel
+                      step={selectedStep}
+                      onChange={(updates) => {
+                        setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))
+                        setHasUnsavedChanges(true)
+                      }}
+                    />
+                  ) : selectedStep.step_type === 'wait_for_event' ? (
+                    <WaitForEventConfigPanel
+                      step={selectedStep}
+                      onChange={(updates) => {
+                        setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))
+                        setHasUnsavedChanges(true)
+                      }}
+                    />
+                  ) : (
+                    <ConditionConfigPanel
+                      step={selectedStep}
+                      onChange={(updates) => {
+                        setSteps((prev) => prev.map((s) => s.id === selectedStep.id ? { ...s, ...updates } : s))
+                        setHasUnsavedChanges(true)
+                      }}
+                    />
+                  )
+                ) : (
+                  <div style={{ fontSize: 13, color: 'var(--text-label)' }}>
+                    Selectionnez un element pour le configurer.
+                  </div>
+                )}
+              </>
+            )}
+
+            {rightPanelTab === 'history' && (
+              <ExecutionHistoryPanel workflowId={workflowId} />
+            )}
+
+            {rightPanelTab === 'settings' && (
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20 }}>
+                  Parametres du workflow
+                </div>
+
+                {/* Notify on failure */}
+                <div style={{ marginBottom: 16 }}>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      fontSize: 13,
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div
+                      onClick={() => {
+                        setWorkflow(prev => prev ? { ...prev, notify_on_failure: !prev.notify_on_failure } : prev)
+                        setHasUnsavedChanges(true)
+                      }}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 4,
+                        border: workflow.notify_on_failure
+                          ? '1px solid var(--color-primary)'
+                          : '1px solid var(--border-primary)',
+                        background: workflow.notify_on_failure
+                          ? 'rgba(229,62,62,0.2)'
+                          : 'var(--bg-hover)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {workflow.notify_on_failure && (
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2.5 6L5 8.5L9.5 3.5" stroke="var(--color-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span>Notifier en cas d&apos;echec</span>
+                  </label>
+                </div>
+
+                {workflow.notify_on_failure && (
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6, display: 'block' }}>
+                      Canal de notification
+                    </label>
+                    <select
+                      value={workflow.failure_notification_channel ?? ''}
+                      onChange={(e) => {
+                        setWorkflow(prev => prev ? { ...prev, failure_notification_channel: e.target.value || null } : prev)
+                        setHasUnsavedChanges(true)
+                      }}
+                      style={{
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border-primary)',
+                        borderRadius: 8,
+                        padding: '10px 12px',
+                        color: 'var(--text-primary)',
+                        fontSize: 13,
+                        width: '100%',
+                      }}
+                    >
+                      <option value="">Selectionner...</option>
+                      <option value="telegram">Telegram</option>
+                      <option value="whatsapp">WhatsApp</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Dry Run Dialog */}
+        <DryRunDialog
+          workflowId={workflowId}
+          isOpen={showDryRun}
+          onClose={() => setShowDryRun(false)}
+        />
       </div>
 
       {/* Spin animation */}

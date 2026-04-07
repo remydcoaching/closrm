@@ -380,7 +380,7 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
               />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Méthode HTTP</label>
+              <label style={labelStyle}>Methode HTTP</label>
               <select
                 style={selectStyle}
                 value={(config.method as string) || 'POST'}
@@ -392,7 +392,71 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
               </select>
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              Les données du lead seront envoyées automatiquement dans le body.
+              Les donnees du lead seront envoyees automatiquement dans le body.
+            </div>
+          </>
+        )
+
+      case 'create_google_meet':
+        return (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Titre (optionnel)</label>
+              <input
+                type="text"
+                style={inputStyle}
+                placeholder="RDV {{prenom}} {{nom}}"
+                value={(config.title as string) || ''}
+                onChange={(e) => updateConfig('title', e.target.value)}
+              />
+              <TemplateVariableHelper />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Duree (minutes)</label>
+              <input
+                type="number"
+                style={inputStyle}
+                min={15}
+                value={(config.duration_minutes as number) ?? 60}
+                onChange={(e) => updateConfig('duration_minutes', parseInt(e.target.value) || 60)}
+              />
+            </div>
+          </>
+        )
+
+      case 'update_lead_field':
+        return (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Champ</label>
+              <select
+                style={selectStyle}
+                value={(config.field as string) || ''}
+                onChange={(e) => updateConfig('field', e.target.value)}
+              >
+                <option value="" disabled>Selectionner...</option>
+                <option value="status">Statut</option>
+                <option value="notes">Notes</option>
+                <option value="reached">Joint</option>
+                <option value="tags">Tags</option>
+                <option value="instagram_handle">Pseudo Instagram</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Valeur</label>
+              <input
+                type="text"
+                style={inputStyle}
+                placeholder="Nouvelle valeur..."
+                value={(config.value as string) || ''}
+                onChange={(e) => updateConfig('value', e.target.value)}
+              />
+              <TemplateVariableHelper />
+              {config.field === 'tags' && (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Prefixe + pour ajouter, - pour retirer, ou valeur brute pour remplacer.
+                </div>
+              )}
             </div>
           </>
         )
@@ -442,6 +506,8 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
           <option value="set_reached">Marquer comme joint</option>
           <option value="schedule_call">Planifier un appel</option>
           <option value="webhook">Appeler un webhook externe</option>
+          <option value="create_google_meet">Creer un Google Meet</option>
+          <option value="update_lead_field">Modifier un champ du lead</option>
         </select>
       </div>
 

@@ -73,6 +73,15 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Update last_activity_at on the lead (non-blocking)
+    supabase
+      .from('leads')
+      .update({ last_activity_at: new Date().toISOString() })
+      .eq('id', parsed.data.lead_id)
+      .eq('workspace_id', workspaceId)
+      .then(() => {})
+
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
