@@ -4,8 +4,9 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createBookingSchema, bookingFiltersSchema } from '@/lib/validations/bookings'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
+import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
 
-const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address)'
+const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
 
 export async function GET(request: NextRequest) {
   try {
@@ -90,22 +91,72 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Google Calendar event (non-blocking)
+    // Determine if the location is online to attach Google Meet
+    let isOnlineLocation = false
+    let locationName: string | null = null
+    let locationAddress: string | null = null
+    if (parsed.data.location_id) {
+      const { data: loc } = await supabase
+        .from('booking_locations')
+        .select('location_type, name, address')
+        .eq('id', parsed.data.location_id)
+        .eq('workspace_id', workspaceId)
+        .single()
+      if (loc) {
+        if (loc.location_type === 'online') isOnlineLocation = true
+        locationName = loc.name
+        locationAddress = loc.address
+      }
+    }
+
     const scheduledAt = new Date(data.scheduled_at)
     const endAt = new Date(scheduledAt.getTime() + (data.duration_minutes ?? 30) * 60_000)
-    createGoogleCalendarEvent(workspaceId, {
-      summary: data.title,
-      description: data.notes ?? undefined,
-      start: { dateTime: scheduledAt.toISOString() },
-      end: { dateTime: endAt.toISOString() },
-    })
-      .then(async (googleEvent) => {
-        if (googleEvent?.id) {
+    createGoogleCalendarEvent(
+      workspaceId,
+      {
+        summary: data.title,
+        description: data.notes ?? undefined,
+        start: { dateTime: scheduledAt.toISOString() },
+        end: { dateTime: endAt.toISOString() },
+      },
+      { withMeet: isOnlineLocation },
+    )
+      .then(async (result) => {
+        if (result?.eventId) {
           const supa = await createClient()
           await supa
             .from('bookings')
-            .update({ google_event_id: googleEvent.id })
+            .update({
+              google_event_id: result.eventId,
+              ...(result.meetUrl ? { meet_url: result.meetUrl } : {}),
+            })
             .eq('id', data.id)
             .eq('workspace_id', workspaceId)
+        }
+
+        // Send confirmation email to lead if they have an email
+        const leadEmail = (data.lead as { email?: string | null } | null)?.email
+        if (leadEmail) {
+          const leadFirst = (data.lead as { first_name?: string } | null)?.first_name ?? ''
+          const leadLast = (data.lead as { last_name?: string } | null)?.last_name ?? ''
+          const supa2 = await createClient()
+          const { data: owner } = await supa2
+            .from('users')
+            .select('full_name')
+            .eq('workspace_id', workspaceId)
+            .eq('role', 'coach')
+            .maybeSingle()
+
+          sendBookingConfirmationEmail({
+            to: leadEmail,
+            coachName: owner?.full_name ?? 'Votre coach',
+            prospectName: `${leadFirst} ${leadLast}`.trim(),
+            date: scheduledAt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+            time: scheduledAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            meetUrl: result?.meetUrl ?? undefined,
+            locationName: locationName ?? undefined,
+            locationAddress: locationAddress ?? undefined,
+          }).catch(() => {})
         }
       })
       .catch(() => {})

@@ -11,6 +11,10 @@ interface GoogleCalendarEvent {
   start: { dateTime?: string; date?: string }
   end: { dateTime?: string; date?: string }
   status?: string
+  hangoutLink?: string
+  conferenceData?: {
+    entryPoints?: Array<{ uri?: string; entryPointType?: string }>
+  }
 }
 
 interface CreateEventPayload {
@@ -18,6 +22,11 @@ interface CreateEventPayload {
   description?: string
   start: { dateTime: string; timeZone?: string }
   end: { dateTime: string; timeZone?: string }
+}
+
+export interface CreateEventResult {
+  eventId: string
+  meetUrl: string | null
 }
 
 interface UpdateEventPayload {
@@ -117,22 +126,43 @@ export async function getGoogleCalendarEvents(
 }
 
 /**
- * Create a new event on Google Calendar. Returns the created event or null on failure.
+ * Create a new event on Google Calendar.
+ * If withMeet is true, a Google Meet conference link is attached to the event.
+ * Returns { eventId, meetUrl } or null on failure.
  */
 export async function createGoogleCalendarEvent(
   workspaceId: string,
-  event: CreateEventPayload
-): Promise<GoogleCalendarEvent | null> {
+  event: CreateEventPayload,
+  options?: { withMeet?: boolean }
+): Promise<CreateEventResult | null> {
   const accessToken = await getValidAccessToken(workspaceId)
   if (!accessToken) return null
 
-  const res = await fetch(CALENDAR_API, {
+  const withMeet = options?.withMeet ?? false
+
+  // Build payload — optionally include conference request
+  const payload: Record<string, unknown> = { ...event }
+  if (withMeet) {
+    payload.conferenceData = {
+      createRequest: {
+        requestId: crypto.randomUUID(),
+        conferenceSolutionKey: { type: 'hangoutsMeet' },
+      },
+    }
+  }
+
+  // Add conferenceDataVersion query param when requesting Meet
+  const url = withMeet
+    ? `${CALENDAR_API}?conferenceDataVersion=1`
+    : CALENDAR_API
+
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(event),
+    body: JSON.stringify(payload),
   })
 
   if (!res.ok) {
@@ -140,7 +170,13 @@ export async function createGoogleCalendarEvent(
     return null
   }
 
-  return (await res.json()) as GoogleCalendarEvent
+  const responseData = (await res.json()) as GoogleCalendarEvent
+
+  const meetUrl = responseData.hangoutLink
+    ?? responseData.conferenceData?.entryPoints?.[0]?.uri
+    ?? null
+
+  return { eventId: responseData.id, meetUrl }
 }
 
 /**
