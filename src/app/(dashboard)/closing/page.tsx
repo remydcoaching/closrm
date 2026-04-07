@@ -16,7 +16,7 @@ export default async function ClosingPage() {
     // Today's pending calls (default tab)
     supabase
       .from('calls')
-      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status)', { count: 'exact' })
+      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status), booking:bookings(id, booking_calendar:booking_calendars(name))', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .eq('outcome', 'pending')
       .gte('scheduled_at', todayStart.toISOString())
