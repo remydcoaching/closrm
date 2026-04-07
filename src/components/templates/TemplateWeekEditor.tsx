@@ -90,6 +90,13 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
         e.preventDefault()
         setCopiedBlock({ ...blocks[selectedBlockIndex] })
       }
+      // Backspace or Delete — delete selected block
+      if ((e.key === 'Backspace' || e.key === 'Delete') && selectedBlockIndex !== null) {
+        e.preventDefault()
+        const next = blocks.filter((_, i) => i !== selectedBlockIndex)
+        onChange(next)
+        setSelectedBlockIndex(null)
+      }
       // Cmd+V or Ctrl+V — paste at hover position
       if ((e.metaKey || e.ctrlKey) && e.key === 'v' && copiedBlock && hoverCell) {
         e.preventDefault()
