@@ -911,3 +911,42 @@ export interface IgComment {
   ig_parent_id: string | null
   created_at: string
 }
+
+// ─── AI Assistant ─────────────────────────────
+
+export interface AiCoachBrief {
+  id: string
+  workspace_id: string
+  offer_description: string | null
+  target_audience: string | null
+  tone: 'tu' | 'vous' | 'mixed'
+  approach: string | null
+  example_messages: string | null
+  goal: 'book_call' | 'sell_dm' | 'both'
+  generated_brief: string | null
+  wins_analyzed: number
+  updated_at: string
+  created_at: string
+}
+
+export interface AiSuggestion {
+  guidance: string
+  message: string
+  status_suggestion?: {
+    from: LeadStatus
+    to: LeadStatus
+    reason: string
+  }
+  window_open: boolean
+  window_expires_at?: string
+}
+
+export interface AiConversationOutcome {
+  id: string
+  workspace_id: string
+  conversation_id: string
+  lead_id: string | null
+  outcome: 'won' | 'lost' | 'no_response'
+  messages_snapshot: Record<string, unknown>[] | null
+  created_at: string
+}
