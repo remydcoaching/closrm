@@ -159,9 +159,12 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBooki
                 height: CELL_HEIGHT, padding: '0 10px 0 0', textAlign: 'right', fontSize: 11, fontWeight: 500,
                 color: 'var(--text-secondary)', borderRight: GRID_BORDER,
                 borderBottom: GRID_BORDER,
-                display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', paddingTop: 4,
+                display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end',
+                position: 'relative',
               }}>
-                {String(hour).padStart(2, '0')}:00
+                <span style={{ position: 'absolute', top: -7, right: 10 }}>
+                  {String(hour).padStart(2, '0')}:00
+                </span>
               </div>
               {days.map((day, dayIdx) => (
                 <div

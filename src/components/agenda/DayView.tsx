@@ -99,11 +99,13 @@ export function DayView({ date, bookings, onBookingClick, onSlotSelect, onBookin
             }}
           >
             <div style={{
-              width: HOUR_COL_WIDTH, flexShrink: 0, textAlign: 'right', paddingRight: 10, paddingTop: 4,
+              width: HOUR_COL_WIDTH, flexShrink: 0, textAlign: 'right', paddingRight: 10,
               fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)',
-              borderRight: GRID_BORDER,
+              borderRight: GRID_BORDER, position: 'relative',
             }}>
-              {String(hour).padStart(2, '0')}:00
+              <span style={{ position: 'absolute', top: -7, right: 10 }}>
+                {String(hour).padStart(2, '0')}:00
+              </span>
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div
