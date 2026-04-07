@@ -19,7 +19,7 @@ export default function MetaIntegrationCard({ integration }: MetaIntegrationCard
   const isConnected = !!integration?.is_active
 
   async function handleDisconnect() {
-    if (!confirm('Déconnecter Meta Ads ? Les leads ne seront plus importés automatiquement.')) return
+    if (!confirm('Déconnecter Facebook Meta Ads + Instagram ? Les leads ne seront plus importés automatiquement.')) return
     setLoading(true)
     try {
       const res = await fetch('/api/integrations/meta/disconnect', { method: 'POST' })
@@ -70,7 +70,7 @@ export default function MetaIntegrationCard({ integration }: MetaIntegrationCard
         </div>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Meta Ads</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Facebook Meta Ads + Instagram</span>
             {isConnected && (
               <span style={{
                 fontSize: 10,
