@@ -64,8 +64,18 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
   const [hashtagsText, setHashtagsText] = useState(draft?.hashtags?.join(', ') ?? '')
   const [mediaUrls, setMediaUrls] = useState<string[]>(draft?.media_urls ?? [])
   const [mediaType, setMediaType] = useState<string>(draft?.media_type ?? 'IMAGE')
-  const [schedDate, setSchedDate] = useState(draft?.scheduled_at?.slice(0, 10) ?? date ?? '')
-  const [schedTime, setSchedTime] = useState(draft?.scheduled_at?.slice(11, 16) ?? '09:00')
+  const [schedDate, setSchedDate] = useState(() => {
+    if (draft?.scheduled_at) return draft.scheduled_at.slice(0, 10)
+    if (date) return date
+    return new Date().toISOString().slice(0, 10)
+  })
+  const [schedTime, setSchedTime] = useState(() => {
+    if (draft?.scheduled_at) return draft.scheduled_at.slice(11, 16)
+    // Default to now + 5 minutes
+    const now = new Date(Date.now() + 5 * 60_000)
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  })
+  const [schedError, setSchedError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [publishStatus, setPublishStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -174,6 +184,14 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
   const removeMedia = (idx: number) => setMediaUrls(prev => prev.filter((_, i) => i !== idx))
 
   const saveDraft = async (status: 'draft' | 'scheduled') => {
+    setSchedError(null)
+    if (status === 'scheduled') {
+      const scheduledDate = new Date(`${schedDate}T${schedTime}:00`)
+      if (scheduledDate <= new Date()) {
+        setSchedError('La date de programmation doit être dans le futur')
+        return
+      }
+    }
     setSaving(true)
     try {
       const hashtags = parseHashtags()
@@ -539,6 +557,13 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a', display: 'block' }}>Publié avec succès !</span>
                   <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Le post est maintenant visible sur Instagram</span>
                 </div>
+              </div>
+            )}
+
+            {/* Schedule error */}
+            {schedError && (
+              <div style={{ padding: '8px 12px', fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
+                {schedError}
               </div>
             )}
 
