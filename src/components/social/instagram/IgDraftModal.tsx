@@ -198,18 +198,23 @@ export default function IgDraftModal({ date, draft, onClose, onSaved }: Props) {
       const scheduled_at = status === 'scheduled' && schedDate ? new Date(`${schedDate}T${schedTime}:00`).toISOString() : undefined
       const body = { caption, hashtags, media_urls: mediaUrls, media_type: mediaType, status, scheduled_at }
 
+      let res: Response
       if (draft) {
-        await fetch(`/api/instagram/drafts/${draft.id}`, {
+        res = await fetch(`/api/instagram/drafts/${draft.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         })
       } else {
-        await fetch('/api/instagram/drafts', {
+        res = await fetch('/api/instagram/drafts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         })
+      }
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.error ?? `Erreur ${res.status}`)
       }
       onSaved()
     } catch {
