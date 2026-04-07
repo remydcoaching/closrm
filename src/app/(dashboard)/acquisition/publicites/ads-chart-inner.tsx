@@ -2,11 +2,21 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
-interface Props {
-  daily: { date: string; leads: number }[]
+interface DailyPoint {
+  date: string
+  leads?: number
+  impressions?: number
+  spend?: number
+  clicks?: number
 }
 
-export default function AdsBarChartInner({ daily }: Props) {
+interface Props {
+  daily: DailyPoint[]
+  dataKey?: 'leads' | 'impressions' | 'spend' | 'clicks'
+  label?: string
+}
+
+export default function AdsBarChartInner({ daily, dataKey = 'leads', label = 'Leads' }: Props) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={daily}>
@@ -22,7 +32,7 @@ export default function AdsBarChartInner({ daily }: Props) {
           tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
           axisLine={false}
           tickLine={false}
-          width={30}
+          width={40}
         />
         <Tooltip
           contentStyle={{
@@ -32,9 +42,9 @@ export default function AdsBarChartInner({ daily }: Props) {
             fontSize: 12,
           }}
           labelFormatter={(d) => `Date : ${String(d)}`}
-          formatter={(value) => [String(value), 'Leads']}
+          formatter={(value) => [String(value), label]}
         />
-        <Bar dataKey="leads" fill="#1877F2" radius={[3, 3, 0, 0]} />
+        <Bar dataKey={dataKey} fill="#1877F2" radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )
