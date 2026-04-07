@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check } from 'lucide-react'
+import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check, Sparkles } from 'lucide-react'
 import { Lead, Call, FollowUp, LeadStatus } from '@/types'
+import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
 import CallOutcomeBadge from '@/components/closing/CallOutcomeBadge'
@@ -187,6 +188,18 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
             <div style={card}>
               <div style={sectionTitle}>Notes</div>
               <textarea value={notes} onChange={(e) => handleNotesChange(e.target.value)} rows={3} placeholder="Notes sur ce lead..." style={{ ...inputS, resize: 'vertical' as const, fontSize: 12, lineHeight: 1.5 }} />
+            </div>
+
+            {/* AI Assistant */}
+            <div style={card}>
+              <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={12} color="#E53E3E" />
+                Assistant IA
+              </div>
+              <AiSuggestionPanel
+                leadId={leadId}
+                instagramHandle={lead.instagram_handle}
+              />
             </div>
 
             {/* Calls — editable dates */}

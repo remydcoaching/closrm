@@ -101,6 +101,23 @@ export async function PATCH(
 
       if (parsed.data.status === 'clos') {
         fireTriggersForEvent(workspaceId, 'deal_won', { lead_id: id }).catch(() => {})
+
+        // AI self-learning: record winning conversation outcome (non-blocking)
+        Promise.resolve(
+          supabase
+            .from('ig_conversations')
+            .select('id')
+            .eq('lead_id', id)
+            .eq('workspace_id', workspaceId)
+            .limit(1)
+            .single()
+        ).then(({ data: conv }) => {
+          if (conv) {
+            import('@/lib/ai/brief').then(({ recordOutcome }) => {
+              recordOutcome(workspaceId, conv.id, id, 'won').catch(() => {})
+            })
+          }
+        }).catch(() => {})
       }
     }
 
