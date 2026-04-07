@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { BookingCalendar, WeekAvailability, FormField } from '@/types'
+import { BookingCalendar, WeekAvailability, FormField, CalendarPurpose } from '@/types'
 import AvailabilityEditor from '@/components/booking-calendars/AvailabilityEditor'
 import FormFieldsEditor from '@/components/booking-calendars/FormFieldsEditor'
 import LocationEditor from '@/components/booking-calendars/LocationEditor'
+import PurposeEditor from '@/components/booking-calendars/PurposeEditor'
 
 const DEFAULT_AVAILABILITY: WeekAvailability = {
   monday: [{ start: '09:00', end: '17:00' }],
@@ -39,6 +40,7 @@ export default function EditCalendarPage() {
   const [availability, setAvailability] = useState<WeekAvailability>(DEFAULT_AVAILABILITY)
   const [formFields, setFormFields] = useState<FormField[]>([])
   const [locationIds, setLocationIds] = useState<string[]>([])
+  const [purpose, setPurpose] = useState<CalendarPurpose>('other')
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
 
   useEffect(() => {
@@ -58,6 +60,7 @@ export default function EditCalendarPage() {
         setAvailability(cal.availability ?? DEFAULT_AVAILABILITY)
         setFormFields(cal.form_fields ?? [])
         setLocationIds(cal.location_ids ?? [])
+        setPurpose((cal as unknown as { purpose?: CalendarPurpose }).purpose ?? 'other')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur inconnue')
       } finally {
@@ -94,6 +97,7 @@ export default function EditCalendarPage() {
           availability,
           form_fields: formFields,
           location_ids: locationIds,
+          purpose,
         }),
       })
       if (!res.ok) {
@@ -329,6 +333,28 @@ export default function EditCalendarPage() {
           }}
         >
           <AvailabilityEditor availability={availability} onChange={setAvailability} />
+        </div>
+      </section>
+
+      {/* Section: Objectif */}
+      <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Objectif du calendrier
+        </h2>
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+          borderRadius: 14, padding: 24,
+        }}>
+          <PurposeEditor value={purpose} onChange={setPurpose} />
         </div>
       </section>
 
