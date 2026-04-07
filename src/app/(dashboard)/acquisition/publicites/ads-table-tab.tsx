@@ -2,16 +2,18 @@
 
 import { useState, useMemo } from 'react'
 import type { MetaInsightsResponse } from '@/app/api/meta/insights/route'
+import type { CampaignType } from './health-thresholds'
 
 interface AdsTableTabProps {
   data: MetaInsightsResponse | null
   loading: boolean
   tabKey: string // 'campaigns' | 'adsets' | 'ads' — used to persist column prefs per tab
+  campaignType: CampaignType | 'all'
   onRowClick?: (id: string, name: string) => void // drill-down: click campaign → adsets, click adset → ads
 }
 
-type ColumnKey = 'name' | 'status' | 'spend' | 'impressions' | 'clicks' | 'ctr' | 'leads' | 'cpl'
-type SortKey = Exclude<ColumnKey, 'status'>
+type ColumnKey = 'name' | 'status' | 'campaign_type' | 'spend' | 'impressions' | 'clicks' | 'ctr' | 'leads' | 'cpl' | 'cpm' | 'cost_per_click'
+type SortKey = Exclude<ColumnKey, 'status' | 'campaign_type'>
 type SortState = { key: SortKey; dir: 'asc' | 'desc' } | null
 
 interface ColumnDef {
@@ -19,19 +21,32 @@ interface ColumnDef {
   label: string
   sortable: boolean
   align: 'left' | 'right'
-  defaultVisible: boolean
 }
 
-const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'name', label: 'Nom', sortable: true, align: 'left', defaultVisible: true },
-  { key: 'status', label: 'Statut', sortable: false, align: 'left', defaultVisible: true },
-  { key: 'spend', label: 'Dépensé', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'impressions', label: 'Impressions', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'clicks', label: 'Clics', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'ctr', label: 'CTR', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'leads', label: 'Leads', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'cpl', label: 'CPL', sortable: true, align: 'right', defaultVisible: true },
-]
+// Build the available columns for a given campaignType + tabKey.
+// Default visibility differs based on the campaign type filter.
+function getColumnsForType(campaignType: CampaignType | 'all'): ColumnDef[] {
+  const base: ColumnDef[] = [
+    { key: 'name', label: 'Nom', sortable: true, align: 'left' },
+    { key: 'status', label: 'Statut', sortable: false, align: 'left' },
+  ]
+  if (campaignType === 'all') {
+    base.push({ key: 'campaign_type', label: 'Type', sortable: false, align: 'left' })
+  }
+  base.push({ key: 'spend', label: 'Dépensé', sortable: true, align: 'right' })
+  base.push({ key: 'impressions', label: 'Impressions', sortable: true, align: 'right' })
+  base.push({ key: 'clicks', label: 'Clics', sortable: true, align: 'right' })
+  base.push({ key: 'ctr', label: 'CTR', sortable: true, align: 'right' })
+
+  if (campaignType === 'follow_ads') {
+    base.push({ key: 'cpm', label: 'CPM', sortable: true, align: 'right' })
+    base.push({ key: 'cost_per_click', label: 'Coût/clic', sortable: true, align: 'right' })
+  } else {
+    base.push({ key: 'leads', label: 'Leads', sortable: true, align: 'right' })
+    base.push({ key: 'cpl', label: 'CPL', sortable: true, align: 'right' })
+  }
+  return base
+}
 
 function formatEuro(n: number): string {
   return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '€'
@@ -95,42 +110,61 @@ const inputStyle: React.CSSProperties = {
   width: 220,
 }
 
-export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTableTabProps) {
+export default function AdsTableTab({ data, loading, tabKey, campaignType, onRowClick }: AdsTableTabProps) {
   const [sort, setSort] = useState<SortState>(null) // null = default (spend desc)
   const [search, setSearch] = useState('')
+
+  // Available columns depend on the campaign type filter
+  const availableColumns = useMemo(() => getColumnsForType(campaignType), [campaignType])
+
+  // localStorage key includes campaignType so prefs are scoped per type
+  const storageKey = `ads-columns-${tabKey}-${campaignType}`
+
   const [visibleCols, setVisibleCols] = useState<Set<ColumnKey>>(() => {
-    // Try to restore from localStorage
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`ads-columns-${tabKey}`)
+      const saved = localStorage.getItem(storageKey)
       if (saved) {
         try {
           return new Set(JSON.parse(saved) as ColumnKey[])
         } catch { /* ignore */ }
       }
     }
-    return new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.key))
+    return new Set(availableColumns.map(c => c.key))
   })
   const [showColumnPicker, setShowColumnPicker] = useState(false)
+
+  // When campaignType changes, reset visible columns to defaults for the new type
+  // (or restore from its own localStorage key)
+  useMemo(() => {
+    if (typeof window === 'undefined') return
+    const saved = localStorage.getItem(storageKey)
+    if (saved) {
+      try {
+        setVisibleCols(new Set(JSON.parse(saved) as ColumnKey[]))
+        return
+      } catch { /* ignore */ }
+    }
+    setVisibleCols(new Set(availableColumns.map(c => c.key)))
+  }, [storageKey, availableColumns])
 
   // Persist column prefs
   function toggleColumn(key: ColumnKey) {
     setVisibleCols(prev => {
       const next = new Set(prev)
       if (next.has(key)) {
-        // Don't allow hiding 'name'
-        if (key === 'name') return prev
+        if (key === 'name') return prev // can't hide name
         next.delete(key)
       } else {
         next.add(key)
       }
       if (typeof window !== 'undefined') {
-        localStorage.setItem(`ads-columns-${tabKey}`, JSON.stringify([...next]))
+        localStorage.setItem(storageKey, JSON.stringify([...next]))
       }
       return next
     })
   }
 
-  const columns = ALL_COLUMNS.filter(c => visibleCols.has(c.key))
+  const columns = availableColumns.filter(c => visibleCols.has(c.key))
 
   // Filter by search
   const filtered = useMemo(() => {
@@ -140,6 +174,19 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
     return data.breakdown.filter(row => row.name.toLowerCase().includes(q))
   }, [data, search])
 
+  // Helper: get sortable value for a row + key (handles calculated fields like cpm, cost_per_click)
+  function getRowValue(row: (typeof filtered)[0], key: SortKey): number | string {
+    if (key === 'cpm') {
+      return row.impressions > 0 ? (row.spend / row.impressions) * 1000 : 0
+    }
+    if (key === 'cost_per_click') {
+      return row.clicks > 0 ? row.spend / row.clicks : 0
+    }
+    const v = row[key as keyof typeof row]
+    if (v === null || v === undefined) return 0
+    return v as number | string
+  }
+
   // Sort: null = default (spend desc), otherwise by key+dir
   const sorted = useMemo(() => {
     const rows = [...filtered]
@@ -147,8 +194,8 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
     const sortDir = sort?.dir ?? 'desc'
 
     return rows.sort((a, b) => {
-      const valA = a[sortKey] ?? 0
-      const valB = b[sortKey] ?? 0
+      const valA = getRowValue(a, sortKey)
+      const valB = getRowValue(b, sortKey)
       if (typeof valA === 'string' && typeof valB === 'string') {
         return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
       }
@@ -201,6 +248,26 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
           </span>
         )
       }
+      case 'campaign_type': {
+        const labels: Record<CampaignType, { text: string; color: string }> = {
+          leadform: { text: 'Leadform', color: '#1877F2' },
+          follow_ads: { text: 'Follow Ads', color: '#8B2BE2' },
+          other: { text: 'Autre', color: '#888' },
+        }
+        const l = labels[row.campaign_type] ?? labels.other
+        return (
+          <span style={{
+            fontSize: 10,
+            fontWeight: 600,
+            padding: '2px 8px',
+            borderRadius: 4,
+            background: `${l.color}1A`,
+            color: l.color,
+          }}>
+            {l.text}
+          </span>
+        )
+      }
       case 'spend':
         return formatEuro(row.spend)
       case 'impressions':
@@ -213,6 +280,14 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
         return <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{row.leads}</span>
       case 'cpl':
         return row.cpl !== null ? formatEuro(row.cpl) : '—'
+      case 'cpm': {
+        const cpm = row.impressions > 0 ? (row.spend / row.impressions) * 1000 : null
+        return cpm !== null ? formatEuro(cpm) : '—'
+      }
+      case 'cost_per_click': {
+        const cpc = row.clicks > 0 ? row.spend / row.clicks : null
+        return cpc !== null ? formatEuro(cpc) : '—'
+      }
     }
   }
 
@@ -258,7 +333,7 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
               minWidth: 160,
               boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
             }}>
-              {ALL_COLUMNS.map(col => (
+              {availableColumns.map(col => (
                 <label
                   key={col.key}
                   style={{
@@ -319,9 +394,9 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
                       textAlign: col.align,
                       cursor: col.sortable ? 'pointer' : 'default',
                     }}
-                    onClick={() => col.sortable && col.key !== 'status' && handleSort(col.key as SortKey)}
+                    onClick={() => col.sortable && col.key !== 'status' && col.key !== 'campaign_type' && handleSort(col.key as SortKey)}
                   >
-                    {col.label}{col.sortable && col.key !== 'status' ? arrow(col.key as SortKey) : ''}
+                    {col.label}{col.sortable && col.key !== 'status' && col.key !== 'campaign_type' ? arrow(col.key as SortKey) : ''}
                   </th>
                 ))}
               </tr>
