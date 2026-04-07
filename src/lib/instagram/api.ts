@@ -207,11 +207,28 @@ interface IgConversationRaw {
 }
 
 export async function fetchIgConversations(token: string, pageId: string): Promise<IgConversationRaw[]> {
-  const url = `${FB_BASE}/${pageId}/conversations?platform=instagram&fields=id,participants,messages.limit(1){id,message,from,created_time}&access_token=${token}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`IG conversations fetch failed: ${res.status}`)
-  const json = await res.json()
-  return json.data ?? []
+  // Step 1: Get conversation IDs (lightweight, avoids Meta 500 errors)
+  const listUrl = `${FB_BASE}/${pageId}/conversations?platform=instagram&limit=20&access_token=${token}`
+  const listRes = await fetch(listUrl)
+  if (!listRes.ok) throw new Error(`IG conversations list failed: ${listRes.status}`)
+  const listJson = await listRes.json()
+  const ids: string[] = (listJson.data ?? []).map((c: { id: string }) => c.id)
+
+  // Step 2: Fetch details for each conversation individually
+  const results: IgConversationRaw[] = []
+  for (const id of ids) {
+    try {
+      const detailUrl = `${FB_BASE}/${id}?fields=participants,messages.limit(1){id,message,from,created_time}&access_token=${token}`
+      const detailRes = await fetch(detailUrl)
+      if (detailRes.ok) {
+        const detail = await detailRes.json()
+        results.push({ id, participants: detail.participants, messages: detail.messages })
+      }
+    } catch {
+      // Skip failed conversations
+    }
+  }
+  return results
 }
 
 interface IgMessageRaw {

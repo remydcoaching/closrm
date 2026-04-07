@@ -22,7 +22,7 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
   const googleIntegration = integrations?.find(i => i.type === 'google_calendar')
 
   const successMessage: Record<string, string> = {
-    meta_connected: 'Meta Ads connecté avec succès ! Les leads arrivent maintenant automatiquement.',
+    meta_connected: 'Facebook Meta Ads + Instagram connecté avec succès ! Les leads arrivent maintenant automatiquement.',
   }
   const errorMessage: Record<string, string> = {
     auth_required: 'Vous devez être connecté pour accéder à cette page.',

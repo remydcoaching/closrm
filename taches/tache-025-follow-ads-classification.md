@@ -1,4 +1,6 @@
-# Tâche 024 — Séparation Leadform / Follow Ads + KPIs adaptés + Indicateurs de santé
+# Tâche 025 — Séparation Leadform / Follow Ads + KPIs adaptés + Indicateurs de santé
+
+> Note : initialement numérotée T-024, renommée en T-025 car Pierre a pris T-024 pour son audit Instagram en parallèle.
 
 **Développeur :** Rémy
 **Date de début :** 2026-04-04

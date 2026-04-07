@@ -1,14 +1,14 @@
 # État du projet — ClosRM
 
 > Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-04-04 (T-024 Follow Ads Classification — Rémy)
+> Dernière mise à jour : 2026-04-07 (T-025 Follow Ads Classification — Rémy / T-024 Audit Instagram + Performance — Pierre)
 
 ---
 
 ## Statut global
 
-**Phase actuelle :** Développement V1
-**Version :** 0.3
+**Phase actuelle :** Développement V1 (finalisation)
+**Version :** 0.4
 **Branche principale active :** `develop`
 
 ---
@@ -28,21 +28,28 @@
 | Module Follow-ups — API + Frontend | Pierre | ✅ Terminé | T-008 |
 | Module Statistiques | Rémy | ✅ Terminé | T-011 |
 | Base de données (vue globale) | Rémy | ✅ Terminé | T-012 |
-| Module Automations (Workflows) | Pierre | 🔄 En cours (branching + polish) | T-014 |
+| Module Automations (Workflows) | Pierre | ✅ Terminé | T-014 |
 | Notifications WhatsApp/Telegram/Email | Pierre | ✅ Terminé | T-016 |
 | Paramètres Réglages | Pierre | ✅ Terminé | T-018 |
 | Paramètres Intégrations | Pierre | ✅ Terminé | T-019 |
 | Dark/Light Mode | Pierre | ✅ Terminé | — |
 | Branding dynamique (couleur + logo) | Pierre | ✅ Terminé | — |
-| Intégration Meta Ads (Bloc A — OAuth + webhook + UI) | Rémy | ✅ Terminé (webhook Meta non livré en mode Dev) | T-013 |
+| Intégration Meta Ads (OAuth + webhook + UI) | Rémy | ✅ Terminé | T-013 |
 | Intégration Google Calendar | Pierre | ✅ Terminé | T-022 |
 | Module Publicités (Meta Ads dashboard) | Rémy | ✅ Terminé | T-017 |
-| **Module Publicités v2 — Leadform/Follow Ads + santé** | **Rémy** | **✅ Terminé** | **T-024** |
-| **Module Emails (séquences + broadcast)** | **Pierre** | **🔄 En cours (code complet, tests restants)** | **T-020** |
-| Module Calendrier / Booking (type Calendly) | Pierre | 🔄 En cours (tests E2E restants) | T-022 |
-| Instagram Automations | Pierre | ⬜ Non démarré | T-021 |
-| **Module Réseaux Sociaux (Instagram)** | **Pierre** | **✅ Terminé** | **T-023** |
-| **Module Messages (DMs Instagram)** | **Pierre** | **✅ Terminé** | **T-023** |
+| **Module Publicités v2 — Leadform/Follow Ads + santé** | **Rémy** | **✅ Terminé** | **T-025** |
+| Module Emails (séquences + broadcast) | Pierre | ✅ Terminé | T-020 |
+| Module Calendrier / Booking | Pierre | ✅ Terminé | T-022 |
+| Module Réseaux Sociaux (Instagram) | Pierre | ✅ Terminé | T-023, T-024 |
+| Module Messages (DMs Instagram) | Pierre | ✅ Terminé | T-023, T-024 |
+| Module Commentaires (Instagram) | Pierre | ✅ Terminé | T-024 |
+| Publication Instagram (Post/Reel/Story) | Pierre | ✅ Terminé | T-024 |
+| Planification auto Instagram (cron) | Pierre | ✅ Terminé | T-024 |
+| Sync auto Instagram (cron horaire) | Pierre | ✅ Terminé | T-024 |
+| Performance (Server Components + optimisations) | Pierre | ✅ Terminé | T-024 |
+| Agenda : ligne de temps + notifications | Pierre | ✅ Terminé | T-024 |
+| Templates agenda : copier-coller + drag & drop | Pierre | ✅ Terminé | T-024 |
+| Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non démarré | T-021 |
 | V2 — Tunnels | — | 🔒 Bloqué (V2) | — |
 | V2 — Stripe | — | 🔒 Bloqué (V2) | — |
 | V2 — Multi-membres équipe | — | 🔒 Bloqué (V2) | — |
@@ -69,12 +76,13 @@
 | 2026-03-30 | Pierre | T-018 — Paramètres Réglages | `feature/pierre-automations` |
 | 2026-03-30 | Pierre | T-019 — Paramètres Intégrations | `feature/pierre-automations` |
 | 2026-03-31 | Pierre | T-022 — Calendrier/Booking + Google Calendar + Planning Templates | `feature/pierre-automations` |
-| 2026-04-01 | Pierre | T-020 — Module Emails (domaines, templates, séquences, broadcasts, stats) | `feature/pierre-email-module` |
-| 2026-04-01 | Pierre | T-014 v2 — Automations : branching, wait_for_event, 13 actions, builder refait | `feature/pierre-email-module` |
-| 2026-04-01 | Rémy | T-017 — Module Publicités (Meta Ads Dashboard — Bloc B) | `feature/remy-meta-ads` |
+| 2026-04-01 | Pierre | T-020 — Module Emails | `feature/pierre-email-module` |
+| 2026-04-01 | Pierre | T-014 v2 — Automations : branching, 13 actions, builder refait | `feature/pierre-email-module` |
+| 2026-04-01 | Rémy | T-017 — Module Publicités (Meta Ads Dashboard) | `feature/remy-meta-ads` |
 | 2026-04-02 | Pierre | T-023 — Module Réseaux Sociaux (Instagram) + Messages | `feature/pierre-funnel-builder` |
-| 2026-04-04 | Rémy | T-024 — Follow Ads Classification + KPIs adaptés + indicateurs de santé | `feature/remy-follow-ads-classification` |
+| 2026-04-05→07 | Pierre | T-024 — Audit Instagram + Performance + 90 PRs | `feature/pierre-funnel-builder` |
+| 2026-04-04→07 | Rémy | T-025 — Follow Ads Classification + KPIs adaptés + indicateurs de santé | `feature/remy-follow-ads-classification` |
 
 ---
 
-*Mis à jour le 2026-04-04 par Claude Code — ClosRM*
+*Mis à jour le 2026-04-07 par Claude Code — ClosRM*

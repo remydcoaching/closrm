@@ -25,8 +25,8 @@ export default function SocialPlatformTabs({ selected, onChange }: Props) {
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '8px 16px', fontSize: 13, fontWeight: 600,
               color: isActive ? '#fff' : 'var(--text-tertiary)',
-              background: isActive ? 'var(--bg-elevated)' : 'transparent',
-              border: isActive ? '1px solid var(--border-primary)' : '1px solid transparent',
+              background: isActive ? 'var(--color-primary)' : 'transparent',
+              border: isActive ? '1px solid var(--color-primary)' : '1px solid transparent',
               borderRadius: 8, cursor: p.active ? 'pointer' : 'default',
               opacity: p.active ? 1 : 0.4,
             }}
