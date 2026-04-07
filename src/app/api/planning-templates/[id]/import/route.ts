@@ -46,12 +46,22 @@ export async function POST(
     const bookings = blocks.map((block) => {
       const dayOffset = DAY_OFFSETS[block.day] ?? 0
       const blockDate = addDays(weekStart, dayOffset)
-      const dateStr = blockDate.toISOString().split('T')[0]
-      const scheduled_at = new Date(`${dateStr}T${block.start}:00`).toISOString()
+      const year = blockDate.getUTCFullYear()
+      const month = String(blockDate.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(blockDate.getUTCDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
+      // Calculate duration from template times
+      const [sH, sM] = block.start.split(':').map(Number)
+      const [eH, eM] = block.end.split(':').map(Number)
+      const duration_minutes = (eH * 60 + eM) - (sH * 60 + sM)
 
-      const [startH, startM] = block.start.split(':').map(Number)
-      const [endH, endM] = block.end.split(':').map(Number)
-      const duration_minutes = (endH * 60 + endM) - (startH * 60 + startM)
+      // Convert local template time to UTC using client timezone offset
+      const tzOffset = parsed.data.timezone_offset ?? 0  // minutes, e.g. -120 for GMT+2
+      const localMinutes = sH * 60 + sM
+      const utcMinutes = localMinutes + tzOffset
+      const utcH = Math.floor(((utcMinutes % 1440) + 1440) % 1440 / 60)
+      const utcM = ((utcMinutes % 1440) + 1440) % 1440 % 60
+      const scheduled_at = `${dateStr}T${String(utcH).padStart(2, '0')}:${String(utcM).padStart(2, '0')}:00Z`
 
       return {
         workspace_id: workspaceId,

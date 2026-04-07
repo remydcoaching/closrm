@@ -114,7 +114,7 @@ export async function fetchStoryInsights(token: string, storyId: string): Promis
     if (item.name === 'reach') result.reach = item.values?.[0]?.value ?? 0
     if (item.name === 'replies') result.replies = item.values?.[0]?.value ?? 0
     if (item.name === 'navigation') result.exits = item.values?.[0]?.value ?? 0
-    if (item.name === 'shares') result.taps_forward = item.values?.[0]?.value ?? 0
+    if (item.name === 'profile_visits') result.taps_forward = item.values?.[0]?.value ?? 0  // taps_forward = profile visits
     if (item.name === 'follows') result.taps_back = item.values?.[0]?.value ?? 0  // taps_back = follows count
   }
   return result
