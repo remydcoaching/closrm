@@ -48,7 +48,7 @@ import type {
   FunnelPresetOverrideJSON,
   FunnelEffectsConfigJSON,
 } from '@/types'
-import FunnelPagePreview from '../FunnelPagePreview'
+import FunnelPagePreview, { type FunnelPreviewMode } from '../FunnelPagePreview'
 import FunnelBlockConfigPanel from '../FunnelBlockConfig'
 import DirectionArtistiquePanel from './sidebar/DirectionArtistiquePanel'
 import SectionsListPanel from './sidebar/SectionsListPanel'
@@ -71,8 +71,8 @@ interface Props {
     preset_override?: FunnelPresetOverrideJSON | null
     effects_config?: FunnelEffectsConfigJSON
   }) => void
-  /** Mode d'affichage du preview. */
-  mode: 'desktop' | 'mobile'
+  /** Mode d'affichage du preview (desktop / tablet / mobile). */
+  mode: FunnelPreviewMode
 }
 
 /**
@@ -272,7 +272,7 @@ export default function FunnelBuilderV2({
       </aside>
 
       {/* Marker temporaire phase pour debug */}
-      <div style={phaseMarkerStyle}>T-028b · Phase 3 — Sections list active</div>
+      <div style={phaseMarkerStyle}>T-028b · Phase 4 — Preview multi-device</div>
     </div>
   )
 }

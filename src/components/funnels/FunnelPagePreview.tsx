@@ -65,12 +65,25 @@ import TextBlock from './blocks/TextBlock'
 import ImageBlock from './blocks/ImageBlock'
 import SpacerBlock from './blocks/SpacerBlock'
 
+/**
+ * Modes de prévisualisation du builder. T-028b Phase 4 ajoute `tablet`
+ * (largeur 768px) entre desktop et mobile pour permettre au coach de
+ * vérifier le rendu sur les 3 breakpoints standards.
+ */
+export type FunnelPreviewMode = 'desktop' | 'tablet' | 'mobile'
+
+const PREVIEW_MAX_WIDTHS: Record<FunnelPreviewMode, number> = {
+  desktop: 1200,
+  tablet: 768,
+  mobile: 375,
+}
+
 interface Props {
   blocks: FunnelBlock[]
   selectedBlockId: string | null
   onSelectBlock: (id: string | null) => void
   onDeleteBlock: (id: string) => void
-  mode: 'desktop' | 'mobile'
+  mode: FunnelPreviewMode
   /**
    * Funnel parent (optionnel). Si fourni, ses champs `preset_id`,
    * `preset_override` et `effects_config` sont utilisés pour stylé les
@@ -263,19 +276,21 @@ export default function FunnelPagePreview({
 
   // Inner card du preview — c'est ce conteneur qui devient `.fnl-root` quand
   // un funnel est fourni, pour que les CSS vars du preset s'appliquent à
-  // tous les blocs enfants.
+  // tous les blocs enfants. La maxWidth dépend du mode (desktop/tablet/mobile).
+  const maxWidth = PREVIEW_MAX_WIDTHS[mode]
+  const isMobileLike = mode === 'mobile' || mode === 'tablet'
   const innerCard = (
     <div
       className={design ? `fnl-root ${design.effectsClassName}` : ''}
       style={{
         width: '100%',
-        maxWidth: mode === 'mobile' ? 375 : 1200,
+        maxWidth,
         // Si on a un design, le background vient de --fnl-section-bg via .fnl-root.
         // Sinon (legacy), on garde le fond blanc historique pour ne rien casser.
         background: design ? undefined : '#fff',
         minHeight: '100%',
         boxShadow: '0 8px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05)',
-        borderRadius: mode === 'mobile' ? 20 : 8,
+        borderRadius: mode === 'mobile' ? 20 : mode === 'tablet' ? 16 : 8,
         overflow: 'hidden',
         transition: 'max-width 0.3s ease, border-radius 0.3s ease',
         ...(design?.cssVars ?? {}),
@@ -292,7 +307,7 @@ export default function FunnelPagePreview({
         background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%)',
         display: 'flex',
         justifyContent: 'center',
-        padding: mode === 'mobile' ? '24px 16px' : 32,
+        padding: isMobileLike ? '24px 16px' : 32,
         transition: 'padding 0.3s ease',
       }}
       onClick={() => onSelectBlock(null)}

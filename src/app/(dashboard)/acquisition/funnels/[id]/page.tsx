@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Monitor, Smartphone, Save, Globe, Check } from 'lucide-react'
+import { ArrowLeft, Monitor, Smartphone, Tablet, Save, Globe, Check } from 'lucide-react'
 import type {
   FunnelPage,
   FunnelPresetOverrideJSON,
@@ -31,7 +31,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
   const [activePageId, setActivePageId] = useState<string>('')
   const [funnelName, setFunnelName] = useState('')
   const [editingName, setEditingName] = useState(false)
-  const [mode, setMode] = useState<'desktop' | 'mobile'>('desktop')
+  // T-028b Phase 4 — preview multi-device : desktop (1200px) / tablet (768px) / mobile (375px)
+  const [mode, setMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -312,7 +313,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         {/* Separator */}
         <div style={{ width: 1, height: 24, background: 'var(--border-primary, #262626)', flexShrink: 0 }} />
 
-        {/* Desktop / Mobile toggle */}
+        {/* Device toggle (Desktop / Tablet / Mobile) — T-028b Phase 4 */}
         <div style={{
           display: 'flex', gap: 2, background: 'var(--bg-primary, #0a0a0a)',
           borderRadius: 8, padding: 3, flexShrink: 0,
@@ -320,6 +321,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         }}>
           <button
             onClick={() => setMode('desktop')}
+            title="Desktop (1200px)"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 32, height: 28, borderRadius: 6, border: 'none',
@@ -331,7 +333,21 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             <Monitor size={14} />
           </button>
           <button
+            onClick={() => setMode('tablet')}
+            title="Tablet (768px)"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 32, height: 28, borderRadius: 6, border: 'none',
+              background: mode === 'tablet' ? 'rgba(229,62,62,0.15)' : 'transparent',
+              color: mode === 'tablet' ? '#E53E3E' : 'var(--text-secondary, #555)',
+              cursor: 'pointer', padding: 0, transition: 'all 0.2s ease',
+            }}
+          >
+            <Tablet size={14} />
+          </button>
+          <button
             onClick={() => setMode('mobile')}
+            title="Mobile (375px)"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 32, height: 28, borderRadius: 6, border: 'none',
