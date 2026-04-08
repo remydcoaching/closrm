@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    const shouldRefresh = request.nextUrl.searchParams.get('refresh') === 'true'
+
     // If no local messages, try to fetch from Meta API
     if (!data || data.length === 0) {
       try {
@@ -81,6 +83,60 @@ export async function GET(request: NextRequest) {
       } catch (fetchErr) {
         console.error('[API /instagram/messages] Meta fetch failed:', fetchErr)
         // Return empty — graceful degradation
+      }
+    }
+
+    // If refresh=true and messages already exist, poll Meta API for new messages
+    if (shouldRefresh && data && data.length > 0) {
+      try {
+        const { data: account } = await supabase
+          .from('ig_accounts')
+          .select('ig_user_id, page_access_token')
+          .eq('workspace_id', workspaceId)
+          .eq('is_connected', true)
+          .maybeSingle()
+
+        if (account?.page_access_token && convo.ig_conversation_id) {
+          const rawMessages = await fetchConversationMessages(
+            account.page_access_token,
+            convo.ig_conversation_id,
+            20
+          )
+
+          if (rawMessages.length > 0) {
+            const toUpsert = rawMessages.map(msg => ({
+              workspace_id: workspaceId,
+              conversation_id: conversationId,
+              ig_message_id: msg.id,
+              sender_type: msg.from.id === account.ig_user_id ? 'user' as const : 'participant' as const,
+              text: msg.message ?? null,
+              media_url: msg.attachments?.data?.[0]?.image_data?.url
+                ?? msg.attachments?.data?.[0]?.video_data?.url
+                ?? null,
+              media_type: msg.attachments?.data?.[0]?.mime_type?.startsWith('video') ? 'video' as const
+                : msg.attachments?.data?.[0]?.mime_type?.startsWith('image') ? 'image' as const
+                : msg.attachments?.data?.[0]?.mime_type?.startsWith('audio') ? 'audio' as const
+                : null,
+              sent_at: msg.created_time,
+              is_read: true,
+            }))
+
+            await supabase.from('ig_messages').upsert(toUpsert, { onConflict: 'ig_message_id' })
+
+            const { data: freshData } = await supabase
+              .from('ig_messages')
+              .select('*')
+              .eq('conversation_id', conversationId)
+              .eq('workspace_id', workspaceId)
+              .order('sent_at', { ascending: true })
+              .limit(100)
+
+            return NextResponse.json({ data: freshData ?? [] })
+          }
+        }
+      } catch (fetchErr) {
+        console.error('[API /instagram/messages] refresh Meta fetch failed:', fetchErr)
+        // Graceful degradation — return existing cached data
       }
     }
 
