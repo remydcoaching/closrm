@@ -556,13 +556,23 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
     setLearning(true)
     setLearnResult(null)
     try {
+      // Step 1: Scan existing closed leads for winning conversations
+      const scanRes = await fetch('/api/ai/scan-wins', { method: 'POST' })
+      const scanJson = scanRes.ok ? await scanRes.json() : null
+      const scanned = scanJson?.data?.recorded || 0
+
+      // Step 2: Analyze winning conversations and update brief
       const res = await fetch('/api/ai/learn', { method: 'POST' })
       if (!res.ok) {
         const json = await res.json().catch(() => null)
+        if (scanned > 0) {
+          setLearnResult(`${scanned} conversation(s) importee(s), mais pas assez pour analyser. Continuez a closer !`)
+          return
+        }
         throw new Error(json?.error || 'Erreur')
       }
       const json = await res.json()
-      setLearnResult(`Brief mis a jour a partir de ${json.data.wins_analyzed} conversation(s) gagnante(s).`)
+      setLearnResult(`${scanned > 0 ? `${scanned} nouvelle(s) conversation(s) importee(s). ` : ''}Brief mis a jour a partir de ${json.data.wins_analyzed} conversation(s) gagnante(s).`)
       onUpdate()
     } catch (err) {
       setLearnResult(err instanceof Error ? err.message : 'Erreur')
