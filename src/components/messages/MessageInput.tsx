@@ -35,44 +35,92 @@ export default function MessageInput({ onSend, disabled }: Props) {
   const hasText = text.trim().length > 0
 
   return (
-    <div className="px-6 py-4 border-t border-[var(--border-primary)] flex gap-3 items-end shrink-0">
-      <textarea
-        ref={inputRef}
-        value={text}
-        onChange={e => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Votre message..."
-        rows={1}
-        className="flex-1 px-5 py-3 text-[14px] bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-[24px] outline-none resize-none leading-[1.4] max-h-[120px] overflow-auto focus:ring-1 focus:ring-[var(--color-primary)] transition-shadow placeholder:text-[var(--text-tertiary)]"
-        style={{ fontFamily: 'inherit' }}
-      />
+    <div style={{
+      padding: '16px 24px',
+      borderTop: '1px solid var(--border-primary)',
+      display: 'flex',
+      gap: 10,
+      alignItems: 'flex-end',
+      flexShrink: 0,
+    }}>
+      {/* Text input */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'flex-end',
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border-primary)',
+        borderRadius: 24,
+        padding: '4px 6px 4px 20px',
+        transition: 'border-color 0.2s',
+      }}>
+        <textarea
+          ref={inputRef}
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Votre message..."
+          rows={1}
+          style={{
+            flex: 1,
+            padding: '10px 0',
+            fontSize: 14,
+            fontFamily: 'inherit',
+            background: 'transparent',
+            color: 'var(--text-primary)',
+            border: 'none',
+            outline: 'none',
+            resize: 'none',
+            lineHeight: 1.4,
+            maxHeight: 120,
+            overflow: 'auto',
+          }}
+        />
 
-      {/* Voice button */}
-      <button
-        type="button"
-        className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-primary)] flex items-center justify-center shrink-0 cursor-pointer hover:bg-[var(--bg-secondary)] transition-colors"
-        title="Message vocal"
-      >
-        <Mic size={16} className="text-[var(--text-tertiary)]" />
-      </button>
+        {/* Mic button inside input */}
+        <button
+          type="button"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: 'none',
+            background: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            flexShrink: 0,
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+          title="Message vocal"
+        >
+          <Mic size={18} color="var(--text-tertiary)" />
+        </button>
+      </div>
 
       {/* Send button */}
       <button
         onClick={handleSend}
         disabled={!hasText || isBusy}
-        className={`w-10 h-10 rounded-full border-none flex items-center justify-center shrink-0 transition-all duration-200
-          ${hasText && !isBusy
-            ? 'cursor-pointer hover:opacity-90 active:scale-95'
-            : 'cursor-default'
-          }
-          ${isBusy ? 'opacity-50' : ''}
-        `}
         style={{
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          cursor: hasText && !isBusy ? 'pointer' : 'default',
+          opacity: isBusy ? 0.5 : 1,
           background: hasText && !isBusy ? 'var(--color-primary)' : 'var(--bg-elevated)',
-          boxShadow: hasText && !isBusy ? '0 2px 12px rgba(0,200,83,0.3)' : 'none',
+          transition: 'all 0.2s',
         }}
       >
-        <Send size={16} color={hasText && !isBusy ? '#fff' : 'var(--text-tertiary)'} />
+        <Send size={18} color={hasText && !isBusy ? '#fff' : 'var(--text-tertiary)'} />
       </button>
     </div>
   )
