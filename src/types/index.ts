@@ -55,8 +55,10 @@ export interface Lead {
   meta_campaign_id: string | null
   meta_adset_id: string | null
   meta_ad_id: string | null
+  instagram_handle: string | null
   email_unsubscribed: boolean
   email_unsubscribed_at: string | null
+  last_activity_at: string | null
   created_at: string
   updated_at: string
 }
@@ -105,10 +107,13 @@ export type WorkflowStatus = 'brouillon' | 'actif' | 'inactif'
 export type WorkflowTriggerType =
   // LEADS
   | 'new_lead'
+  | 'lead_imported'
   | 'lead_status_changed'
   | 'tag_added'
   | 'tag_removed'
   | 'deal_won'
+  | 'lead_with_ig_handle'
+  | 'lead_inactive_x_days'
   // CALLS
   | 'call_scheduled'
   | 'call_in_x_hours'
@@ -120,9 +125,12 @@ export type WorkflowTriggerType =
   | 'new_follower'
   | 'dm_keyword'
   | 'comment_keyword'
-  // BOOKING (future T-022)
+  // BOOKING / RENDEZ-VOUS
   | 'booking_created'
   | 'booking_cancelled'
+  | 'booking_no_show'
+  | 'booking_completed'
+  | 'booking_in_x_hours'
 
 export type WorkflowActionType =
   | 'send_email'
@@ -139,6 +147,9 @@ export type WorkflowActionType =
   | 'set_reached'
   | 'schedule_call'
   | 'webhook'
+  | 'create_google_meet'
+  | 'update_lead_field'
+  | 'wait_until_date'
 
 export type WorkflowStepType = 'action' | 'delay' | 'condition' | 'wait_for_event'
 
@@ -163,6 +174,8 @@ export interface Workflow {
   execution_count: number
   last_run_at: string | null
   template_id: string | null
+  notify_on_failure: boolean
+  failure_notification_channel: string | null
   created_at: string
   updated_at: string
 }
@@ -256,6 +269,8 @@ export interface WeekAvailability {
 
 export type DayOfWeek = keyof WeekAvailability
 
+export type CalendarPurpose = 'setting' | 'closing' | 'other'
+
 export interface BookingCalendar {
   id: string
   workspace_id: string
@@ -268,6 +283,7 @@ export interface BookingCalendar {
   form_fields: FormField[]
   availability: WeekAvailability
   buffer_minutes: number
+  purpose: CalendarPurpose
   is_active: boolean
   created_at: string
   updated_at: string
@@ -278,6 +294,7 @@ export interface BookingLocation {
   workspace_id: string
   name: string
   address: string | null
+  location_type: 'in_person' | 'online'
   is_active: boolean
   created_at: string
 }
@@ -302,6 +319,7 @@ export interface Booking {
   notes: string | null
   google_event_id: string | null
   location_id: string | null
+  meet_url: string | null
   is_personal: boolean
   created_at: string
 }
@@ -309,7 +327,7 @@ export interface Booking {
 export interface BookingWithCalendar extends Booking {
   booking_calendar: Pick<BookingCalendar, 'name' | 'color'> | null
   lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email'> | null
-  location: Pick<BookingLocation, 'id' | 'name' | 'address'> | null
+  location: Pick<BookingLocation, 'id' | 'name' | 'address' | 'location_type'> | null
 }
 
 // ── Planning Template ────────────────────────────────────────────────────────
@@ -894,5 +912,46 @@ export interface IgComment {
   is_hidden: boolean
   parent_id: string | null
   ig_parent_id: string | null
+  created_at: string
+}
+
+// ─── AI Assistant ─────────────────────────────
+
+export interface AiCoachBrief {
+  id: string
+  workspace_id: string
+  offer_description: string | null
+  target_audience: string | null
+  tone: 'tu' | 'vous' | 'mixed'
+  approach: string | null
+  example_messages: string | null
+  goal: 'book_call' | 'sell_dm' | 'both'
+  lead_magnets: string | null
+  generated_brief: string | null
+  api_key: string | null
+  wins_analyzed: number
+  updated_at: string
+  created_at: string
+}
+
+export interface AiSuggestion {
+  guidance: string
+  message: string
+  status_suggestion?: {
+    from: LeadStatus
+    to: LeadStatus
+    reason: string
+  }
+  window_open: boolean
+  window_expires_at?: string
+}
+
+export interface AiConversationOutcome {
+  id: string
+  workspace_id: string
+  conversation_id: string
+  lead_id: string | null
+  outcome: 'won' | 'lost' | 'no_response'
+  messages_snapshot: Record<string, unknown>[] | null
   created_at: string
 }

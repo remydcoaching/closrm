@@ -164,6 +164,7 @@ export default function AgendaPage() {
           google_event_id: null,
           is_personal: false,
           location_id: null,
+          meet_url: null,
           created_at: call.created_at,
           booking_calendar: { name: callLabel, color: callColor },
           lead: call.lead ?? null,

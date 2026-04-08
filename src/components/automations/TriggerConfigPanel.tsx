@@ -1,6 +1,7 @@
 'use client'
 
-import type { WorkflowTriggerType } from '@/types'
+import { useState, useEffect } from 'react'
+import type { WorkflowTriggerType, BookingCalendar } from '@/types'
 
 interface Props {
   triggerType: WorkflowTriggerType
@@ -43,9 +44,34 @@ const labelStyle: React.CSSProperties = {
 }
 
 export default function TriggerConfigPanel({ triggerType, triggerConfig, onChange }: Props) {
+  const [calendars, setCalendars] = useState<Pick<BookingCalendar, 'id' | 'name'>[]>([])
+
+  useEffect(() => {
+    fetch('/api/booking-calendars')
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(json => setCalendars(json.data ?? []))
+      .catch(() => {})
+  }, [])
+
   const updateConfig = (key: string, value: unknown) => {
     onChange(triggerType, { ...triggerConfig, [key]: value })
   }
+
+  const calendarSelect = (
+    <div style={{ marginBottom: 14 }}>
+      <label style={labelStyle}>Calendrier</label>
+      <select
+        style={selectStyle}
+        value={(triggerConfig.calendar_id as string) || ''}
+        onChange={(e) => updateConfig('calendar_id', e.target.value || null)}
+      >
+        <option value="">Tous les calendriers</option>
+        {calendars.map(c => (
+          <option key={c.id} value={c.id}>{c.name}</option>
+        ))}
+      </select>
+    </div>
+  )
 
   const renderConfigFields = () => {
     switch (triggerType) {
@@ -158,6 +184,103 @@ export default function TriggerConfigPanel({ triggerType, triggerConfig, onChang
           </div>
         )
 
+      case 'lead_imported':
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Source (optionnel)</label>
+            <select
+              style={selectStyle}
+              value={(triggerConfig.source as string) || ''}
+              onChange={(e) => updateConfig('source', e.target.value || null)}
+            >
+              <option value="">Toutes</option>
+              <option value="facebook_ads">Facebook Ads</option>
+              <option value="instagram_ads">Instagram Ads</option>
+              <option value="follow_ads">Follow Ads</option>
+              <option value="formulaire">Formulaire</option>
+              <option value="manuel">Manuel</option>
+            </select>
+          </div>
+        )
+
+      case 'lead_with_ig_handle':
+        return (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            Se declenche quand un lead est cree avec un pseudo Instagram.
+          </div>
+        )
+
+      case 'booking_no_show':
+        return (
+          <>
+            {calendarSelect}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              Se declenche quand un prospect ne se presente pas au rendez-vous.
+            </div>
+          </>
+        )
+
+      case 'booking_created':
+        return (
+          <>
+            {calendarSelect}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              Se declenche quand un rendez-vous est pris sur le calendrier.
+            </div>
+          </>
+        )
+
+      case 'booking_cancelled':
+        return (
+          <>
+            {calendarSelect}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              Se declenche quand un rendez-vous est annule.
+            </div>
+          </>
+        )
+
+      case 'booking_completed':
+        return (
+          <>
+            {calendarSelect}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              Se declenche quand un rendez-vous est marque comme termine.
+            </div>
+          </>
+        )
+
+      case 'booking_in_x_hours':
+        return (
+          <>
+            {calendarSelect}
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Heures avant le rendez-vous</label>
+              <input
+                type="number"
+                style={inputStyle}
+                min={1}
+                value={(triggerConfig.hours_before as number) ?? 24}
+                onChange={(e) => updateConfig('hours_before', parseInt(e.target.value) || 1)}
+              />
+            </div>
+          </>
+        )
+
+      case 'lead_inactive_x_days':
+        return (
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Inactif depuis (jours)</label>
+            <input
+              type="number"
+              style={inputStyle}
+              min={1}
+              value={(triggerConfig.days as number) ?? 30}
+              onChange={(e) => updateConfig('days', parseInt(e.target.value) || 30)}
+            />
+          </div>
+        )
+
       default:
         return (
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
@@ -169,19 +292,32 @@ export default function TriggerConfigPanel({ triggerType, triggerConfig, onChang
 
   return (
     <div>
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: 'var(--text-primary)',
-          marginBottom: 20,
-        }}
-      >
-        Configuration du déclencheur
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 22, paddingBottom: 14,
+        borderBottom: '1px solid var(--border-primary)',
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: 'rgba(229,62,62,0.08)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Declencheur
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Quand ce workflow demarre
+          </div>
+        </div>
       </div>
 
       <div style={{ marginBottom: 18 }}>
-        <label style={labelStyle}>Type de déclencheur</label>
+        <label style={labelStyle}>Type de declencheur</label>
         <select
           style={selectStyle}
           value={triggerType}
@@ -189,15 +325,20 @@ export default function TriggerConfigPanel({ triggerType, triggerConfig, onChang
         >
           <optgroup label="LEADS">
             <option value="new_lead">Nouveau lead</option>
+            <option value="lead_imported">Leads importes en bulk</option>
             <option value="lead_status_changed">Changement de statut</option>
-            <option value="tag_added">Tag ajouté</option>
-            <option value="tag_removed">Tag supprimé</option>
-            <option value="deal_won">Deal gagné</option>
+            <option value="tag_added">Tag ajoute</option>
+            <option value="tag_removed">Tag supprime</option>
+            <option value="deal_won">Deal gagne</option>
+            <option value="lead_with_ig_handle">Lead avec pseudo Instagram</option>
+            <option value="lead_inactive_x_days">Lead inactif depuis X jours</option>
           </optgroup>
-          <optgroup label="APPELS">
-            <option value="call_scheduled">Appel planifié</option>
-            <option value="call_in_x_hours">Appel dans X heures</option>
-            <option value="call_no_show">No-show appel</option>
+          <optgroup label="RENDEZ-VOUS">
+            <option value="booking_created">Rendez-vous créé</option>
+            <option value="booking_in_x_hours">Rappel avant rendez-vous</option>
+            <option value="booking_completed">Rendez-vous terminé</option>
+            <option value="booking_cancelled">Rendez-vous annulé</option>
+            <option value="booking_no_show">No-show rendez-vous</option>
             <option value="call_outcome_logged">Résultat d&apos;appel enregistré</option>
           </optgroup>
           <optgroup label="FOLLOW-UPS">
@@ -207,10 +348,6 @@ export default function TriggerConfigPanel({ triggerType, triggerConfig, onChang
             <option value="new_follower">Nouveau follower</option>
             <option value="dm_keyword">DM avec mot-clé</option>
             <option value="comment_keyword">Commentaire avec mot-clé</option>
-          </optgroup>
-          <optgroup label="RÉSERVATIONS">
-            <option value="booking_created">Réservation créée</option>
-            <option value="booking_cancelled">Réservation annulée</option>
           </optgroup>
         </select>
       </div>

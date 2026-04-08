@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { RefreshCw } from 'lucide-react'
 import ConversationList from '@/components/messages/ConversationList'
 import ConversationThread from '@/components/messages/ConversationThread'
 import MessageInput from '@/components/messages/MessageInput'
@@ -14,10 +15,13 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hasAccount, setHasAccount] = useState(true)
+  const [syncWarning, setSyncWarning] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sending, setSending] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const initialSyncDone = useRef(false)
 
   // Debounce search input by 300ms
   const handleSearchChange = (value: string) => {
@@ -34,24 +38,22 @@ export default function MessagesPage() {
     }
   }, [])
 
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (withSync = false) => {
     setLoading(true)
     setError(null)
     try {
-      let accRes = await fetch('/api/instagram/account')
-      let accJson = await accRes.json()
-      if (!accJson.data) {
-        accRes = await fetch('/api/instagram/account', { method: 'POST' })
-        accJson = await accRes.json()
-        if (!accJson.data) { setHasAccount(false); setLoading(false); return }
-      }
+      const accRes = await fetch('/api/instagram/account')
+      const accJson = await accRes.json()
+      if (!accJson.data) { setHasAccount(false); setLoading(false); return }
 
       const params = new URLSearchParams()
       if (debouncedSearch) params.set('search', debouncedSearch)
+      if (withSync) params.set('sync', 'true')
       const res = await fetch(`/api/instagram/conversations?${params}`)
       if (!res.ok) throw new Error('Erreur lors du chargement des conversations')
       const json = await res.json()
       setConversations(json.data ?? [])
+      setSyncWarning(json.syncWarning ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
@@ -59,7 +61,20 @@ export default function MessagesPage() {
     }
   }, [debouncedSearch])
 
-  useEffect(() => { fetchConversations() }, [fetchConversations])
+  useEffect(() => {
+    if (!initialSyncDone.current) {
+      initialSyncDone.current = true
+      fetchConversations(true)
+    } else {
+      fetchConversations(false)
+    }
+  }, [fetchConversations])
+
+  const handleSync = async () => {
+    setSyncing(true)
+    await fetchConversations(true)
+    setSyncing(false)
+  }
 
   const fetchMessages = useCallback(async (convo: IgConversation) => {
     setSelected(convo)
@@ -101,7 +116,6 @@ export default function MessagesPage() {
       })
       if (res.ok) {
         const json = await res.json()
-        // Replace optimistic message with real one
         setMessages(prev => prev.map(m => m.id === optimisticId ? json.data : m))
         setConversations(prev => prev.map(c =>
           c.id === selected.id
@@ -109,7 +123,6 @@ export default function MessagesPage() {
             : c
         ))
       } else {
-        // Remove optimistic message on failure
         setMessages(prev => prev.filter(m => m.id !== optimisticId))
       }
     } catch {
@@ -118,6 +131,27 @@ export default function MessagesPage() {
       setSending(false)
     }
   }
+
+  // Poll active conversation messages every 8s
+  useEffect(() => {
+    if (!selected) return
+    const interval = setInterval(() => {
+      fetch(`/api/instagram/messages?conversation_id=${selected.id}`)
+        .then(res => res.json())
+        .then(json => { if (json.data) setMessages(json.data) })
+        .catch(() => {})
+    }, 8000)
+    return () => clearInterval(interval)
+  }, [selected?.id])
+
+  // Poll conversation list every 30s
+  useEffect(() => {
+    if (!hasAccount) return
+    const interval = setInterval(() => {
+      fetchConversations(false)
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [hasAccount, fetchConversations])
 
   if (!hasAccount) {
     return (
@@ -131,8 +165,30 @@ export default function MessagesPage() {
 
   return (
     <div className="px-10 py-8 max-w-[1200px]">
-      <h1 className="text-[22px] font-bold text-[var(--text-primary)] mb-1.5">Messages</h1>
-      <p className="text-[13px] text-[var(--text-tertiary)] mb-6">Conversations Instagram</p>
+      <div className="flex items-center justify-between mb-1.5">
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)]">Messages</h1>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="flex items-center gap-2 px-3 py-1.5 text-[12px] font-medium text-[var(--text-secondary)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg hover:bg-[var(--bg-elevated)] transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+          {syncing ? 'Synchronisation...' : 'Synchroniser'}
+        </button>
+      </div>
+      <p className="text-[13px] text-[var(--text-tertiary)] mb-4">Conversations Instagram</p>
+
+      {syncWarning && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-[#D69E2E]/10 border border-[#D69E2E]/30 text-[13px] text-[#D69E2E] flex items-start gap-2">
+          <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+          <div>
+            <span className="font-medium">Sync impossible : </span>
+            {syncWarning}
+          </div>
+        </div>
+      )}
 
       <div className="flex h-[calc(100vh-200px)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl overflow-hidden">
         {/* Conversation list sidebar */}
@@ -153,7 +209,7 @@ export default function MessagesPage() {
                 </svg>
                 <p className="text-[13px] text-[var(--text-tertiary)] text-center">{error}</p>
                 <button
-                  onClick={fetchConversations}
+                  onClick={() => fetchConversations(true)}
                   className="px-4 py-1.5 text-[12px] font-medium bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity"
                 >
                   Réessayer

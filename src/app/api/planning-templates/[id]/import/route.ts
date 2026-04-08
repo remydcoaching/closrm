@@ -99,12 +99,12 @@ export async function POST(
           start: { dateTime: start.toISOString() },
           end: { dateTime: end.toISOString() },
         })
-          .then(async (googleEvent) => {
-            if (googleEvent?.id) {
+          .then(async (result) => {
+            if (result?.eventId) {
               const supa = await createClient()
               await supa
                 .from('bookings')
-                .update({ google_event_id: googleEvent.id })
+                .update({ google_event_id: result.eventId })
                 .eq('id', booking.id)
                 .eq('workspace_id', workspaceId)
             }

@@ -1,6 +1,6 @@
 # Tâche 030 — Booking : création automatique d'un Google Meet pour les RDV en ligne
 
-> **Statut :** ⬜ Non démarré
+> **Statut :** ✅ Termine
 > **Développeur :** Pierre
 > **Date de création :** 2026-04-07
 > **Branche Git prévue :** `feature/pierre-booking-google-meet`
@@ -124,9 +124,20 @@ ce flow avec un tag (`source: closrm`) pour éviter le re-import.
 
 ---
 
-## Résultat final
+## Resultat final
 
-_À remplir à la fin de la tâche._
+Implementation complete :
+- Migration 016 : `location_type` sur booking_locations + `meet_url` sur bookings
+- Types TypeScript mis a jour (BookingLocation, Booking, BookingWithCalendar)
+- `createGoogleCalendarEvent()` supporte `withMeet` option, retourne `{ eventId, meetUrl }`
+- Tous les appelants mis a jour (POST bookings, POST public booking, planning template import)
+- PATCH bookings : annulation clear meet_url, reprogrammation update Google event
+- API booking-locations : accepte `location_type` en POST/PATCH
+- UI LocationEditor : toggle presentiel/en ligne avec message info Google Calendar
+- UI BookingDetailPanel : bouton "Rejoindre le Meet" + message fallback
+- UI NewBookingModal : indication (en ligne) + message info si Google non connecte
+- Email de confirmation booking avec section Meet link
+- Build passe sans erreur TypeScript
 
 ---
 

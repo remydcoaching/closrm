@@ -1,11 +1,12 @@
 import { z } from 'zod'
 
 export const createLeadSchema = z.object({
-  first_name: z.string().min(1, 'Le prénom est requis.').max(100),
+  first_name: z.string().max(100).optional().default(''),
   last_name: z.string().max(100).optional().default(''),
   phone: z.string().max(30).optional().default(''),
   email: z.string().email("Format d'email invalide.").optional().or(z.literal('')),
   source: z.enum(['facebook_ads', 'instagram_ads', 'follow_ads', 'formulaire', 'manuel', 'funnel']).default('manuel'),
+  instagram_handle: z.string().regex(/^[a-zA-Z0-9._]{1,30}$/, 'Handle Instagram invalide').optional().or(z.literal('')).default(''),
   tags: z.array(z.string()).optional().default([]),
   notes: z.string().max(5000).optional().default(''),
 })

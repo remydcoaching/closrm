@@ -101,6 +101,23 @@ export async function PATCH(
 
       if (parsed.data.status === 'clos') {
         fireTriggersForEvent(workspaceId, 'deal_won', { lead_id: id }).catch(() => {})
+
+        // AI self-learning: record winning conversation outcome (non-blocking)
+        Promise.resolve(
+          supabase
+            .from('ig_conversations')
+            .select('id')
+            .eq('lead_id', id)
+            .eq('workspace_id', workspaceId)
+            .limit(1)
+            .single()
+        ).then(({ data: conv }) => {
+          if (conv) {
+            import('@/lib/ai/brief').then(({ recordOutcome }) => {
+              recordOutcome(workspaceId, conv.id, id, 'won').catch(() => {})
+            })
+          }
+        }).catch(() => {})
       }
     }
 
@@ -135,20 +152,23 @@ export async function DELETE(
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
-    // Soft delete : on passe le statut à 'dead'
-    const { data, error } = await supabase
+    // Delete related data first (follow-ups, calls, ig_conversations link)
+    await supabase.from('follow_ups').delete().eq('lead_id', id).eq('workspace_id', workspaceId)
+    await supabase.from('calls').delete().eq('lead_id', id).eq('workspace_id', workspaceId)
+    await supabase.from('ig_conversations').update({ lead_id: null }).eq('lead_id', id).eq('workspace_id', workspaceId)
+
+    // Hard delete the lead
+    const { error } = await supabase
       .from('leads')
-      .update({ status: 'dead' })
+      .delete()
       .eq('id', id)
       .eq('workspace_id', workspaceId)
-      .select()
-      .single()
 
-    if (error || !data) {
-      return NextResponse.json({ error: 'Lead introuvable ou non autorisé' }, { status: 404 })
+    if (error) {
+      return NextResponse.json({ error: 'Lead introuvable ou non autorise' }, { status: 404 })
     }
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ success: true })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

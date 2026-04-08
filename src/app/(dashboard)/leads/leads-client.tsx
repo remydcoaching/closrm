@@ -269,9 +269,11 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                 <tr key={lead.id} style={{
                   borderBottom: i < leads.length - 1 ? '1px solid var(--bg-hover)' : 'none',
                   transition: 'background 0.1s',
+                  cursor: 'pointer',
                 }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-subtle)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  onClick={() => setSidePanelLeadId(lead.id)}
                 >
                   {/* Date */}
                   <td style={{ padding: '12px 16px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
@@ -383,7 +385,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                   </td>
 
                   {/* Actions */}
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                       <button onClick={() => callLead(lead)} title="Appeler" style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -400,14 +402,6 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                         color: 'var(--color-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
                       }}>
                         <Calendar size={11} /> Planifier
-                      </button>
-                      <button onClick={() => setSidePanelLeadId(lead.id)} title="Voir le profil" style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
-                        color: 'var(--text-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
-                      }}>
-                        <ExternalLink size={11} /> Voir
                       </button>
                       <button onClick={() => archiveLead(lead)} title="Archiver" style={{
                         display: 'inline-flex', alignItems: 'center',

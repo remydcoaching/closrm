@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
   Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
-  CalendarDays, CalendarRange, Layers, Share2, MessageCircle,
+  CalendarDays, CalendarRange, Layers, Share2, MessageCircle, Sparkles,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -40,6 +40,7 @@ const NAV = [
       { label: 'Paramètres', href: '/parametres/reglages', icon: Settings },
       { label: 'Intégrations', href: '/parametres/integrations', icon: Plug },
       { label: 'Calendriers', href: '/parametres/calendriers', icon: CalendarRange },
+      { label: 'Assistant IA', href: '/parametres/assistant-ia', icon: Sparkles },
     ],
   },
 ]

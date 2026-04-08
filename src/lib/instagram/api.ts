@@ -206,29 +206,21 @@ interface IgConversationRaw {
   messages: { data: Array<{ id: string; message: string; from: { id: string }; created_time: string }> }
 }
 
-export async function fetchIgConversations(token: string, pageId: string): Promise<IgConversationRaw[]> {
-  // Step 1: Get conversation IDs (lightweight, avoids Meta 500 errors)
-  const listUrl = `${FB_BASE}/${pageId}/conversations?platform=instagram&limit=5&access_token=${token}`
-  const listRes = await fetch(listUrl)
-  if (!listRes.ok) throw new Error(`IG conversations list failed: ${listRes.status}`)
-  const listJson = await listRes.json()
-  const ids: string[] = (listJson.data ?? []).map((c: { id: string }) => c.id)
-
-  // Step 2: Fetch details for each conversation individually
-  const results: IgConversationRaw[] = []
-  for (const id of ids) {
-    try {
-      const detailUrl = `${FB_BASE}/${id}?fields=participants,messages.limit(1){id,message,from,created_time}&access_token=${token}`
-      const detailRes = await fetch(detailUrl)
-      if (detailRes.ok) {
-        const detail = await detailRes.json()
-        results.push({ id, participants: detail.participants, messages: detail.messages })
-      }
-    } catch {
-      // Skip failed conversations
-    }
+export async function fetchIgConversations(token: string, pageId: string, limit = 5): Promise<IgConversationRaw[]> {
+  // Single lightweight request — fetch conversations with participants + last message
+  const url = `${FB_BASE}/${pageId}/conversations?platform=instagram&limit=${limit}&fields=participants,messages.limit(1){id,message,from,created_time}&access_token=${token}`
+  const res = await fetch(url)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const metaMsg = err?.error?.error_user_msg ?? err?.error?.message ?? `status ${res.status}`
+    throw new Error(metaMsg)
   }
-  return results
+  const json = await res.json()
+  return (json.data ?? []).map((c: { id: string; participants?: IgConversationRaw['participants']; messages?: IgConversationRaw['messages'] }) => ({
+    id: c.id,
+    participants: c.participants ?? { data: [] },
+    messages: c.messages ?? { data: [] },
+  }))
 }
 
 interface IgMessageRaw {
