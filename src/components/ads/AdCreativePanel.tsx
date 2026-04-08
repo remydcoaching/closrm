@@ -126,6 +126,7 @@ export default function AdCreativePanel({ adId, adName, adKpis, onClose }: Props
     return () => { cancelled = true }
   }, [adId])
 
+  const videoUrl = creative?.video_url ?? null
   const imageUrl = creative?.image_url ?? creative?.thumbnail_url ?? null
 
   const kpis: Array<{ label: string; value: string }> = [
@@ -189,6 +190,21 @@ export default function AdCreativePanel({ adId, adName, adKpis, onClose }: Props
             }}>
               Chargement...
             </div>
+          ) : videoUrl ? (
+            <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #262626', background: '#000' }}>
+              <video
+                src={videoUrl}
+                controls
+                playsInline
+                poster={imageUrl || undefined}
+                style={{
+                  width: '100%',
+                  maxHeight: 500,
+                  display: 'block',
+                  objectFit: 'contain',
+                }}
+              />
+            </div>
           ) : imageUrl ? (
             <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #262626' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -198,7 +214,7 @@ export default function AdCreativePanel({ adId, adName, adKpis, onClose }: Props
                 style={{
                   width: '100%',
                   display: 'block',
-                  borderRadius: 12,
+                  objectFit: 'contain',
                 }}
               />
             </div>

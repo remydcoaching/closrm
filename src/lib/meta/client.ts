@@ -423,20 +423,46 @@ export interface MetaAdCreative {
 }
 
 export async function getAdCreative(adId: string, token: string): Promise<MetaAdCreative | null> {
-  const fields = 'id,name,creative{id,image_url,thumbnail_url,body,title,object_story_spec}'
+  const fields = 'id,name,creative{id,image_url,thumbnail_url,body,title,object_story_spec,asset_feed_spec}'
   const res = await fetch(`${GRAPH_URL}/${adId}?fields=${fields}&access_token=${token}`)
   if (!res.ok) return null
   const data = await res.json()
   const creative = data.creative || {}
+  const storySpec = creative.object_story_spec || {}
+
+  // Extract video URL from video_data or link_data
+  let videoUrl: string | null = null
+  if (storySpec.video_data?.video_id) {
+    // Fetch video source URL
+    try {
+      const videoRes = await fetch(`${GRAPH_URL}/${storySpec.video_data.video_id}?fields=source&access_token=${token}`)
+      if (videoRes.ok) {
+        const videoData = await videoRes.json()
+        videoUrl = videoData.source || null
+      }
+    } catch { /* non-blocking */ }
+  }
+
+  // Fallback: check link_data for video
+  if (!videoUrl && storySpec.link_data?.image_hash === undefined && storySpec.link_data?.video_id) {
+    try {
+      const videoRes = await fetch(`${GRAPH_URL}/${storySpec.link_data.video_id}?fields=source&access_token=${token}`)
+      if (videoRes.ok) {
+        const videoData = await videoRes.json()
+        videoUrl = videoData.source || null
+      }
+    } catch { /* non-blocking */ }
+  }
+
   return {
     id: data.id,
     name: data.name,
-    image_url: creative.image_url || null,
-    video_url: null, // Video URL requires separate fetch
-    thumbnail_url: creative.thumbnail_url || creative.image_url || null,
-    body: creative.body || null,
-    title: creative.title || null,
-    link_url: creative.object_story_spec?.link_data?.link || null,
+    image_url: creative.image_url || storySpec.link_data?.picture || null,
+    video_url: videoUrl,
+    thumbnail_url: creative.thumbnail_url || storySpec.video_data?.image_url || creative.image_url || null,
+    body: creative.body || storySpec.link_data?.message || storySpec.video_data?.message || null,
+    title: creative.title || storySpec.link_data?.name || storySpec.video_data?.title || null,
+    link_url: storySpec.link_data?.link || null,
   }
 }
 
