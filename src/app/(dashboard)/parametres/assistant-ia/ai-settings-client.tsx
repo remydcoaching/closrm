@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Sparkles, ChevronLeft, ChevronRight, Loader2, RefreshCw, Brain, Check, ChevronDown } from 'lucide-react'
 import { AiCoachBrief } from '@/types'
+import LeadMagnetEditor from '@/components/ai/LeadMagnetEditor'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -373,13 +374,9 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
 
         {/* Step 5 — Lead Magnets */}
         {step === 5 && (
-          <textarea
+          <LeadMagnetEditor
             value={answers.lead_magnets}
-            onChange={e => updateAnswer('lead_magnets', e.target.value)}
-            rows={6}
-            placeholder={"Video \"Comment perdre 10kg en 10 semaines\"\nPDF \"5 erreurs qui ruinent ta progression\"\nMasterclass gratuite \"Les bases de la nutrition\"\nGuide \"Plan alimentaire 7 jours\""}
-            style={{ ...inputStyle, resize: 'vertical' as const }}
-            autoFocus
+            onChange={(val) => updateAnswer('lead_magnets', val)}
           />
         )}
 
@@ -692,12 +689,9 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
       id: 'lead_magnets',
       label: 'Mes contenus / lead magnets',
       content: (
-        <textarea
+        <LeadMagnetEditor
           value={leadMagnets}
-          onChange={e => setLeadMagnets(e.target.value)}
-          rows={5}
-          placeholder={"Video \"Comment perdre 10kg\"\nPDF \"5 erreurs nutrition\"\nMasterclass gratuite"}
-          style={{ ...inputStyle, resize: 'vertical' as const }}
+          onChange={setLeadMagnets}
         />
       ),
     },

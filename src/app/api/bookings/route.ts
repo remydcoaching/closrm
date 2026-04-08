@@ -6,7 +6,7 @@ import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
 
-const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, purpose), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
+const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, purpose, location_ids), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
 
 export async function GET(request: NextRequest) {
   try {
@@ -161,6 +161,22 @@ export async function POST(request: NextRequest) {
         locationName = loc.name
         locationAddress = loc.address
       }
+    } else if (data.calendar_id) {
+      // No explicit location — check calendar's locations for online/Meet
+      const calLocationIds = (data.booking_calendar as { location_ids?: string[] } | null)?.location_ids
+      if (calLocationIds && calLocationIds.length > 0) {
+        const { data: locs } = await supabase
+          .from('booking_locations')
+          .select('location_type, name, address')
+          .in('id', calLocationIds)
+          .eq('workspace_id', workspaceId)
+        const onlineLoc = locs?.find(l => l.location_type === 'online')
+        if (onlineLoc) {
+          isOnlineLocation = true
+          locationName = onlineLoc.name
+          locationAddress = onlineLoc.address
+        }
+      }
     }
 
     const scheduledAt = new Date(data.scheduled_at)
@@ -213,7 +229,9 @@ export async function POST(request: NextRequest) {
           }).catch(() => {})
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[booking] Google Calendar event creation failed:', err instanceof Error ? err.message : err)
+      })
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {

@@ -1,5 +1,18 @@
 import { AiCoachBrief, Lead, IgMessage } from '@/types'
 
+function formatLeadMagnets(raw: string): string {
+  try {
+    const items = JSON.parse(raw) as { title: string; url: string }[]
+    if (Array.isArray(items)) {
+      return items
+        .filter(i => i.title || i.url)
+        .map(i => i.url ? `- ${i.title} → ${i.url}` : `- ${i.title}`)
+        .join('\n')
+    }
+  } catch { /* not JSON */ }
+  return raw
+}
+
 interface PromptContext {
   brief: AiCoachBrief | null
   lead: Lead
@@ -28,7 +41,7 @@ Ton : ${toneLabel}
 Offre : ${ctx.brief?.offer_description || 'Non renseigne'}
 Cible : ${ctx.brief?.target_audience || 'Non renseigne'}
 Objectif : ${goalLabel}
-${ctx.brief?.lead_magnets ? `\n## CONTENUS DISPONIBLES (lead magnets, videos, ressources)\n${ctx.brief.lead_magnets}\n\nIMPORTANT : quand tu suggeres d'envoyer du contenu, utilise UNIQUEMENT les contenus listes ci-dessus. Ne les invente pas.\n` : ''}
+${ctx.brief?.lead_magnets ? `\n## CONTENUS DISPONIBLES (lead magnets, videos, ressources)\n${formatLeadMagnets(ctx.brief.lead_magnets)}\n\nIMPORTANT : quand tu suggeres d'envoyer du contenu, utilise UNIQUEMENT les contenus listes ci-dessus. Cite le titre exact et inclus le lien si disponible. Ne les invente pas.\n` : ''}
 ## INFOS DU PROSPECT
 Prenom : ${ctx.lead.first_name}
 Statut actuel : ${ctx.lead.status}

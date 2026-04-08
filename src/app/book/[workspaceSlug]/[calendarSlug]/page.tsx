@@ -17,7 +17,7 @@ import {
   format,
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, MapPin, Video } from 'lucide-react'
 import type { FormField } from '@/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -168,9 +168,10 @@ export default function PublicBookingPage() {
       return
     }
 
-    // Build ISO datetime: combine date + time
+    // Build ISO datetime: combine date + time with local timezone offset
     const dateStr = format(selectedDate, 'yyyy-MM-dd')
-    const scheduledAt = `${dateStr}T${selectedTime}:00`
+    const localDate = new Date(`${dateStr}T${selectedTime}:00`)
+    const scheduledAt = localDate.toISOString()
 
     setSubmitting(true)
     setError(null)
@@ -279,11 +280,21 @@ export default function PublicBookingPage() {
             <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Clock size={12} /> {calendar.duration_minutes} min
             </span>
-            {calendar.location_ids && calendar.location_ids.length > 0 && (
-              <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <MapPin size={12} /> Présentiel
-              </span>
-            )}
+            {locations.length > 0 && (() => {
+              const hasInPerson = locations.some(l => l.location_type === 'in_person')
+              const hasOnline = locations.some(l => l.location_type === 'online')
+              if (hasInPerson) return (
+                <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <MapPin size={12} /> Présentiel
+                </span>
+              )
+              if (hasOnline) return (
+                <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Video size={12} /> Visio
+                </span>
+              )
+              return null
+            })()}
           </div>
         </div>
 
@@ -539,11 +550,21 @@ export default function PublicBookingPage() {
             <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Clock size={12} /> {calendar.duration_minutes} min
             </span>
-            {calendar.location_ids && calendar.location_ids.length > 0 && (
-              <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <MapPin size={12} /> Présentiel
-              </span>
-            )}
+            {locations.length > 0 && (() => {
+              const hasInPerson = locations.some(l => l.location_type === 'in_person')
+              const hasOnline = locations.some(l => l.location_type === 'online')
+              if (hasInPerson) return (
+                <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <MapPin size={12} /> Présentiel
+                </span>
+              )
+              if (hasOnline) return (
+                <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Video size={12} /> Visio
+                </span>
+              )
+              return null
+            })()}
           </div>
         </div>
       </div>

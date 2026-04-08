@@ -363,6 +363,19 @@ export async function POST(
       locationName = loc.name
       locationAddress = loc.address
     }
+  } else if (calendar.location_ids && calendar.location_ids.length > 0) {
+    // No explicit location — check calendar's locations for online/Meet
+    const { data: locs } = await supabase
+      .from('booking_locations')
+      .select('location_type, name, address')
+      .in('id', calendar.location_ids)
+      .eq('workspace_id', calendar.workspace_id)
+    const onlineLoc = locs?.find(l => l.location_type === 'online')
+    if (onlineLoc) {
+      isOnlineLocation = true
+      locationName = onlineLoc.name
+      locationAddress = onlineLoc.address
+    }
   }
 
   // Create Google Calendar event with optional Meet (non-blocking)
@@ -410,7 +423,9 @@ export async function POST(
         }
       }
     })
-    .catch(() => {})
+    .catch((err) => {
+      console.error('[public-booking] Google Calendar event creation failed:', err instanceof Error ? err.message : err)
+    })
 
   // Send confirmation email even without Google Calendar (no Meet link)
   if (email) {
