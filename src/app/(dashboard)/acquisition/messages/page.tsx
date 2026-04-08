@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { RefreshCw, Search } from 'lucide-react'
+import { RefreshCw, Search, PanelRightOpen, PanelRightClose } from 'lucide-react'
 import ConversationList from '@/components/messages/ConversationList'
 import ConversationThread from '@/components/messages/ConversationThread'
 import MessageInput from '@/components/messages/MessageInput'
@@ -21,6 +21,7 @@ export default function MessagesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sending, setSending] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [showPanel, setShowPanel] = useState(false)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const initialSyncDone = useRef(false)
   const hasLoadedOnce = useRef(false)
@@ -107,6 +108,23 @@ export default function MessagesPage() {
       } else { setMessages(prev => prev.filter(m => m.id !== optimisticId)) }
     } catch { setMessages(prev => prev.filter(m => m.id !== optimisticId)) }
     finally { setSending(false) }
+  }
+
+  const handleSendImage = async (file: File) => {
+    if (!selected) return
+    const formData = new FormData()
+    formData.append('conversation_id', selected.id)
+    formData.append('image', file)
+    try {
+      const res = await fetch('/api/instagram/messages/send-image', { method: 'POST', body: formData })
+      if (res.ok) {
+        const json = await res.json()
+        setMessages(prev => [...prev, json.data])
+        setConversations(prev => prev.map(c =>
+          c.id === selected.id ? { ...c, last_message_text: '📷 Photo', last_message_at: new Date().toISOString() } : c
+        ))
+      }
+    } catch { /* silent */ }
   }
 
   useEffect(() => {
@@ -234,24 +252,42 @@ export default function MessagesPage() {
                   <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>@{selected.participant_username}</div>
                 )}
               </div>
-              {selected.lead_id && (
-                <a
-                  href={`/leads/${selected.lead_id}`}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                {selected.lead_id && (
+                  <a
+                    href={`/leads/${selected.lead_id}`}
+                    style={{
+                      fontSize: 13, fontWeight: 500,
+                      color: 'var(--color-primary)', textDecoration: 'none',
+                      padding: '7px 18px', borderRadius: 20,
+                      border: '1px solid var(--border-primary)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Voir le lead →
+                  </a>
+                )}
+                <button
+                  onClick={() => setShowPanel(p => !p)}
+                  title={showPanel ? 'Masquer le panel' : 'Infos contact'}
                   style={{
-                    marginLeft: 'auto', fontSize: 13, fontWeight: 500,
-                    color: 'var(--color-primary)', textDecoration: 'none',
-                    padding: '7px 18px', borderRadius: 20,
+                    width: 36, height: 36, borderRadius: '50%',
                     border: '1px solid var(--border-primary)',
-                    flexShrink: 0, transition: 'all 0.2s',
+                    background: showPanel ? 'var(--bg-active)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', transition: 'all 0.2s',
                   }}
                 >
-                  Voir le lead →
-                </a>
-              )}
+                  {showPanel
+                    ? <PanelRightClose size={16} color="var(--color-primary)" />
+                    : <PanelRightOpen size={16} color="var(--text-tertiary)" />
+                  }
+                </button>
+              </div>
             </div>
 
             <ConversationThread messages={messages} />
-            <MessageInput onSend={handleSend} disabled={sending} />
+            <MessageInput onSend={handleSend} onSendImage={handleSendImage} disabled={sending} />
           </>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
@@ -269,8 +305,8 @@ export default function MessagesPage() {
         )}
       </div>
 
-      {/* ── Right column ── */}
-      {selected && <ContactPanel conversation={selected} />}
+      {/* ── Right column (togglable) ── */}
+      {selected && showPanel && <ContactPanel conversation={selected} />}
     </div>
   )
 }

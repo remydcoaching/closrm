@@ -274,6 +274,31 @@ export async function fetchConversationMessages(
   return json.data ?? []
 }
 
+export async function sendIgImage(
+  token: string,
+  pageId: string,
+  recipientId: string,
+  imageUrl: string
+): Promise<string> {
+  const res = await fetch(`${FB_BASE}/${pageId}/messages?platform=instagram`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      recipient: { id: recipientId },
+      message: {
+        attachment: { type: 'image', payload: { url: imageUrl, is_reusable: true } },
+      },
+      access_token: token,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Send image failed: ${err?.error?.message ?? res.status}`)
+  }
+  const json = await res.json()
+  return json.message_id as string
+}
+
 export async function sendIgMessage(
   token: string,
   pageId: string,
