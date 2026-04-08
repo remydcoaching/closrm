@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, use } from 'react'
+import { useState, useEffect, useCallback, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Monitor, Smartphone, Tablet, Save, Globe, Check, Undo2, Redo2, ExternalLink, Copy } from 'lucide-react'
 import type {
@@ -63,7 +63,18 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
   const workspaceSlug = useWorkspaceSlug()
   const [copiedUrl, setCopiedUrl] = useState(false)
 
+  // T-028 Phase 15 — Garde anti-double-exécution pour fetchFunnel.
+  // React 19 StrictMode exécute les useEffect 2x en dev, ce qui créait 2 POST
+  // concurrents vers /api/funnels/[id]/pages quand on essayait de créer la
+  // page par défaut Hero+Text+Footer → violation de la contrainte unique sur
+  // funnel_pages(funnel_id, slug). Ce ref garantit qu'on n'essaie qu'une seule
+  // fois par mount, peu importe le nombre de réinvocations de l'effet.
+  const hasFetchedRef = useRef(false)
+
   const fetchFunnel = useCallback(async () => {
+    if (hasFetchedRef.current) return
+    hasFetchedRef.current = true
+
     try {
       const res = await fetch(`/api/funnels/${id}`)
       if (!res.ok) {
@@ -85,6 +96,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         // avec le squelette par défaut (Hero + Text + Footer) au lieu d'une
         // page vide. Le coach démarre toujours sur un truc qui ressemble à
         // quelque chose (validé avec Rémy le 2026-04-07).
+        // T-028 Phase 15 — Protégé par `hasFetchedRef` ci-dessus pour éviter
+        // les POST concurrents en StrictMode.
         if (pgs.length === 0) {
           const createRes = await fetch(`/api/funnels/${id}/pages`, {
             method: 'POST',
@@ -101,6 +114,16 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
               createRes.status,
               await createRes.text(),
             )
+            // Re-fetch les pages existantes au cas où une autre instance
+            // aurait créé la page entre-temps (défense en profondeur).
+            const retryRes = await fetch(`/api/funnels/${id}`)
+            if (retryRes.ok) {
+              const retryJson = await retryRes.json()
+              const retryPages = Array.isArray(retryJson.data?.pages) ? retryJson.data.pages : []
+              if (retryPages.length > 0) {
+                pgs = retryPages
+              }
+            }
           } else {
             const createJson = await createRes.json()
             if (createJson.error) {
@@ -120,6 +143,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
       }
     } catch (err) {
       console.error('[FunnelBuilderPage] fetchFunnel unexpected error:', err)
+      // Reset du flag pour permettre un retry manuel si l'erreur était réseau
+      hasFetchedRef.current = false
     } finally {
       setLoading(false)
     }
