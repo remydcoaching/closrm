@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { BookingCalendar, WeekAvailability, FormField, CalendarPurpose } from '@/types'
+import type { CalendarReminder } from '@/types'
 import AvailabilityEditor from '@/components/booking-calendars/AvailabilityEditor'
 import FormFieldsEditor from '@/components/booking-calendars/FormFieldsEditor'
 import LocationEditor from '@/components/booking-calendars/LocationEditor'
 import PurposeEditor from '@/components/booking-calendars/PurposeEditor'
+import RemindersEditor from '@/components/booking-calendars/RemindersEditor'
 
 const DEFAULT_AVAILABILITY: WeekAvailability = {
   monday: [{ start: '09:00', end: '17:00' }],
@@ -41,6 +43,7 @@ export default function EditCalendarPage() {
   const [formFields, setFormFields] = useState<FormField[]>([])
   const [locationIds, setLocationIds] = useState<string[]>([])
   const [purpose, setPurpose] = useState<CalendarPurpose>('other')
+  const [reminders, setReminders] = useState<CalendarReminder[]>([])
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
 
   useEffect(() => {
@@ -61,6 +64,7 @@ export default function EditCalendarPage() {
         setFormFields(cal.form_fields ?? [])
         setLocationIds(cal.location_ids ?? [])
         setPurpose((cal as unknown as { purpose?: CalendarPurpose }).purpose ?? 'other')
+        setReminders((cal as unknown as { reminders?: CalendarReminder[] }).reminders ?? [])
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur inconnue')
       } finally {
@@ -98,6 +102,7 @@ export default function EditCalendarPage() {
           form_fields: formFields,
           location_ids: locationIds,
           purpose,
+          reminders,
         }),
       })
       if (!res.ok) {
@@ -355,6 +360,19 @@ export default function EditCalendarPage() {
           borderRadius: 14, padding: 24,
         }}>
           <PurposeEditor value={purpose} onChange={setPurpose} />
+        </div>
+      </section>
+
+      {/* Section: Rappels automatiques */}
+      <section style={{ marginBottom: 40 }}>
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+          borderRadius: 14, padding: 24,
+        }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
+            Rappels automatiques
+          </h3>
+          <RemindersEditor reminders={reminders} onChange={setReminders} />
         </div>
       </section>
 

@@ -284,9 +284,37 @@ export interface BookingCalendar {
   availability: WeekAvailability
   buffer_minutes: number
   purpose: CalendarPurpose
+  reminders: CalendarReminder[]
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+// ── Calendar Reminders ──────────────────────────────────────────────────────
+
+export type ReminderChannel = 'email' | 'whatsapp' | 'instagram_dm'
+export type ReminderStatus = 'pending' | 'sent' | 'failed' | 'cancelled'
+
+export interface CalendarReminder {
+  id: string
+  delay_value: number
+  delay_unit: 'hours' | 'days'
+  at_time: string | null
+  channel: ReminderChannel
+  message: string
+}
+
+export interface BookingReminder {
+  id: string
+  workspace_id: string
+  booking_id: string
+  lead_id: string
+  channel: ReminderChannel
+  message: string
+  send_at: string
+  status: ReminderStatus
+  error: string | null
+  created_at: string
 }
 
 export interface BookingLocation {

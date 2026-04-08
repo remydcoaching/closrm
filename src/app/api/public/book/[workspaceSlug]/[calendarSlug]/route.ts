@@ -5,6 +5,8 @@ import { publicBookingSchema } from '@/lib/validations/bookings'
 import { getAvailableSlots } from '@/lib/bookings/availability'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
+import { createBookingReminders } from '@/lib/bookings/reminders'
+import type { CalendarReminder } from '@/types'
 import { startOfMonth, endOfMonth, parseISO, addMinutes } from 'date-fns'
 
 type Params = Promise<{ workspaceSlug: string; calendarSlug: string }>
@@ -21,6 +23,7 @@ interface CalendarRow {
   availability: unknown
   buffer_minutes: number
   purpose: string
+  reminders: unknown[]
 }
 
 async function getCalendarBySlug(
@@ -42,7 +45,7 @@ async function getCalendarBySlug(
   const { data: calendar, error: calError } = await supabase
     .from('booking_calendars')
     .select(
-      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose',
+      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose, reminders',
     )
     .eq('workspace_id', slugRow.workspace_id)
     .eq('slug', calendarSlug)
@@ -334,6 +337,21 @@ export async function POST(
         call_type: calendar.purpose,
       }).catch(() => {})
     }
+  }
+
+  // Create booking reminders if calendar has reminders configured
+  if (leadId && calendar.reminders && calendar.reminders.length > 0) {
+    createBookingReminders({
+      workspaceId: calendar.workspace_id,
+      bookingId: booking.id,
+      leadId,
+      bookingScheduledAt: scheduled_at,
+      calendarReminders: calendar.reminders as CalendarReminder[],
+      calendarName: calendar.name,
+      lead: { first_name: firstName, last_name: lastName },
+    }).catch((err) => {
+      console.error('[public-booking] Failed to create reminders:', err)
+    })
   }
 
   // Fire workflow trigger (non-blocking)

@@ -5,8 +5,10 @@ import { createBookingSchema, bookingFiltersSchema } from '@/lib/validations/boo
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
+import { createBookingReminders } from '@/lib/bookings/reminders'
+import type { CalendarReminder } from '@/types'
 
-const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, purpose, location_ids), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
+const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, purpose, location_ids, reminders), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
 
 export async function GET(request: NextRequest) {
   try {
@@ -130,6 +132,26 @@ export async function POST(request: NextRequest) {
             call_type: calPurpose,
           }).catch(() => {})
         }
+      }
+    }
+
+    // Create booking reminders if calendar has reminders configured
+    if (data.lead_id && data.calendar_id) {
+      const calReminders = ((data.booking_calendar as { reminders?: unknown[] } | null)?.reminders ?? []) as CalendarReminder[]
+      const calName = (data.booking_calendar as { name?: string } | null)?.name ?? ''
+      const leadData = data.lead as { first_name?: string; last_name?: string } | null
+      if (calReminders.length > 0 && leadData) {
+        createBookingReminders({
+          workspaceId,
+          bookingId: data.id,
+          leadId: data.lead_id,
+          bookingScheduledAt: data.scheduled_at,
+          calendarReminders: calReminders,
+          calendarName: calName,
+          lead: { first_name: leadData.first_name ?? '', last_name: leadData.last_name ?? '' },
+        }).catch((err) => {
+          console.error('[booking] Failed to create reminders:', err)
+        })
       }
     }
 

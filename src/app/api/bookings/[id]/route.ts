@@ -4,6 +4,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateBookingSchema } from '@/lib/validations/bookings'
 import { deleteGoogleCalendarEvent, updateGoogleCalendarEvent } from '@/lib/google/calendar'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { cancelBookingReminders, rescheduleBookingReminders } from '@/lib/bookings/reminders'
 
 const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
 
@@ -91,6 +92,44 @@ export async function PATCH(
         start: { dateTime: newStart.toISOString() },
         end: { dateTime: newEnd.toISOString() },
       }).catch(() => {})
+    }
+
+    // Cancel reminders if booking cancelled
+    if (parsed.data.status === 'cancelled' && existing.status !== 'cancelled') {
+      cancelBookingReminders(id).catch((err) => {
+        console.error('[booking] Failed to cancel reminders:', err)
+      })
+    }
+
+    // Cancel reminders if booking is no_show
+    if (parsed.data.status === 'no_show' && existing.status !== 'no_show') {
+      cancelBookingReminders(id).catch((err) => {
+        console.error('[booking] Failed to cancel reminders:', err)
+      })
+    }
+
+    // Reschedule reminders if booking time changed
+    if (
+      parsed.data.scheduled_at &&
+      parsed.data.scheduled_at !== existing.scheduled_at &&
+      parsed.data.status !== 'cancelled' &&
+      existing.status !== 'cancelled' &&
+      data.lead_id &&
+      existing.calendar_id
+    ) {
+      const leadData = data.lead as { first_name?: string; last_name?: string } | null
+      if (leadData) {
+        rescheduleBookingReminders({
+          workspaceId,
+          bookingId: id,
+          leadId: data.lead_id,
+          newScheduledAt: parsed.data.scheduled_at,
+          calendarId: existing.calendar_id,
+          lead: { first_name: leadData.first_name ?? '', last_name: leadData.last_name ?? '' },
+        }).catch((err) => {
+          console.error('[booking] Failed to reschedule reminders:', err)
+        })
+      }
     }
 
     // Sync booking status to linked call + create follow-up
