@@ -113,7 +113,7 @@ export default function CalendriersPage() {
   }
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 960 }}>
+    <div style={{ padding: '28px 40px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
