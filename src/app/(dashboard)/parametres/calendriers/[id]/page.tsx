@@ -174,13 +174,13 @@ export default function EditCalendarPage() {
             onClick={handleSave}
             disabled={saving}
             style={{
-              background: '#E53E3E',
+              background: 'var(--color-primary)',
               border: 'none',
               borderRadius: 8,
               padding: '9px 20px',
               fontSize: 14,
               fontWeight: 600,
-              color: 'var(--text-primary)',
+              color: '#000',
               cursor: saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.6 : 1,
             }}
@@ -208,7 +208,7 @@ export default function EditCalendarPage() {
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 10,
+            borderRadius: 12,
             padding: 24,
             display: 'flex',
             flexDirection: 'column',
@@ -333,7 +333,7 @@ export default function EditCalendarPage() {
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 10,
+            borderRadius: 12,
             padding: 24,
           }}
         >
@@ -357,7 +357,7 @@ export default function EditCalendarPage() {
         </h2>
         <div style={{
           background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-          borderRadius: 14, padding: 24,
+          borderRadius: 12, padding: 24,
         }}>
           <PurposeEditor value={purpose} onChange={setPurpose} />
         </div>
@@ -365,13 +365,22 @@ export default function EditCalendarPage() {
 
       {/* Section: Rappels automatiques */}
       <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Rappels automatiques
+        </h2>
         <div style={{
           background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-          borderRadius: 14, padding: 24,
+          borderRadius: 12, padding: 24,
         }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>
-            Rappels automatiques
-          </h3>
           <RemindersEditor reminders={reminders} onChange={setReminders} />
         </div>
       </section>
@@ -394,7 +403,7 @@ export default function EditCalendarPage() {
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 10,
+            borderRadius: 12,
             padding: 24,
           }}
         >
@@ -424,7 +433,7 @@ export default function EditCalendarPage() {
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 10,
+            borderRadius: 12,
             padding: 24,
           }}
         >
