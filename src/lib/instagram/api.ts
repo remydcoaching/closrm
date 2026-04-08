@@ -206,21 +206,52 @@ interface IgConversationRaw {
   messages: { data: Array<{ id: string; message: string; from: { id: string }; created_time: string }> }
 }
 
-export async function fetchIgConversations(token: string, pageId: string, limit = 5): Promise<IgConversationRaw[]> {
-  // Single lightweight request — fetch conversations with participants + last message
-  const url = `${FB_BASE}/${pageId}/conversations?platform=instagram&limit=${limit}&fields=participants,messages.limit(1){id,message,from,created_time}&access_token=${token}`
-  const res = await fetch(url)
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    const metaMsg = err?.error?.error_user_msg ?? err?.error?.message ?? `status ${res.status}`
-    throw new Error(metaMsg)
+export async function fetchIgConversations(token: string, pageId: string, maxConversations = 10): Promise<IgConversationRaw[]> {
+  // Fetch conversations one by one using cursor pagination
+  // Meta times out with limit>1 when there are many non-app-role conversations
+  const results: IgConversationRaw[] = []
+  let afterCursor: string | null = null
+
+  for (let i = 0; i < maxConversations; i++) {
+    let url = `${FB_BASE}/${pageId}/conversations?platform=instagram&limit=1&access_token=${token}`
+    if (afterCursor) url += `&after=${afterCursor}`
+
+    const listRes = await fetch(url)
+    if (!listRes.ok) {
+      const err = await listRes.json().catch(() => ({}))
+      if (err?.error?.error_subcode === 2534084) break // Standard access limit reached
+      const metaMsg = err?.error?.error_user_msg ?? err?.error?.message ?? `status ${listRes.status}`
+      throw new Error(metaMsg)
+    }
+
+    const listJson = await listRes.json()
+    const convos = listJson.data ?? []
+    if (convos.length === 0) break
+
+    const convoId = convos[0].id
+
+    // Fetch details (participants + last message) for this single conversation
+    try {
+      const detailUrl = `${FB_BASE}/${convoId}?fields=participants,messages.limit(1){id,message,from,created_time}&access_token=${token}`
+      const detailRes = await fetch(detailUrl)
+      if (detailRes.ok) {
+        const detail = await detailRes.json()
+        results.push({
+          id: convoId,
+          participants: detail.participants ?? { data: [] },
+          messages: detail.messages ?? { data: [] },
+        })
+      }
+    } catch {
+      // Skip this conversation if detail fetch fails
+    }
+
+    // Next page
+    afterCursor = listJson.paging?.cursors?.after ?? null
+    if (!afterCursor || !listJson.paging?.next) break
   }
-  const json = await res.json()
-  return (json.data ?? []).map((c: { id: string; participants?: IgConversationRaw['participants']; messages?: IgConversationRaw['messages'] }) => ({
-    id: c.id,
-    participants: c.participants ?? { data: [] },
-    messages: c.messages ?? { data: [] },
-  }))
+
+  return results
 }
 
 interface IgMessageRaw {

@@ -1,96 +1,92 @@
-# État du projet — ClosRM
+# Etat du projet — ClosRM
 
-> Fichier mis à jour obligatoirement à la fin de chaque tâche.
-> Dernière mise à jour : 2026-04-07 (planification T-027 → T-031 + abandon T-026)
+> Fichier mis a jour obligatoirement a la fin de chaque tache.
+> Derniere mise a jour : 2026-04-08
 
 ---
 
 ## Statut global
 
-**Phase actuelle :** Développement V1 (finalisation)
-**Version :** 0.4
+**Phase actuelle :** Developpement V1 (finalisation) + features avancees (IA)
+**Version :** 0.5
 **Branche principale active :** `develop`
 
 ---
 
-## Modules — État d'avancement
+## Modules — Etat d'avancement
 
-| Module | Responsable | Statut | Tâche(s) |
+| Module | Responsable | Statut | Tache(s) |
 |--------|-------------|--------|----------|
-| Setup projet (Next.js + Supabase + Auth + Layout) | Rémy | ✅ Terminé | — |
-| Auth (login, register, reset, middleware, hooks) | Pierre | ✅ Terminé | T-002 |
-| Landing page | Pierre | ✅ Terminé | T-002 |
-| Refonte visuelle (design system vert) | Pierre | ✅ Terminé | T-002 |
-| Module Leads — Liste + API | Rémy | ✅ Terminé | T-004 |
-| Module Leads — Fiche lead | Rémy | ✅ Terminé | T-004 |
-| Dashboard d'accueil (vraies données) | Rémy | ✅ Terminé | T-003 |
-| Module Closing — API + Frontend | Pierre | ✅ Terminé | T-007 |
-| Module Follow-ups — API + Frontend | Pierre | ✅ Terminé | T-008 |
-| Module Statistiques | Rémy | ✅ Terminé | T-011 |
-| Base de données (vue globale) | Rémy | ✅ Terminé | T-012 |
-| Module Automations (Workflows) | Pierre | ✅ Terminé | T-014 |
-| Notifications WhatsApp/Telegram/Email | Pierre | ✅ Terminé | T-016 |
-| Paramètres Réglages | Pierre | ✅ Terminé | T-018 |
-| Paramètres Intégrations | Pierre | ✅ Terminé | T-019 |
-| Dark/Light Mode | Pierre | ✅ Terminé | — |
-| Branding dynamique (couleur + logo) | Pierre | ✅ Terminé | — |
-| Intégration Meta Ads (OAuth + webhook + UI) | Rémy | ✅ Terminé | T-013 |
-| Intégration Google Calendar | Pierre | ✅ Terminé | T-022 |
-| Module Publicités (Meta Ads dashboard) | Rémy | ✅ Terminé | T-017 |
-| **Module Publicités v2 — Leadform/Follow Ads + santé** | **Rémy** | **✅ Terminé** | **T-025** |
-| **Source `follow_ads` + channel `instagram_dm`** | **Rémy** | **✅ Terminé** | **A-007** |
-| Module Emails (séquences + broadcast) | Pierre | ✅ Terminé | T-020 |
-| Module Calendrier / Booking | Pierre | ✅ Terminé | T-022 |
-| Module Réseaux Sociaux (Instagram) | Pierre | ✅ Terminé | T-023, T-024 |
-| Module Messages (DMs Instagram) | Pierre | ✅ Terminé | T-023, T-024 |
-| Module Commentaires (Instagram) | Pierre | ✅ Terminé | T-024 |
-| Publication Instagram (Post/Reel/Story) | Pierre | ✅ Terminé | T-024 |
-| Planification auto Instagram (cron) | Pierre | ✅ Terminé | T-024 |
-| Sync auto Instagram (cron horaire) | Pierre | ✅ Terminé | T-024 |
-| Performance (Server Components + optimisations) | Pierre | ✅ Terminé | T-024 |
-| Agenda : ligne de temps + notifications | Pierre | ✅ Terminé | T-024 |
-| Templates agenda : copier-coller + drag & drop | Pierre | ✅ Terminé | T-024 |
-| Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non démarré | T-021 |
-| **Lead++ (workflow inline + pseudo IG + chaîne + Messages)** ⚠️ touche module Leads de Rémy | **Pierre** (réassignée le 2026-04-07) | **⬜ Non démarré** | **T-027** |
-| **Funnels v2 (refonte builder + analytics + templates)** | **Rémy** | **⬜ Non démarré** | **T-028** |
-| **Automations v2 (triggers/actions, observability)** | **Pierre** | **⬜ Non démarré** | **T-029** |
-| **Booking → auto Google Meet (en ligne)** | **Pierre** | **⬜ Non démarré** | **T-030** |
-| **Import portefeuille leads (CSV + alternatives)** | **Rémy** | **⬜ Non démarré** | **T-031** |
-| Followers-as-prospects (V2) | Rémy | ❌ Abandonné (API IG) | T-026 |
-| V2 — Tunnels | — | 🔒 Bloqué (V2) | — |
-| V2 — Stripe | — | 🔒 Bloqué (V2) | — |
-| V2 — Multi-membres équipe | — | 🔒 Bloqué (V2) | — |
-
-**Légende :** ✅ Terminé · 🔄 En cours · ⬜ Non démarré · 🔒 Bloqué (V2)
+| Setup projet (Next.js + Supabase + Auth + Layout) | Remy | ✅ Termine | — |
+| Auth (login, register, reset, middleware, hooks) | Pierre | ✅ Termine | T-002 |
+| Landing page | Pierre | ✅ Termine | T-002 |
+| Module Leads — Liste + API | Remy | ✅ Termine | T-004 |
+| Module Leads — Fiche lead | Remy | ✅ Termine | T-004 |
+| **Lead++ (pseudo IG, relances directes, saisie chaine, Messages tab)** | **Pierre** | **✅ Termine** | **T-027** |
+| Dashboard d'accueil (vraies donnees) | Remy | ✅ Termine | T-003 |
+| Module Closing — API + Frontend | Pierre | ✅ Termine | T-007 |
+| Module Follow-ups — API + Frontend | Pierre | ✅ Termine | T-008 |
+| Module Statistiques | Remy | ✅ Termine | T-011 |
+| Base de donnees (vue globale) | Remy | ✅ Termine | T-012 |
+| Module Automations v1 (Workflows) | Pierre | ✅ Termine | T-014 |
+| **Module Automations v2 (4 triggers, 6 actions, dry-run, historique)** | **Pierre** | **✅ Termine** | **T-029** |
+| **Refonte visuelle Automations** | **Pierre** | **✅ Termine** | **2026-04-07** |
+| Notifications WhatsApp/Telegram/Email | Pierre | ✅ Termine | T-016 |
+| Parametres Reglages | Pierre | ✅ Termine | T-018 |
+| Parametres Integrations | Pierre | ✅ Termine | T-019 |
+| Dark/Light Mode + Branding dynamique | Pierre | ✅ Termine | — |
+| Integration Meta Ads (OAuth + webhook + UI) | Remy | ✅ Termine | T-013 |
+| Integration Google Calendar | Pierre | ✅ Termine | T-022 |
+| Module Publicites (Meta Ads dashboard) | Remy | ✅ Termine | T-017 |
+| Module Publicites v2 — Leadform/Follow Ads + sante | Remy | ✅ Termine | T-025 |
+| Source `follow_ads` + channel `instagram_dm` | Remy | ✅ Termine | A-007 |
+| Module Emails (sequences + broadcast) | Pierre | ✅ Termine | T-020 |
+| Module Calendrier / Booking | Pierre | ✅ Termine | T-022 |
+| **Booking → auto Google Meet + 3 types de lieu** | **Pierre** | **✅ Termine** | **T-030** |
+| Module Reseaux Sociaux (Instagram) | Pierre | ✅ Termine | T-023, T-024 |
+| Module Messages (DMs Instagram) | Pierre | ✅ Termine | T-023, T-024 |
+| Module Commentaires (Instagram) | Pierre | ✅ Termine | T-024 |
+| Publication Instagram (Post/Reel/Story) | Pierre | ✅ Termine | T-024 |
+| Planification auto Instagram (cron) | Pierre | ✅ Termine | T-024 |
+| **Assistant IA de Relance (Guidance + Convert + Brief + Self-learning)** | **Pierre** | **✅ Termine** | **T-032** |
+| **Lead magnets structures (titre + lien) dans Assistant IA** | **Pierre** | **✅ Termine** | **A-011** |
+| Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non demarre | T-021 |
+| Funnels v2 (refonte builder + analytics + templates) | Remy | ⬜ Non demarre | T-028 |
+| Import portefeuille leads (CSV + alternatives) | Remy | ⬜ Non demarre | T-031 |
+| Linktree interne (liens trackables par lead) | — | ⬜ Non demarre | A-010 |
+| Followers-as-prospects (V2) | Remy | ❌ Abandonne (API IG) | T-026 |
 
 ---
 
-## Historique des tâches complétées
+## Session du 2026-04-07/08 — Resume des travaux Pierre
 
-| Date | Développeur | Tâche | Branche |
-|------|-------------|-------|---------|
-| 2026-03-27 | Rémy | Setup initial projet | `main` |
-| 2026-03-27 | Pierre | T-001 — Roadmap & priorisation | `feature/pierre-fix-layout` |
-| 2026-03-27 | Pierre | T-002 — Auth + refonte visuelle | `feature/pierre-auth-system` |
-| 2026-03-27 | Rémy | T-004 — Module Leads | `feature/remy-module-leads` |
-| 2026-03-28 | Pierre | T-007 — Module Closing + Follow-ups | `feature/pierre-closing` |
-| 2026-03-28 | Rémy | T-003 — Dashboard d'accueil | `feature/remy-dashboard` |
-| 2026-03-28 | Rémy | T-011 — Module Statistiques | `feature/remy-dashboard` |
-| 2026-03-28 | Rémy | T-012 — Base de données | `feature/remy-database` |
-| 2026-03-30 | Rémy | T-013 — Meta Ads Bloc A (OAuth + webhook + UI intégrations) | `feature/remy-meta-ads` |
-| 2026-03-30 | Pierre | T-014 — Automations/Workflows v1 | `feature/pierre-automations` |
-| 2026-03-30 | Pierre | T-016 — Notifications WhatsApp/Telegram | `feature/pierre-automations` |
-| 2026-03-30 | Pierre | T-018 — Paramètres Réglages | `feature/pierre-automations` |
-| 2026-03-30 | Pierre | T-019 — Paramètres Intégrations | `feature/pierre-automations` |
-| 2026-03-31 | Pierre | T-022 — Calendrier/Booking + Google Calendar + Planning Templates | `feature/pierre-automations` |
-| 2026-04-01 | Pierre | T-020 — Module Emails | `feature/pierre-email-module` |
-| 2026-04-01 | Pierre | T-014 v2 — Automations : branching, 13 actions, builder refait | `feature/pierre-email-module` |
-| 2026-04-01 | Rémy | T-017 — Module Publicités (Meta Ads Dashboard) | `feature/remy-meta-ads` |
-| 2026-04-02 | Pierre | T-023 — Module Réseaux Sociaux (Instagram) + Messages | `feature/pierre-funnel-builder` |
-| 2026-04-05→07 | Pierre | T-024 — Audit Instagram + Performance + 90 PRs | `feature/pierre-funnel-builder` |
-| 2026-04-04→07 | Rémy | T-025 — Follow Ads Classification + KPIs adaptés + indicateurs de santé | `feature/remy-follow-ads-classification` |
-| 2026-04-07 | Rémy | A-007 — Source `follow_ads` + channel `instagram_dm` (migration 014, types, UI) | `feature/remy-follow-ads-source-channel` |
+### Taches planifiees par Remy (T-027, T-029, T-030)
+
+| Tache | Demande Remy | Resultat |
+|-------|-------------|----------|
+| **T-027 Lead++** | Pseudo IG, workflow inline, saisie chaine, onglet Messages | ✅ Fait — pseudo IG auto-source, relances directes (pas workflow), presets J+1→J+30, onglet Messages read-only, liaison auto ig_conversations |
+| **T-029 Automations v2** | Nouveaux triggers/actions, observability | ✅ Fait — 4 triggers (lead_imported, lead_with_ig_handle, booking_no_show, lead_inactive), 6 actions (send_dm_ig, create_meet, update_lead_field, add_note, set_reached, schedule_call), dry-run, historique executions, re-run, alertes echec |
+| **T-030 Booking Google Meet** | Distinguer presentiel/en ligne, Meet auto | ✅ Fait — 3 types de lieu (presentiel/Google Meet/visio custom), Meet auto via conferenceData, email confirmation, bouton "Rejoindre le Meet" |
+
+### Travaux supplementaires (session)
+
+| Travail | Detail |
+|---------|--------|
+| Refonte visuelle Automations | Page liste (cartes, filtres, recherche), page workflow [id] (3 onglets), modale creation, composants polish |
+| LeadForm ameliore | Source auto IG, prenom optionnel, section relances toujours visible, presets + nurturing |
+| Follow-up action modal | Presets relance (demain→1 mois) + nurturing (1-3 mois) + raison optionnelle |
+| Page Leads UX | Clic ligne → side panel (plus de bouton "Voir"), bouton supprimer lead (hard delete) |
+| Calendar locations | 3 types dans edition calendrier (presentiel/Meet/visio) |
+| **T-032 Assistant IA** | Spec + plan + implementation complete — brief coach (wizard 7 etapes), suggestion IA (guidance + convert), self-learning, cle API par coach, lead magnets structures |
+
+### Coordination avec Remy — Points a communiquer
+
+1. **Migrations 015-020 appliquees** : `leads.instagram_handle`, `booking_locations.location_type`, `bookings.meet_url`, `leads.last_activity_at`, `workflows.notify_on_failure`, `ai_coach_briefs`, `ai_conversation_outcomes`, `ai_coach_briefs.api_key`, `ai_coach_briefs.lead_magnets`
+2. **LeadForm.tsx modifie** : champ pseudo IG, section relances, saisie en chaine — risque de conflit avec T-031
+3. **API leads modifiee** : POST accepte instagram_handle + inline_workflow, DELETE = hard delete
+4. **types/index.ts modifie** : Lead += instagram_handle, nouveaux types IA, nouveaux triggers/actions workflow
+5. **Trigger `lead_imported`** expose dans T-029 — Remy peut le fire dans T-031
 
 ---
 
-*Mis à jour le 2026-04-07 par Claude Code — ClosRM (planning T-027→T-031, T-026 abandonnée)*
+*Mis a jour le 2026-04-08 par Claude Code — ClosRM*
