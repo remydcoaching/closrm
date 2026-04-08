@@ -50,6 +50,7 @@
 | Planification auto Instagram (cron) | Pierre | ✅ Termine | T-024 |
 | **Assistant IA de Relance (Guidance + Convert + Brief + Self-learning)** | **Pierre** | **✅ Termine** | **T-032** |
 | **Lead magnets structures (titre + lien) dans Assistant IA** | **Pierre** | **✅ Termine** | **A-011** |
+| **Module Automations (v1+v2)** | **Pierre** | **⚠️ Code OK, APIs manquantes** | **T-014, T-029** |
 | Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non demarre | T-021 |
 | Funnels v2 (refonte builder + analytics + templates) | Remy | ⬜ Non demarre | T-028 |
 | Import portefeuille leads (CSV + alternatives) | Remy | ⬜ Non demarre | T-031 |
@@ -86,6 +87,21 @@
 3. **API leads modifiee** : POST accepte instagram_handle + inline_workflow, DELETE = hard delete
 4. **types/index.ts modifie** : Lead += instagram_handle, nouveaux types IA, nouveaux triggers/actions workflow
 5. **Trigger `lead_imported`** expose dans T-029 — Remy peut le fire dans T-031
+
+---
+
+## Blocages APIs — a resoudre avant mise en prod
+
+| Action workflow | API requise | Statut |
+|---|---|---|
+| `send_whatsapp` | Meta WhatsApp Business API (token + phone number ID) | ⬜ Pas configure |
+| `send_dm_instagram` | Meta Instagram Messaging API (page access token) | ⬜ Pas configure |
+| `send_email` | Resend API (webhook en prod) | ⬜ Webhook pas configure |
+| `create_google_meet` | Google Calendar API (OAuth) | ⚠️ OAuth OK, pas teste en prod |
+| `send_notification` (Telegram) | Telegram Bot Token | ⬜ Pas configure |
+| Cron workflow-scheduler | Vercel Cron | ⬜ Pas configure en prod |
+
+> Les automations sont **fonctionnelles au niveau code** mais les actions qui envoient des messages (WhatsApp, DM IG, email, Telegram) ne marcheront qu'une fois les APIs configurees dans Parametres > Integrations.
 
 ---
 
