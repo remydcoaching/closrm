@@ -394,7 +394,7 @@ export async function GET(request: NextRequest) {
               } else {
                 const { data: igAccount } = await supabase
                   .from('ig_accounts')
-                  .select('page_access_token, ig_page_id')
+                  .select('page_access_token, page_id')
                   .eq('workspace_id', reminder.workspace_id)
                   .maybeSingle()
 
@@ -404,7 +404,7 @@ export async function GET(request: NextRequest) {
                   try {
                     await sendIgMessage(
                       igAccount.page_access_token,
-                      igAccount.ig_page_id,
+                      igAccount.page_id,
                       conv.participant_ig_id,
                       reminder.message
                     )
