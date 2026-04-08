@@ -101,6 +101,11 @@ export const sendMessageSchema = z.object({
   text: z.string().min(1, 'Le message est requis').max(1000),
 })
 
+export const sendImageSchema = z.object({
+  conversation_id: z.string().uuid(),
+  image_url: z.string().url('URL image invalide'),
+})
+
 // ── Inferred types ──
 export type CreateSequenceData = z.infer<typeof createSequenceSchema>
 export type UpdateSequenceData = z.infer<typeof updateSequenceSchema>
