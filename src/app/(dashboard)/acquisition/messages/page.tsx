@@ -233,7 +233,7 @@ export default function MessagesPage() {
         </div>
 
         {/* Center column — thread + input */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {selected ? (
             <>
               {/* Thread header */}

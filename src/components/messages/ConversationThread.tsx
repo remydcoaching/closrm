@@ -28,47 +28,14 @@ function formatDateSeparator(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-function formatTimestamp(dateStr: string): string {
+function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-}
-
-function renderMedia(msg: IgMessage) {
-  if (!msg.media_url) return null
-  const type = msg.media_type?.toLowerCase()
-
-  if (type === 'video') {
-    return (
-      <div className="mb-1 max-w-[220px]">
-        <video src={msg.media_url} controls className="w-full rounded-2xl" />
-      </div>
-    )
-  }
-
-  if (type === 'audio') {
-    return (
-      <div className="mb-1 max-w-[260px]">
-        <audio src={msg.media_url} controls className="w-full h-10" />
-      </div>
-    )
-  }
-
-  // image, sticker, or fallback
-  return (
-    <div className="mb-1 max-w-[220px]">
-      <img
-        src={msg.media_url}
-        alt=""
-        className={`w-full rounded-2xl ${type === 'sticker' ? 'max-w-[120px]' : ''}`}
-      />
-    </div>
-  )
 }
 
 export default function ConversationThread({ messages }: Props) {
   const endRef = useRef<HTMLDivElement>(null)
   const prevLengthRef = useRef(messages.length)
 
-  // Only auto-scroll when new messages arrive (not on every render)
   useEffect(() => {
     if (messages.length > prevLengthRef.current || prevLengthRef.current === 0) {
       endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -76,52 +43,110 @@ export default function ConversationThread({ messages }: Props) {
     prevLengthRef.current = messages.length
   }, [messages.length])
 
-  // Also scroll when conversation changes (messages reset)
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [messages.length === 0 ? 0 : messages[0]?.id])
 
   if (messages.length === 0) return (
-    <div className="flex-1 flex items-center justify-center text-[#444] text-[13px]">
-      Aucun message
+    <div className="flex-1 flex items-center justify-center">
+      <span className="text-sm text-[#3a3a3a]">Aucun message</span>
     </div>
   )
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5 flex flex-col gap-2.5">
+    <div
+      className="flex-1 py-6 flex flex-col gap-[3px]"
+      style={{ overflowY: 'auto', overflowX: 'hidden', paddingLeft: 24, paddingRight: 24 }}
+    >
       {messages.map((msg, idx) => {
         const isUser = msg.sender_type === 'user'
         const isOptimistic = msg._optimistic
         const prevMsg = idx > 0 ? messages[idx - 1] : null
-        const showDateSeparator = !prevMsg || !isSameDay(prevMsg.sent_at, msg.sent_at)
+        const showDateSep = !prevMsg || !isSameDay(prevMsg.sent_at, msg.sent_at)
+
+        // Group consecutive messages from same sender — only show time on last
+        const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null
+        const isLastInGroup = !nextMsg || nextMsg.sender_type !== msg.sender_type || !isSameDay(nextMsg.sent_at, msg.sent_at)
 
         return (
           <div key={msg.id}>
-            {showDateSeparator && (
-              <div className="flex items-center justify-center my-4">
-                <div className="px-4 py-1.5 rounded-full bg-[#141414] border border-[#1e1e1e] text-[10px] text-[#666] font-medium tracking-wide">
+            {showDateSep && (
+              <div className="flex justify-center my-5">
+                <span
+                  className="text-[10px] font-medium tracking-wide"
+                  style={{
+                    color: '#555',
+                    background: '#141414',
+                    border: '1px solid #1e1e1e',
+                    borderRadius: 20,
+                    padding: '5px 16px',
+                  }}
+                >
                   {formatDateSeparator(msg.sent_at)}
-                </div>
+                </span>
               </div>
             )}
-            <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-              {renderMedia(msg)}
-              {msg.text && (
-                <div
-                  className={`px-4 py-2.5 max-w-[65%] text-[13.5px] leading-[1.5] break-words
-                    ${isUser
-                      ? 'bg-gradient-to-br from-[#E53E3E] to-[#C53030] text-white rounded-[20px_20px_6px_20px] shadow-[0_2px_8px_rgba(229,62,62,0.2)]'
-                      : 'bg-[#161616] border border-[#1e1e1e] text-[#e0e0e0] rounded-[20px_20px_20px_6px]'
-                    }
-                    ${isOptimistic ? 'opacity-60' : ''}
-                  `}
-                  style={{ overflowWrap: 'anywhere' }}
-                >
-                  {msg.text}
-                </div>
-              )}
-              <div className={`text-[10px] text-[#4a4a4a] mt-1 px-1.5 flex items-center gap-1 ${isOptimistic ? 'italic' : ''}`}>
-                {isOptimistic ? 'Envoi...' : formatTimestamp(msg.sent_at)}
+
+            {/* Message row */}
+            <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
+              <div style={{ maxWidth: '70%', display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
+                {/* Media */}
+                {msg.media_url && (
+                  <div style={{ marginBottom: 4, maxWidth: 220 }}>
+                    {msg.media_type === 'video' ? (
+                      <video src={msg.media_url} controls style={{ width: '100%', borderRadius: 16 }} />
+                    ) : msg.media_type === 'audio' ? (
+                      <audio src={msg.media_url} controls style={{ width: '100%', height: 40 }} />
+                    ) : (
+                      <img src={msg.media_url} alt="" style={{ width: '100%', borderRadius: 16, maxWidth: msg.media_type === 'sticker' ? 100 : undefined }} />
+                    )}
+                  </div>
+                )}
+
+                {/* Bubble */}
+                {msg.text && (
+                  <div
+                    style={{
+                      padding: '10px 16px',
+                      fontSize: 13.5,
+                      lineHeight: 1.5,
+                      overflowWrap: 'anywhere' as const,
+                      wordBreak: 'break-word' as const,
+                      opacity: isOptimistic ? 0.55 : 1,
+                      ...(isUser
+                        ? {
+                            background: 'linear-gradient(135deg, #E53E3E, #C53030)',
+                            color: '#fff',
+                            borderRadius: '20px 20px 6px 20px',
+                            boxShadow: '0 2px 10px rgba(229,62,62,0.18)',
+                          }
+                        : {
+                            background: '#161616',
+                            border: '1px solid #1e1e1e',
+                            color: '#e0e0e0',
+                            borderRadius: '20px 20px 20px 6px',
+                          }),
+                    }}
+                  >
+                    {msg.text}
+                  </div>
+                )}
+
+                {/* Timestamp — only on last message in group */}
+                {isLastInGroup && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: '#4a4a4a',
+                      marginTop: 4,
+                      paddingLeft: 4,
+                      paddingRight: 4,
+                      fontStyle: isOptimistic ? 'italic' : undefined,
+                    }}
+                  >
+                    {isOptimistic ? 'Envoi...' : formatTime(msg.sent_at)}
+                  </span>
+                )}
               </div>
             </div>
           </div>
