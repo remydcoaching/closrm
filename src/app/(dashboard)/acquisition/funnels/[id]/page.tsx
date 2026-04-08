@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Monitor, Smartphone, Tablet, Save, Globe, Check } from 'lucide-react'
+import { ArrowLeft, Monitor, Smartphone, Tablet, Save, Globe, Check, Undo2, Redo2 } from 'lucide-react'
 import type {
   FunnelPage,
   FunnelPresetOverrideJSON,
@@ -10,6 +10,8 @@ import type {
 } from '@/types'
 import FunnelPageTabs from '@/components/funnels/FunnelPageTabs'
 import FunnelBuilderV2 from '@/components/funnels/v2/FunnelBuilderV2'
+import { useUndoRedo } from '@/components/funnels/v2/use-undo-redo'
+import { useAutosave } from '@/components/funnels/v2/use-autosave'
 
 interface FunnelData {
   id: string
@@ -27,7 +29,16 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
   const router = useRouter()
 
   const [funnel, setFunnel] = useState<FunnelData | null>(null)
-  const [pages, setPages] = useState<FunnelPage[]>([])
+  // T-028b Phase 6 — pages stockées via useUndoRedo pour Cmd+Z / Cmd+Shift+Z
+  const {
+    state: pages,
+    setState: setPages,
+    undo: undoPages,
+    redo: redoPages,
+    canUndo,
+    canRedo,
+    reset: resetPages,
+  } = useUndoRedo<FunnelPage[]>([])
   const [activePageId, setActivePageId] = useState<string>('')
   const [funnelName, setFunnelName] = useState('')
   const [editingName, setEditingName] = useState(false)
@@ -62,7 +73,9 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           }
         }
 
-        setPages(pgs)
+        // Reset undo/redo history avec les pages chargées (pas un setState normal,
+        // sinon le chargement initial créerait une entrée d'historique)
+        resetPages(pgs)
         if (pgs.length > 0) {
           setActivePageId(pgs[0].id)
         }
@@ -72,7 +85,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, resetPages])
 
   useEffect(() => { fetchFunnel() }, [fetchFunnel])
 
@@ -113,8 +126,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
    * T-028b — Callback appelé par le builder v2 quand le coach modifie le design
    * (preset, override couleurs, effets toggleables). PATCH le funnel en DB
    * et met à jour le state local pour que le preview se reconfigure.
-   * Fire-and-forget : pas de loading state explicit, l'autosave T-028b Phase 6
-   * gérera ça finement.
+   * Fire-and-forget : le design change est petit et instantané côté UX,
+   * pas besoin d'autosave debounced ici (contrairement aux pages/blocks).
    */
   const handleFunnelDesignChange = useCallback(
     (changes: {
@@ -130,11 +143,39 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(changes),
       }).catch(() => {
-        // Best-effort — l'autosave Phase 6 gérera les retries
+        // Best-effort
       })
     },
     [id],
   )
+
+  /**
+   * T-028b Phase 6 — Autosave debounced sur les pages.
+   *
+   * Quand `pages` change (via setState ou via undo/redo), démarre un timer
+   * de 1.5s. Si rien ne rechange entre temps, sauvegarde toutes les pages
+   * en parallèle via l'API.
+   *
+   * Désactivé tant que `loading` ou `funnel` est null (pas de save au mount).
+   */
+  const autosavePages = useCallback(async (pagesToSave: FunnelPage[]) => {
+    await Promise.all(
+      pagesToSave.map((page) =>
+        fetch(`/api/funnels/${id}/pages/${page.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ blocks: page.blocks, name: page.name }),
+        }),
+      ),
+    )
+  }, [id])
+
+  const { status: autosaveStatus } = useAutosave({
+    value: pages,
+    onSave: autosavePages,
+    delayMs: 1500,
+    enabled: !loading && funnel !== null,
+  })
 
   const handlePublish = useCallback(async () => {
     if (publishing) return
@@ -172,28 +213,28 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
       })
       const json = await res.json()
       if (json.data) {
-        setPages(prev => [...prev, json.data])
+        // T-028b Phase 6 — useUndoRedo expose `setState(value)`, pas de callback signature.
+        // On lit la valeur courante via la closure (`pages` est dans les deps).
+        setPages([...pages, json.data])
         setActivePageId(json.data.id)
       }
     } catch {
       // ignore
     }
-  }, [id, pages.length])
+  }, [id, pages, setPages])
 
   const handleDeletePage = useCallback(async (pageId: string) => {
     try {
       await fetch(`/api/funnels/${id}/pages/${pageId}`, { method: 'DELETE' })
-      setPages(prev => {
-        const updated = prev.filter(p => p.id !== pageId)
-        if (activePageId === pageId && updated.length > 0) {
-          setActivePageId(updated[0].id)
-        }
-        return updated
-      })
+      const updated = pages.filter((p) => p.id !== pageId)
+      setPages(updated)
+      if (activePageId === pageId && updated.length > 0) {
+        setActivePageId(updated[0].id)
+      }
     } catch {
       // ignore
     }
-  }, [id, activePageId])
+  }, [id, activePageId, pages, setPages])
 
   if (loading) {
     return (
@@ -312,6 +353,88 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
 
         {/* Separator */}
         <div style={{ width: 1, height: 24, background: 'var(--border-primary, #262626)', flexShrink: 0 }} />
+
+        {/* Undo / Redo buttons — T-028b Phase 6 */}
+        <div style={{
+          display: 'flex', gap: 2, background: 'var(--bg-primary, #0a0a0a)',
+          borderRadius: 8, padding: 3, flexShrink: 0,
+          border: '1px solid var(--border-primary, #262626)',
+        }}>
+          <button
+            onClick={undoPages}
+            disabled={!canUndo}
+            title="Annuler (Cmd+Z)"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 32, height: 28, borderRadius: 6, border: 'none',
+              background: 'transparent',
+              color: canUndo ? 'var(--text-primary, #ccc)' : 'rgba(255,255,255,0.2)',
+              cursor: canUndo ? 'pointer' : 'not-allowed',
+              padding: 0, transition: 'all 0.2s ease',
+            }}
+          >
+            <Undo2 size={14} />
+          </button>
+          <button
+            onClick={redoPages}
+            disabled={!canRedo}
+            title="Refaire (Cmd+Shift+Z)"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 32, height: 28, borderRadius: 6, border: 'none',
+              background: 'transparent',
+              color: canRedo ? 'var(--text-primary, #ccc)' : 'rgba(255,255,255,0.2)',
+              cursor: canRedo ? 'pointer' : 'not-allowed',
+              padding: 0, transition: 'all 0.2s ease',
+            }}
+          >
+            <Redo2 size={14} />
+          </button>
+        </div>
+
+        {/* Autosave status indicator — T-028b Phase 6 */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '0 8px', fontSize: 11, color: 'var(--text-secondary, #888)',
+          flexShrink: 0, minWidth: 90,
+        }}>
+          {autosaveStatus === 'pending' && (
+            <>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: '#D69E2E',
+              }} />
+              <span>Modifs...</span>
+            </>
+          )}
+          {autosaveStatus === 'saving' && (
+            <>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: '#3B82F6', animation: 'pulse 1s ease-in-out infinite',
+              }} />
+              <span>Sauvegarde...</span>
+            </>
+          )}
+          {autosaveStatus === 'saved' && (
+            <>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: '#38A169',
+              }} />
+              <span>Sauvegardé</span>
+            </>
+          )}
+          {autosaveStatus === 'error' && (
+            <>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: '#E53E3E',
+              }} />
+              <span>Erreur de save</span>
+            </>
+          )}
+        </div>
 
         {/* Device toggle (Desktop / Tablet / Mobile) — T-028b Phase 4 */}
         <div style={{
