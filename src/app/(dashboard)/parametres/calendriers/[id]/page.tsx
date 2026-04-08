@@ -136,7 +136,7 @@ export default function EditCalendarPage() {
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 720 }}>
+    <div style={{ padding: '32px 40px', maxWidth: 860, margin: '0 auto' }}>
       {/* Back link */}
       <Link
         href="/parametres/calendriers"
