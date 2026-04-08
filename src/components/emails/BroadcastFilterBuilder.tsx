@@ -34,24 +34,12 @@ export default function BroadcastFilterBuilder({ filters, onChange }: Props) {
     const timer = setTimeout(async () => {
       setCounting(true)
       try {
-        const res = await fetch('/api/emails/broadcasts/preview-count/preview-count', {
+        const res = await fetch('/api/emails/broadcasts/_/preview-count', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(filters),
         })
-        // Fallback: count via a simpler endpoint
-        if (!res.ok) {
-          // Try direct count
-          const r2 = await fetch('/api/emails/broadcasts/count', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(filters),
-          })
-          if (r2.ok) {
-            const d = await r2.json()
-            setRecipientCount(d.count)
-          }
-        } else {
+        if (res.ok) {
           const data = await res.json()
           setRecipientCount(data.count)
         }
