@@ -339,6 +339,21 @@ export async function POST(
     }
   }
 
+  // Create booking reminders if calendar has reminders configured
+  if (leadId && calendar.reminders && calendar.reminders.length > 0) {
+    createBookingReminders({
+      workspaceId: calendar.workspace_id,
+      bookingId: booking.id,
+      leadId,
+      bookingScheduledAt: scheduled_at,
+      calendarReminders: calendar.reminders as CalendarReminder[],
+      calendarName: calendar.name,
+      lead: { first_name: firstName, last_name: lastName },
+    }).catch((err) => {
+      console.error('[public-booking] Failed to create reminders:', err)
+    })
+  }
+
   // Fire workflow trigger (non-blocking)
   if (leadId) {
     fireTriggersForEvent(calendar.workspace_id, 'booking_created', {
