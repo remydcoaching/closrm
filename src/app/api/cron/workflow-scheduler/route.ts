@@ -320,6 +320,133 @@ export async function GET(request: NextRequest) {
         }
       }
     }
+    // ─── 6. Send pending booking reminders ────────────────────────────────
+    {
+      const { data: pendingReminders } = await supabase
+        .from('booking_reminders')
+        .select('id, workspace_id, booking_id, lead_id, channel, message')
+        .eq('status', 'pending')
+        .lte('send_at', new Date().toISOString())
+        .limit(100)
+
+      if (pendingReminders) {
+        for (const reminder of pendingReminders) {
+          try {
+            const { data: lead } = await supabase
+              .from('leads')
+              .select('email, phone, first_name, last_name')
+              .eq('id', reminder.lead_id)
+              .single()
+
+            if (!lead) {
+              await supabase.from('booking_reminders')
+                .update({ status: 'failed', error: 'Lead introuvable' })
+                .eq('id', reminder.id)
+              continue
+            }
+
+            let sendError: string | null = null
+
+            if (reminder.channel === 'email') {
+              if (!lead.email) {
+                sendError = "Pas d'adresse email"
+              } else {
+                const apiKey = process.env.RESEND_API_KEY
+                if (!apiKey) {
+                  sendError = 'RESEND_API_KEY non configurée'
+                } else {
+                  const result = await sendEmail(
+                    { apiKey },
+                    lead.email,
+                    'Rappel de votre rendez-vous',
+                    `<p>${reminder.message.replace(/\n/g, '<br>')}</p>`
+                  )
+                  if (!result.ok) sendError = result.error ?? 'Erreur envoi email'
+                }
+              }
+            } else if (reminder.channel === 'whatsapp') {
+              if (!lead.phone) {
+                sendError = 'Pas de numéro de téléphone'
+              } else {
+                const creds = await getIntegrationCredentials(reminder.workspace_id, 'whatsapp')
+                if (!creds) {
+                  sendError = 'WhatsApp non connecté'
+                } else {
+                  const phone = lead.phone.replace(/[\s\-\.]/g, '').replace(/^0/, '33')
+                  const result = await sendWhatsAppMessage(
+                    { phoneNumberId: creds.phone_number_id, accessToken: creds.access_token },
+                    phone,
+                    reminder.message
+                  )
+                  if (!result.ok) sendError = result.error ?? 'Erreur envoi WhatsApp'
+                }
+              }
+            } else if (reminder.channel === 'instagram_dm') {
+              const { data: conv } = await supabase
+                .from('ig_conversations')
+                .select('participant_ig_id')
+                .eq('lead_id', reminder.lead_id)
+                .eq('workspace_id', reminder.workspace_id)
+                .maybeSingle()
+
+              if (!conv?.participant_ig_id) {
+                sendError = 'Pas de conversation Instagram liée'
+              } else {
+                const { data: igAccount } = await supabase
+                  .from('ig_accounts')
+                  .select('page_access_token, ig_page_id')
+                  .eq('workspace_id', reminder.workspace_id)
+                  .maybeSingle()
+
+                if (!igAccount) {
+                  sendError = 'Compte Instagram non connecté'
+                } else {
+                  try {
+                    await sendIgMessage(
+                      igAccount.page_access_token,
+                      igAccount.ig_page_id,
+                      conv.participant_ig_id,
+                      reminder.message
+                    )
+                  } catch (err) {
+                    sendError = err instanceof Error ? err.message : 'Erreur envoi DM Instagram'
+                  }
+                }
+              }
+            }
+
+            if (sendError) {
+              await supabase.from('booking_reminders')
+                .update({ status: 'failed', error: sendError })
+                .eq('id', reminder.id)
+
+              // Notify coach via Telegram if available
+              const notifCreds = await getIntegrationCredentials(reminder.workspace_id, 'telegram')
+              if (notifCreds?.bot_token && notifCreds?.chat_id) {
+                const msg = `⚠️ Rappel échoué pour ${lead.first_name} ${lead.last_name} : ${sendError}`
+                fetch(`https://api.telegram.org/bot${notifCreds.bot_token}/sendMessage`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ chat_id: notifCreds.chat_id, text: msg }),
+                }).catch(() => {})
+              }
+
+              results.errors.push(`Reminder ${reminder.id}: ${sendError}`)
+            } else {
+              await supabase.from('booking_reminders')
+                .update({ status: 'sent' })
+                .eq('id', reminder.id)
+              results.calendar_reminders_sent++
+            }
+          } catch (err) {
+            await supabase.from('booking_reminders')
+              .update({ status: 'failed', error: err instanceof Error ? err.message : 'Unknown' })
+              .eq('id', reminder.id)
+            results.errors.push(`Reminder ${reminder.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
+          }
+        }
+      }
+    }
   } catch (err) {
     results.errors.push(`Global: ${err instanceof Error ? err.message : 'Unknown error'}`)
   }
