@@ -53,6 +53,22 @@ import FunnelBlockConfigPanel from '../FunnelBlockConfig'
 import DirectionArtistiquePanel from './sidebar/DirectionArtistiquePanel'
 import SectionsListPanel from './sidebar/SectionsListPanel'
 
+// Labels FR des types de blocs (utilisés dans le header de l'inspector)
+const BLOCK_LABELS: Record<FunnelBlockType, string> = {
+  hero: 'Hero',
+  video: 'Vidéo',
+  text: 'Texte',
+  image: 'Image',
+  cta: 'Bouton CTA',
+  pricing: 'Tarification',
+  testimonials: 'Témoignages',
+  faq: 'FAQ',
+  countdown: 'Compte à rebours',
+  spacer: 'Espacement',
+  booking: 'Réservation (À venir)',
+  form: 'Formulaire (À venir)',
+}
+
 interface Props {
   /** Funnel parent (avec design system v2). */
   funnel: Pick<Funnel, 'id' | 'preset_id' | 'preset_override' | 'effects_config'>
@@ -258,7 +274,24 @@ export default function FunnelBuilderV2({
       {/* ─── COLONNE DROITE : INSPECTOR ──────────────────────────────────── */}
       <aside style={inspectorStyle}>
         {selectedBlock ? (
-          <FunnelBlockConfigPanel block={selectedBlock} onChange={handleBlockChange} />
+          <div>
+            {/* Header avec label du bloc + bouton "désélectionner" */}
+            <div style={inspectorHeaderStyle}>
+              <span style={inspectorHeaderTitleStyle}>
+                {BLOCK_LABELS[selectedBlock.type] ?? selectedBlock.type}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedBlockId(null)}
+                style={inspectorCloseStyle}
+                title="Désélectionner"
+                aria-label="Désélectionner le bloc"
+              >
+                ×
+              </button>
+            </div>
+            <FunnelBlockConfigPanel block={selectedBlock} onChange={handleBlockChange} />
+          </div>
         ) : (
           <div style={inspectorEmptyStyle}>
             <span style={{ fontSize: 24, marginBottom: 8 }}>🎛️</span>
@@ -272,7 +305,7 @@ export default function FunnelBuilderV2({
       </aside>
 
       {/* Marker temporaire phase pour debug */}
-      <div style={phaseMarkerStyle}>T-028b · Phase 4 — Preview multi-device</div>
+      <div style={phaseMarkerStyle}>T-028b · Phase 5 — Inspector polished</div>
     </div>
   )
 }
@@ -317,6 +350,40 @@ const inspectorStyle: React.CSSProperties = {
   background: 'var(--bg-secondary, #141414)',
   overflowY: 'auto',
   padding: 16,
+}
+
+const inspectorHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 12,
+  paddingBottom: 10,
+  borderBottom: '1px solid rgba(255,255,255,0.06)',
+}
+
+const inspectorHeaderTitleStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: 'var(--text-primary, #fff)',
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+}
+
+const inspectorCloseStyle: React.CSSProperties = {
+  width: 22,
+  height: 22,
+  borderRadius: 4,
+  background: 'transparent',
+  border: '1px solid rgba(255,255,255,0.1)',
+  color: 'rgba(255,255,255,0.6)',
+  fontSize: 16,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
+  fontFamily: 'inherit',
+  lineHeight: 1,
 }
 
 const inspectorEmptyStyle: React.CSSProperties = {
