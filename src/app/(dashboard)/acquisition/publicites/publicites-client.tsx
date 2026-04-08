@@ -7,8 +7,9 @@ import AdsMetaBanner from './ads-meta-banner'
 import AdsPeriodSelector, { type PeriodPreset } from './ads-period-selector'
 import AdsOverviewTab from './ads-overview-tab'
 import AdsTableTab from './ads-table-tab'
+import AdsPerformanceTab from './ads-performance-tab'
 
-type TabKey = 'overview' | 'campaigns' | 'adsets' | 'ads'
+type TabKey = 'overview' | 'performance' | 'campaigns' | 'adsets' | 'ads'
 
 interface PublicitesClientProps {
   connectionState: MetaConnectionState
@@ -24,6 +25,7 @@ interface DrillDown {
 
 const TAB_TO_LEVEL: Record<TabKey, string> = {
   overview: 'account',
+  performance: 'account',
   campaigns: 'campaign',
   adsets: 'adset',
   ads: 'ad',
@@ -168,7 +170,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
   function getTabLabel(key: TabKey): string {
     if (key === 'adsets' && drillDown.campaignName) return `Ad Sets`
     if (key === 'ads' && drillDown.adsetName) return `Ads`
-    return { overview: "Vue d'ensemble", campaigns: 'Campagnes', adsets: 'Ad Sets', ads: 'Ads' }[key]
+    return { overview: "Vue d'ensemble", performance: 'Performance', campaigns: 'Campagnes', adsets: 'Ad Sets', ads: 'Ads' }[key]
   }
 
   // Banner states
@@ -192,7 +194,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     )
   }
 
-  const tabs: TabKey[] = ['overview', 'campaigns', 'adsets', 'ads']
+  const tabs: TabKey[] = ['overview', 'performance', 'campaigns', 'adsets', 'ads']
 
   return (
     <div style={{ padding: 32 }}>
@@ -311,7 +313,17 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
           loading={loading}
         />
       )}
-      {!error && tab !== 'overview' && (
+      {!error && tab === 'performance' && (
+        <AdsPerformanceTab
+          data={data}
+          loading={loading}
+          campaignType={'all'}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          closedCount={closedCount}
+        />
+      )}
+      {!error && tab !== 'overview' && tab !== 'performance' && (
         <AdsTableTab
           data={data}
           loading={loading}
