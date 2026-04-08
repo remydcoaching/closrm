@@ -381,6 +381,8 @@ export async function POST(
   // Create Google Calendar event with optional Meet (non-blocking)
   const bookingStartDt = new Date(booking.scheduled_at)
   const bookingEndDt = addMinutes(bookingStartDt, booking.duration_minutes)
+  const withMeet = isOnlineLocation && !locationAddress
+  console.log('[public-booking] Google Calendar:', { isOnlineLocation, locationAddress, withMeet, location_id, calendarLocationIds: calendar.location_ids })
   createGoogleCalendarEvent(
     calendar.workspace_id,
     {
@@ -388,7 +390,7 @@ export async function POST(
       start: { dateTime: bookingStartDt.toISOString() },
       end: { dateTime: bookingEndDt.toISOString() },
     },
-    { withMeet: isOnlineLocation && !locationAddress },
+    { withMeet },
   )
     .then(async (result) => {
       if (result?.eventId) {
