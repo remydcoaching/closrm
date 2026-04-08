@@ -45,13 +45,13 @@ export default function ConversationThread({ messages }: Props) {
   }, [messages.length === 0 ? 0 : messages[0]?.id])
 
   if (messages.length === 0) return (
-    <div className="flex-1 flex items-center justify-center">
-      <span className="text-[14px] text-[var(--text-tertiary)]">Aucun message</span>
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Aucun message</span>
     </div>
   )
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-[3px]" style={{ overflowX: 'hidden' }}>
+    <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 3 }}>
       {messages.map((msg, idx) => {
         const isUser = msg.sender_type === 'user'
         const isOptimistic = msg._optimistic
@@ -63,56 +63,71 @@ export default function ConversationThread({ messages }: Props) {
         return (
           <div key={msg.id}>
             {showDateSep && (
-              <div className="flex justify-center my-5">
-                <span className="text-[10px] font-medium tracking-wide text-[var(--text-tertiary)] bg-[var(--bg-elevated)] border border-[var(--border-primary)] rounded-full px-4 py-1.5">
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '20px 0' }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 500, letterSpacing: 0.3,
+                  color: 'var(--text-tertiary)',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 20, padding: '6px 18px',
+                }}>
                   {formatDateSeparator(msg.sent_at)}
                 </span>
               </div>
             )}
 
             <div style={{ display: 'flex', width: '100%', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '70%', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '65%', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
+
+                {/* Media */}
                 {msg.media_url && (
-                  <div className="mb-1 max-w-[220px]">
+                  <div style={{ marginBottom: 4, maxWidth: 240 }}>
                     {msg.media_type === 'video' ? (
-                      <video src={msg.media_url} controls className="w-full rounded-2xl" />
+                      <video src={msg.media_url} controls style={{ width: '100%', borderRadius: 16 }} />
                     ) : msg.media_type === 'audio' ? (
-                      <audio src={msg.media_url} controls className="w-full h-10" />
+                      <audio src={msg.media_url} controls style={{ width: '100%', height: 40 }} />
                     ) : (
-                      <img src={msg.media_url} alt="" className={`w-full rounded-2xl ${msg.media_type === 'sticker' ? 'max-w-[100px]' : ''}`} />
+                      <img src={msg.media_url} alt="" style={{
+                        width: '100%', borderRadius: 16,
+                        maxWidth: msg.media_type === 'sticker' ? 100 : undefined,
+                      }} />
                     )}
                   </div>
                 )}
 
+                {/* Bubble */}
                 {msg.text && (
-                  <div
-                    className={isOptimistic ? 'opacity-55' : ''}
-                    style={{
-                      padding: '10px 16px',
-                      fontSize: 14,
-                      lineHeight: 1.5,
-                      overflowWrap: 'anywhere',
-                      wordBreak: 'break-word',
-                      ...(isUser
-                        ? {
-                            background: 'var(--color-primary)',
-                            color: '#fff',
-                            borderRadius: '20px 20px 6px 20px',
-                          }
-                        : {
-                            background: 'var(--bg-elevated)',
-                            border: '1px solid var(--border-primary)',
-                            color: 'var(--text-primary)',
-                            borderRadius: '20px 20px 20px 6px',
-                          }),
-                    }}
-                  >
+                  <div style={{
+                    padding: '10px 16px',
+                    fontSize: 14,
+                    lineHeight: 1.55,
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                    opacity: isOptimistic ? 0.55 : 1,
+                    ...(isUser
+                      ? {
+                          background: 'var(--color-primary)',
+                          color: '#fff',
+                          borderRadius: '20px 20px 6px 20px',
+                        }
+                      : {
+                          background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-primary)',
+                          color: 'var(--text-primary)',
+                          borderRadius: '20px 20px 20px 6px',
+                        }),
+                  }}>
                     {msg.text}
                   </div>
                 )}
 
+                {/* Timestamp */}
                 {isLastInGroup && (
-                  <span className={`text-[10px] text-[var(--text-tertiary)] mt-1 px-1.5 ${isOptimistic ? 'italic' : ''}`}>
+                  <span style={{
+                    fontSize: 11, color: 'var(--text-tertiary)',
+                    marginTop: 4, padding: '0 4px',
+                    fontStyle: isOptimistic ? 'italic' : undefined,
+                  }}>
                     {isOptimistic ? 'Envoi...' : formatTime(msg.sent_at)}
                   </span>
                 )}
