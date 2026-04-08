@@ -64,14 +64,18 @@ export async function GET(request: NextRequest) {
     let adAccountId: string | undefined
     try {
       const adAccounts = await getAdAccounts(longToken)
+      console.log('[Meta OAuth] Ad accounts found:', adAccounts.length, JSON.stringify(adAccounts.map(a => ({ id: a.id, name: a.name, status: a.account_status }))))
       if (adAccounts.length > 0) {
         // V1: auto-select first active account, or first overall
         const active = adAccounts.find(a => a.account_status === 1)
         adAccountId = (active ?? adAccounts[0]).id
+        console.log('[Meta OAuth] Selected ad account:', adAccountId)
+      } else {
+        console.warn('[Meta OAuth] No ad accounts returned — ads features will not work')
       }
     } catch (e) {
       // Non-blocking: ads features won't work but leads webhook still will
-      console.warn('Failed to fetch ad accounts (non-blocking):', e)
+      console.error('[Meta OAuth] Failed to fetch ad accounts:', e)
     }
 
     // 6. Encrypt and store credentials
