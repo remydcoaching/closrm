@@ -3,14 +3,22 @@
 import { useState, useEffect, useCallback, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Monitor, Smartphone, Save, Globe, Check } from 'lucide-react'
-import type { FunnelPage } from '@/types'
+import type {
+  FunnelPage,
+  FunnelPresetOverrideJSON,
+  FunnelEffectsConfigJSON,
+} from '@/types'
 import FunnelPageTabs from '@/components/funnels/FunnelPageTabs'
-import FunnelBuilder from '@/components/funnels/FunnelBuilder'
+import FunnelBuilderV2 from '@/components/funnels/v2/FunnelBuilderV2'
 
 interface FunnelData {
   id: string
   name: string
   status: 'draft' | 'published'
+  // T-028a/c — design system fields
+  preset_id: string
+  preset_override: FunnelPresetOverrideJSON | null
+  effects_config: FunnelEffectsConfigJSON
   pages: FunnelPage[]
 }
 
@@ -99,6 +107,33 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
       setSaving(false)
     }
   }, [saving, funnel, funnelName, id, pages])
+
+  /**
+   * T-028b — Callback appelé par le builder v2 quand le coach modifie le design
+   * (preset, override couleurs, effets toggleables). PATCH le funnel en DB
+   * et met à jour le state local pour que le preview se reconfigure.
+   * Fire-and-forget : pas de loading state explicit, l'autosave T-028b Phase 6
+   * gérera ça finement.
+   */
+  const handleFunnelDesignChange = useCallback(
+    (changes: {
+      preset_id?: string
+      preset_override?: FunnelPresetOverrideJSON | null
+      effects_config?: FunnelEffectsConfigJSON
+    }) => {
+      // Update local state immediately for snappy UX
+      setFunnel((prev) => (prev ? { ...prev, ...changes } : prev))
+      // PATCH backend in background
+      fetch(`/api/funnels/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(changes),
+      }).catch(() => {
+        // Best-effort — l'autosave Phase 6 gérera les retries
+      })
+    },
+    [id],
+  )
 
   const handlePublish = useCallback(async () => {
     if (publishing) return
@@ -353,12 +388,15 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         </button>
       </div>
 
-      {/* Builder */}
+      {/* Builder v2 (T-028b) — l'ancien `<FunnelBuilder>` reste sur disque
+          jusqu'à la Phase 8 de T-028b où on le supprimera proprement. */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        <FunnelBuilder
+        <FunnelBuilderV2
+          funnel={funnel}
           pages={pages}
           activePageId={activePageId}
           onPagesChange={setPages}
+          onFunnelDesignChange={handleFunnelDesignChange}
           mode={mode}
         />
       </div>

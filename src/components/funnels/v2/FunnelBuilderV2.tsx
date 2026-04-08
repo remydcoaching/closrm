@@ -1,0 +1,413 @@
+'use client'
+
+/**
+ * T-028b — Nouveau builder Funnels v2.
+ *
+ * Remplace l'ancien `src/components/funnels/FunnelBuilder.tsx` (legacy buggé,
+ * sera supprimé en Phase 8 de T-028b une fois cette nouvelle version validée).
+ *
+ * Architecture 3 colonnes :
+ * - Sidebar gauche (280px) : Direction artistique (preset + effets) + Sections (drag&drop)
+ * - Preview centrale (flex) : `<FunnelPagePreview funnel={...} />` avec design system live
+ * - Inspector droit (320px, optionnel) : éditeur de bloc sélectionné
+ *
+ * Phases d'implémentation (cf. fiche T-028b) :
+ * - Phase 1 (cette version) : layout vide avec placeholders
+ * - Phase 2 : panneau Direction artistique (presets + 4 pickers + toggle 🔗 + 10 effects)
+ * - Phase 3 : liste de sections drag&drop + bouton ajouter
+ * - Phase 4 : preview live + toggle device
+ * - Phase 5 : inspector latéral (réutilise FunnelBlockConfig existant)
+ * - Phase 6 : undo/redo + autosave
+ * - Phase 7 : polish
+ * - Phase 8 : suppression du legacy
+ *
+ * Le composant prend les mêmes props que le legacy + 2 nouveaux :
+ * - `funnel` : la donnée funnel complète (avec preset_id, preset_override, effects_config)
+ * - `onFunnelDesignChange` : callback quand le coach change preset/override/effects
+ *
+ * Le parent (`page.tsx`) reste responsable du chargement du funnel et des appels
+ * API de sauvegarde — ce builder n'orchestre que l'UI d'édition.
+ */
+
+import { useState } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
+import type {
+  Funnel,
+  FunnelBlock,
+  FunnelBlockType,
+  FunnelBlockConfig,
+  FunnelPage,
+  FunnelPresetOverrideJSON,
+  FunnelEffectsConfigJSON,
+} from '@/types'
+import FunnelPagePreview from '../FunnelPagePreview'
+import FunnelBlockConfigPanel from '../FunnelBlockConfig'
+
+interface Props {
+  /** Funnel parent (avec design system v2). */
+  funnel: Pick<Funnel, 'id' | 'preset_id' | 'preset_override' | 'effects_config'>
+  /** Pages du funnel. */
+  pages: FunnelPage[]
+  /** ID de la page actuellement éditée. */
+  activePageId: string
+  /** Callback de mise à jour des pages (blocs). Appelé par drag&drop, ajout, suppression, édition. */
+  onPagesChange: (pages: FunnelPage[]) => void
+  /**
+   * Callback de mise à jour du design du funnel (preset, override, effects).
+   * Le parent doit persister ça via PUT /api/funnels/[id].
+   */
+  onFunnelDesignChange: (changes: {
+    preset_id?: string
+    preset_override?: FunnelPresetOverrideJSON | null
+    effects_config?: FunnelEffectsConfigJSON
+  }) => void
+  /** Mode d'affichage du preview. */
+  mode: 'desktop' | 'mobile'
+}
+
+/**
+ * Configuration par défaut d'un nouveau bloc selon son type.
+ * (Reprise telle quelle du legacy `FunnelBuilder.tsx` — sera mutualisée plus tard.)
+ */
+function getDefaultConfig(type: FunnelBlockType): FunnelBlockConfig {
+  switch (type) {
+    case 'hero':
+      return {
+        title: 'Titre principal',
+        subtitle: '',
+        ctaText: '',
+        ctaUrl: '',
+        backgroundImage: null,
+        alignment: 'center' as const,
+      }
+    case 'video':
+      return { url: '', autoplay: false, controls: true, aspectRatio: '16:9' as const }
+    case 'testimonials':
+      return {
+        items: [
+          { name: 'Nom', role: 'Role', content: 'Témoignage...', avatarUrl: null, rating: 5 },
+        ],
+        layout: 'grid' as const,
+        columns: 3 as const,
+      }
+    case 'form':
+      return {
+        title: 'Formulaire',
+        subtitle: '',
+        fields: [
+          { key: 'email', label: 'Email', type: 'email' as const, placeholder: 'votre@email.com', required: true },
+        ],
+        submitText: 'Envoyer',
+        redirectUrl: null,
+        successMessage: 'Merci !',
+      }
+    case 'booking':
+      return { calendarId: null, title: 'Réservez votre créneau', subtitle: '' }
+    case 'pricing':
+      return {
+        title: 'Offre',
+        price: '97',
+        currency: 'EUR',
+        period: '/mois',
+        features: ['Feature 1'],
+        ctaText: 'Souscrire',
+        ctaUrl: '#',
+        highlighted: false,
+      }
+    case 'faq':
+      return {
+        title: 'Questions fréquentes',
+        items: [{ question: 'Question ?', answer: 'Réponse.' }],
+      }
+    case 'countdown':
+      return {
+        targetDate: new Date(Date.now() + 7 * 86400000).toISOString(),
+        title: 'Offre limitée',
+        expiredMessage: 'Offre expirée',
+        style: 'simple' as const,
+      }
+    case 'cta':
+      return {
+        text: 'Cliquez ici',
+        url: '#',
+        style: 'primary' as const,
+        size: 'lg' as const,
+        alignment: 'center' as const,
+      }
+    case 'text':
+      return { content: 'Votre texte ici...', alignment: 'center' as const }
+    case 'image':
+      return { src: '', alt: '', width: null, alignment: 'center' as const, linkUrl: null }
+    case 'spacer':
+      return { height: 48 }
+  }
+}
+
+export default function FunnelBuilderV2({
+  funnel,
+  pages,
+  activePageId,
+  onPagesChange,
+  onFunnelDesignChange,
+  mode,
+}: Props) {
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
+
+  const activePage = pages.find((p) => p.id === activePageId)
+  const blocks = activePage?.blocks ?? []
+  const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null
+
+  // ─── Helpers de mutation ──────────────────────────────────────────────────
+
+  function updateActivePageBlocks(updater: (currentBlocks: FunnelBlock[]) => FunnelBlock[]) {
+    const currentPage = pages.find((p) => p.id === activePageId)
+    if (!currentPage) return
+    const newBlocks = updater(currentPage.blocks ?? [])
+    onPagesChange(
+      pages.map((p) => (p.id === activePageId ? { ...p, blocks: newBlocks } : p))
+    )
+  }
+
+  function handleAddBlock(type: FunnelBlockType) {
+    const newBlock: FunnelBlock = {
+      id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type,
+      config: getDefaultConfig(type),
+    }
+    updateActivePageBlocks((current) => [...current, newBlock])
+    setSelectedBlockId(newBlock.id)
+  }
+
+  function handleDeleteBlock(blockId: string) {
+    updateActivePageBlocks((current) => current.filter((b) => b.id !== blockId))
+    if (selectedBlockId === blockId) setSelectedBlockId(null)
+  }
+
+  function handleBlockChange(updatedBlock: FunnelBlock) {
+    updateActivePageBlocks((current) =>
+      current.map((b) => (b.id === updatedBlock.id ? updatedBlock : b))
+    )
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = blocks.findIndex((b) => b.id === active.id)
+    const newIndex = blocks.findIndex((b) => b.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    updateActivePageBlocks(() => arrayMove(blocks, oldIndex, newIndex))
+  }
+
+  // ─── Rendu ───────────────────────────────────────────────────────────────
+
+  return (
+    <div style={containerStyle}>
+      {/* ─── COLONNE GAUCHE : SIDEBAR ────────────────────────────────────── */}
+      <aside style={sidebarStyle}>
+        <SidebarPlaceholder
+          title="Direction artistique"
+          phase="Phase 2"
+          description="Preset + 4 color pickers + toggle 🔗 lier les fonds + 10 toggles d'effets"
+        />
+        <SidebarPlaceholder
+          title="Sections"
+          phase="Phase 3"
+          description="Liste drag&drop + bouton ajouter — Booking/Form en mode 'À venir'"
+          extra={
+            <button
+              type="button"
+              onClick={() => handleAddBlock('hero')}
+              style={tempButtonStyle}
+            >
+              Ajouter Hero (test temporaire Phase 1)
+            </button>
+          }
+        />
+      </aside>
+
+      {/* ─── COLONNE CENTRALE : PREVIEW ──────────────────────────────────── */}
+      <main style={previewStyle}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <FunnelPagePreview
+            blocks={blocks}
+            selectedBlockId={selectedBlockId}
+            onSelectBlock={setSelectedBlockId}
+            onDeleteBlock={handleDeleteBlock}
+            mode={mode}
+            funnel={funnel}
+          />
+        </DndContext>
+      </main>
+
+      {/* ─── COLONNE DROITE : INSPECTOR ──────────────────────────────────── */}
+      {selectedBlock ? (
+        <aside style={inspectorStyle}>
+          <FunnelBlockConfigPanel block={selectedBlock} onChange={handleBlockChange} />
+        </aside>
+      ) : (
+        <aside style={inspectorStyle}>
+          <SidebarPlaceholder
+            title="Inspector"
+            phase="Phase 5"
+            description="Sélectionne un bloc dans le preview pour éditer son contenu (réutilise les éditeurs existants)."
+          />
+        </aside>
+      )}
+
+      {/* Marker temporaire phase pour debug */}
+      <div style={phaseMarkerStyle}>
+        T-028b · Phase 1 — layout vide ·{' '}
+        <code>onFunnelDesignChange</code> câblé mais non-utilisé tant que Phase 2 pas faite
+        {/* On référence les props pour éviter les warnings TS6133 unused */}
+        <span style={{ display: 'none' }}>
+          {funnel.id} {typeof onFunnelDesignChange}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Sous-composant placeholder pour les zones non encore implémentées ─── */
+
+function SidebarPlaceholder({
+  title,
+  phase,
+  description,
+  extra,
+}: {
+  title: string
+  phase: string
+  description: string
+  extra?: React.ReactNode
+}) {
+  return (
+    <div style={placeholderStyle}>
+      <div style={placeholderHeaderStyle}>
+        <span style={placeholderTitleStyle}>{title}</span>
+        <span style={placeholderPhaseStyle}>{phase}</span>
+      </div>
+      <p style={placeholderDescStyle}>{description}</p>
+      {extra}
+    </div>
+  )
+}
+
+/* ─── Styles ──────────────────────────────────────────────────────────── */
+
+const containerStyle: React.CSSProperties = {
+  display: 'flex',
+  height: '100%',
+  overflow: 'hidden',
+  position: 'relative',
+}
+
+const sidebarStyle: React.CSSProperties = {
+  width: 280,
+  flexShrink: 0,
+  borderRight: '1px solid var(--border-primary, #262626)',
+  background: 'var(--bg-secondary, #141414)',
+  overflowY: 'auto',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  padding: 12,
+}
+
+const previewStyle: React.CSSProperties = {
+  flex: 1,
+  overflow: 'auto',
+  minWidth: 0,
+}
+
+const inspectorStyle: React.CSSProperties = {
+  width: 320,
+  flexShrink: 0,
+  borderLeft: '1px solid var(--border-primary, #262626)',
+  background: 'var(--bg-secondary, #141414)',
+  overflowY: 'auto',
+  padding: 16,
+}
+
+const placeholderStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.02)',
+  border: '1px dashed rgba(255,255,255,0.08)',
+  borderRadius: 10,
+  padding: 14,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+}
+
+const placeholderHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+}
+
+const placeholderTitleStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: 'var(--text-primary, #fff)',
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+}
+
+const placeholderPhaseStyle: React.CSSProperties = {
+  fontSize: 9,
+  fontWeight: 700,
+  color: '#22d3ee',
+  background: 'rgba(34, 211, 238, 0.1)',
+  padding: '2px 8px',
+  borderRadius: 50,
+  letterSpacing: 0.5,
+}
+
+const placeholderDescStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: 'var(--text-secondary, #888)',
+  margin: 0,
+  lineHeight: 1.5,
+}
+
+const tempButtonStyle: React.CSSProperties = {
+  marginTop: 8,
+  padding: '6px 12px',
+  fontSize: 11,
+  fontWeight: 600,
+  background: 'rgba(34, 211, 238, 0.1)',
+  color: '#22d3ee',
+  border: '1px solid rgba(34, 211, 238, 0.3)',
+  borderRadius: 6,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+}
+
+const phaseMarkerStyle: React.CSSProperties = {
+  position: 'fixed',
+  bottom: 12,
+  right: 12,
+  padding: '6px 12px',
+  fontSize: 10,
+  color: 'rgba(255,255,255,0.5)',
+  background: 'rgba(0,0,0,0.7)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 6,
+  fontFamily: 'monospace',
+  pointerEvents: 'none',
+  zIndex: 1000,
+}
