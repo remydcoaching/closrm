@@ -27,7 +27,7 @@ const weekAvailabilitySchema = z.object({
 
 const calendarReminderSchema = z.object({
   id: z.string().uuid(),
-  delay_value: z.number().int().min(1).max(365),
+  delay_value: z.number().int().min(0).max(365),
   delay_unit: z.enum(['hours', 'days']),
   at_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().default(null),
   channel: z.enum(['email', 'whatsapp', 'instagram_dm']),

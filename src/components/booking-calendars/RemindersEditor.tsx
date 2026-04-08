@@ -22,6 +22,7 @@ const DEFAULT_MESSAGES: Record<ReminderChannel, string> = {
 }
 
 const QUICK_PRESETS = [
+  { label: 'Confirmation', delay_value: 0, delay_unit: 'hours' as const, isConfirmation: true },
   { label: 'H-2', delay_value: 2, delay_unit: 'hours' as const },
   { label: 'H-24', delay_value: 24, delay_unit: 'hours' as const },
   { label: 'J-1 à 9h', delay_value: 1, delay_unit: 'days' as const, at_time: '09:00' },
@@ -29,7 +30,14 @@ const QUICK_PRESETS = [
   { label: 'J-7 à 9h', delay_value: 7, delay_unit: 'days' as const, at_time: '09:00' },
 ]
 
+const CONFIRMATION_MESSAGES: Record<ReminderChannel, string> = {
+  email: 'Bonjour {{prenom}}, votre rendez-vous {{nom_calendrier}} est confirmé pour le {{date_rdv}} à {{heure_rdv}}. À bientôt !',
+  whatsapp: 'Bonjour {{prenom}}, votre RDV du {{date_rdv}} à {{heure_rdv}} est confirmé. À bientôt !',
+  instagram_dm: 'Hey {{prenom}} ! Ton RDV du {{date_rdv}} à {{heure_rdv}} est confirmé 🙌',
+}
+
 function formatDelay(r: CalendarReminder): string {
+  if (r.delay_value === 0) return 'Confirmation'
   if (r.delay_unit === 'hours') return `H-${r.delay_value}`
   if (r.at_time) return `J-${r.delay_value} à ${r.at_time}`
   return `J-${r.delay_value}`
@@ -40,13 +48,15 @@ export default function RemindersEditor({ reminders, onChange }: RemindersEditor
   const [showPresets, setShowPresets] = useState(false)
 
   function addFromPreset(preset: typeof QUICK_PRESETS[0], channel: ReminderChannel = 'whatsapp') {
+    const isConfirmation = 'isConfirmation' in preset && preset.isConfirmation
+    const messages = isConfirmation ? CONFIRMATION_MESSAGES : DEFAULT_MESSAGES
     const newReminder: CalendarReminder = {
       id: crypto.randomUUID(),
       delay_value: preset.delay_value,
       delay_unit: preset.delay_unit,
-      at_time: preset.at_time ?? null,
+      at_time: ('at_time' in preset ? preset.at_time : null) ?? null,
       channel,
-      message: DEFAULT_MESSAGES[channel],
+      message: messages[channel],
     }
     onChange([...reminders, newReminder])
     setShowPresets(false)
@@ -90,6 +100,46 @@ export default function RemindersEditor({ reminders, onChange }: RemindersEditor
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>
           Aucun rappel configuré. Ajoutez-en pour notifier vos prospects avant leurs rendez-vous.
         </p>
+      )}
+
+      {/* Bulk channel selector */}
+      {reminders.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Tous en :</span>
+          {CHANNELS.map(c => {
+            const CIcon = c.icon
+            const allMatch = reminders.every(r => r.channel === c.value)
+            return (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => {
+                  onChange(reminders.map(r => {
+                    const isDefault = Object.values(DEFAULT_MESSAGES).includes(r.message) || Object.values(CONFIRMATION_MESSAGES).includes(r.message)
+                    const messages = r.delay_value === 0 ? CONFIRMATION_MESSAGES : DEFAULT_MESSAGES
+                    return {
+                      ...r,
+                      channel: c.value,
+                      ...(isDefault ? { message: messages[c.value] } : {}),
+                    }
+                  }))
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  padding: '3px 10px', borderRadius: 6,
+                  border: `1px solid ${allMatch ? c.color : 'var(--border-primary)'}`,
+                  background: allMatch ? c.color + '14' : 'transparent',
+                  color: allMatch ? c.color : 'var(--text-muted)',
+                  cursor: 'pointer', fontSize: 11, fontWeight: 500,
+                  transition: 'all 0.15s',
+                }}
+              >
+                <CIcon size={11} />
+                {c.label}
+              </button>
+            )
+          })}
+        </div>
       )}
 
       {/* Reminder list — compact rows */}
