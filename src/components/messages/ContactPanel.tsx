@@ -68,10 +68,12 @@ export default function ContactPanel({ conversation }: Props) {
       fetch(`/api/leads/${leadId}`).then(r => r.ok ? r.json() : null),
       fetch(`/api/calls?lead_id=${leadId}&outcome=pending&limit=1`).then(r => r.ok ? r.json() : null),
     ])
-      .then(([leadData, callsData]) => {
-        setLead(leadData ?? null)
+      .then(([leadRes, callsData]) => {
+        const leadData = leadRes?.data ?? leadRes ?? null
+        setLead(leadData)
         setNotes(leadData?.notes ?? '')
-        const calls: Call[] = Array.isArray(callsData) ? callsData : (callsData?.calls ?? [])
+        const callsArr = callsData?.data ?? (Array.isArray(callsData) ? callsData : [])
+        const calls: Call[] = callsArr
         setNextCall(calls.length > 0 ? calls[0] : null)
       })
       .finally(() => setLoadingLead(false))

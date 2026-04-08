@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, ExternalLink, MessageCircle } from 'lucide-react'
-import { IgConversation, IgMessage } from '@/types'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import type { IgConversation, IgMessage } from '@/types'
 import Link from 'next/link'
+import ConversationThread from '@/components/messages/ConversationThread'
+import MessageInput from '@/components/messages/MessageInput'
 
 interface LeadMessagesTabProps {
   leadId: string
@@ -14,13 +14,24 @@ interface LeadMessagesTabProps {
 
 export default function LeadMessagesTab({ leadId, instagramHandle }: LeadMessagesTabProps) {
   const [conversation, setConversation] = useState<IgConversation | null>(null)
-  const [messages, setMessages] = useState<IgMessage[]>([])
+  const [messages, setMessages] = useState<(IgMessage & { _optimistic?: boolean })[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  async function fetchMessages(convId: string, silent = false) {
+    const url = silent
+      ? `/api/instagram/messages?conversation_id=${convId}&refresh=true`
+      : `/api/instagram/messages?conversation_id=${convId}`
+    const res = await fetch(url)
+    if (res.ok) {
+      const json = await res.json()
+      setMessages(json.data ?? [])
+    }
+  }
 
   useEffect(() => {
-    async function fetchConversation() {
+    async function init() {
       setLoading(true)
       setError('')
       try {
@@ -37,13 +48,7 @@ export default function LeadMessagesTab({ leadId, instagramHandle }: LeadMessage
         }
         const conv = convs[0]
         setConversation(conv)
-
-        // Fetch messages for this conversation
-        const msgRes = await fetch(`/api/instagram/messages?conversation_id=${conv.id}`)
-        if (msgRes.ok) {
-          const msgJson = await msgRes.json()
-          setMessages(msgJson.data ?? [])
-        }
+        await fetchMessages(conv.id)
       } catch {
         setError('Erreur lors du chargement.')
       } finally {
@@ -51,18 +56,87 @@ export default function LeadMessagesTab({ leadId, instagramHandle }: LeadMessage
       }
     }
 
-    fetchConversation()
+    init()
   }, [leadId])
 
+  // Polling every 5s for new messages
   useEffect(() => {
-    // Scroll to bottom when messages load
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    if (!conversation) return
+    pollingRef.current = setInterval(() => {
+      fetchMessages(conversation.id, true)
+    }, 5000)
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+    }
+  }, [conversation?.id])
+
+  async function handleSend(text: string) {
+    if (!conversation) return
+    const optimisticId = `optimistic-${Date.now()}`
+    const optimisticMsg: IgMessage & { _optimistic: boolean } = {
+      id: optimisticId,
+      workspace_id: '',
+      conversation_id: conversation.id,
+      ig_message_id: null,
+      sender_type: 'user',
+      text,
+      media_url: null,
+      media_type: null,
+      sent_at: new Date().toISOString(),
+      is_read: false,
+      _optimistic: true,
+    }
+    setMessages(prev => [...prev, optimisticMsg])
+    try {
+      await fetch('/api/instagram/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversation.id, text }),
+      })
+      await fetchMessages(conversation.id, true)
+    } catch {
+      setMessages(prev => prev.filter(m => m.id !== optimisticId))
+    }
+  }
+
+  async function handleSendImage(file: File) {
+    if (!conversation) return
+    const optimisticId = `optimistic-img-${Date.now()}`
+    const previewUrl = URL.createObjectURL(file)
+    const optimisticMsg: IgMessage & { _optimistic: boolean } = {
+      id: optimisticId,
+      workspace_id: '',
+      conversation_id: conversation.id,
+      ig_message_id: null,
+      sender_type: 'user',
+      text: '',
+      media_url: previewUrl,
+      media_type: 'image',
+      sent_at: new Date().toISOString(),
+      is_read: false,
+      _optimistic: true,
+    }
+    setMessages(prev => [...prev, optimisticMsg])
+    try {
+      const formData = new FormData()
+      formData.append('conversation_id', conversation.id)
+      formData.append('image', file)
+      await fetch('/api/instagram/messages/send-image', {
+        method: 'POST',
+        body: formData,
+      })
+      await fetchMessages(conversation.id, true)
+    } catch {
+      setMessages(prev => prev.filter(m => m.id !== optimisticId))
+    } finally {
+      URL.revokeObjectURL(previewUrl)
+    }
+  }
 
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-        <Loader2 size={20} color="#555" style={{ animation: 'spin 1s linear infinite' }} />
+        <Loader2 size={20} color="var(--text-tertiary)" style={{ animation: 'spin 1s linear infinite' }} />
       </div>
     )
   }
@@ -70,7 +144,7 @@ export default function LeadMessagesTab({ leadId, instagramHandle }: LeadMessage
   if (error) {
     return (
       <div style={{ padding: 20, textAlign: 'center' }}>
-        <p style={{ fontSize: 13, color: '#ef4444' }}>{error}</p>
+        <p style={{ fontSize: 13, color: 'var(--color-primary)' }}>{error}</p>
       </div>
     )
   }
@@ -81,12 +155,12 @@ export default function LeadMessagesTab({ leadId, instagramHandle }: LeadMessage
         padding: '40px 20px', textAlign: 'center',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
       }}>
-        <MessageCircle size={32} color="var(--text-muted)" />
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+        <MessageCircle size={32} color="var(--text-tertiary)" />
+        <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
           Aucune conversation Instagram liee
         </p>
         {instagramHandle && (
-          <p style={{ fontSize: 12, color: 'var(--text-label)' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             Le pseudo @{instagramHandle} n&apos;a pas encore de conversation associee.
           </p>
         )}
@@ -98,6 +172,7 @@ export default function LeadMessagesTab({ leadId, instagramHandle }: LeadMessage
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
       <div style={{
+        flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '12px 16px', borderBottom: '1px solid var(--border-primary)',
       }}>
@@ -123,7 +198,7 @@ export default function LeadMessagesTab({ leadId, instagramHandle }: LeadMessage
               @{conversation.participant_username ?? 'inconnu'}
             </p>
             {conversation.participant_name && (
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>
                 {conversation.participant_name}
               </p>
             )}
@@ -131,63 +206,20 @@ export default function LeadMessagesTab({ leadId, instagramHandle }: LeadMessage
         </div>
         <Link href="/messages" style={{
           display: 'flex', alignItems: 'center', gap: 5, fontSize: 12,
-          color: 'var(--text-muted)', textDecoration: 'none',
+          color: 'var(--text-tertiary)', textDecoration: 'none',
         }}>
           Ouvrir dans Messages <ExternalLink size={12} />
         </Link>
       </div>
 
-      {/* Messages */}
-      <div style={{
-        flex: 1, overflowY: 'auto', padding: 16,
-        display: 'flex', flexDirection: 'column', gap: 8,
-        maxHeight: 400,
-      }}>
-        {messages.length === 0 ? (
-          <p style={{ fontSize: 12, color: 'var(--text-label)', textAlign: 'center', padding: '20px 0' }}>
-            Aucun message dans cette conversation.
-          </p>
-        ) : (
-          messages.map(msg => {
-            const isCoach = msg.sender_type === 'user'
-            return (
-              <div key={msg.id} style={{
-                display: 'flex', flexDirection: 'column',
-                alignItems: isCoach ? 'flex-end' : 'flex-start',
-                maxWidth: '75%',
-                alignSelf: isCoach ? 'flex-end' : 'flex-start',
-              }}>
-                <div style={{
-                  padding: '8px 12px', borderRadius: 12,
-                  background: isCoach ? '#E53E3E' : 'var(--bg-elevated)',
-                  border: isCoach ? 'none' : '1px solid var(--border-primary)',
-                  color: isCoach ? '#fff' : 'var(--text-primary)',
-                  fontSize: 13, lineHeight: 1.5,
-                }}>
-                  {msg.text}
-                  {msg.media_url && (
-                    <div style={{ marginTop: 6 }}>
-                      {msg.media_type === 'image' ? (
-                        <img src={msg.media_url} alt="" style={{ maxWidth: 200, borderRadius: 8 }} />
-                      ) : msg.media_type === 'video' ? (
-                        <video src={msg.media_url} controls style={{ maxWidth: 200, borderRadius: 8 }} />
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-                <p style={{
-                  fontSize: 10, color: 'var(--text-label)', marginTop: 3,
-                  paddingLeft: isCoach ? 0 : 4,
-                  paddingRight: isCoach ? 4 : 0,
-                }}>
-                  {format(new Date(msg.sent_at), "d MMM yyyy 'a' HH'h'mm", { locale: fr })}
-                </p>
-              </div>
-            )
-          })
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+      {/* Thread */}
+      <ConversationThread messages={messages} />
+
+      {/* Input */}
+      <MessageInput
+        onSend={handleSend}
+        onSendImage={handleSendImage}
+      />
     </div>
   )
 }
