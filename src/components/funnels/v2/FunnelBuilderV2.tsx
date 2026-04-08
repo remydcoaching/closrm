@@ -51,6 +51,7 @@ import type {
 import FunnelPagePreview from '../FunnelPagePreview'
 import FunnelBlockConfigPanel from '../FunnelBlockConfig'
 import DirectionArtistiquePanel from './sidebar/DirectionArtistiquePanel'
+import SectionsListPanel from './sidebar/SectionsListPanel'
 
 interface Props {
   /** Funnel parent (avec design system v2). */
@@ -230,20 +231,13 @@ export default function FunnelBuilderV2({
         {/* Séparateur visuel */}
         <div style={sidebarSeparatorStyle} />
 
-        {/* Phase 3 — Sections list (placeholder en attendant) */}
-        <SidebarPlaceholder
-          title="Sections"
-          phase="Phase 3"
-          description="Liste drag&drop + bouton ajouter — Booking/Form en mode 'À venir'"
-          extra={
-            <button
-              type="button"
-              onClick={() => handleAddBlock('hero')}
-              style={tempButtonStyle}
-            >
-              Ajouter Hero (test temporaire)
-            </button>
-          }
+        {/* Phase 3 — Liste des sections drag&drop + bouton ajouter */}
+        <SectionsListPanel
+          blocks={blocks}
+          selectedBlockId={selectedBlockId}
+          onSelectBlock={setSelectedBlockId}
+          onAddBlock={handleAddBlock}
+          onDeleteBlock={handleDeleteBlock}
         />
       </aside>
 
@@ -262,47 +256,23 @@ export default function FunnelBuilderV2({
       </main>
 
       {/* ─── COLONNE DROITE : INSPECTOR ──────────────────────────────────── */}
-      {selectedBlock ? (
-        <aside style={inspectorStyle}>
+      <aside style={inspectorStyle}>
+        {selectedBlock ? (
           <FunnelBlockConfigPanel block={selectedBlock} onChange={handleBlockChange} />
-        </aside>
-      ) : (
-        <aside style={inspectorStyle}>
-          <SidebarPlaceholder
-            title="Inspector"
-            phase="Phase 5"
-            description="Sélectionne un bloc dans le preview pour éditer son contenu (réutilise les éditeurs existants)."
-          />
-        </aside>
-      )}
+        ) : (
+          <div style={inspectorEmptyStyle}>
+            <span style={{ fontSize: 24, marginBottom: 8 }}>🎛️</span>
+            <span style={inspectorEmptyTitleStyle}>Inspector</span>
+            <span style={inspectorEmptyDescStyle}>
+              Sélectionne une section dans la liste de gauche ou clique sur un bloc dans
+              le preview pour éditer son contenu.
+            </span>
+          </div>
+        )}
+      </aside>
 
       {/* Marker temporaire phase pour debug */}
-      <div style={phaseMarkerStyle}>T-028b · Phase 2 — Direction artistique active</div>
-    </div>
-  )
-}
-
-/* ─── Sous-composant placeholder pour les zones non encore implémentées ─── */
-
-function SidebarPlaceholder({
-  title,
-  phase,
-  description,
-  extra,
-}: {
-  title: string
-  phase: string
-  description: string
-  extra?: React.ReactNode
-}) {
-  return (
-    <div style={placeholderStyle}>
-      <div style={placeholderHeaderStyle}>
-        <span style={placeholderTitleStyle}>{title}</span>
-        <span style={placeholderPhaseStyle}>{phase}</span>
-      </div>
-      <p style={placeholderDescStyle}>{description}</p>
-      {extra}
+      <div style={phaseMarkerStyle}>T-028b · Phase 3 — Sections list active</div>
     </div>
   )
 }
@@ -349,59 +319,31 @@ const inspectorStyle: React.CSSProperties = {
   padding: 16,
 }
 
-const placeholderStyle: React.CSSProperties = {
+const inspectorEmptyStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  textAlign: 'center',
+  padding: '32px 16px',
   background: 'rgba(255,255,255,0.02)',
   border: '1px dashed rgba(255,255,255,0.08)',
   borderRadius: 10,
-  padding: 14,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
+  gap: 6,
 }
 
-const placeholderHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 8,
-}
-
-const placeholderTitleStyle: React.CSSProperties = {
-  fontSize: 11,
+const inspectorEmptyTitleStyle: React.CSSProperties = {
+  fontSize: 13,
   fontWeight: 700,
   color: 'var(--text-primary, #fff)',
   textTransform: 'uppercase',
   letterSpacing: 0.5,
 }
 
-const placeholderPhaseStyle: React.CSSProperties = {
-  fontSize: 9,
-  fontWeight: 700,
-  color: '#22d3ee',
-  background: 'rgba(34, 211, 238, 0.1)',
-  padding: '2px 8px',
-  borderRadius: 50,
-  letterSpacing: 0.5,
-}
-
-const placeholderDescStyle: React.CSSProperties = {
+const inspectorEmptyDescStyle: React.CSSProperties = {
   fontSize: 11,
   color: 'var(--text-secondary, #888)',
-  margin: 0,
   lineHeight: 1.5,
-}
-
-const tempButtonStyle: React.CSSProperties = {
-  marginTop: 8,
-  padding: '6px 12px',
-  fontSize: 11,
-  fontWeight: 600,
-  background: 'rgba(34, 211, 238, 0.1)',
-  color: '#22d3ee',
-  border: '1px solid rgba(34, 211, 238, 0.3)',
-  borderRadius: 6,
-  cursor: 'pointer',
-  fontFamily: 'inherit',
+  maxWidth: 240,
 }
 
 const phaseMarkerStyle: React.CSSProperties = {
