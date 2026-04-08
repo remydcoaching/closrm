@@ -88,7 +88,7 @@ export default function ConversationThread({ messages }: Props) {
   )
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 flex flex-col gap-1">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5 flex flex-col gap-2.5">
       {messages.map((msg, idx) => {
         const isUser = msg.sender_type === 'user'
         const isOptimistic = msg._optimistic
@@ -98,8 +98,8 @@ export default function ConversationThread({ messages }: Props) {
         return (
           <div key={msg.id}>
             {showDateSeparator && (
-              <div className="flex items-center justify-center my-3">
-                <div className="px-3 py-1 rounded-full bg-[#151515] border border-[#1f1f1f] text-[10px] text-[#555] font-medium">
+              <div className="flex items-center justify-center my-4">
+                <div className="px-4 py-1.5 rounded-full bg-[#141414] border border-[#1e1e1e] text-[10px] text-[#666] font-medium tracking-wide">
                   {formatDateSeparator(msg.sent_at)}
                 </div>
               </div>
@@ -108,10 +108,10 @@ export default function ConversationThread({ messages }: Props) {
               {renderMedia(msg)}
               {msg.text && (
                 <div
-                  className={`px-3.5 py-2.5 max-w-[70%] text-[13px] leading-[1.45] break-words
+                  className={`px-4 py-2.5 max-w-[65%] text-[13.5px] leading-[1.5] break-words
                     ${isUser
-                      ? 'bg-gradient-to-br from-[#E53E3E] to-[#C53030] text-white rounded-[18px_18px_6px_18px]'
-                      : 'bg-[#151515] border border-[#1f1f1f] text-[#ddd] rounded-[18px_18px_18px_6px]'
+                      ? 'bg-gradient-to-br from-[#E53E3E] to-[#C53030] text-white rounded-[20px_20px_6px_20px] shadow-[0_2px_8px_rgba(229,62,62,0.2)]'
+                      : 'bg-[#161616] border border-[#1e1e1e] text-[#e0e0e0] rounded-[20px_20px_20px_6px]'
                     }
                     ${isOptimistic ? 'opacity-60' : ''}
                   `}
@@ -120,7 +120,7 @@ export default function ConversationThread({ messages }: Props) {
                   {msg.text}
                 </div>
               )}
-              <div className={`text-[9px] text-[#444] mt-[3px] px-[6px] flex items-center gap-1 ${isOptimistic ? 'italic' : ''}`}>
+              <div className={`text-[10px] text-[#4a4a4a] mt-1 px-1.5 flex items-center gap-1 ${isOptimistic ? 'italic' : ''}`}>
                 {isOptimistic ? 'Envoi...' : formatTimestamp(msg.sent_at)}
               </div>
             </div>
