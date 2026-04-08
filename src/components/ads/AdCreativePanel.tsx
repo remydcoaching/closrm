@@ -191,7 +191,7 @@ export default function AdCreativePanel({ adId, adName, adKpis, onClose }: Props
               Chargement...
             </div>
           ) : videoUrl ? (
-            <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #262626', background: '#000' }}>
+            <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #262626' }}>
               <video
                 src={videoUrl}
                 controls
@@ -199,9 +199,9 @@ export default function AdCreativePanel({ adId, adName, adKpis, onClose }: Props
                 poster={imageUrl || undefined}
                 style={{
                   width: '100%',
-                  maxHeight: 500,
                   display: 'block',
-                  objectFit: 'contain',
+                  borderRadius: 12,
+                  objectFit: 'cover',
                 }}
               />
             </div>
@@ -214,7 +214,8 @@ export default function AdCreativePanel({ adId, adName, adKpis, onClose }: Props
                 style={{
                   width: '100%',
                   display: 'block',
-                  objectFit: 'contain',
+                  borderRadius: 12,
+                  objectFit: 'cover',
                 }}
               />
             </div>
