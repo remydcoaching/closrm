@@ -234,6 +234,12 @@ export default function FunnelBuilderV2({
 
   return (
     <div style={containerStyle}>
+      {/* T-028b Phase 7 — keyframes globaux utilisés par les indicateurs */}
+      <style>{`
+        @keyframes fnl-builder-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
+        @keyframes fnl-builder-fade-in { from { opacity: 0 } to { opacity: 1 } }
+      `}</style>
+
       {/* ─── COLONNE GAUCHE : SIDEBAR ────────────────────────────────────── */}
       <aside style={sidebarStyle}>
         {/* Phase 2 — Panneau Direction artistique (preset + couleurs + effets) */}
@@ -304,8 +310,6 @@ export default function FunnelBuilderV2({
         )}
       </aside>
 
-      {/* Marker temporaire phase pour debug */}
-      <div style={phaseMarkerStyle}>T-028b · Phase 5 — Inspector polished</div>
     </div>
   )
 }
@@ -413,17 +417,3 @@ const inspectorEmptyDescStyle: React.CSSProperties = {
   maxWidth: 240,
 }
 
-const phaseMarkerStyle: React.CSSProperties = {
-  position: 'fixed',
-  bottom: 12,
-  right: 12,
-  padding: '6px 12px',
-  fontSize: 10,
-  color: 'rgba(255,255,255,0.5)',
-  background: 'rgba(0,0,0,0.7)',
-  border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: 6,
-  fontFamily: 'monospace',
-  pointerEvents: 'none',
-  zIndex: 1000,
-}

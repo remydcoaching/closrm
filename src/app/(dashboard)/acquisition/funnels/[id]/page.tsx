@@ -411,7 +411,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             <>
               <span style={{
                 width: 6, height: 6, borderRadius: '50%',
-                background: '#3B82F6', animation: 'pulse 1s ease-in-out infinite',
+                background: '#3B82F6', animation: 'fnl-builder-pulse 1s ease-in-out infinite',
               }} />
               <span>Sauvegarde...</span>
             </>
