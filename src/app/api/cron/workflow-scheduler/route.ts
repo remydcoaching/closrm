@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { resumeExecution } from '@/lib/workflows/engine'
+import { sendEmail } from '@/lib/email/client'
+import { sendWhatsAppMessage } from '@/lib/whatsapp/client'
+import { sendIgMessage } from '@/lib/instagram/api'
+import { getIntegrationCredentials } from '@/lib/integrations/get-credentials'
+import { cancelBookingReminders } from '@/lib/bookings/reminders'
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -16,6 +21,7 @@ export async function GET(request: NextRequest) {
     followup_reminders_fired: 0,
     booking_no_show_fired: 0,
     booking_reminders_fired: 0,
+    calendar_reminders_sent: 0,
     lead_inactive_fired: 0,
     errors: [] as string[],
   }
@@ -151,6 +157,9 @@ export async function GET(request: NextRequest) {
               .from('bookings')
               .update({ status: 'no_show' })
               .eq('id', booking.id)
+
+            // Cancel any pending reminders
+            cancelBookingReminders(booking.id).catch(() => {})
 
             if (booking.lead_id) {
               await fireTriggersForEvent(booking.workspace_id, 'booking_no_show', {
