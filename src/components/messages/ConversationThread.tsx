@@ -29,12 +29,7 @@ function formatDateSeparator(dateStr: string): string {
 }
 
 function formatTimestamp(dateStr: string): string {
-  if (isToday(dateStr)) {
-    return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  }
-  return new Date(dateStr).toLocaleString('fr-FR', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  })
+  return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
 function renderMedia(msg: IgMessage) {
@@ -93,7 +88,7 @@ export default function ConversationThread({ messages }: Props) {
   )
 
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-1">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden px-5 py-4 flex flex-col gap-1">
       {messages.map((msg, idx) => {
         const isUser = msg.sender_type === 'user'
         const isOptimistic = msg._optimistic
@@ -113,7 +108,7 @@ export default function ConversationThread({ messages }: Props) {
               {renderMedia(msg)}
               {msg.text && (
                 <div
-                  className={`px-4 py-[10px] max-w-[300px] text-[13px] leading-[1.45] break-words
+                  className={`px-3.5 py-2.5 max-w-[70%] text-[13px] leading-[1.45] break-words
                     ${isUser
                       ? 'bg-gradient-to-br from-[#E53E3E] to-[#C53030] text-white rounded-[18px_18px_6px_18px]'
                       : 'bg-[#151515] border border-[#1f1f1f] text-[#ddd] rounded-[18px_18px_18px_6px]'

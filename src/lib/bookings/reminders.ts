@@ -15,6 +15,11 @@ export function computeSendAt(
 
   let sendAt: Date
 
+  // Confirmation (delay 0) = send immediately (now + 1 min buffer)
+  if (reminder.delay_value === 0) {
+    return new Date(Date.now() + 60 * 1000)
+  }
+
   if (reminder.at_time) {
     // Specific time: X days before at HH:MM (UTC)
     const [hours, minutes] = reminder.at_time.split(':').map(Number)
