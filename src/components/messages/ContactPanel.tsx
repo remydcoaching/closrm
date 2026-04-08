@@ -8,41 +8,34 @@ interface Props {
   conversation: IgConversation
 }
 
-const STATUS_LABELS: Record<LeadStatus, string> = {
-  nouveau: 'Nouveau',
-  setting_planifie: 'Setting planifié',
-  no_show_setting: 'No-show setting',
-  closing_planifie: 'Closing planifié',
-  no_show_closing: 'No-show closing',
-  clos: 'Closé',
-  dead: 'Dead',
-}
-
-function getStatusStyle(status: LeadStatus): { dot: string; bg: string; text: string; border: string } {
-  switch (status) {
-    case 'nouveau':
-      return { dot: '#3B82F6', bg: 'rgba(59,130,246,0.1)', text: '#3B82F6', border: 'rgba(59,130,246,0.2)' }
-    case 'setting_planifie':
-    case 'closing_planifie':
-      return { dot: '#D69E2E', bg: 'rgba(214,158,46,0.1)', text: '#D69E2E', border: 'rgba(214,158,46,0.2)' }
-    case 'no_show_setting':
-    case 'no_show_closing':
-    case 'dead':
-      return { dot: '#E53E3E', bg: 'rgba(229,62,62,0.1)', text: '#E53E3E', border: 'rgba(229,62,62,0.2)' }
-    case 'clos':
-      return { dot: '#38A169', bg: 'rgba(56,161,105,0.1)', text: '#38A169', border: 'rgba(56,161,105,0.2)' }
-  }
+const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: string }> = {
+  nouveau: { label: 'Nouveau', color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
+  setting_planifie: { label: 'Setting planifié', color: '#D69E2E', bg: 'rgba(214,158,46,0.1)' },
+  no_show_setting: { label: 'No-show setting', color: '#E53E3E', bg: 'rgba(229,62,62,0.1)' },
+  closing_planifie: { label: 'Closing planifié', color: '#D69E2E', bg: 'rgba(214,158,46,0.1)' },
+  no_show_closing: { label: 'No-show closing', color: '#E53E3E', bg: 'rgba(229,62,62,0.1)' },
+  clos: { label: 'Closé', color: '#38A169', bg: 'rgba(56,161,105,0.1)' },
+  dead: { label: 'Dead', color: '#E53E3E', bg: 'rgba(229,62,62,0.1)' },
 }
 
 function formatCallDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('fr-FR', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+    + ' · ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
+
+const sectionStyle: React.CSSProperties = {
+  padding: '18px 20px',
+  borderBottom: '1px solid var(--border-primary)',
+}
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: 0.8,
+  color: 'var(--text-tertiary)',
+  marginBottom: 10,
 }
 
 export default function ContactPanel({ conversation }: Props) {
@@ -73,8 +66,7 @@ export default function ContactPanel({ conversation }: Props) {
         setLead(leadData)
         setNotes(leadData?.notes ?? '')
         const callsArr = callsData?.data ?? (Array.isArray(callsData) ? callsData : [])
-        const calls: Call[] = callsArr
-        setNextCall(calls.length > 0 ? calls[0] : null)
+        setNextCall(callsArr.length > 0 ? callsArr[0] : null)
       })
       .finally(() => setLoadingLead(false))
   }, [conversation.lead_id])
@@ -99,86 +91,109 @@ export default function ContactPanel({ conversation }: Props) {
   const initial = displayName[0]?.toUpperCase() ?? '?'
 
   return (
-    <aside
-      style={{ width: 280 }}
-      className="flex flex-col border-l border-[var(--border-primary)] bg-[var(--bg-primary)] overflow-y-auto shrink-0"
-    >
+    <aside style={{
+      width: 300,
+      flexShrink: 0,
+      borderLeft: '1px solid var(--border-primary)',
+      background: 'var(--bg-primary)',
+      overflowY: 'auto',
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
       {/* Header */}
-      <div className="flex flex-col items-center py-6 px-5 border-b border-[var(--border-primary)]">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden text-white font-bold text-xl mb-3"
-          style={{
-            background: 'var(--color-primary)',
-          }}
-        >
+      <div style={{
+        padding: '28px 24px 20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        borderBottom: '1px solid var(--border-primary)',
+      }}>
+        <div style={{
+          width: 72,
+          height: 72,
+          borderRadius: '50%',
+          background: conversation.participant_avatar_url ? 'transparent' : 'var(--color-primary)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 26,
+          fontWeight: 700,
+          color: '#fff',
+          overflow: 'hidden',
+          marginBottom: 14,
+        }}>
           {conversation.participant_avatar_url ? (
-            <img
-              src={conversation.participant_avatar_url}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            initial
-          )}
+            <img src={conversation.participant_avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : initial}
         </div>
-        <p className="text-[15px] font-bold text-white text-center leading-snug">{displayName}</p>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center' }}>
+          {displayName}
+        </div>
         {handle && (
-          <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{handle}</p>
+          <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 4 }}>{handle}</div>
         )}
       </div>
 
-      {/* Lead-linked sections */}
+      {/* Content */}
       {!conversation.lead_id ? (
-        /* No lead associated */
-        <div className="px-5 py-[14px]">
-          <p className="text-[11px] text-[var(--text-tertiary)] italic">Aucun lead associé</p>
+        <div style={{ padding: '24px 20px', textAlign: 'center' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+            Aucun lead associé
+          </span>
         </div>
       ) : loadingLead ? (
-        /* Loading skeleton */
-        <div className="px-5 py-[14px] space-y-3">
-          <div className="h-3 w-24 bg-[var(--bg-elevated)] rounded animate-pulse" />
-          <div className="h-5 w-32 bg-[var(--bg-elevated)] rounded animate-pulse" />
-          <div className="h-3 w-20 bg-[var(--bg-elevated)] rounded animate-pulse mt-4" />
-          <div className="flex gap-1">
-            <div className="h-5 w-14 bg-[var(--bg-elevated)] rounded-full animate-pulse" />
-            <div className="h-5 w-10 bg-[var(--bg-elevated)] rounded-full animate-pulse" />
+        <div style={{ padding: '24px 20px' }}>
+          <div style={{ height: 12, width: 100, background: 'var(--bg-elevated)', borderRadius: 6, marginBottom: 12 }} className="animate-pulse" />
+          <div style={{ height: 28, width: 130, background: 'var(--bg-elevated)', borderRadius: 20, marginBottom: 20 }} className="animate-pulse" />
+          <div style={{ height: 12, width: 80, background: 'var(--bg-elevated)', borderRadius: 6, marginBottom: 12 }} className="animate-pulse" />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ height: 24, width: 60, background: 'var(--bg-elevated)', borderRadius: 20 }} className="animate-pulse" />
+            <div style={{ height: 24, width: 50, background: 'var(--bg-elevated)', borderRadius: 20 }} className="animate-pulse" />
           </div>
         </div>
       ) : lead ? (
         <>
           {/* Pipeline status */}
-          <div className="px-5 py-[14px] border-b border-[var(--border-primary)]">
-            <p className="text-[9px] uppercase text-[var(--text-tertiary)] tracking-[0.8px] font-semibold mb-2">
-              Statut pipeline
-            </p>
+          <div style={sectionStyle}>
+            <div style={labelStyle}>Statut pipeline</div>
             {(() => {
-              const s = getStatusStyle(lead.status)
+              const s = STATUS_CONFIG[lead.status]
               return (
-                <span
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border"
-                  style={{ background: s.bg, color: s.text, borderColor: s.border }}
-                >
-                  <span style={{ color: s.dot }}>●</span>
-                  {STATUS_LABELS[lead.status]}
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 14px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: s.bg,
+                  color: s.color,
+                  border: `1px solid ${s.color}20`,
+                }}>
+                  <span>●</span> {s.label}
                 </span>
               )
             })()}
           </div>
 
           {/* Tags */}
-          <div className="px-5 py-[14px] border-b border-[var(--border-primary)]">
-            <p className="text-[9px] uppercase text-[var(--text-tertiary)] tracking-[0.8px] font-semibold mb-2">
-              Tags
-            </p>
+          <div style={sectionStyle}>
+            <div style={labelStyle}>Tags</div>
             {lead.tags.length === 0 ? (
-              <p className="text-[11px] text-[var(--text-tertiary)] italic">Aucun tag</p>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Aucun tag</span>
             ) : (
-              <div className="flex flex-wrap gap-[5px]">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {lead.tags.map(tag => (
-                  <span
-                    key={tag}
-                    className="px-[10px] py-[3px] bg-[var(--bg-elevated)] border border-[var(--border-primary)] rounded-full text-[10px] text-[var(--text-tertiary)]"
-                  >
+                  <span key={tag} style={{
+                    padding: '4px 12px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: 20,
+                    fontSize: 11,
+                    color: 'var(--text-secondary)',
+                    fontWeight: 500,
+                  }}>
                     {tag}
                   </span>
                 ))}
@@ -187,32 +202,53 @@ export default function ContactPanel({ conversation }: Props) {
           </div>
 
           {/* Prochain RDV */}
-          <div className="px-5 py-[14px] border-b border-[var(--border-primary)]">
-            <p className="text-[9px] uppercase text-[var(--text-tertiary)] tracking-[0.8px] font-semibold mb-2">
-              Prochain RDV
-            </p>
+          <div style={sectionStyle}>
+            <div style={labelStyle}>Prochain RDV</div>
             {nextCall ? (
-              <div className="bg-[var(--bg-elevated)] border border-[var(--border-primary)] rounded-[10px] p-3 flex gap-2.5 items-start">
-                <svg className="w-3.5 h-3.5 text-[var(--color-primary)] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                </svg>
+              <div style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: 12,
+                padding: '12px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}>
+                <span style={{ fontSize: 18 }}>📅</span>
                 <div>
-                  <p className="text-[11px] text-white font-medium capitalize">{nextCall.type}</p>
-                  <p className="text-[10px] text-[#666] mt-0.5">{formatCallDate(nextCall.scheduled_at)}</p>
+                  <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500, textTransform: 'capitalize' }}>
+                    {nextCall.type}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    {formatCallDate(nextCall.scheduled_at)}
+                  </div>
                 </div>
               </div>
             ) : (
-              <p className="text-[11px] text-[var(--text-tertiary)] italic">Aucun planifié</p>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Aucun planifié</span>
             )}
           </div>
 
           {/* Actions */}
-          <div className="px-5 py-[14px] border-b border-[var(--border-primary)]">
+          <div style={sectionStyle}>
             <Link
               href={`/leads/${lead.id}`}
-              className="flex items-center gap-1.5 text-[12px] text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors font-medium"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 16px',
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: 12,
+                fontSize: 13,
+                color: 'var(--color-primary)',
+                fontWeight: 500,
+                textDecoration: 'none',
+                transition: 'all 0.2s',
+              }}
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
               </svg>
               Fiche complète
@@ -220,28 +256,44 @@ export default function ContactPanel({ conversation }: Props) {
           </div>
 
           {/* Notes */}
-          <div className="px-5 py-[14px] flex-1">
-            <p className="text-[9px] uppercase text-[var(--text-tertiary)] tracking-[0.8px] font-semibold mb-2 flex items-center gap-1.5">
+          <div style={{ padding: '18px 20px', flex: 1 }}>
+            <div style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8 }}>
               Notes
               {savingNotes && (
-                <span className="text-[8px] text-[var(--text-tertiary)] normal-case tracking-normal">Sauvegarde…</span>
+                <span style={{ fontSize: 9, color: 'var(--text-tertiary)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                  Sauvegarde...
+                </span>
               )}
-            </p>
+            </div>
             <textarea
               ref={notesRef}
               value={notes}
               onChange={e => setNotes(e.target.value)}
               onBlur={handleNotesBlur}
-              placeholder="Ajouter une note…"
-              rows={5}
-              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-2.5 text-[12px] text-[#ccc] placeholder-[#444] resize-none focus:outline-none focus:border-[#2a2a2a] transition-colors"
+              placeholder="Ajouter une note..."
+              rows={4}
+              style={{
+                width: '100%',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: 12,
+                padding: '12px 14px',
+                fontSize: 13,
+                color: 'var(--text-primary)',
+                fontFamily: 'inherit',
+                resize: 'none',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+                lineHeight: 1.5,
+              }}
             />
           </div>
         </>
       ) : (
-        /* Lead fetch failed */
-        <div className="px-5 py-[14px]">
-          <p className="text-[11px] text-[var(--text-tertiary)] italic">Impossible de charger le lead</p>
+        <div style={{ padding: '24px 20px', textAlign: 'center' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+            Impossible de charger le lead
+          </span>
         </div>
       )}
     </aside>
