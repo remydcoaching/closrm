@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Monitor, Smartphone, Tablet, Save, Globe, Check, Undo2, Redo2, ExternalLink, Copy } from 'lucide-react'
+import { ArrowLeft, Monitor, Smartphone, Tablet, Save, Globe, Check, Undo2, Redo2, ExternalLink, Copy, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
 import type {
   FunnelPage,
   FunnelPresetOverrideJSON,
@@ -17,7 +18,7 @@ import {
   getDefaultPageBlocksForTemplate,
   type FunnelPageTemplate,
 } from '@/lib/funnels/defaults'
-import { useWorkspaceSlug, buildPublicFunnelUrl } from '@/lib/funnels/use-workspace-slug'
+import { useWorkspaceSlugState, buildPublicFunnelUrl } from '@/lib/funnels/use-workspace-slug'
 
 interface FunnelData {
   id: string
@@ -59,8 +60,11 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
   // pour afficher le bon message vert (au lieu de toujours montrer "Publié !").
   const [publishFeedback, setPublishFeedback] = useState<'published' | 'unpublished' | null>(null)
   const [loading, setLoading] = useState(true)
-  // Slug du workspace pour construire l'URL publique quand le funnel est publié
-  const workspaceSlug = useWorkspaceSlug()
+  // T-028 Phase 14/16 — Slug du workspace pour construire l'URL publique.
+  // `workspaceSlug` = la valeur (ou null si pas configuré)
+  // `workspaceSlugFetched` = true une fois le fetch terminé (permet de
+  // distinguer "en cours" de "definitivement null" pour l'UX du warning)
+  const { slug: workspaceSlug, fetched: workspaceSlugFetched } = useWorkspaceSlugState()
   const [copiedUrl, setCopiedUrl] = useState(false)
 
   // T-028 Phase 15 — Garde anti-double-exécution pour fetchFunnel.
@@ -636,12 +640,52 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         </button>
       </div>
 
-      {/* T-028 Phase 14 — Barre d'URL publique (affichée uniquement quand le
-          funnel est publié ET qu'on a le slug workspace + au moins une page).
-          Permet au coach de copier le lien ou d'ouvrir la page publique
-          directement depuis le builder. */}
+      {/* T-028 Phase 14/16 — Barre d'URL publique quand le funnel est publié.
+          3 états possibles :
+          - workspaceSlug pas encore chargé (hook async) → on cache la barre
+          - workspaceSlug null (workspace pas configuré) → warning + lien vers /parametres/reglages
+          - workspaceSlug valide + page existante → URL + boutons copier/ouvrir */}
       {funnel.status === 'published' && (() => {
         const pageSlug = pages[0]?.slug ?? null
+
+        // Cas 1 : workspaceSlug encore en cours de chargement — on cache (évite un flash de warning)
+        if (workspaceSlug === null && !workspaceSlugFetched) return null
+
+        // Cas 2 : workspaceSlug est définitivement null (workspace sans slug configuré)
+        if (!workspaceSlug) {
+          return (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 16px',
+              background: 'rgba(214,158,46,0.08)',
+              borderBottom: '1px solid rgba(214,158,46,0.2)',
+              flexShrink: 0,
+            }}>
+              <AlertTriangle size={13} color="#D69E2E" style={{ flexShrink: 0 }} />
+              <span style={{
+                fontSize: 12, color: '#D69E2E',
+                flex: 1, lineHeight: 1.4,
+              }}>
+                <strong>Ton funnel est publié</strong>, mais il n&apos;a pas encore d&apos;URL publique car aucun slug n&apos;est défini pour ton workspace.
+              </span>
+              <Link
+                href="/parametres/reglages"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  padding: '4px 12px', fontSize: 11, fontWeight: 700,
+                  background: '#D69E2E', color: '#0A0A0A',
+                  border: 'none', borderRadius: 6,
+                  textDecoration: 'none', flexShrink: 0,
+                  textTransform: 'uppercase', letterSpacing: 0.5,
+                }}
+              >
+                Configurer →
+              </Link>
+            </div>
+          )
+        }
+
+        // Cas 3 : on a le slug workspace — on peut construire l'URL
         const publicUrl = buildPublicFunnelUrl(workspaceSlug, funnel.slug, pageSlug)
         if (!publicUrl) return null
         return (

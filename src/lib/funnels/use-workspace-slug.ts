@@ -14,8 +14,26 @@
 
 import { useEffect, useState } from 'react'
 
-export function useWorkspaceSlug(): string | null {
-  const [slug, setSlug] = useState<string | null>(null)
+/**
+ * T-028 Phase 14/16 — Hook qui fetch le slug du workspace courant.
+ *
+ * Distingue 3 états pour permettre une UX propre :
+ * - `slug = null` + `fetched = false` : fetch en cours (loader ou cache UI)
+ * - `slug = null` + `fetched = true`  : workspace sans slug configuré
+ *   → on doit afficher un warning avec un CTA vers /parametres/reglages
+ * - `slug = "xxx"` + `fetched = true` : OK, on peut construire les URLs
+ *
+ * Ancien comportement (`useWorkspaceSlug(): string | null`) préservé pour
+ * les callers qui n'ont pas besoin de distinguer les 2 cas null.
+ */
+
+interface WorkspaceSlugState {
+  slug: string | null
+  fetched: boolean
+}
+
+export function useWorkspaceSlugState(): WorkspaceSlugState {
+  const [state, setState] = useState<WorkspaceSlugState>({ slug: null, fetched: false })
 
   useEffect(() => {
     let cancelled = false
@@ -23,19 +41,29 @@ export function useWorkspaceSlug(): string | null {
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (cancelled) return
-        if (json && typeof json.slug === 'string') {
-          setSlug(json.slug)
-        }
+        const slug = json && typeof json.slug === 'string' ? json.slug : null
+        setState({ slug, fetched: true })
       })
       .catch(() => {
-        // silent fail — le slug restera null et les composants cacheront les URLs
+        if (cancelled) return
+        // silent fail — on marque comme fetched pour ne pas afficher un loader infini,
+        // mais le slug reste null et les composants afficheront un warning
+        setState({ slug: null, fetched: true })
       })
     return () => {
       cancelled = true
     }
   }, [])
 
-  return slug
+  return state
+}
+
+/**
+ * Version compatibilité — retourne juste le slug (ou null). Pour les callers
+ * qui n'ont pas besoin de différencier "en cours de chargement" vs "pas de slug".
+ */
+export function useWorkspaceSlug(): string | null {
+  return useWorkspaceSlugState().slug
 }
 
 /**

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, Layers } from 'lucide-react'
 import FunnelCard from '@/components/funnels/FunnelCard'
-import { useWorkspaceSlug } from '@/lib/funnels/use-workspace-slug'
+import { useWorkspaceSlugState } from '@/lib/funnels/use-workspace-slug'
 
 interface FunnelListItem {
   id: string
@@ -19,9 +19,11 @@ interface FunnelListItem {
 export default function FunnelsPage() {
   const [funnels, setFunnels] = useState<FunnelListItem[]>([])
   const [loading, setLoading] = useState(true)
-  // T-028 Phase 14 — Slug du workspace fetché une seule fois, passé à chaque
-  // FunnelCard pour construire l'URL publique des funnels publiés.
-  const workspaceSlug = useWorkspaceSlug()
+  // T-028 Phase 14/16 — Slug du workspace fetché une seule fois, passé à chaque
+  // FunnelCard pour construire l'URL publique des funnels publiés. On expose
+  // aussi `fetched` pour que les cards puissent distinguer "en cours de chargement"
+  // de "definitivement null" (workspace sans slug configuré).
+  const { slug: workspaceSlug, fetched: workspaceSlugFetched } = useWorkspaceSlugState()
 
   const fetchFunnels = useCallback(async () => {
     try {
@@ -112,6 +114,7 @@ export default function FunnelsPage() {
               key={funnel.id}
               funnel={funnel}
               workspaceSlug={workspaceSlug}
+              workspaceSlugFetched={workspaceSlugFetched}
               onDelete={handleDelete}
             />
           ))}

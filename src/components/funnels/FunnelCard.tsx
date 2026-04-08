@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Trash2, FileText, ExternalLink } from 'lucide-react'
+import { Trash2, FileText, ExternalLink, AlertTriangle } from 'lucide-react'
 import { buildPublicFunnelUrl } from '@/lib/funnels/use-workspace-slug'
 
 interface FunnelData {
@@ -23,10 +24,16 @@ interface Props {
    * quand le funnel est publié.
    */
   workspaceSlug: string | null
+  /**
+   * T-028 Phase 16 — True une fois le fetch du slug terminé. Permet de
+   * distinguer "en cours de chargement" de "définitivement null" (workspace
+   * sans slug configuré) pour afficher soit rien soit un warning.
+   */
+  workspaceSlugFetched: boolean
   onDelete: (id: string) => void
 }
 
-export default function FunnelCard({ funnel, workspaceSlug, onDelete }: Props) {
+export default function FunnelCard({ funnel, workspaceSlug, workspaceSlugFetched, onDelete }: Props) {
   const router = useRouter()
   const [hovered, setHovered] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -42,6 +49,10 @@ export default function FunnelCard({ funnel, workspaceSlug, onDelete }: Props) {
   const publicUrl = isPublished
     ? buildPublicFunnelUrl(workspaceSlug, funnel.slug, funnel.first_page_slug)
     : null
+
+  // T-028 Phase 16 — Si publié mais pas de slug workspace configuré,
+  // on affiche un mini-warning avec un lien vers les réglages.
+  const showMissingSlugWarning = isPublished && workspaceSlugFetched && !workspaceSlug
 
   return (
     <div
@@ -87,6 +98,47 @@ export default function FunnelCard({ funnel, workspaceSlug, onDelete }: Props) {
         <span>{funnel.page_count} page{funnel.page_count > 1 ? 's' : ''}</span>
         <span>{date}</span>
       </div>
+
+      {/* T-028 Phase 16 — Warning si publié mais pas de slug workspace */}
+      {showMissingSlugWarning && (
+        <Link
+          href="/parametres/reglages"
+          onClick={e => e.stopPropagation()}
+          title="Configurer le slug du workspace"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginTop: 12,
+            padding: '6px 10px',
+            background: 'rgba(214,158,46,0.08)',
+            border: '1px solid rgba(214,158,46,0.25)',
+            borderRadius: 6,
+            fontSize: 11,
+            color: '#D69E2E',
+            textDecoration: 'none',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(214,158,46,0.15)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(214,158,46,0.08)'
+          }}
+        >
+          <AlertTriangle size={11} style={{ flexShrink: 0 }} />
+          <span style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: 1,
+            minWidth: 0,
+            fontWeight: 600,
+          }}>
+            Configurer le slug du workspace →
+          </span>
+        </Link>
+      )}
 
       {/* T-028 Phase 14 — Lien public cliquable quand le funnel est publié */}
       {publicUrl && (
