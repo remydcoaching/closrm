@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Send } from 'lucide-react'
+import { Send, Mic } from 'lucide-react'
 
 interface Props {
   onSend: (text: string) => void
@@ -35,28 +35,86 @@ export default function MessageInput({ onSend, disabled }: Props) {
   const hasText = text.trim().length > 0
 
   return (
-    <div className="px-5 py-3 border-t border-[#1a1a1a] flex gap-3 items-end shrink-0">
+    <div style={{
+      padding: '14px 24px',
+      borderTop: '1px solid #1a1a1a',
+      display: 'flex',
+      gap: 12,
+      alignItems: 'flex-end',
+    }}>
       <textarea
         ref={inputRef}
         value={text}
         onChange={e => setText(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Écrire un message..."
+        placeholder="Votre message..."
         rows={1}
-        className="flex-1 px-4 py-2.5 text-[13px] bg-[#111] text-[#ddd] border border-[#1e1e1e] rounded-xl outline-none resize-none leading-[1.4] max-h-[120px] overflow-auto focus:border-[#2a2a2a] transition-colors placeholder:text-[#3a3a3a]"
+        style={{
+          flex: 1,
+          padding: '12px 18px',
+          fontSize: 14,
+          fontFamily: 'inherit',
+          background: '#111',
+          color: '#ddd',
+          border: '1px solid #1e1e1e',
+          borderRadius: 24,
+          outline: 'none',
+          resize: 'none',
+          lineHeight: 1.4,
+          maxHeight: 120,
+          overflow: 'auto',
+          transition: 'border-color 0.2s',
+        }}
+        onFocus={e => { e.target.style.borderColor = '#2a2a2a' }}
+        onBlur={e => { e.target.style.borderColor = '#1e1e1e' }}
       />
+
+      {/* Voice button */}
+      <button
+        type="button"
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          border: 'none',
+          background: '#151515',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          flexShrink: 0,
+          transition: 'background 0.2s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = '#1e1e1e' }}
+        onMouseLeave={e => { e.currentTarget.style.background = '#151515' }}
+        title="Message vocal"
+      >
+        <Mic size={16} color="#555" />
+      </button>
+
+      {/* Send button */}
       <button
         onClick={handleSend}
         disabled={!hasText || isBusy}
-        className={`w-9 h-9 rounded-full border-none flex items-center justify-center shrink-0 transition-all duration-150
-          ${hasText && !isBusy
-            ? 'bg-gradient-to-br from-[#E53E3E] to-[#C53030] cursor-pointer hover:opacity-90 active:scale-95'
-            : 'bg-[#1a1a1a] cursor-default'
-          }
-          ${isBusy ? 'opacity-60' : ''}
-        `}
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          cursor: hasText && !isBusy ? 'pointer' : 'default',
+          opacity: isBusy ? 0.5 : 1,
+          background: hasText && !isBusy
+            ? 'linear-gradient(135deg, #E53E3E, #C53030)'
+            : '#151515',
+          transition: 'all 0.2s',
+          boxShadow: hasText && !isBusy ? '0 2px 12px rgba(229,62,62,0.3)' : 'none',
+        }}
       >
-        <Send size={14} className={hasText && !isBusy ? 'text-white' : 'text-[#333]'} />
+        <Send size={16} color={hasText && !isBusy ? '#fff' : '#333'} />
       </button>
     </div>
   )
