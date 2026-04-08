@@ -143,12 +143,25 @@ export async function syncConversations(ctx: SyncContext) {
 
     const lastMsg = convo.messages?.data?.[0]
 
+    // Try to fetch participant's profile pic
+    let avatarUrl: string | null = null
+    try {
+      const picRes = await fetch(
+        `https://graph.facebook.com/v25.0/${participant.id}?fields=profile_pic&access_token=${token}`
+      )
+      if (picRes.ok) {
+        const picData = await picRes.json()
+        avatarUrl = picData.profile_pic ?? null
+      }
+    } catch { /* skip if fails */ }
+
     await ctx.supabase.from('ig_conversations').upsert({
       workspace_id: ctx.workspaceId,
       ig_conversation_id: convo.id,
       participant_ig_id: participant.id,
       participant_username: participant.username ?? null,
       participant_name: participant.name ?? null,
+      participant_avatar_url: avatarUrl,
       last_message_text: lastMsg?.message ?? null,
       last_message_at: lastMsg?.created_time ?? null,
     }, { onConflict: 'ig_conversation_id' })
