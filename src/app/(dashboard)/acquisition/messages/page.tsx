@@ -113,7 +113,7 @@ export default function MessagesPage() {
     if (!selected) return
     const interval = setInterval(() => {
       fetch(`/api/instagram/messages?conversation_id=${selected.id}&refresh=true`)
-        .then(res => res.json()).then(json => { if (json.data) setMessages(json.data) }).catch(() => {})
+        .then(r => r.json()).then(j => { if (j.data) setMessages(j.data) }).catch(() => {})
     }, 5000)
     return () => clearInterval(interval)
   }, [selected?.id])
@@ -126,34 +126,25 @@ export default function MessagesPage() {
 
   if (!hasAccount) {
     return (
-      <div style={{ padding: '40px' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 16 }}>Messages</h1>
+      <div className="px-10 py-8">
+        <h1 className="text-xl font-bold text-[var(--text-primary)] mb-4">Messages</h1>
         <IgNotConnected />
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+    <div className="flex h-[calc(100vh-64px)] overflow-hidden">
 
-      {/* ── Left column: conversations ── */}
-      <div style={{ width: 320, flexShrink: 0, borderRight: '1px solid #1a1a1a', display: 'flex', flexDirection: 'column' }}>
-
+      {/* ── Left: conversations ── */}
+      <div className="w-[320px] shrink-0 border-r border-[var(--border-primary)] flex flex-col">
         {/* Header */}
-        <div style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: 0 }}>Messages</h1>
+        <div className="px-5 pt-5 pb-2 flex items-center justify-between">
+          <h1 className="text-[18px] font-bold text-[var(--text-primary)]">Messages</h1>
           <button
             onClick={handleSync}
             disabled={syncing}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', fontSize: 12, fontWeight: 500,
-              color: '#666', background: '#111', border: '1px solid #1e1e1e',
-              borderRadius: 20, cursor: 'pointer', transition: 'all 0.2s',
-              opacity: syncing ? 0.5 : 1,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.color = '#999' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e1e1e'; e.currentTarget.style.color = '#666' }}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-medium text-[var(--text-tertiary)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-full hover:text-[var(--text-secondary)] hover:border-[var(--text-tertiary)] transition-all disabled:opacity-50"
           >
             <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
             {syncing ? 'Sync...' : 'Synchroniser'}
@@ -161,43 +152,31 @@ export default function MessagesPage() {
         </div>
 
         {/* Search */}
-        <div style={{ padding: '16px 20px 8px' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            background: '#111', border: '1px solid #1a1a1a', borderRadius: 12,
-            padding: '10px 14px', transition: 'border-color 0.2s',
-          }}>
-            <Search size={15} color="#3a3a3a" />
+        <div className="px-5 py-3">
+          <div className="flex items-center gap-2.5 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl px-4 py-2.5 focus-within:ring-1 focus-within:ring-[var(--color-primary)] transition-shadow">
+            <Search size={15} className="text-[var(--text-tertiary)] shrink-0" />
             <input
               placeholder="Rechercher une conversation..."
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
-              style={{
-                flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                fontSize: 13, color: '#ccc', fontFamily: 'inherit',
-              }}
+              className="flex-1 bg-transparent border-none outline-none text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
             />
           </div>
         </div>
 
-        {/* Sync warning */}
+        {/* Warning */}
         {syncWarning && (
-          <div style={{ padding: '0 20px 8px' }}>
-            <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(214,158,46,0.06)', fontSize: 11, color: '#D69E2E', lineHeight: 1.4 }}>
-              {syncWarning}
-            </div>
+          <div className="mx-5 mb-2 px-3 py-2 rounded-lg bg-[#D69E2E]/8 text-[11px] text-[#D69E2E] leading-snug">
+            {syncWarning}
           </div>
         )}
 
         {/* List */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div className="flex-1 overflow-y-auto">
           {error ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', gap: 12 }}>
-              <p style={{ fontSize: 13, color: '#444', textAlign: 'center' }}>{error}</p>
-              <button
-                onClick={() => fetchConversations(true)}
-                style={{ padding: '8px 20px', fontSize: 12, fontWeight: 600, background: '#E53E3E', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
-              >
+            <div className="flex flex-col items-center py-16 px-4 gap-3">
+              <p className="text-[13px] text-[var(--text-tertiary)] text-center">{error}</p>
+              <button onClick={() => fetchConversations(true)} className="px-4 py-1.5 text-[12px] font-semibold text-white rounded-lg hover:opacity-90 transition-opacity" style={{ background: 'var(--color-primary)' }}>
                 Réessayer
               </button>
             </div>
@@ -207,70 +186,52 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      {/* ── Center column: thread ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+      {/* ── Center: thread ── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {selected ? (
           <>
             {/* Thread header */}
-            <div style={{
-              padding: '14px 24px',
-              borderBottom: '1px solid #1a1a1a',
-              display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0,
-            }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #E53E3E, #C53030)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 15, fontWeight: 700, color: '#fff',
-                flexShrink: 0, overflow: 'hidden',
-              }}>
+            <div className="px-6 py-3.5 border-b border-[var(--border-primary)] flex items-center gap-3.5 shrink-0">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold text-white overflow-hidden shrink-0" style={{ background: 'var(--color-primary)' }}>
                 {selected.participant_avatar_url
-                  ? <img src={selected.participant_avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={selected.participant_avatar_url} alt="" className="w-full h-full object-cover" />
                   : (selected.participant_name?.[0] ?? selected.participant_username?.[0] ?? '?').toUpperCase()
                 }
               </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>
+              <div className="min-w-0">
+                <div className="text-[15px] font-semibold text-[var(--text-primary)]">
                   {selected.participant_name ?? selected.participant_username}
                 </div>
                 {selected.participant_username && (
-                  <div style={{ fontSize: 12, color: '#444', marginTop: 1 }}>@{selected.participant_username}</div>
+                  <div className="text-[12px] text-[var(--text-tertiary)] mt-0.5">@{selected.participant_username}</div>
                 )}
               </div>
               {selected.lead_id && (
                 <a
                   href={`/leads/${selected.lead_id}`}
-                  style={{
-                    marginLeft: 'auto', fontSize: 12, color: '#E53E3E',
-                    textDecoration: 'none', fontWeight: 500, flexShrink: 0,
-                    padding: '6px 16px', borderRadius: 20,
-                    border: '1px solid rgba(229,62,62,0.2)',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(229,62,62,0.06)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  className="ml-auto text-[12px] font-medium shrink-0 px-4 py-1.5 rounded-full border transition-all no-underline"
+                  style={{ color: 'var(--color-primary)', borderColor: 'var(--border-primary)' }}
                 >
                   Voir le lead →
                 </a>
               )}
             </div>
-
             <ConversationThread messages={messages} />
             <MessageInput onSend={handleSend} disabled={sending} />
           </>
         ) : (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth={1.2}>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <div className="w-16 h-16 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center">
+              <svg className="w-7 h-7 text-[var(--text-tertiary)] opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
               </svg>
             </div>
-            <span style={{ fontSize: 14, color: '#2a2a2a', fontWeight: 500 }}>Sélectionnez une conversation</span>
+            <span className="text-[14px] text-[var(--text-tertiary)] font-medium">Sélectionnez une conversation</span>
           </div>
         )}
       </div>
 
-      {/* ── Right column: contact panel ── */}
+      {/* ── Right: contact panel ── */}
       {selected && <ContactPanel conversation={selected} />}
     </div>
   )
