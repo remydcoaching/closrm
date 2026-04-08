@@ -50,6 +50,7 @@ import type {
 } from '@/types'
 import FunnelPagePreview from '../FunnelPagePreview'
 import FunnelBlockConfigPanel from '../FunnelBlockConfig'
+import DirectionArtistiquePanel from './sidebar/DirectionArtistiquePanel'
 
 interface Props {
   /** Funnel parent (avec design system v2). */
@@ -218,11 +219,18 @@ export default function FunnelBuilderV2({
     <div style={containerStyle}>
       {/* ─── COLONNE GAUCHE : SIDEBAR ────────────────────────────────────── */}
       <aside style={sidebarStyle}>
-        <SidebarPlaceholder
-          title="Direction artistique"
-          phase="Phase 2"
-          description="Preset + 4 color pickers + toggle 🔗 lier les fonds + 10 toggles d'effets"
+        {/* Phase 2 — Panneau Direction artistique (preset + couleurs + effets) */}
+        <DirectionArtistiquePanel
+          presetId={funnel.preset_id}
+          presetOverride={funnel.preset_override}
+          effectsConfig={funnel.effects_config}
+          onDesignChange={onFunnelDesignChange}
         />
+
+        {/* Séparateur visuel */}
+        <div style={sidebarSeparatorStyle} />
+
+        {/* Phase 3 — Sections list (placeholder en attendant) */}
         <SidebarPlaceholder
           title="Sections"
           phase="Phase 3"
@@ -233,7 +241,7 @@ export default function FunnelBuilderV2({
               onClick={() => handleAddBlock('hero')}
               style={tempButtonStyle}
             >
-              Ajouter Hero (test temporaire Phase 1)
+              Ajouter Hero (test temporaire)
             </button>
           }
         />
@@ -269,14 +277,7 @@ export default function FunnelBuilderV2({
       )}
 
       {/* Marker temporaire phase pour debug */}
-      <div style={phaseMarkerStyle}>
-        T-028b · Phase 1 — layout vide ·{' '}
-        <code>onFunnelDesignChange</code> câblé mais non-utilisé tant que Phase 2 pas faite
-        {/* On référence les props pour éviter les warnings TS6133 unused */}
-        <span style={{ display: 'none' }}>
-          {funnel.id} {typeof onFunnelDesignChange}
-        </span>
-      </div>
+      <div style={phaseMarkerStyle}>T-028b · Phase 2 — Direction artistique active</div>
     </div>
   )
 }
@@ -316,15 +317,21 @@ const containerStyle: React.CSSProperties = {
 }
 
 const sidebarStyle: React.CSSProperties = {
-  width: 280,
+  width: 300,
   flexShrink: 0,
   borderRight: '1px solid var(--border-primary, #262626)',
   background: 'var(--bg-secondary, #141414)',
   overflowY: 'auto',
   display: 'flex',
   flexDirection: 'column',
-  gap: 12,
-  padding: 12,
+  gap: 16,
+  padding: 14,
+}
+
+const sidebarSeparatorStyle: React.CSSProperties = {
+  height: 1,
+  background: 'rgba(255,255,255,0.06)',
+  margin: '4px 0',
 }
 
 const previewStyle: React.CSSProperties = {
