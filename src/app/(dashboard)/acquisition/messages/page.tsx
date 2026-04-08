@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Search } from 'lucide-react'
 import ConversationList from '@/components/messages/ConversationList'
 import ConversationThread from '@/components/messages/ConversationThread'
 import MessageInput from '@/components/messages/MessageInput'
@@ -42,18 +42,17 @@ export default function MessagesPage() {
       const accRes = await fetch('/api/instagram/account')
       const accJson = await accRes.json()
       if (!accJson.data) { setHasAccount(false); setLoading(false); return }
-
       const params = new URLSearchParams()
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (withSync) params.set('sync', 'true')
       const res = await fetch(`/api/instagram/conversations?${params}`)
-      if (!res.ok) throw new Error('Erreur lors du chargement des conversations')
+      if (!res.ok) throw new Error('Erreur lors du chargement')
       const json = await res.json()
       setConversations(json.data ?? [])
       setSyncWarning(json.syncWarning ?? null)
       hasLoadedOnce.current = true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
+      setError(err instanceof Error ? err.message : 'Erreur')
     } finally {
       setLoading(false)
     }
@@ -82,21 +81,18 @@ export default function MessagesPage() {
       const res = await fetch(`/api/instagram/messages?conversation_id=${convo.id}`)
       const json = await res.json()
       setMessages(json.data ?? [])
-    } catch {
-      setMessages([])
-    }
+    } catch { setMessages([]) }
   }, [])
 
   const handleSend = async (text: string) => {
     if (!selected || sending) return
     setSending(true)
     const optimisticId = `optimistic-${Date.now()}`
-    const optimisticMsg = {
+    setMessages(prev => [...prev, {
       id: optimisticId, workspace_id: '', conversation_id: selected.id,
       sender_type: 'user' as const, text, sent_at: new Date().toISOString(),
       media_url: null, media_type: null, ig_message_id: null, is_read: true, _optimistic: true,
-    }
-    setMessages(prev => [...prev, optimisticMsg])
+    }])
     try {
       const res = await fetch('/api/instagram/messages/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -108,29 +104,20 @@ export default function MessagesPage() {
         setConversations(prev => prev.map(c =>
           c.id === selected.id ? { ...c, last_message_text: text, last_message_at: new Date().toISOString() } : c
         ))
-      } else {
-        setMessages(prev => prev.filter(m => m.id !== optimisticId))
-      }
-    } catch {
-      setMessages(prev => prev.filter(m => m.id !== optimisticId))
-    } finally {
-      setSending(false)
-    }
+      } else { setMessages(prev => prev.filter(m => m.id !== optimisticId)) }
+    } catch { setMessages(prev => prev.filter(m => m.id !== optimisticId)) }
+    finally { setSending(false) }
   }
 
-  // Poll messages from Meta API every 5s
   useEffect(() => {
     if (!selected) return
     const interval = setInterval(() => {
       fetch(`/api/instagram/messages?conversation_id=${selected.id}&refresh=true`)
-        .then(res => res.json())
-        .then(json => { if (json.data) setMessages(json.data) })
-        .catch(() => {})
+        .then(res => res.json()).then(json => { if (json.data) setMessages(json.data) }).catch(() => {})
     }, 5000)
     return () => clearInterval(interval)
   }, [selected?.id])
 
-  // Poll conversations every 15s
   useEffect(() => {
     if (!hasAccount) return
     const interval = setInterval(() => fetchConversations(false), 15000)
@@ -139,108 +126,152 @@ export default function MessagesPage() {
 
   if (!hasAccount) {
     return (
-      <div className="px-10 py-8">
-        <h1 className="text-xl font-bold text-white mb-4">Messages</h1>
+      <div style={{ padding: '40px' }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 16 }}>Messages</h1>
         <IgNotConnected />
       </div>
     )
   }
 
-  // Full-bleed layout — no nested containers
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
-      {/* Thin top bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-[#1a1a1a] shrink-0">
-        <div className="flex items-center gap-3">
-          <h1 className="text-[15px] font-semibold text-white">Messages</h1>
-          <span className="text-[11px] text-[#444]">Instagram</span>
-        </div>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-[#555] hover:text-[#888] transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-          {syncing ? 'Sync...' : 'Sync'}
-        </button>
-      </div>
+    <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
 
-      {/* Sync warning */}
-      {syncWarning && (
-        <div className="px-6 py-2 bg-[#D69E2E]/5 border-b border-[#D69E2E]/15 text-[11px] text-[#D69E2E] shrink-0">
-          {syncWarning}
-        </div>
-      )}
+      {/* ── Left column: conversations ── */}
+      <div style={{ width: 320, flexShrink: 0, borderRight: '1px solid #1a1a1a', display: 'flex', flexDirection: 'column' }}>
 
-      {/* 3-column layout — full height, no extra borders */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left: conversations */}
-        <div className="w-[280px] shrink-0 border-r border-[#1a1a1a] flex flex-col">
-          <div className="px-3 py-2.5 shrink-0">
+        {/* Header */}
+        <div style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: 0 }}>Messages</h1>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', fontSize: 12, fontWeight: 500,
+              color: '#666', background: '#111', border: '1px solid #1e1e1e',
+              borderRadius: 20, cursor: 'pointer', transition: 'all 0.2s',
+              opacity: syncing ? 0.5 : 1,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.color = '#999' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e1e1e'; e.currentTarget.style.color = '#666' }}
+          >
+            <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Sync...' : 'Synchroniser'}
+          </button>
+        </div>
+
+        {/* Search */}
+        <div style={{ padding: '16px 20px 8px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: '#111', border: '1px solid #1a1a1a', borderRadius: 12,
+            padding: '10px 14px', transition: 'border-color 0.2s',
+          }}>
+            <Search size={15} color="#3a3a3a" />
             <input
-              placeholder="Rechercher..."
+              placeholder="Rechercher une conversation..."
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
-              className="w-full px-3 py-1.5 bg-[#141414] border border-[#1e1e1e] rounded-lg text-[12px] text-white placeholder:text-[#3a3a3a] outline-none focus:border-[#2a2a2a] transition-colors"
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                fontSize: 13, color: '#ccc', fontFamily: 'inherit',
+              }}
             />
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {error ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4 gap-3">
-                <p className="text-[12px] text-[#444] text-center">{error}</p>
-                <button onClick={() => fetchConversations(true)} className="px-3 py-1 text-[11px] bg-[#E53E3E] text-white rounded-md hover:opacity-90">
-                  Réessayer
-                </button>
-              </div>
-            ) : (
-              <ConversationList conversations={conversations} selected={selected} onSelect={fetchMessages} loading={loading} />
-            )}
-          </div>
         </div>
 
-        {/* Center: thread */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {selected ? (
-            <>
-              {/* Compact header */}
-              <div className="px-5 py-2.5 border-b border-[#1a1a1a] flex items-center gap-3 shrink-0">
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white overflow-hidden shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #E53E3E, #C53030)' }}
-                >
-                  {selected.participant_avatar_url
-                    ? <img src={selected.participant_avatar_url} alt="" className="w-full h-full object-cover" />
-                    : (selected.participant_name?.[0] ?? selected.participant_username?.[0] ?? '?').toUpperCase()
-                  }
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[13px] font-semibold text-white">{selected.participant_name ?? selected.participant_username}</span>
-                  {selected.participant_username && (
-                    <span className="text-[10px] text-[#444] ml-2">@{selected.participant_username}</span>
-                  )}
-                </div>
-                {selected.lead_id && (
-                  <a href={`/leads/${selected.lead_id}`} className="ml-auto text-[11px] text-[#E53E3E] hover:text-[#ff5555] transition-colors shrink-0">
-                    Fiche lead &rarr;
-                  </a>
-                )}
-              </div>
-              <ConversationThread messages={messages} />
-              <MessageInput onSend={handleSend} disabled={sending} />
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center gap-2">
-              <svg className="w-10 h-10 text-[#222]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-              </svg>
-              <p className="text-[12px] text-[#333]">Sélectionnez une conversation</p>
+        {/* Sync warning */}
+        {syncWarning && (
+          <div style={{ padding: '0 20px 8px' }}>
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(214,158,46,0.06)', fontSize: 11, color: '#D69E2E', lineHeight: 1.4 }}>
+              {syncWarning}
             </div>
+          </div>
+        )}
+
+        {/* List */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {error ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', gap: 12 }}>
+              <p style={{ fontSize: 13, color: '#444', textAlign: 'center' }}>{error}</p>
+              <button
+                onClick={() => fetchConversations(true)}
+                style={{ padding: '8px 20px', fontSize: 12, fontWeight: 600, background: '#E53E3E', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+              >
+                Réessayer
+              </button>
+            </div>
+          ) : (
+            <ConversationList conversations={conversations} selected={selected} onSelect={fetchMessages} loading={loading} />
           )}
         </div>
-
-        {/* Right: contact panel */}
-        {selected && <ContactPanel conversation={selected} />}
       </div>
+
+      {/* ── Center column: thread ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        {selected ? (
+          <>
+            {/* Thread header */}
+            <div style={{
+              padding: '14px 24px',
+              borderBottom: '1px solid #1a1a1a',
+              display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0,
+            }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #E53E3E, #C53030)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 15, fontWeight: 700, color: '#fff',
+                flexShrink: 0, overflow: 'hidden',
+              }}>
+                {selected.participant_avatar_url
+                  ? <img src={selected.participant_avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : (selected.participant_name?.[0] ?? selected.participant_username?.[0] ?? '?').toUpperCase()
+                }
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>
+                  {selected.participant_name ?? selected.participant_username}
+                </div>
+                {selected.participant_username && (
+                  <div style={{ fontSize: 12, color: '#444', marginTop: 1 }}>@{selected.participant_username}</div>
+                )}
+              </div>
+              {selected.lead_id && (
+                <a
+                  href={`/leads/${selected.lead_id}`}
+                  style={{
+                    marginLeft: 'auto', fontSize: 12, color: '#E53E3E',
+                    textDecoration: 'none', fontWeight: 500, flexShrink: 0,
+                    padding: '6px 16px', borderRadius: 20,
+                    border: '1px solid rgba(229,62,62,0.2)',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(229,62,62,0.06)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  Voir le lead →
+                </a>
+              )}
+            </div>
+
+            <ConversationThread messages={messages} />
+            <MessageInput onSend={handleSend} disabled={sending} />
+          </>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth={1.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+              </svg>
+            </div>
+            <span style={{ fontSize: 14, color: '#2a2a2a', fontWeight: 500 }}>Sélectionnez une conversation</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Right column: contact panel ── */}
+      {selected && <ContactPanel conversation={selected} />}
     </div>
   )
 }
