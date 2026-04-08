@@ -134,7 +134,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+    <div className="flex h-screen overflow-hidden">
 
       {/* ── Left: conversations ── */}
       <div className="w-[320px] shrink-0 border-r border-[var(--border-primary)] flex flex-col">
