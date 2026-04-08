@@ -11,7 +11,10 @@ import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 
-type CallWithLead = Call & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'> }
+type CallWithLead = Call & {
+  lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'>
+  booking?: { id: string; booking_calendar: { name: string } | null }[] | null
+}
 type Tab = 'today' | 'upcoming' | 'overdue' | 'done' | 'cancelled'
 
 const TAB_CONFIG: Record<Tab, { label: string; color: string }> = {

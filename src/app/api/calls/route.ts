@@ -116,6 +116,14 @@ export async function POST(request: NextRequest) {
       .eq('id', parsed.data.lead_id)
       .eq('workspace_id', workspaceId)
 
+    // Update last_activity_at on the lead (non-blocking)
+    supabase
+      .from('leads')
+      .update({ last_activity_at: new Date().toISOString() })
+      .eq('id', parsed.data.lead_id)
+      .eq('workspace_id', workspaceId)
+      .then(() => {})
+
     // Fire workflow triggers (non-blocking)
     fireTriggersForEvent(workspaceId, 'call_scheduled', {
       lead_id: parsed.data.lead_id,

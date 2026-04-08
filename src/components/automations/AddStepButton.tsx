@@ -8,11 +8,11 @@ interface Props {
   onAdd: (stepType: WorkflowStepType) => void
 }
 
-const options: { type: WorkflowStepType; label: string; icon: typeof Zap; color: string }[] = [
-  { type: 'action', label: 'Action', icon: Zap, color: '#5b9bf5' },
-  { type: 'delay', label: 'Délai', icon: Clock, color: '#D69E2E' },
-  { type: 'condition', label: 'Condition (Si/Sinon)', icon: GitBranch, color: '#8B5CF6' },
-  { type: 'wait_for_event', label: 'Attendre un événement', icon: Timer, color: '#F97316' },
+const options: { type: WorkflowStepType; label: string; desc: string; icon: typeof Zap; color: string; bg: string }[] = [
+  { type: 'action', label: 'Action', desc: 'Email, WhatsApp, statut...', icon: Zap, color: '#5b9bf5', bg: 'rgba(91,155,245,0.08)' },
+  { type: 'delay', label: 'Delai', desc: 'Attendre X minutes/heures', icon: Clock, color: '#D69E2E', bg: 'rgba(214,158,46,0.08)' },
+  { type: 'condition', label: 'Condition', desc: 'Si/Sinon (branchement)', icon: GitBranch, color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)' },
+  { type: 'wait_for_event', label: 'Attendre', desc: 'Avant un RDV/appel', icon: Timer, color: '#F97316', bg: 'rgba(249,115,22,0.08)' },
 ]
 
 export default function AddStepButton({ onAdd }: Props) {
@@ -38,40 +38,42 @@ export default function AddStepButton({ onAdd }: Props) {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
-          width: 36,
-          height: 36,
+          width: 32,
+          height: 32,
           borderRadius: '50%',
-          border: `2px dashed ${hovered || open ? 'var(--color-primary)' : 'var(--border-primary)'}`,
-          background: 'transparent',
+          border: `2px dashed ${hovered || open ? '#E53E3E' : 'var(--border-primary)'}`,
+          background: hovered || open ? 'rgba(229,62,62,0.06)' : 'transparent',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          color: hovered || open ? 'var(--color-primary)' : 'var(--text-label)',
-          transition: 'all 0.15s',
+          color: hovered || open ? '#E53E3E' : 'var(--text-label)',
+          transition: 'all 0.2s ease',
           padding: 0,
         }}
       >
-        <Plus size={18} />
+        <Plus size={16} />
       </button>
 
       {open && (
         <div
           style={{
             position: 'absolute',
-            top: 42,
+            top: 40,
             left: '50%',
             transform: 'translateX(-50%)',
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 8,
-            padding: 4,
+            borderRadius: 12,
+            padding: 6,
             zIndex: 10,
-            minWidth: 200,
+            minWidth: 220,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           }}
         >
           {options.map((opt) => {
             const Icon = opt.icon
+            const isHovered = hoveredOption === opt.type
             return (
               <button
                 key={opt.type}
@@ -84,20 +86,31 @@ export default function AddStepButton({ onAdd }: Props) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
+                  gap: 10,
                   width: '100%',
-                  padding: '8px 12px',
+                  padding: '10px 12px',
                   fontSize: 12,
-                  color: opt.color,
-                  background: hoveredOption === opt.type ? 'var(--bg-hover)' : 'transparent',
+                  color: 'var(--text-primary)',
+                  background: isHovered ? 'var(--bg-hover)' : 'transparent',
                   border: 'none',
-                  borderRadius: 6,
+                  borderRadius: 8,
                   cursor: 'pointer',
                   textAlign: 'left',
+                  transition: 'background 0.1s',
                 }}
               >
-                <Icon size={14} />
-                {opt.label}
+                <div style={{
+                  width: 28, height: 28, borderRadius: 7,
+                  background: opt.bg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Icon size={14} style={{ color: opt.color }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 12, color: opt.color }}>{opt.label}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{opt.desc}</div>
+                </div>
               </button>
             )
           })}

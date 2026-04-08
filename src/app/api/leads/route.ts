@@ -82,17 +82,36 @@ export async function GET(request: NextRequest) {
   }
 }
 
+interface InlineWorkflowStep {
+  channel: 'whatsapp' | 'email' | 'instagram_dm' | 'manuel'
+  delay_days: number
+  template_text: string
+}
+
+interface InlineWorkflow {
+  steps: InlineWorkflowStep[]
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
     const body = await request.json()
+    const inlineWorkflow: InlineWorkflow | undefined = body.inline_workflow
     const parsed = createLeadSchema.safeParse(body)
 
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
+
+    // Clean instagram handle: strip @ prefix
+    const instagramHandle = parsed.data.instagram_handle
+      ? parsed.data.instagram_handle.replace(/^@/, '')
+      : null
+
+    // Use instagram handle as first_name fallback if not provided
+    const firstName = parsed.data.first_name || instagramHandle || 'Inconnu'
 
     const { data, error } = await supabase
       .from('leads')
@@ -102,8 +121,10 @@ export async function POST(request: NextRequest) {
         call_attempts: 0,
         reached: false,
         ...parsed.data,
+        first_name: firstName,
         email: parsed.data.email || null,
         notes: parsed.data.notes || null,
+        instagram_handle: instagramHandle || null,
       })
       .select()
       .single()
@@ -112,11 +133,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Link existing IG conversation if handle provided
+    if (instagramHandle) {
+      const { data: conversations } = await supabase
+        .from('ig_conversations')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .ilike('participant_username', instagramHandle)
+        .limit(1)
+
+      if (conversations && conversations.length > 0) {
+        await supabase
+          .from('ig_conversations')
+          .update({ lead_id: data.id })
+          .eq('id', conversations[0].id)
+      }
+    }
+
+    // Create follow-ups directly for this lead if inline workflow provided
+    if (inlineWorkflow && inlineWorkflow.steps && inlineWorkflow.steps.length > 0) {
+      const now = new Date()
+      const followUpsToInsert = inlineWorkflow.steps.map((step) => {
+        const scheduledAt = new Date(now)
+        scheduledAt.setDate(scheduledAt.getDate() + step.delay_days)
+        if (step.delay_days > 0) {
+          scheduledAt.setHours(9, 0, 0, 0)
+        }
+        return {
+          workspace_id: workspaceId,
+          lead_id: data.id,
+          reason: step.template_text,
+          scheduled_at: scheduledAt.toISOString(),
+          channel: step.channel,
+          status: 'en_attente',
+          notes: null,
+        }
+      })
+
+      await supabase.from('follow_ups').insert(followUpsToInsert)
+    }
+
     // Fire workflow triggers (non-blocking)
     fireTriggersForEvent(workspaceId, 'new_lead', {
       lead_id: data.id,
       source: data.source,
     }).catch(() => {})
+
+    // Fire additional trigger if IG handle provided
+    if (instagramHandle) {
+      fireTriggersForEvent(workspaceId, 'lead_with_ig_handle', {
+        lead_id: data.id,
+        instagram_handle: instagramHandle,
+      }).catch(() => {})
+    }
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {

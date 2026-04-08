@@ -37,6 +37,7 @@ const GROUP_LABELS: Record<LeadStatus | LeadSource | string, string> = {
   dead: 'Dead',
   facebook_ads: 'Facebook Ads',
   instagram_ads: 'Instagram Ads',
+  follow_ads: 'Follow Ads',
   formulaire: 'Formulaire',
   manuel: 'Manuel',
 }

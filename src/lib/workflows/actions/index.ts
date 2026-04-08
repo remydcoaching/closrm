@@ -8,6 +8,11 @@ import { execute as sendWhatsapp } from './send-whatsapp'
 import { execute as sendDmInstagram } from './send-dm-instagram'
 import { execute as sendNotification } from './send-notification'
 import { execute as fbConversions } from './fb-conversions'
+import { execute as createGoogleMeet } from './create-google-meet'
+import { execute as updateLeadField } from './update-lead-field'
+import { execute as addNote } from './add-note'
+import { execute as setReached } from './set-reached'
+import { execute as scheduleCall } from './schedule-call'
 
 /**
  * Context passed to every action handler during workflow execution.
@@ -18,6 +23,7 @@ export interface ExecutionContext {
   lead?: Record<string, unknown>
   coach?: { full_name: string }
   actionType?: string
+  dryRun?: boolean
   resolveTemplate: (template: string) => string
   supabase: SupabaseClient
 }
@@ -40,4 +46,9 @@ export const actionHandlers: Record<string, ActionHandler> = {
   send_dm_instagram: sendDmInstagram,
   send_notification: sendNotification,
   facebook_conversions_api: fbConversions,
+  create_google_meet: createGoogleMeet,
+  update_lead_field: updateLeadField,
+  add_note: addNote,
+  set_reached: setReached,
+  schedule_call: scheduleCall,
 }

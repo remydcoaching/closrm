@@ -7,7 +7,10 @@ import { Call, Lead } from '@/types'
 import CallOutcomeBadge from './CallOutcomeBadge'
 import CallTypeBadge from './CallTypeBadge'
 
-type CallWithLead = Call & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'> }
+type CallWithLead = Call & {
+  lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'>
+  booking?: { id: string; booking_calendar: { name: string } | null }[] | null
+}
 
 interface Props {
   calls: CallWithLead[]
@@ -63,6 +66,11 @@ export default function CallTable({ calls, loading, onOutcome, onReschedule, onD
                 <td style={td}>
                   <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{call.lead.first_name} {call.lead.last_name}</div>
                   <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 2 }}>{call.lead.phone || call.lead.email || '—'}</div>
+                  {call.booking?.[0]?.booking_calendar?.name && (
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      via {call.booking[0].booking_calendar.name}
+                    </div>
+                  )}
                 </td>
                 <td style={td}><CallTypeBadge type={call.type} /></td>
                 <td style={{ ...td, color: 'var(--text-muted)' }}>#{call.attempt_number}</td>

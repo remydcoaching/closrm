@@ -72,14 +72,14 @@ Chaque amélioration suit ce format :
 - **Description :** Ajouter `follow_ads` comme source de lead + `instagram_dm` comme channel de follow-up. Permet de filtrer les relances Instagram dans la page follow-ups. Simple à implémenter (ajout dans les enums SQL + types TS + filtres UI).
 - **Priorité estimée :** Haute
 - **Effort estimé :** Faible
-- **Statut :** En attente de validation
+- **Statut :** ✅ Implémentée le 2026-04-07 par Rémy (migration 014, types TS, validations Zod, badges, filtres, exports, workflows). Suite directe de T-025.
 
 ### A-008 — Import auto des leads Follow Ads via API Instagram
 - **Contexte :** Discussion avec Pierre pendant T-007
 - **Description :** À terme, les prospects qui follow le compte via une pub seront loggés automatiquement comme leads via l'API Instagram/Meta. Nécessite l'intégration de l'API Instagram Graph pour détecter les nouveaux followers issus des pubs.
 - **Priorité estimée :** Moyenne
 - **Effort estimé :** Élevé
-- **Statut :** En attente de validation
+- **Statut :** Fiche T-026 créée le 2026-04-07 (`taches/tache-026-followers-as-prospects.md`). En attente de validation pour démarrage.
 
 ### A-010 — Dashboard : variations % par rapport à la période précédente
 - **Contexte :** Identifié pendant T-003 (dashboard)
@@ -385,4 +385,26 @@ Chaque amélioration suit ce format :
 
 ---
 
-*Mis à jour le 2026-04-07 par Claude Code — ClosRM*
+### [A-010] Linktree interne — liens trackables par lead
+- **Contexte :** Session IA assistant — le coach envoie des lead magnets via DM
+- **Description :** Systeme de liens trackables integre dans ClosRM (style Linktree). Chaque contenu a un titre + lien + redirect. On sait quel lead a clique, combien de fois, quel contenu convertit le mieux. Redirect intelligent qui ouvre YouTube/Spotify directement au lieu du browser IG.
+- **Priorite estimee :** Moyenne
+- **Effort estime :** Eleve
+
+**Proposition :** Table `content_links` (titre, url, short_code, workspace_id), table `content_clicks` (link_id, lead_id, clicked_at, referrer). Route publique `/c/[code]` qui redirige + log le clic. Dashboard analytics par contenu. En V1 simple : utiliser les liens Linktree du coach directement.
+
+### [A-011] Champ contenus en 2 colonnes (titre + lien) dans Assistant IA
+- **Contexte :** Session IA assistant — le champ lead magnets est un textarea simple
+- **Description :** Remplacer le textarea par une liste structuree : chaque contenu = titre + URL. Affiche en 2 colonnes dans les parametres. L'IA peut citer le titre ET inclure le lien dans le message suggere.
+- **Priorite estimee :** Haute
+- **Effort estime :** Faible
+
+### [A-012] Trigger comment_keyword + dm_keyword (T-021)
+- **Contexte :** Deja dans les types du moteur workflow mais stub non branche
+- **Description :** Reponse auto aux commentaires reels/posts contenant un mot-cle → DM automatique. Comme Mochi (delai configurable, 5min recommande).
+- **Priorite estimee :** Haute
+- **Effort estime :** Moyen
+
+---
+
+*Mis a jour le 2026-04-08 par Claude Code — ClosRM*

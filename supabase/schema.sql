@@ -48,7 +48,7 @@ create table leads (
     'closing_planifie', 'no_show_closing', 'clos', 'dead'
   )),
   source text not null default 'manuel' check (source in (
-    'facebook_ads', 'instagram_ads', 'formulaire', 'manuel'
+    'facebook_ads', 'instagram_ads', 'follow_ads', 'formulaire', 'manuel'
   )),
   tags text[] default '{}',
   call_attempts integer not null default 0,
@@ -57,6 +57,8 @@ create table leads (
   meta_campaign_id text,
   meta_adset_id text,
   meta_ad_id text,
+  instagram_handle text,
+  last_activity_at timestamptz default now(),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -113,7 +115,7 @@ create table follow_ups (
   lead_id uuid not null references leads(id) on delete cascade,
   reason text not null,
   scheduled_at timestamptz not null,
-  channel text not null default 'manuel' check (channel in ('whatsapp', 'email', 'manuel')),
+  channel text not null default 'manuel' check (channel in ('whatsapp', 'email', 'instagram_dm', 'manuel')),
   status text not null default 'en_attente' check (status in ('en_attente', 'fait', 'annule')),
   notes text,
   created_at timestamptz default now()

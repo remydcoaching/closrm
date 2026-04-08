@@ -6,7 +6,7 @@ import type { ExecutionContext } from './index'
  *
  * Config:
  *   - reason: string — reason for the follow-up
- *   - channel: 'whatsapp' | 'email' | 'manuel'
+ *   - channel: 'whatsapp' | 'email' | 'instagram_dm' | 'manuel'
  *   - delay_days?: number — days from now to schedule (default: 0 = now)
  */
 export async function execute(
@@ -18,7 +18,7 @@ export async function execute(
   }
 
   const reason = context.resolveTemplate(String(config.reason ?? 'Relance automatique'))
-  const channel = String(config.channel ?? 'manuel') as 'whatsapp' | 'email' | 'manuel'
+  const channel = String(config.channel ?? 'manuel') as 'whatsapp' | 'email' | 'instagram_dm' | 'manuel'
   const delayDays = Number(config.delay_days ?? 0)
 
   const scheduledAt = new Date()

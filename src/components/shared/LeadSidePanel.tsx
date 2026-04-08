@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check } from 'lucide-react'
+import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check, Sparkles } from 'lucide-react'
 import { Lead, Call, FollowUp, LeadStatus } from '@/types'
+import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
 import CallOutcomeBadge from '@/components/closing/CallOutcomeBadge'
@@ -189,6 +190,18 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               <textarea value={notes} onChange={(e) => handleNotesChange(e.target.value)} rows={3} placeholder="Notes sur ce lead..." style={{ ...inputS, resize: 'vertical' as const, fontSize: 12, lineHeight: 1.5 }} />
             </div>
 
+            {/* AI Assistant */}
+            <div style={card}>
+              <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={12} color="#E53E3E" />
+                Assistant IA
+              </div>
+              <AiSuggestionPanel
+                leadId={leadId}
+                instagramHandle={lead.instagram_handle}
+              />
+            </div>
+
             {/* Calls — editable dates */}
             <div style={card}>
               <div style={sectionTitle}>Appels ({lead.calls.length})</div>
@@ -215,6 +228,26 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Supprimer */}
+            <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-primary)' }}>
+              <button onClick={async () => {
+                if (!confirm('Supprimer definitivement ce lead et toutes ses donnees (appels, follow-ups, notes) ? Cette action est irreversible.')) return
+                const res = await fetch(`/api/leads/${leadId}`, { method: 'DELETE' })
+                if (res.ok) {
+                  onClose()
+                  window.location.reload()
+                }
+              }} style={{
+                display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'center',
+                padding: '10px 0', borderRadius: 10, fontSize: 12, fontWeight: 500,
+                border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)',
+                color: '#ef4444', cursor: 'pointer',
+              }}>
+                <Trash2 size={13} />
+                Supprimer definitivement ce lead
+              </button>
             </div>
           </div>
         )}

@@ -34,15 +34,28 @@ const labelStyle: React.CSSProperties = {
 export default function ConditionConfigPanel({ step, onChange }: Props) {
   return (
     <div>
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: 'var(--text-primary)',
-          marginBottom: 20,
-        }}
-      >
-        Configuration de la condition
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 22, paddingBottom: 14,
+        borderBottom: '1px solid var(--border-primary)',
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: 'rgba(139,92,246,0.08)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Condition
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Branchement Si / Sinon
+          </div>
+        </div>
       </div>
 
       <div style={{ marginBottom: 14 }}>

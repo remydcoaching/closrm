@@ -133,6 +133,7 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
               >
                 <option value="whatsapp">WhatsApp</option>
                 <option value="email">Email</option>
+                <option value="instagram_dm">Instagram DM</option>
                 <option value="manuel">Manuel</option>
               </select>
             </div>
@@ -379,7 +380,7 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
               />
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Méthode HTTP</label>
+              <label style={labelStyle}>Methode HTTP</label>
               <select
                 style={selectStyle}
                 value={(config.method as string) || 'POST'}
@@ -391,7 +392,71 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
               </select>
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              Les données du lead seront envoyées automatiquement dans le body.
+              Les donnees du lead seront envoyees automatiquement dans le body.
+            </div>
+          </>
+        )
+
+      case 'create_google_meet':
+        return (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Titre (optionnel)</label>
+              <input
+                type="text"
+                style={inputStyle}
+                placeholder="RDV {{prenom}} {{nom}}"
+                value={(config.title as string) || ''}
+                onChange={(e) => updateConfig('title', e.target.value)}
+              />
+              <TemplateVariableHelper />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Duree (minutes)</label>
+              <input
+                type="number"
+                style={inputStyle}
+                min={15}
+                value={(config.duration_minutes as number) ?? 60}
+                onChange={(e) => updateConfig('duration_minutes', parseInt(e.target.value) || 60)}
+              />
+            </div>
+          </>
+        )
+
+      case 'update_lead_field':
+        return (
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Champ</label>
+              <select
+                style={selectStyle}
+                value={(config.field as string) || ''}
+                onChange={(e) => updateConfig('field', e.target.value)}
+              >
+                <option value="" disabled>Selectionner...</option>
+                <option value="status">Statut</option>
+                <option value="notes">Notes</option>
+                <option value="reached">Joint</option>
+                <option value="tags">Tags</option>
+                <option value="instagram_handle">Pseudo Instagram</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Valeur</label>
+              <input
+                type="text"
+                style={inputStyle}
+                placeholder="Nouvelle valeur..."
+                value={(config.value as string) || ''}
+                onChange={(e) => updateConfig('value', e.target.value)}
+              />
+              <TemplateVariableHelper />
+              {config.field === 'tags' && (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Prefixe + pour ajouter, - pour retirer, ou valeur brute pour remplacer.
+                </div>
+              )}
             </div>
           </>
         )
@@ -403,15 +468,28 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
 
   return (
     <div>
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: 'var(--text-primary)',
-          marginBottom: 20,
-        }}
-      >
-        Configuration de l&apos;action
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 22, paddingBottom: 14,
+        borderBottom: '1px solid var(--border-primary)',
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: 'rgba(91,155,245,0.08)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b9bf5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Action
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Ce qui se passe a cette etape
+          </div>
+        </div>
       </div>
 
       <div style={{ marginBottom: 18 }}>
@@ -441,6 +519,8 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
           <option value="set_reached">Marquer comme joint</option>
           <option value="schedule_call">Planifier un appel</option>
           <option value="webhook">Appeler un webhook externe</option>
+          <option value="create_google_meet">Creer un Google Meet</option>
+          <option value="update_lead_field">Modifier un champ du lead</option>
         </select>
       </div>
 
