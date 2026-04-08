@@ -409,6 +409,39 @@ const FIELD_ALIASES: Record<string, keyof ParsedLead> = {
   telephone: 'phone',
 }
 
+// ─── Ad Creative ────────────────────────────────────────────────────────────
+
+export interface MetaAdCreative {
+  id: string
+  name: string
+  image_url: string | null
+  video_url: string | null
+  thumbnail_url: string | null
+  body: string | null
+  title: string | null
+  link_url: string | null
+}
+
+export async function getAdCreative(adId: string, token: string): Promise<MetaAdCreative | null> {
+  const fields = 'id,name,creative{id,image_url,thumbnail_url,body,title,object_story_spec}'
+  const res = await fetch(`${GRAPH_URL}/${adId}?fields=${fields}&access_token=${token}`)
+  if (!res.ok) return null
+  const data = await res.json()
+  const creative = data.creative || {}
+  return {
+    id: data.id,
+    name: data.name,
+    image_url: creative.image_url || null,
+    video_url: null, // Video URL requires separate fetch
+    thumbnail_url: creative.thumbnail_url || creative.image_url || null,
+    body: creative.body || null,
+    title: creative.title || null,
+    link_url: creative.object_story_spec?.link_data?.link || null,
+  }
+}
+
+// ─── Field mapping ───────────────────────────────────────────────────────────
+
 export function parseLeadFields(fields: MetaLeadField[]): ParsedLead {
   const result: ParsedLead = { first_name: '', last_name: '', email: null, phone: '' }
 
