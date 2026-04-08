@@ -72,9 +72,12 @@ export default function FunnelCard({ funnel, onDelete }: Props) {
         <span>{date}</span>
       </div>
 
-      {/* Delete button */}
+      {/* Delete button — T-028 Phase 13 : déplacé en bas-droit pour ne plus
+          chevaucher le badge "Brouillon/Publié" qui est dans le header en haut-droit.
+          Le conteneur reste `position: absolute` avec bottom/right pour flotter
+          au-dessus du contenu au hover sans décaler la mise en page de la card. */}
       {hovered && (
-        <div style={{ position: 'absolute', top: 16, right: 16 }}>
+        <div style={{ position: 'absolute', bottom: 16, right: 16 }}>
           {confirmDelete ? (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button
@@ -101,14 +104,17 @@ export default function FunnelCard({ funnel, onDelete }: Props) {
           ) : (
             <button
               onClick={e => { e.stopPropagation(); setConfirmDelete(true) }}
+              title="Supprimer le funnel"
+              aria-label="Supprimer le funnel"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 28, height: 28, borderRadius: 6,
-                background: 'rgba(255,255,255,0.04)', border: '1px solid #333',
-                color: '#666', cursor: 'pointer', padding: 0,
+                background: 'rgba(229,62,62,0.08)', border: '1px solid rgba(229,62,62,0.2)',
+                color: '#E53E3E', cursor: 'pointer', padding: 0,
+                backdropFilter: 'blur(8px)',
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#E53E3E'; e.currentTarget.style.borderColor = '#E53E3E' }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#333' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(229,62,62,0.15)'; e.currentTarget.style.borderColor = 'rgba(229,62,62,0.4)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(229,62,62,0.08)'; e.currentTarget.style.borderColor = 'rgba(229,62,62,0.2)' }}
             >
               <Trash2 size={14} />
             </button>
