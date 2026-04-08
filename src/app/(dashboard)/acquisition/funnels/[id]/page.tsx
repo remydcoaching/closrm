@@ -12,6 +12,7 @@ import FunnelPageTabs from '@/components/funnels/FunnelPageTabs'
 import FunnelBuilderV2 from '@/components/funnels/v2/FunnelBuilderV2'
 import { useUndoRedo } from '@/components/funnels/v2/use-undo-redo'
 import { useAutosave } from '@/components/funnels/v2/use-autosave'
+import { getDefaultPageBlocks } from '@/lib/funnels/defaults'
 
 interface FunnelData {
   id: string
@@ -68,12 +69,19 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         setFunnelName(f.name)
         let pgs = Array.isArray(f.pages) ? f.pages : []
 
-        // If no pages, create a default one
+        // T-028 Phase 10 — Si le funnel n'a aucune page, en créer une auto
+        // avec le squelette par défaut (Hero + Text + Footer) au lieu d'une
+        // page vide. Le coach démarre toujours sur un truc qui ressemble à
+        // quelque chose (validé avec Rémy le 2026-04-07).
         if (pgs.length === 0) {
           const createRes = await fetch(`/api/funnels/${id}/pages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: 'Page 1', slug: 'page-1', blocks: [] }),
+            body: JSON.stringify({
+              name: 'Page 1',
+              slug: 'page-1',
+              blocks: getDefaultPageBlocks(),
+            }),
           })
           if (!createRes.ok) {
             console.error(
@@ -226,7 +234,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         body: JSON.stringify({
           name: `Page ${pageNum}`,
           slug: `page-${pageNum}`,
-          blocks: [],
+          // T-028 Phase 10 — Même squelette par défaut que la première page
+          blocks: getDefaultPageBlocks(),
         }),
       })
       if (!res.ok) {

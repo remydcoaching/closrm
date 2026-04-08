@@ -62,6 +62,7 @@ import CtaBlock from './blocks/CtaBlock'
 import TextBlock from './blocks/TextBlock'
 import ImageBlock from './blocks/ImageBlock'
 import SpacerBlock from './blocks/SpacerBlock'
+import FooterBlock from './blocks/FooterBlock'
 
 /**
  * Modes de prévisualisation du builder. T-028b Phase 4 ajoute `tablet`
@@ -119,6 +120,7 @@ function renderBlockContent(block: FunnelBlock): React.ReactNode {
     case 'text': return <TextBlock config={block.config as Parameters<typeof TextBlock>[0]['config']} />
     case 'image': return <ImageBlock config={block.config as Parameters<typeof ImageBlock>[0]['config']} />
     case 'spacer': return <SpacerBlock config={block.config as Parameters<typeof SpacerBlock>[0]['config']} />
+    case 'footer': return <FooterBlock config={block.config as Parameters<typeof FooterBlock>[0]['config']} />
     default: return <div style={{ padding: 20, color: '#999' }}>Bloc inconnu</div>
   }
 }

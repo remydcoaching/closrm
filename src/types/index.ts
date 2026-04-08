@@ -389,6 +389,7 @@ export type FunnelBlockType =
   | 'text'
   | 'image'
   | 'spacer'
+  | 'footer'
 
 /**
  * Config des effets visuels activables au niveau d'un bloc spécifique.
@@ -520,6 +521,17 @@ export interface SpacerBlockConfig {
   height: number
 }
 
+/**
+ * T-028 Phase 10 — Bloc Footer, créé pour que chaque page par défaut en ait un.
+ * Affiche le nom de la marque + année + mention copyright. Utilise le fond
+ * `--fnl-footer-bg` du preset.
+ */
+export interface FunnelFooterBlockConfig {
+  brand: string
+  year: number
+  copyrightText: string
+}
+
 export type FunnelBlockConfig =
   | HeroBlockConfig
   | VideoBlockConfig
@@ -533,6 +545,7 @@ export type FunnelBlockConfig =
   | FunnelTextBlockConfig
   | FunnelImageBlockConfig
   | SpacerBlockConfig
+  | FunnelFooterBlockConfig
 
 export interface FunnelBlock {
   id: string

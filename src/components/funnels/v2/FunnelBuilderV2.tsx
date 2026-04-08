@@ -54,6 +54,7 @@ import FunnelBlockConfigPanel from '../FunnelBlockConfig'
 import DirectionArtistiquePanel from './sidebar/DirectionArtistiquePanel'
 import SectionsListPanel from './sidebar/SectionsListPanel'
 import BlockEffectsPanel from './inspector/BlockEffectsPanel'
+import { createDefaultBlock } from '@/lib/funnels/defaults'
 
 // Labels FR des types de blocs (utilisés dans le header de l'inspector)
 const BLOCK_LABELS: Record<FunnelBlockType, string> = {
@@ -67,6 +68,7 @@ const BLOCK_LABELS: Record<FunnelBlockType, string> = {
   faq: 'FAQ',
   countdown: 'Compte à rebours',
   spacer: 'Espacement',
+  footer: 'Footer',
   booking: 'Réservation (À venir)',
   form: 'Formulaire (À venir)',
 }
@@ -93,93 +95,11 @@ interface Props {
   mode: FunnelPreviewMode
 }
 
-/**
- * Configuration par défaut d'un nouveau bloc selon son type.
- * (Reprise telle quelle du legacy `FunnelBuilder.tsx` — sera mutualisée plus tard.)
- */
-function getDefaultConfig(type: FunnelBlockType): FunnelBlockConfig {
-  switch (type) {
-    case 'hero':
-      return {
-        title: 'Transformez votre vie en 90 jours',
-        subtitle: 'Découvrez la méthode qui a déjà aidé +500 personnes à atteindre leurs objectifs.',
-        ctaText: 'Voir la vidéo',
-        ctaUrl: '#',
-        backgroundImage: null,
-        alignment: 'center' as const,
-        // T-028 Phase 9 — Nouveau bloc Hero : badge par défaut + effets activés
-        badgeText: 'Atelier 100% Gratuit',
-        effects: { shimmer: true, buttonShine: true },
-      }
-    case 'video':
-      return { url: '', autoplay: false, controls: true, aspectRatio: '16:9' as const }
-    case 'testimonials':
-      return {
-        items: [
-          { name: 'Nom', role: 'Role', content: 'Témoignage...', avatarUrl: null, rating: 5 },
-        ],
-        layout: 'grid' as const,
-        columns: 3 as const,
-      }
-    case 'form':
-      return {
-        title: 'Formulaire',
-        subtitle: '',
-        fields: [
-          { key: 'email', label: 'Email', type: 'email' as const, placeholder: 'votre@email.com', required: true },
-        ],
-        submitText: 'Envoyer',
-        redirectUrl: null,
-        successMessage: 'Merci !',
-      }
-    case 'booking':
-      return { calendarId: null, title: 'Réservez votre créneau', subtitle: '' }
-    case 'pricing':
-      return {
-        title: 'Offre',
-        price: '97',
-        currency: 'EUR',
-        period: '/mois',
-        features: ['Feature 1'],
-        ctaText: 'Souscrire',
-        ctaUrl: '#',
-        highlighted: false,
-      }
-    case 'faq':
-      return {
-        title: 'Questions fréquentes',
-        items: [{ question: 'Question ?', answer: 'Réponse.' }],
-      }
-    case 'countdown':
-      return {
-        targetDate: new Date(Date.now() + 7 * 86400000).toISOString(),
-        title: 'Offre limitée',
-        expiredMessage: 'Offre expirée',
-        style: 'simple' as const,
-      }
-    case 'cta':
-      return {
-        text: 'Cliquez ici',
-        url: '#',
-        style: 'primary' as const,
-        size: 'lg' as const,
-        alignment: 'center' as const,
-        // T-028 Phase 9 — Nouveau CTA : shine activé par défaut
-        effects: { buttonShine: true },
-      }
-    case 'text':
-      return {
-        content: 'Votre texte ici...',
-        alignment: 'center' as const,
-        // T-028 Phase 9 — Nouveau Text : shimmer OFF par défaut (rare de vouloir animer un paragraphe entier)
-        effects: { shimmer: false },
-      }
-    case 'image':
-      return { src: '', alt: '', width: null, alignment: 'center' as const, linkUrl: null }
-    case 'spacer':
-      return { height: 48 }
-  }
-}
+/* T-028 Phase 10 — getDefaultConfig() a été extraite dans
+ * src/lib/funnels/defaults.ts (fonction `getDefaultBlockConfig`) pour être
+ * réutilisable depuis la page admin (getDefaultPageBlocks) et éviter la
+ * duplication. On utilise maintenant `createDefaultBlock(type)` qui génère
+ * un bloc complet avec ID + config. */
 
 export default function FunnelBuilderV2({
   funnel,
@@ -211,11 +131,7 @@ export default function FunnelBuilderV2({
   }
 
   function handleAddBlock(type: FunnelBlockType) {
-    const newBlock: FunnelBlock = {
-      id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      type,
-      config: getDefaultConfig(type),
-    }
+    const newBlock = createDefaultBlock(type)
     updateActivePageBlocks((current) => [...current, newBlock])
     setSelectedBlockId(newBlock.id)
   }

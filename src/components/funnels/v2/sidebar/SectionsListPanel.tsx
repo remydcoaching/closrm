@@ -49,6 +49,7 @@ const BLOCK_TYPES: BlockTypeMeta[] = [
   { type: 'faq', label: 'FAQ', emoji: '❓' },
   { type: 'countdown', label: 'Compte à rebours', emoji: '⏰' },
   { type: 'spacer', label: 'Espacement', emoji: '↕️' },
+  { type: 'footer', label: 'Footer', emoji: '🔻' },
   // Stubs "À venir" — visible mais non-ajoutables
   { type: 'booking', label: 'Réservation', emoji: '📅', comingSoon: true },
   { type: 'form', label: 'Formulaire', emoji: '📝', comingSoon: true },

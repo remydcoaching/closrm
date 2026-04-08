@@ -13,6 +13,7 @@ import CtaConfig from './config/CtaConfig'
 import TextConfig from './config/TextConfig'
 import ImageConfig from './config/ImageConfig'
 import SpacerConfig from './config/SpacerConfig'
+import FooterConfig from './config/FooterConfig'
 
 interface Props {
   block: FunnelBlock
@@ -37,6 +38,7 @@ export default function FunnelBlockConfig({ block, onChange }: Props) {
     text: 'Texte',
     image: 'Image',
     spacer: 'Espacement',
+    footer: 'Footer',
   }
 
   return (
@@ -84,6 +86,9 @@ export default function FunnelBlockConfig({ block, onChange }: Props) {
       )}
       {block.type === 'spacer' && (
         <SpacerConfig config={block.config as Parameters<typeof SpacerConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
+      )}
+      {block.type === 'footer' && (
+        <FooterConfig config={block.config as Parameters<typeof FooterConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
       )}
     </div>
   )
