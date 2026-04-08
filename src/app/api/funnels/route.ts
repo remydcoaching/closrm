@@ -19,9 +19,12 @@ export async function GET() {
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
+    // T-028 Phase 14 — On fetch aussi les pages (slug + page_order) pour pouvoir
+    // déterminer le slug de la première page de chaque funnel côté front
+    // (utilisé pour construire l'URL publique sur les cards publiées).
     const { data, error } = await supabase
       .from('funnels')
-      .select('*, funnel_pages(count)')
+      .select('*, funnel_pages(slug, page_order)')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false })
 
@@ -29,11 +32,17 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const funnels = (data ?? []).map((f) => ({
-      ...f,
-      page_count: f.funnel_pages?.[0]?.count ?? 0,
-      funnel_pages: undefined,
-    }))
+    const funnels = (data ?? []).map((f) => {
+      const pages = (f.funnel_pages ?? []) as Array<{ slug: string; page_order: number }>
+      // Trouver la première page par page_order croissant
+      const firstPage = [...pages].sort((a, b) => a.page_order - b.page_order)[0]
+      return {
+        ...f,
+        page_count: pages.length,
+        first_page_slug: firstPage?.slug ?? null,
+        funnel_pages: undefined,
+      }
+    })
 
     return NextResponse.json({ data: funnels })
   } catch (err) {

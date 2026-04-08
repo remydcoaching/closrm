@@ -4,18 +4,24 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, Layers } from 'lucide-react'
 import FunnelCard from '@/components/funnels/FunnelCard'
+import { useWorkspaceSlug } from '@/lib/funnels/use-workspace-slug'
 
 interface FunnelListItem {
   id: string
   name: string
+  slug: string
   status: 'draft' | 'published'
   page_count: number
+  first_page_slug: string | null
   created_at: string
 }
 
 export default function FunnelsPage() {
   const [funnels, setFunnels] = useState<FunnelListItem[]>([])
   const [loading, setLoading] = useState(true)
+  // T-028 Phase 14 — Slug du workspace fetché une seule fois, passé à chaque
+  // FunnelCard pour construire l'URL publique des funnels publiés.
+  const workspaceSlug = useWorkspaceSlug()
 
   const fetchFunnels = useCallback(async () => {
     try {
@@ -102,7 +108,12 @@ export default function FunnelsPage() {
           gap: 16,
         }}>
           {funnels.map(funnel => (
-            <FunnelCard key={funnel.id} funnel={funnel} onDelete={handleDelete} />
+            <FunnelCard
+              key={funnel.id}
+              funnel={funnel}
+              workspaceSlug={workspaceSlug}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}

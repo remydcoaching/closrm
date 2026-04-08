@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Monitor, Smartphone, Tablet, Save, Globe, Check, Undo2, Redo2 } from 'lucide-react'
+import { ArrowLeft, Monitor, Smartphone, Tablet, Save, Globe, Check, Undo2, Redo2, ExternalLink, Copy } from 'lucide-react'
 import type {
   FunnelPage,
   FunnelPresetOverrideJSON,
@@ -17,10 +17,12 @@ import {
   getDefaultPageBlocksForTemplate,
   type FunnelPageTemplate,
 } from '@/lib/funnels/defaults'
+import { useWorkspaceSlug, buildPublicFunnelUrl } from '@/lib/funnels/use-workspace-slug'
 
 interface FunnelData {
   id: string
   name: string
+  slug: string
   status: 'draft' | 'published'
   // T-028a/c — design system fields
   preset_id: string
@@ -52,8 +54,14 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [publishing, setPublishing] = useState(false)
-  const [published, setPublished] = useState(false)
+  // T-028 Phase 14 — Feedback "action effectuée" après un clic sur Publier/Dépublier.
+  // `publishFeedback` contient soit 'published' soit 'unpublished' pendant 2s,
+  // pour afficher le bon message vert (au lieu de toujours montrer "Publié !").
+  const [publishFeedback, setPublishFeedback] = useState<'published' | 'unpublished' | null>(null)
   const [loading, setLoading] = useState(true)
+  // Slug du workspace pour construire l'URL publique quand le funnel est publié
+  const workspaceSlug = useWorkspaceSlug()
+  const [copiedUrl, setCopiedUrl] = useState(false)
 
   const fetchFunnel = useCallback(async () => {
     try {
@@ -212,15 +220,19 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
     // Save first
     await handleSave()
     setPublishing(true)
-    setPublished(false)
+    setPublishFeedback(null)
 
     try {
       const res = await fetch(`/api/funnels/${id}/publish`, { method: 'POST' })
       const json = await res.json()
       if (json.data) {
-        setFunnel(prev => prev ? { ...prev, status: json.data.status } : prev)
-        setPublished(true)
-        setTimeout(() => setPublished(false), 2000)
+        const newStatus = json.data.status as 'draft' | 'published'
+        setFunnel(prev => prev ? { ...prev, status: newStatus } : prev)
+        // T-028 Phase 14 — Montre le bon feedback selon la nouvelle action.
+        // Si on vient de passer en `draft`, le bouton montre "Dépublié ✓"
+        // au lieu de "Publié ✓" comme avant (bug reporté par Rémy).
+        setPublishFeedback(newStatus === 'published' ? 'published' : 'unpublished')
+        setTimeout(() => setPublishFeedback(null), 2000)
       }
     } catch {
       // ignore
@@ -228,6 +240,21 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
       setPublishing(false)
     }
   }, [publishing, handleSave, id])
+
+  // T-028 Phase 14 — Copie l'URL publique du funnel dans le presse-papiers
+  // et affiche un feedback "Copié !" pendant 1.5s.
+  const handleCopyPublicUrl = useCallback(async () => {
+    const pageSlug = pages[0]?.slug ?? null
+    const url = buildPublicFunnelUrl(workspaceSlug, funnel?.slug ?? null, pageSlug)
+    if (!url) return
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedUrl(true)
+      setTimeout(() => setCopiedUrl(false), 1500)
+    } catch (err) {
+      console.error('[FunnelBuilderPage] clipboard write failed:', err)
+    }
+  }, [workspaceSlug, funnel?.slug, pages])
 
   const handleAddPage = useCallback(async (template: FunnelPageTemplate = 'blank') => {
     const pageNum = pages.length + 1
@@ -553,27 +580,118 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           {saving ? 'Sauvegarde...' : saved ? 'Sauvegardé' : 'Sauvegarder'}
         </button>
 
-        {/* Publish */}
+        {/* Publish / Unpublish — T-028 Phase 14 fix : feedback correct
+            selon l'action effectuée (Publié ✓ vs Dépublié ✓). */}
         <button
           onClick={handlePublish}
           disabled={publishing}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 16px', fontSize: 12, fontWeight: 600,
-            background: published ? '#38A169' : '#E53E3E',
+            background: publishFeedback ? '#38A169' : '#E53E3E',
             color: '#fff', border: 'none', borderRadius: 8,
             cursor: publishing ? 'not-allowed' : 'pointer', flexShrink: 0,
             opacity: publishing ? 0.7 : 1,
             transition: 'all 0.2s ease',
-            boxShadow: published ? '0 0 12px rgba(56,161,105,0.3)' : '0 0 12px rgba(229,62,62,0.2)',
+            boxShadow: publishFeedback ? '0 0 12px rgba(56,161,105,0.3)' : '0 0 12px rgba(229,62,62,0.2)',
           }}
           onMouseEnter={e => { if (!publishing) e.currentTarget.style.opacity = '0.9' }}
           onMouseLeave={e => { e.currentTarget.style.opacity = publishing ? '0.7' : '1' }}
         >
           <Globe size={14} />
-          {publishing ? 'Publication...' : published ? 'Publié !' : funnel.status === 'published' ? 'Dépublier' : 'Publier'}
+          {publishing
+            ? 'Publication...'
+            : publishFeedback === 'published'
+              ? 'Publié !'
+              : publishFeedback === 'unpublished'
+                ? 'Dépublié !'
+                : funnel.status === 'published'
+                  ? 'Dépublier'
+                  : 'Publier'}
         </button>
       </div>
+
+      {/* T-028 Phase 14 — Barre d'URL publique (affichée uniquement quand le
+          funnel est publié ET qu'on a le slug workspace + au moins une page).
+          Permet au coach de copier le lien ou d'ouvrir la page publique
+          directement depuis le builder. */}
+      {funnel.status === 'published' && (() => {
+        const pageSlug = pages[0]?.slug ?? null
+        const publicUrl = buildPublicFunnelUrl(workspaceSlug, funnel.slug, pageSlug)
+        if (!publicUrl) return null
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 16px',
+            background: 'rgba(56,161,105,0.06)',
+            borderBottom: '1px solid rgba(56,161,105,0.15)',
+            flexShrink: 0,
+          }}>
+            <Globe size={12} color="#38A169" style={{ flexShrink: 0 }} />
+            <span style={{
+              fontSize: 11, fontWeight: 600, color: '#38A169',
+              textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0,
+            }}>
+              En ligne
+            </span>
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize: 12, color: 'var(--text-primary, #ccc)',
+                fontFamily: 'monospace', textDecoration: 'none',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                flex: 1, minWidth: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-primary, #ccc)' }}
+              title={publicUrl}
+            >
+              {publicUrl}
+            </a>
+            <button
+              onClick={handleCopyPublicUrl}
+              title={copiedUrl ? 'Copié !' : 'Copier l\'URL'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '4px 10px', fontSize: 11, fontWeight: 600,
+                background: copiedUrl ? 'rgba(56,161,105,0.15)' : 'rgba(255,255,255,0.05)',
+                color: copiedUrl ? '#38A169' : 'var(--text-secondary, #888)',
+                border: copiedUrl ? '1px solid rgba(56,161,105,0.3)' : '1px solid var(--border-primary, #262626)',
+                borderRadius: 6, cursor: 'pointer', flexShrink: 0,
+                transition: 'all 0.15s ease', fontFamily: 'inherit',
+              }}
+              onMouseEnter={e => { if (!copiedUrl) e.currentTarget.style.borderColor = '#444' }}
+              onMouseLeave={e => { if (!copiedUrl) e.currentTarget.style.borderColor = 'var(--border-primary, #262626)' }}
+            >
+              {copiedUrl ? <Check size={11} /> : <Copy size={11} />}
+              {copiedUrl ? 'Copié' : 'Copier'}
+            </button>
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Ouvrir dans un nouvel onglet"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '4px 10px', fontSize: 11, fontWeight: 600,
+                background: 'rgba(255,255,255,0.05)',
+                color: 'var(--text-secondary, #888)',
+                border: '1px solid var(--border-primary, #262626)',
+                borderRadius: 6, flexShrink: 0,
+                textDecoration: 'none',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.color = '#ccc' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary, #262626)'; e.currentTarget.style.color = 'var(--text-secondary, #888)' }}
+            >
+              <ExternalLink size={11} />
+              Ouvrir
+            </a>
+          </div>
+        )
+      })()}
 
       {/* Builder v2 (T-028b) — l'ancien `<FunnelBuilder>` reste sur disque
           jusqu'à la Phase 8 de T-028b où on le supprimera proprement. */}

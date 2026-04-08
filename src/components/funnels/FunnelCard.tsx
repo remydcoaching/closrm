@@ -2,22 +2,31 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, FileText } from 'lucide-react'
+import { Trash2, FileText, ExternalLink } from 'lucide-react'
+import { buildPublicFunnelUrl } from '@/lib/funnels/use-workspace-slug'
 
 interface FunnelData {
   id: string
   name: string
+  slug: string
   status: 'draft' | 'published'
   page_count: number
+  first_page_slug: string | null
   created_at: string
 }
 
 interface Props {
   funnel: FunnelData
+  /**
+   * T-028 Phase 14 — Slug du workspace, passé par le parent (FunnelsPage)
+   * qui le fetch une seule fois au mount. Sert à construire l'URL publique
+   * quand le funnel est publié.
+   */
+  workspaceSlug: string | null
   onDelete: (id: string) => void
 }
 
-export default function FunnelCard({ funnel, onDelete }: Props) {
+export default function FunnelCard({ funnel, workspaceSlug, onDelete }: Props) {
   const router = useRouter()
   const [hovered, setHovered] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -26,6 +35,13 @@ export default function FunnelCard({ funnel, onDelete }: Props) {
   const date = new Date(funnel.created_at).toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'short', year: 'numeric',
   })
+
+  // T-028 Phase 14 — URL publique affichée sur la card quand le funnel est
+  // publié. Null si on n'a pas encore le slug du workspace ou si le funnel
+  // n'a pas de première page.
+  const publicUrl = isPublished
+    ? buildPublicFunnelUrl(workspaceSlug, funnel.slug, funnel.first_page_slug)
+    : null
 
   return (
     <div
@@ -71,6 +87,52 @@ export default function FunnelCard({ funnel, onDelete }: Props) {
         <span>{funnel.page_count} page{funnel.page_count > 1 ? 's' : ''}</span>
         <span>{date}</span>
       </div>
+
+      {/* T-028 Phase 14 — Lien public cliquable quand le funnel est publié */}
+      {publicUrl && (
+        <a
+          href={publicUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          title={publicUrl}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginTop: 12,
+            padding: '6px 10px',
+            background: 'rgba(56,161,105,0.08)',
+            border: '1px solid rgba(56,161,105,0.2)',
+            borderRadius: 6,
+            fontSize: 11,
+            color: '#38A169',
+            textDecoration: 'none',
+            fontFamily: 'monospace',
+            overflow: 'hidden',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(56,161,105,0.15)'
+            e.currentTarget.style.borderColor = 'rgba(56,161,105,0.35)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(56,161,105,0.08)'
+            e.currentTarget.style.borderColor = 'rgba(56,161,105,0.2)'
+          }}
+        >
+          <ExternalLink size={11} style={{ flexShrink: 0 }} />
+          <span style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: 1,
+            minWidth: 0,
+          }}>
+            {publicUrl.replace(/^https?:\/\//, '')}
+          </span>
+        </a>
+      )}
 
       {/* Delete button — T-028 Phase 13 : déplacé en bas-droit pour ne plus
           chevaucher le badge "Brouillon/Publié" qui est dans le header en haut-droit.
