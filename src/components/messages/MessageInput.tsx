@@ -16,7 +16,8 @@ export default function MessageInput({ onSend, onSendImage, disabled }: Props) {
   const [imagePreview, setImagePreview] = useState<{ file: File; url: string } | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
 
   const isBusy = sending || disabled
 
@@ -75,15 +76,16 @@ export default function MessageInput({ onSend, onSendImage, disabled }: Props) {
       return
     }
 
-    const SpeechRecognitionClass = (window as unknown as { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition
-      ?? (window as unknown as { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const W = window as any
+    const SpeechRecognitionClass = W.SpeechRecognition ?? W.webkitSpeechRecognition
     if (!SpeechRecognitionClass) return
 
     const recognition = new SpeechRecognitionClass()
     recognition.lang = 'fr-FR'
     recognition.continuous = true
     recognition.interimResults = true
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: { results: { length: number; [i: number]: { 0: { transcript: string } } } }) => {
       let transcript = ''
       for (let i = 0; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript
