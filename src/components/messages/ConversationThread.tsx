@@ -44,7 +44,7 @@ function renderMedia(msg: IgMessage) {
   if (type === 'video') {
     return (
       <div className="mb-1 max-w-[220px]">
-        <video src={msg.media_url} controls className="w-full rounded-xl" />
+        <video src={msg.media_url} controls className="w-full rounded-2xl" />
       </div>
     )
   }
@@ -63,7 +63,7 @@ function renderMedia(msg: IgMessage) {
       <img
         src={msg.media_url}
         alt=""
-        className={`w-full rounded-xl ${type === 'sticker' ? 'max-w-[120px]' : ''}`}
+        className={`w-full rounded-2xl ${type === 'sticker' ? 'max-w-[120px]' : ''}`}
       />
     </div>
   )
@@ -87,7 +87,7 @@ export default function ConversationThread({ messages }: Props) {
   }, [messages.length === 0 ? 0 : messages[0]?.id])
 
   if (messages.length === 0) return (
-    <div className="flex-1 flex items-center justify-center text-[var(--text-tertiary)] text-[13px]">
+    <div className="flex-1 flex items-center justify-center text-[#444] text-[13px]">
       Aucun message
     </div>
   )
@@ -104,7 +104,7 @@ export default function ConversationThread({ messages }: Props) {
           <div key={msg.id}>
             {showDateSeparator && (
               <div className="flex items-center justify-center my-3">
-                <div className="px-3 py-1 rounded-full bg-[var(--bg-elevated)] text-[11px] text-[var(--text-tertiary)] font-medium">
+                <div className="px-3 py-1 rounded-full bg-[#151515] border border-[#1f1f1f] text-[10px] text-[#555] font-medium">
                   {formatDateSeparator(msg.sent_at)}
                 </div>
               </div>
@@ -113,10 +113,10 @@ export default function ConversationThread({ messages }: Props) {
               {renderMedia(msg)}
               {msg.text && (
                 <div
-                  className={`px-3.5 py-2 rounded-2xl max-w-[320px] text-[13px] leading-[1.4] break-words
+                  className={`px-4 py-[10px] max-w-[300px] text-[13px] leading-[1.45] break-words
                     ${isUser
-                      ? 'bg-[var(--color-primary)] text-white'
-                      : 'bg-[var(--bg-elevated)] text-[var(--text-primary)]'
+                      ? 'bg-gradient-to-br from-[#E53E3E] to-[#C53030] text-white rounded-[18px_18px_6px_18px]'
+                      : 'bg-[#151515] border border-[#1f1f1f] text-[#ddd] rounded-[18px_18px_18px_6px]'
                     }
                     ${isOptimistic ? 'opacity-60' : ''}
                   `}
@@ -125,7 +125,7 @@ export default function ConversationThread({ messages }: Props) {
                   {msg.text}
                 </div>
               )}
-              <div className={`text-[10px] text-[var(--text-tertiary)] mt-0.5 px-1 flex items-center gap-1 ${isOptimistic ? 'italic' : ''}`}>
+              <div className={`text-[9px] text-[#444] mt-[3px] px-[6px] flex items-center gap-1 ${isOptimistic ? 'italic' : ''}`}>
                 {isOptimistic ? 'Envoi...' : formatTimestamp(msg.sent_at)}
               </div>
             </div>

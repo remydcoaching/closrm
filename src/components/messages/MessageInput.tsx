@@ -35,7 +35,7 @@ export default function MessageInput({ onSend, disabled }: Props) {
   const hasText = text.trim().length > 0
 
   return (
-    <div className="px-4 py-3 border-t border-[var(--border-primary)] flex gap-2 items-end">
+    <div className="px-5 py-3 border-t border-[#1a1a1a] bg-[#0d0d0d] flex gap-[10px] items-end">
       <textarea
         ref={inputRef}
         value={text}
@@ -43,20 +43,20 @@ export default function MessageInput({ onSend, disabled }: Props) {
         onKeyDown={handleKeyDown}
         placeholder="Ecrire un message..."
         rows={1}
-        className="flex-1 px-3.5 py-2.5 text-[13px] bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-xl outline-none resize-none leading-[1.4] max-h-[120px] overflow-auto focus:ring-1 focus:ring-[var(--color-primary)] transition-shadow placeholder:text-[var(--text-tertiary)]"
+        className="flex-1 px-4 py-[11px] text-[12px] bg-[#141414] text-[#ccc] border border-[#222] rounded-[14px] outline-none resize-none leading-[1.4] max-h-[120px] overflow-auto focus:border-[#333] transition-colors placeholder:text-[#555]"
       />
       <button
         onClick={handleSend}
         disabled={!hasText || isBusy}
-        className={`w-10 h-10 rounded-full border-none flex items-center justify-center shrink-0 transition-all duration-150
+        className={`w-[38px] h-[38px] rounded-full border-none flex items-center justify-center shrink-0 transition-all duration-150
           ${hasText && !isBusy
-            ? 'bg-[var(--color-primary)] cursor-pointer hover:opacity-90 active:scale-95'
-            : 'bg-[var(--bg-elevated)] cursor-default'
+            ? 'bg-gradient-to-br from-[#E53E3E] to-[#C53030] cursor-pointer hover:opacity-90 active:scale-95'
+            : 'bg-[#1a1a1a] cursor-default'
           }
           ${isBusy ? 'opacity-60' : ''}
         `}
       >
-        <Send size={16} className={hasText ? 'text-white' : 'text-[var(--text-tertiary)]'} />
+        <Send size={15} className={hasText && !isBusy ? 'text-white' : 'text-[#444]'} />
       </button>
     </div>
   )
