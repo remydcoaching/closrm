@@ -53,8 +53,8 @@
 | Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non démarré | T-021 |
 | **Lead++ (workflow inline + pseudo IG + chaîne + Messages)** ⚠️ touche module Leads de Rémy | **Pierre** (réassignée le 2026-04-07) | **⬜ Non démarré** | **T-027** |
 | **Funnels v2 — Direction artistique (presets + 15 effets)** | **Rémy** | **✅ Terminé** (2026-04-07, branche pushée) | **T-028a** |
-| **Funnels v2 — Migration des 12 blocs** | **Rémy** | **🔄 En cours** (Phases 1-7 livrées 2026-04-07, Phase 8 = commit/push) | **T-028c** |
-| **Funnels v2 — Refonte builder UX** | **Rémy** | **⬜ Non démarré** (bloquée par T-028a + T-028c) | **T-028b** |
+| **Funnels v2 — Migration des 12 blocs** | **Rémy** | **✅ Terminé** (2026-04-07, branche pushée) | **T-028c** |
+| **Funnels v2 — Refonte builder UX** | **Rémy** | **✅ Terminé** (2026-04-07, branche pushée) | **T-028b** |
 | **Automations v2 (triggers/actions, observability)** | **Pierre** | **⬜ Non démarré** | **T-029** |
 | **Booking → auto Google Meet (en ligne)** | **Pierre** | **⬜ Non démarré** | **T-030** |
 | **Import portefeuille leads (CSV + alternatives)** | **Rémy** | **⬜ Non démarré** | **T-031** |

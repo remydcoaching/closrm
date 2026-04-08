@@ -178,22 +178,72 @@ Refondre l'éditeur de funnels (`FunnelBuilder.tsx`) pour atteindre une UX compa
 
 ---
 
-## Notes techniques
+## Notes techniques (décisions prises pendant l'implémentation)
 
-- **dnd-kit vs solution actuelle** : à décider en Phase 4 selon ce que Pierre a déjà utilisé dans T-023.
-- **Preview iframe vs container ?** Iframe = isolation CSS parfaite mais hot-reload plus lent. Container = simple mais risque de fuites de styles. → Tenter container en premier, basculer iframe si problème.
-- **Undo/Redo** : ne pas serializer tout l'état à chaque action — utiliser un diff (immer + patches ?)
-- **Performance** : si autosave ralentit l'UX, debouncer plus long ou batch les patches.
-- **Bug builder existant** : référence au feedback mémoire `feedback_t028_skip_old_builder_bugs` — on n'a pas patché l'ancien builder pendant T-028a/c, donc en commençant T-028b il faut probablement repartir de zéro pour le builder, pas étendre l'existant.
+- **dnd-kit confirmé** : Pierre l'utilisait déjà en T-023 (`@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities` dans `package.json`). On a réutilisé le `useSortable` hook pour les rangs de la liste de sections, et le `DndContext` du legacy reste en place pour le drag end handler. Pas besoin de switcher de lib.
+- **Preview en container, pas iframe** : tenté container directement, fonctionne parfaitement. Le risque de fuite de styles est mitigé par le scope `.fnl-root` mis en place en T-028a (toutes les classes sont préfixées `.fnl-*`). On garde container pour le hot-reload rapide, on switcherait iframe seulement en cas de souci futur.
+- **Undo/Redo en stack par référence, pas immer** : V1 simple, on stocke des références d'arrays et on compare par ref. Limite à 50 entrées (shift sur dépassement). Pas de coalesce des keystrokes — chaque setState = entrée. À polir en V2 si nécessaire (debounce 300ms avant push history).
+- **Autosave debounced 1.5s** : seul `pages` est autosave. Le design (preset/override/effects) est PATCH immédiatement parce qu'il change lentement et que le coach attend un retour visuel instantané. Si Phase 6 trop agressive sur les pages, on debouncera plus long.
+- **Réutilisation des 12 éditeurs `config/*`** : décision majeure de Phase 5. Au lieu de réécrire 12 forms d'édition (~2-3h de travail), on a connecté `FunnelBlockConfig` dispatcher existant via le composant React `FunnelBlockConfigPanel`. Tous les éditeurs sont compatibles avec les types `FunnelBlockConfig` existants — la migration T-028c n'a touché que le rendu des blocs, pas leur structure de données. Si les éditeurs vieillissent mal, on les réécrira un par un en V2 sans bloquer T-028b.
+- **Booking + Form gardés affichables** : dans le menu d'ajout `SectionsListPanel`, ils sont visibles avec un tag "À venir" non-cliquable. Si un coach a déjà ces blocs dans un funnel pré-T-028c, ils restent éditables dans la liste — c'est juste l'ajout de NOUVEAUX qui est bloqué (cf. A-028a-01/02 dans `ameliorations.md`).
+- **`useUndoRedo` vs callback signature** : le hook expose `setState(value)` sans callback signature `(prev) => next`. Ça a forcé un refactor de `handleAddPage` / `handleDeletePage` dans la page admin pour qu'ils lisent `pages` via la closure plutôt que via prev. Plus simple à maintenir.
+- **Rules React 19 strictes** : on a hit la règle `react-hooks/refs-in-render` (ref assignée dans le body) et `react-hooks/set-state-in-effect` (setState dans body d'effet) sur `use-autosave.ts`. Patches : refs synchronisées en `useEffect`, setState pending déplacé en `Promise.resolve().then()` microtask. Même pattern qu'on avait utilisé sur `CountUp` / `Reveal` en T-028a.
+- **Légère duplication** : `getDefaultConfig()` est dupliqué entre `FunnelBuilder.tsx` (legacy supprimé en Phase 8) et `FunnelBuilderV2.tsx`. Maintenant que le legacy est dégagé, on pourrait l'extraire dans `src/lib/funnels/default-block-config.ts`. Pas urgent — laissé en place pour limiter le scope de Phase 8.
 
 ---
 
 ## Résultat final
 
-_À remplir à la fin de la tâche._
+✅ **Phases 1-8 terminées le 2026-04-07.**
+
+### Fichiers créés (7 nouveaux)
+
+| Fichier | Phase | Description |
+|---|---|---|
+| `src/components/funnels/v2/FunnelBuilderV2.tsx` | 1 | Composant racine du nouveau builder, layout 3 colonnes |
+| `src/components/funnels/v2/sidebar/DirectionArtistiquePanel.tsx` | 2 | Panneau preset + 4 color pickers + toggle 🔗 + 15 effets |
+| `src/components/funnels/v2/sidebar/SectionsListPanel.tsx` | 3 | Liste drag&drop des sections + menu d'ajout 12 types (Booking/Form en "À venir") |
+| `src/components/funnels/v2/use-undo-redo.ts` | 6 | Hook stack historique + raccourcis Cmd+Z / Cmd+Shift+Z |
+| `src/components/funnels/v2/use-autosave.ts` | 6 | Hook autosave debounced 1.5s avec status idle/pending/saving/saved/error |
+
+(+ les composants utilitaires `Lightbox.tsx`, `CountUp.tsx`, `Reveal.tsx`, `Countdown.tsx`, `BeforeAfter.tsx`, `use-parallax.ts`, `use-cursor-glow.ts` créés en T-028a sont aussi sous `src/components/funnels/v2/`)
+
+### Fichiers modifiés
+
+| Fichier | Phase | Nature |
+|---|---|---|
+| `src/app/(dashboard)/acquisition/funnels/[id]/page.tsx` | 1, 4, 6 | Bascule vers `<FunnelBuilderV2>`, ajout du toggle device tablet, intégration `useUndoRedo` + `useAutosave` + topbar Undo/Redo + status indicator autosave |
+| `src/components/funnels/FunnelPagePreview.tsx` | 4 | Export du type `FunnelPreviewMode`, support du mode `tablet` (768px) |
+
+### Fichiers supprimés (Phase 8)
+
+| Fichier | Raison |
+|---|---|
+| `src/components/funnels/FunnelBuilder.tsx` | Remplacé par `FunnelBuilderV2` |
+| `src/components/funnels/FunnelBlockPalette.tsx` | Intégré à `SectionsListPanel` (Phase 3) |
+
+`src/components/funnels/FunnelBlockConfig.tsx` est **conservé** car réutilisé par `FunnelBuilderV2` pour l'inspector. Idem pour les 12 éditeurs `src/components/funnels/config/*`.
+
+### Validation
+
+- ✅ `npm run lint` : 84 problèmes (vs 85 baseline T-028c → -1, 0 nouvelle erreur sur les fichiers livrés). La diminution vient de la suppression du legacy `FunnelBuilder.tsx` qui contenait au moins 1 warning préexistant.
+- ✅ `npm run build` : `Compiled successfully`
+- ✅ Branche `feature/remy-funnels-v2-builder` pushée à chaque phase (8 commits successifs : `da55d01`, `79335b2`, `4074d50`, `e37864d`, `34c3131`, `ab4937f`, `a9beb76`, + commit Phase 8 final)
+- ✅ Validation visuelle Rémy au fil des phases (Phase 1 layout vide, Phase 2 sidebar Direction artistique fonctionnelle, etc.)
+
+### Décisions structurantes (validées avec Rémy)
+
+- **Granularité globale au funnel** : preset + effects, pas d'override par bloc en V1 (porte ouverte pour V2)
+- **Toggle 🔗 lier les fonds** : porté à l'identique de la sandbox T-028a
+- **Réutilisation des 12 éditeurs config/* existants** : pas de réécriture, gain ~2-3h
+- **`pages` autosave debounced 1.5s, design fields PATCH immédiat** : 2 stratégies différentes selon la fréquence des modifs
 
 ---
 
 ## Améliorations identifiées pendant cette tâche
 
-_À remplir au fil de l'eau._
+- **(idée future)** Extraire `getDefaultConfig()` dans `src/lib/funnels/default-block-config.ts` pour éviter la duplication (actuellement uniquement dans `FunnelBuilderV2.tsx` après suppression du legacy). Trivial, à faire à la prochaine touche du builder.
+- **(idée future)** Coalesce des keystrokes dans `useUndoRedo` pour qu'un undo restaure une frappe entière au lieu d'un caractère à la fois. Pattern : debounce 300ms avant push history. À faire si feedback coach négatif sur le ratio undo/keystrokes.
+- **(idée future)** Indicateur "Modifications non sauvegardées" sur la fermeture d'onglet quand `autosaveStatus` est `pending` ou `saving`. Le hook a déjà un `beforeunload` handler best-effort, mais on pourrait afficher un confirm dialog. Pas urgent — risque très faible avec le debounce 1.5s.
+- **(idée future)** Permettre au coach de **renommer une page** depuis le `FunnelPageTabs` (actuellement noms générés `Page 1`, `Page 2`, etc.). Petit ajout UX, à scope dans une mini-tâche dédiée.
+- **(idée future)** Sticky sidebar — quand le funnel a beaucoup de sections, la sidebar Direction artistique scroll avec, au lieu de rester accessible. Dépendra des feedbacks coach.

@@ -1,6 +1,6 @@
 # Tâche 028 — Funnels v2 : refonte builder + design system + migration blocs
 
-> **Statut :** ⬜ Non démarré (planification validée le 2026-04-07)
+> **Statut :** ✅ Terminée (2026-04-07) — les 3 sous-tâches a/c/b livrées et pushées
 > **Développeur :** Rémy
 > **Type :** Fiche **parente** — pointe vers les 3 sous-tâches T-028a/b/c
 
@@ -78,7 +78,24 @@ L'autre référence est le PDF [Prompt — Tunnel de vente.pdf](../Prompt — Tu
 
 ## Résultat final
 
-_À remplir une fois les 3 sous-tâches terminées._
+✅ **Les 3 sous-tâches T-028a / T-028c / T-028b sont terminées et pushées sur leur branche respective le 2026-04-07.** Voir les "Résultat final" de chaque fiche pour le détail.
+
+**Récap rapide :**
+- T-028a : 24 nouveaux fichiers (5 TS dans `lib/funnels/`, 17 CSS dans `styles/funnels/`, 6 React dans `components/funnels/v2/`, 1 sandbox `app/dev/funnels-sandbox/`) — design system 20 presets + 15 effets, validé visuellement
+- T-028c : migration SQL `015_funnels_design_v2.sql` + 12 blocs migrés au design system + helper `loadFunnelDesign()` + page publique branchée + matrice de tests visuels `app/dev/funnels-blocks-matrix/`
+- T-028b : nouveau builder `FunnelBuilderV2.tsx` (3 colonnes) + 2 panels sidebar (Direction artistique, Sections) + Undo/Redo + autosave debounced + suppression du legacy `FunnelBuilder.tsx` et `FunnelBlockPalette.tsx`
+
+**Branches sur origin :**
+- `feature/remy-funnels-v2-direction-artistique` (T-028a)
+- `feature/remy-funnels-v2-blocks-migration` (T-028c, parent T-028a)
+- `feature/remy-funnels-v2-builder` (T-028b, parent T-028c)
+
+**Prochaine étape :** créer une PR de merge `feature/remy-funnels-v2-builder` → `develop` qui contient les 3 sous-tâches d'un coup (vu que T-028b dépend de T-028c qui dépend de T-028a, la PR finale embarque tout le diff).
+
+**Hors V1 (déjà documenté dans ameliorations.md) :**
+- A-028a-01 : brancher BookingBlock sur T-022 calendriers internes
+- A-028a-02 : brancher FormBlock sur API submission + création lead + workflow trigger
+- A-028a-03 : partager les design tokens `--fnl-*` avec le module Email V2 sous le namespace `--brand-*`
 
 ---
 
