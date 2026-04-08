@@ -131,22 +131,76 @@ Porter les 12 blocs Funnels existants (livrés par Pierre en T-023) au nouveau d
 
 ---
 
-## Notes techniques
+## Notes techniques (décisions prises pendant l'implémentation)
 
-- **Risque :** certains blocs peuvent avoir des dépendances cachées sur l'ancien CSS (classes globales, sélecteurs descendants). À traquer méthodiquement bloc par bloc.
-- **Migration safe :** on garde l'ancien CSS en parallèle pendant le développement, on supprime à la Phase 7 seulement.
-- **Backfill défensif :** un funnel existant qui n'a pas `preset_id` → fallback `ocean` côté front (ne pas crash).
-- **RLS :** vérifier que les nouvelles colonnes héritent bien de la policy `funnels_workspace` existante.
-- **Pierre :** s'assurer qu'il ne touche pas aux blocs Funnels en parallèle (sa branche actuelle ne touche pas à ce module au 2026-04-07).
+- **Migration SQL** : numéro 015 (suit 014_follow_ads). Toutes les colonnes sont `IF NOT EXISTS` → idempotente. Backfill auto via les `DEFAULT` (`ocean` pour `preset_id`, `'{}'::jsonb` pour `effects_config`). Pas de CHECK constraint sur `preset_id` → flexibilité côté code, fallback `ocean` côté front via `getPresetByIdOrDefault`. Migration appliquée par Rémy sur Supabase dev le 2026-04-07 et vérifiée OK.
+- **Cycle d'imports types ↔ lib** : le type `Funnel` dans `src/types/index.ts` doit décrire les champs JSON `preset_override` et `effects_config`, mais ne doit PAS importer depuis `src/lib/funnels/design-types.ts` (cycle). Solution : on duplique volontairement le shape dans `FunnelPresetOverrideJSON` et `FunnelEffectsConfigJSON` côté `types/index.ts`, et le helper `loadFunnelDesign()` cast vers les types lib en interne.
+- **Compat backward du builder admin existant** : `FunnelPagePreview` accepte un prop **optionnel** `funnel?`. Si fourni → wrap les blocs dans `.fnl-root` avec CSS vars. Si absent → rendu legacy intact. Comme l'ancien builder buggé n'a pas été modifié pour passer ce prop, il continue de tourner exactement comme avant — backward-compat 100%, conforme à la règle "ne pas fixer l'ancien builder pendant T-028".
+- **CSS du design system importés dans `FunnelPagePreview` ET dans la page publique** : les imports CSS Next.js sont dédupliqués au build, donc le double import ne crée pas de bloat. C'est nécessaire car les 2 chemins peuvent être consommés indépendamment.
+- **BookingBlock + FormBlock = stubs visuels** : décision validée par Rémy le 2026-04-07. Affichent un badge "À venir" gradient + bordure dashed + désactivés. La logique réelle est documentée dans `ameliorations.md` (A-028a-01 + A-028a-02). À reprendre dans des tâches dédiées une fois T-028 finie.
+- **CountdownBlock vs `<Countdown />` (T-028a)** : on a 2 components qui font la même chose. Le `CountdownBlock` historique reste — il a sa propre logique de tick et est piloté par `config.targetDate` (ISO string). Le composant `<Countdown />` de T-028a est destiné aux nouveaux usages via le toggle `e10-countdown` global. Cohabitation OK pour V1, à fusionner en V2 si pertinent.
+- **Format des étoiles dans Testimonials** : avant `#f5a623` (orange dur). Après `var(--fnl-primary)` (couleur du preset). Décision : la cohérence avec le preset prime sur la convention "étoiles = jaune". Si un coach veut absolument du jaune, il choisira un preset jaune (`Sunshine`).
+- **Hook useState avec lazy initializer** dans CountdownBlock pour figer `targetDate` au mount.
+- **Granularité d'override = globale au funnel uniquement** (validé par Rémy le 2026-04-07) : pas d'override par bloc en V1. Permet à T-028b d'avoir une UX simple. La porte reste ouverte pour V2 si un coach le demande.
 
 ---
 
 ## Résultat final
 
-_À remplir à la fin de la tâche._
+✅ **Phases 1-7 terminées le 2026-04-07.** Phase 8 = doc + commit + push (ce fichier + suivants).
+
+### Fichiers créés (4)
+
+| Fichier | Rôle |
+|---|---|
+| `supabase/migrations/015_funnels_design_v2.sql` | Ajoute `preset_id`, `preset_override`, `effects_config` à `funnels` (idempotent, backfill auto) |
+| `src/lib/funnels/load-funnel-design.ts` | Helper unique consommé par `FunnelPagePreview` + page publique pour calculer CSS vars + classes fx-* depuis un funnel |
+| `src/app/dev/funnels-blocks-matrix/page.tsx` | Page de tests visuels qui rend les 12 blocs avec données de démo + sticky preset bar pour switcher entre les 20 thèmes |
+
+### Fichiers modifiés
+
+**Schema + types + API (Phase 1) :**
+- `src/types/index.ts` — interface `Funnel` étendue + `FunnelPresetOverrideJSON` + `FunnelEffectsConfigJSON`
+- `src/app/api/funnels/[id]/route.ts` — PUT accepte `preset_id`, `preset_override`, `effects_config` (avec validation minimale)
+- `src/app/api/public/f/[workspaceSlug]/[funnelSlug]/[pageSlug]/route.ts` — SELECT inclut les 3 champs design + retourne `funnel: { preset_id, preset_override, effects_config }` dans la réponse
+
+**12 blocs migrés (Phases 2-5) :**
+- `src/components/funnels/blocks/SpacerBlock.tsx` — borne 0-500 + aria-hidden
+- `src/components/funnels/blocks/TextBlock.tsx` — `var(--fnl-text)` au lieu de `#333`
+- `src/components/funnels/blocks/ImageBlock.tsx` — border-radius 16, ombre colorée, hover transition
+- `src/components/funnels/blocks/CtaBlock.tsx` — utilise `.fnl-btn` (gradient + shine + ombre + hover) pour primary, ghost custom pour outline
+- `src/components/funnels/blocks/HeroBlock.tsx` — `.fnl-hero` + `.fnl-hero-inner` + `.fnl-headline` + `.fnl-hook` + `.fnl-btn`, support image de fond avec overlay sombre
+- `src/components/funnels/blocks/VideoBlock.tsx` — border-radius 16, ombre colorée, état vide stylé
+- `src/components/funnels/blocks/FaqBlock.tsx` — couleurs preset + animation rotate sur l'icône +/− + bordures teintées
+- `src/components/funnels/blocks/PricingBlock.tsx` — ombre colorée, variante highlighted, ✓ en couleur principale, `.fnl-btn`
+- `src/components/funnels/blocks/CountdownBlock.tsx` — boxes teintées Poppins 900 tabular-nums + séparateurs `:` en couleur principale
+- `src/components/funnels/blocks/TestimonialsBlock.tsx` — étoiles preset, avatars gradient initiales, grid auto-fit
+- `src/components/funnels/blocks/BookingBlock.tsx` — **stub "À venir"** : badge gradient + border dashed + icône + label calendar id (cf. A-028a-01)
+- `src/components/funnels/blocks/FormBlock.tsx` — **stub "À venir"** : formulaire désactivé visible en preview, bouton submit grisé (cf. A-028a-02)
+
+**Rendu (Phase 6) :**
+- `src/components/funnels/FunnelPagePreview.tsx` — prop optionnel `funnel?`, wrap dans `.fnl-root` avec CSS vars + classes fx-* si fourni, importe tous les CSS du design system
+- `src/app/f/[workspaceSlug]/[funnelSlug]/[pageSlug]/page.tsx` — consomme `funnel` depuis l'API publique, applique `loadFunnelDesign()`, wrap `<main>` dans `.fnl-root`
+
+### Validation
+
+- ✅ Migration SQL appliquée par Rémy sur Supabase dev (2026-04-07) — vérifiée via `SELECT preset_id, preset_override, effects_config FROM funnels` qui retourne `ocean / NULL / {}` sur les funnels existants
+- ✅ `npm run lint` : 85 problèmes (vs 87 baseline = **-2 amélioration**, 0 nouvelle erreur sur les fichiers livrés)
+- ✅ `npm run build` : `Compiled successfully`, 2 nouvelles routes statiques `/dev/funnels-sandbox` (T-028a) + `/dev/funnels-blocks-matrix` (T-028c)
+- ✅ Validation visuelle Rémy le 2026-04-07 via la matrice (les 12 blocs × 20 presets) — "visuellement c'est nickel"
+- ✅ Validation logique d'édition par bloc : Rémy a confirmé que la **granularité globale au funnel** (preset + effets) reste OK, le coach pourra modifier le **contenu** de chaque bloc dans l'inspector T-028b mais pas son style isolément
+
+### Décisions structurantes documentées dans T-028b
+- Inspector latéral droit : 1 panneau d'édition par type de bloc avec tous les `config.*` éditables
+- Sidebar gauche : preset + 4 color pickers + toggle 🔗 lier les fonds + 10 toggles d'effets + liste de blocs drag&drop
+- BookingBlock + FormBlock affichés grisés dans la palette avec label "À venir" non-draggable
 
 ---
 
 ## Améliorations identifiées pendant cette tâche
 
-_À remplir au fil de l'eau._
+- **A-028a-01** (déjà documenté) : Brancher BookingBlock sur `/api/booking-calendars/*` (T-022) → vraie réservation au lieu du stub
+- **A-028a-02** (déjà documenté) : Persister les submissions FormBlock + créer un lead + redirection
+- **(idée future)** Fusionner `CountdownBlock` (historique) et `<Countdown />` (T-028a) — actuellement 2 composants séparés qui font la même chose. Pas urgent, attendre que le builder T-028b stabilise la convention.
+- **(idée future)** Permettre au coach de créer/sauvegarder ses propres presets custom comme overrides nommés (cf. A-028a-03 idée future)
+- **(idée future)** Override visuel par bloc spécifique (granularité par instance) — refusé en V1 par Rémy le 2026-04-07 pour garder une UX simple. À reconsidérer si un coach le demande explicitement en feedback V1.

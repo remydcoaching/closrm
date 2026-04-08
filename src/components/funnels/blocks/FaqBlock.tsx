@@ -1,5 +1,21 @@
 'use client'
 
+/**
+ * T-028c — FaqBlock migré vers le design system v2.
+ *
+ * Accordéon questions/réponses. Adopte le langage visuel du design system :
+ * - couleurs via `--fnl-text` et `--fnl-text-secondary`
+ * - bordures teintées par `--fnl-primary-rgb`
+ * - icône de toggle (+ / −) en couleur principale
+ * - animation douce sur l'ouverture/fermeture
+ *
+ * Avant : couleurs hardcodées (#111, #888, #555, #eee).
+ * Après : tout passe par les CSS vars du preset.
+ *
+ * Note technique : on garde le pattern open/close via `useState` interne par item
+ * (pas besoin de remonter le state au parent — chaque item est indépendant).
+ */
+
 import { useState } from 'react'
 import type { FaqBlockConfig } from '@/types'
 
@@ -11,29 +27,62 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div style={{ borderBottom: '1px solid #eee' }}>
+    <div
+      style={{
+        borderBottom: '1px solid rgba(var(--fnl-primary-rgb), 0.12)',
+      }}
+    >
       <button
         type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
         style={{
           width: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '16px 0',
+          padding: '20px 0',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
           textAlign: 'left',
+          fontFamily: 'inherit',
         }}
       >
-        <span style={{ fontSize: 16, fontWeight: 600, color: '#111' }}>{question}</span>
-        <span style={{ fontSize: 22, color: '#888', lineHeight: 1, flexShrink: 0, marginLeft: 12 }}>
+        <span
+          style={{
+            fontSize: 16,
+            fontWeight: 700,
+            color: 'var(--fnl-text)',
+          }}
+        >
+          {question}
+        </span>
+        <span
+          style={{
+            fontSize: 24,
+            color: 'var(--fnl-primary)',
+            lineHeight: 1,
+            flexShrink: 0,
+            marginLeft: 12,
+            transition: 'transform 0.2s ease',
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            display: 'inline-block',
+            fontWeight: 300,
+          }}
+        >
           {open ? '−' : '+'}
         </span>
       </button>
       {open && (
-        <div style={{ padding: '0 0 16px', fontSize: 15, lineHeight: 1.6, color: '#555' }}>
+        <div
+          style={{
+            padding: '0 0 20px',
+            fontSize: 15,
+            lineHeight: 1.7,
+            color: 'var(--fnl-text-secondary)',
+          }}
+        >
           {answer}
         </div>
       )}
@@ -43,9 +92,18 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 
 export default function FaqBlock({ config }: Props) {
   return (
-    <div style={{ padding: '40px 20px', maxWidth: 700, margin: '0 auto' }}>
+    <div style={{ padding: '60px 20px', maxWidth: 720, margin: '0 auto' }}>
       {config.title && (
-        <h2 style={{ fontSize: 28, fontWeight: 700, color: '#111', margin: '0 0 24px', textAlign: 'center' }}>
+        <h2
+          style={{
+            fontSize: 32,
+            fontWeight: 800,
+            color: 'var(--fnl-primary)',
+            margin: '0 0 32px',
+            textAlign: 'center',
+            lineHeight: 1.3,
+          }}
+        >
           {config.title}
         </h2>
       )}
