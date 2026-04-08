@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check, Sparkles } from 'lucide-react'
-import { Lead, Call, FollowUp, LeadStatus } from '@/types'
+import { Lead, Call, FollowUp, LeadStatus, IgConversation, IgMessage } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
 import CallOutcomeBadge from '@/components/closing/CallOutcomeBadge'
 import CallTypeBadge from '@/components/closing/CallTypeBadge'
+import ConversationThread from '@/components/messages/ConversationThread'
+import MessageInput from '@/components/messages/MessageInput'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
@@ -28,6 +30,15 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   const [newTag, setNewTag] = useState('')
   const [notes, setNotes] = useState('')
   const notesTimer = useRef<NodeJS.Timeout>(null)
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'infos' | 'messages'>('infos')
+
+  // Messages state
+  const [conversation, setConversation] = useState<IgConversation | null>(null)
+  const [messages, setMessages] = useState<(IgMessage & { _optimistic?: boolean })[]>([])
+  const [messagesLoading, setMessagesLoading] = useState(false)
+  const pollRef = useRef<NodeJS.Timeout>(null)
 
   useEffect(() => {
     fetchLead()
@@ -86,13 +97,81 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
     patchLead({ tags: lead.tags.filter((t) => t !== tag) })
   }
 
+  // --- Messages logic ---
+  const fetchMessages = useCallback(async (convoId: string, refresh = false) => {
+    const url = `/api/instagram/messages?conversation_id=${convoId}${refresh ? '&refresh=true' : ''}`
+    const res = await fetch(url)
+    if (res.ok) {
+      const json = await res.json()
+      setMessages(json.data ?? [])
+    }
+  }, [])
+
+  const fetchConversation = useCallback(async () => {
+    setMessagesLoading(true)
+    const res = await fetch(`/api/instagram/conversations?lead_id=${leadId}`)
+    if (res.ok) {
+      const json = await res.json()
+      const convo: IgConversation | null = (json.data && json.data.length > 0) ? json.data[0] : null
+      setConversation(convo)
+      if (convo) await fetchMessages(convo.id)
+    }
+    setMessagesLoading(false)
+  }, [leadId, fetchMessages])
+
+  useEffect(() => {
+    if (activeTab === 'messages') {
+      fetchConversation()
+    }
+  }, [activeTab, fetchConversation])
+
+  // Poll every 5s when messages tab is active
+  useEffect(() => {
+    if (activeTab !== 'messages' || !conversation) return
+    pollRef.current = setInterval(() => fetchMessages(conversation.id, true), 5000)
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+  }, [activeTab, conversation, fetchMessages])
+
+  async function handleSend(text: string) {
+    if (!conversation) return
+    const optimistic: IgMessage & { _optimistic: boolean } = {
+      id: `opt-${Date.now()}`,
+      workspace_id: '',
+      conversation_id: conversation.id,
+      ig_message_id: null,
+      sender_type: 'user',
+      text,
+      media_url: null,
+      media_type: null,
+      sent_at: new Date().toISOString(),
+      is_read: true,
+      _optimistic: true,
+    }
+    setMessages((prev) => [...prev, optimistic])
+    await fetch('/api/instagram/messages/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversation_id: conversation.id, text }),
+    })
+    await fetchMessages(conversation.id, true)
+  }
+
+  async function handleSendImage(file: File) {
+    if (!conversation) return
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('conversation_id', conversation.id)
+    await fetch('/api/instagram/messages/send-image', { method: 'POST', body: formData })
+    await fetchMessages(conversation.id, true)
+  }
+
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.4)' }} />
 
-      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 460, zIndex: 151, background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-primary)', overflowY: 'auto', boxShadow: '-10px 0 40px rgba(0,0,0,0.5)' }}>
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 460, zIndex: 151, background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-primary)', boxShadow: '-10px 0 40px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <div style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+        <div style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Profil du lead</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {lead && <Link href={`/leads/${lead.id}`} style={{ fontSize: 11, color: 'var(--text-tertiary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}><ExternalLink size={12} />Page complète</Link>}
@@ -105,7 +184,33 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
         ) : !lead ? (
           <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Lead non trouvé</div>
         ) : (
-          <div style={{ padding: 20 }}>
+          <>
+            {/* Tab bar */}
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-primary)', background: 'var(--bg-secondary)', flexShrink: 0 }}>
+              {(['infos', ...(lead.instagram_handle ? ['messages'] : [])] as ('infos' | 'messages')[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '10px 20px',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: activeTab === tab ? '2px solid var(--color-primary)' : '2px solid transparent',
+                    color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                    cursor: 'pointer',
+                    transition: 'color 0.15s',
+                  }}
+                >
+                  {tab === 'infos' ? 'Infos' : 'Messages'}
+                </button>
+              ))}
+            </div>
+
+            {/* Infos tab */}
+            {activeTab === 'infos' && (
+          <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
             {/* Identity */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0 }}>
@@ -250,6 +355,28 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </button>
             </div>
           </div>
+            )}
+
+            {/* Messages tab */}
+            {activeTab === 'messages' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {messagesLoading ? (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                    Chargement...
+                  </div>
+                ) : !conversation ? (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                    Aucune conversation Instagram trouvée
+                  </div>
+                ) : (
+                  <>
+                    <ConversationThread messages={messages} />
+                    <MessageInput onSend={handleSend} onSendImage={handleSendImage} />
+                  </>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </>
