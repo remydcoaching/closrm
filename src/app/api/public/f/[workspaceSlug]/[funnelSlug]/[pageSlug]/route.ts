@@ -26,10 +26,10 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   const workspaceId = ws.workspace_id
 
-  // 2. Look up published funnel
+  // 2. Look up published funnel — inclut les champs design v2 (T-028a/c)
   const { data: funnel, error: funnelErr } = await supabase
     .from('funnels')
-    .select('id')
+    .select('id, preset_id, preset_override, effects_config')
     .eq('workspace_id', workspaceId)
     .eq('slug', funnelSlug)
     .eq('status', 'published')
@@ -61,6 +61,12 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
   return NextResponse.json({
     page,
+    // Design system T-028a (cf. migration 015_funnels_design_v2.sql)
+    funnel: {
+      preset_id: funnel.preset_id,
+      preset_override: funnel.preset_override,
+      effects_config: funnel.effects_config,
+    },
     branding: {
       accentColor: workspace?.accent_color ?? '#E53E3E',
       logoUrl: workspace?.logo_url ?? null,

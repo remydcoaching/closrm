@@ -336,6 +336,30 @@ export interface PlanningTemplate {
 
 export type FunnelStatus = 'draft' | 'published'
 
+/**
+ * Override custom d'un preset de couleurs (T-028a, V1).
+ * Tous les champs sont optionnels — un champ absent retombe sur la valeur du preset.
+ *
+ * Note : la version structurelle (`FunnelPresetOverride`) vit dans
+ * `src/lib/funnels/design-types.ts`. Ce type ici est volontairement le même
+ * shape pour pouvoir être stocké/récupéré tel quel depuis Supabase. Si on
+ * importait `FunnelPresetOverride` ici, on créerait un cycle d'imports avec
+ * `lib/funnels` qui peut consommer `src/types`. On accepte la duplication.
+ */
+export interface FunnelPresetOverrideJSON {
+  primary?: string
+  heroBg?: string
+  sectionBg?: string
+  footerBg?: string
+}
+
+/**
+ * Map des effets visuels toggleables. Les effets forcés (E4/E5/E6) sont
+ * systématiquement appliqués côté rendu peu importe ce qui est stocké ici.
+ * Une map vide `{}` est valide → fallback sur DEFAULT_EFFECTS côté front.
+ */
+export type FunnelEffectsConfigJSON = Record<string, boolean>
+
 export interface Funnel {
   id: string
   workspace_id: string
@@ -344,6 +368,10 @@ export interface Funnel {
   description: string | null
   domain_id: string | null
   status: FunnelStatus
+  // Design system T-028a — voir migration 015_funnels_design_v2.sql
+  preset_id: string
+  preset_override: FunnelPresetOverrideJSON | null
+  effects_config: FunnelEffectsConfigJSON
   created_at: string
   updated_at: string
 }
