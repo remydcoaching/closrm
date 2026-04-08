@@ -244,6 +244,9 @@ export async function DELETE(
 
     if (!bookingToDelete) return NextResponse.json({ error: 'Réservation non trouvée' }, { status: 404 })
 
+    // Cancel pending reminders before deleting (audit trail preserved)
+    cancelBookingReminders(id).catch(() => {})
+
     const { data, error } = await supabase
       .from('bookings')
       .delete()

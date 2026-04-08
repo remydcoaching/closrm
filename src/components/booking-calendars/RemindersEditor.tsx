@@ -104,20 +104,29 @@ export default function RemindersEditor({ reminders, onChange }: RemindersEditor
             />
             <select
               value={reminder.delay_unit}
-              onChange={(e) => updateReminder(reminder.id, { delay_unit: e.target.value as 'hours' | 'days' })}
+              onChange={(e) => {
+                const unit = e.target.value as 'hours' | 'days'
+                const updates: Partial<CalendarReminder> = { delay_unit: unit }
+                if (unit === 'hours') updates.at_time = null
+                updateReminder(reminder.id, updates)
+              }}
               style={{ ...inputStyle, width: 110 }}
             >
               <option value="hours">heures avant</option>
               <option value="days">jours avant</option>
             </select>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>à</span>
-            <input
-              type="time"
-              value={reminder.at_time ?? ''}
-              onChange={(e) => updateReminder(reminder.id, { at_time: e.target.value || null })}
-              placeholder="Heure du RDV"
-              style={{ ...inputStyle, width: 110, colorScheme: 'dark' }}
-            />
+            {reminder.delay_unit === 'days' && (
+              <>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>à</span>
+                <input
+                  type="time"
+                  value={reminder.at_time ?? ''}
+                  onChange={(e) => updateReminder(reminder.id, { at_time: e.target.value || null })}
+                  placeholder="Heure du RDV"
+                  style={{ ...inputStyle, width: 110, colorScheme: 'dark' }}
+                />
+              </>
+            )}
           </div>
 
           <div>
@@ -135,7 +144,7 @@ export default function RemindersEditor({ reminders, onChange }: RemindersEditor
 
           <div>
             <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-              Message — variables : {'{{prenom}}'}, {'{{date_rdv}}'}, {'{{heure_rdv}}'}, {'{{nom_calendrier}}'}
+              Message — variables : {'{{prenom}}'}, {'{{nom}}'}, {'{{date_rdv}}'}, {'{{heure_rdv}}'}, {'{{nom_calendrier}}'}
             </label>
             <textarea
               value={reminder.message}
