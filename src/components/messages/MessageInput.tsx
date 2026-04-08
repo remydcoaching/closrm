@@ -41,7 +41,7 @@ export default function MessageInput({ onSend, disabled }: Props) {
         value={text}
         onChange={e => setText(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Ecrire un message..."
+        placeholder="Écrire un message..."
         rows={1}
         className="flex-1 px-4 py-[11px] text-[12px] bg-[#141414] text-[#ccc] border border-[#222] rounded-[14px] outline-none resize-none leading-[1.4] max-h-[120px] overflow-auto focus:border-[#333] transition-colors placeholder:text-[#555]"
       />

@@ -39,8 +39,9 @@ export default function MessagesPage() {
     }
   }, [])
 
+  const hasLoadedOnce = useRef(false)
   const fetchConversations = useCallback(async (withSync = false) => {
-    setLoading(true)
+    if (!hasLoadedOnce.current) setLoading(true)
     setError(null)
     try {
       const accRes = await fetch('/api/instagram/account')
@@ -55,6 +56,7 @@ export default function MessagesPage() {
       const json = await res.json()
       setConversations(json.data ?? [])
       setSyncWarning(json.syncWarning ?? null)
+      hasLoadedOnce.current = true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
@@ -65,7 +67,11 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!initialSyncDone.current) {
       initialSyncDone.current = true
-      fetchConversations(true)
+      // Load cache first (fast), then sync Meta in background
+      fetchConversations(false).then(() => {
+        // Background sync — don't block UI
+        fetch('/api/instagram/conversations?sync=true').catch(() => {})
+      })
     } else {
       fetchConversations(false)
     }
@@ -145,12 +151,12 @@ export default function MessagesPage() {
     return () => clearInterval(interval)
   }, [selected?.id])
 
-  // Poll conversation list every 30s (no sync)
+  // Poll conversation list every 15s
   useEffect(() => {
     if (!hasAccount) return
     const interval = setInterval(() => {
       fetchConversations(false)
-    }, 30000)
+    }, 15000)
     return () => clearInterval(interval)
   }, [hasAccount, fetchConversations])
 
