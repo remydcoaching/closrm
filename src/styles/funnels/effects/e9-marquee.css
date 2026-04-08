@@ -1,0 +1,89 @@
+/* ============================================================
+   E9 — Marquee logo bar (TOGGLE, OFF par défaut)
+   ============================================================
+   Bandeau de logos clients/médias qui défile en boucle infinie
+   horizontalement. Pause au survol.
+
+   Structure HTML attendue :
+     <div class="fnl-marquee">
+       <div class="fnl-marquee-track">
+         <!-- Les éléments sont dupliqués pour créer la boucle continue -->
+         <div class="fnl-marquee-item">Logo 1</div>
+         ...
+         <div class="fnl-marquee-item">Logo 1</div>  ← duplication
+         ...
+       </div>
+     </div>
+
+   L'animation translateX(-50%) couplée à la duplication crée une boucle
+   parfaitement seamless.
+   ============================================================ */
+
+.fnl-root .fnl-marquee {
+  display: none;
+}
+
+.fnl-root.fx-e9-marquee .fnl-marquee {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  padding: 30px 0;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 10%,
+    black 90%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 10%,
+    black 90%,
+    transparent 100%
+  );
+}
+
+.fnl-root.fx-e9-marquee .fnl-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 60px;
+  animation: fnl-marquee-scroll 30s linear infinite;
+}
+
+.fnl-root.fx-e9-marquee .fnl-marquee:hover .fnl-marquee-track {
+  animation-play-state: paused;
+}
+
+.fnl-root.fx-e9-marquee .fnl-marquee-item {
+  flex-shrink: 0;
+  font-family: 'Poppins', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--fnl-text-secondary);
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.fnl-root.fx-e9-marquee .fnl-marquee-item:hover {
+  opacity: 1;
+  color: var(--fnl-primary);
+}
+
+@keyframes fnl-marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fnl-root.fx-e9-marquee .fnl-marquee-track {
+    animation: none;
+  }
+}

@@ -1,0 +1,41 @@
+/* ============================================================
+   E8 — Reveal au scroll (TOGGLE, ON par défaut)
+   ============================================================
+   Les blocs marqués `.fnl-reveal` apparaissent en fade-in-up quand ils
+   entrent dans le viewport. La classe `.fnl-reveal-visible` est ajoutée
+   par le composant React <Reveal /> via IntersectionObserver.
+
+   Comportements :
+   - Effet ON, élément hors viewport : opacity 0 + translateY(20px)
+   - Effet ON, élément entré : opacity 1 + translateY(0) (transition .6s)
+   - Effet OFF (pas de classe `.fx-e8-reveal-scroll`) : visible direct, sans transition
+   - Préférence "réduire les animations" : visible direct, sans transition
+   ============================================================ */
+
+.fnl-root.fx-e8-reveal-scroll .fnl-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  will-change: opacity, transform;
+}
+
+.fnl-root.fx-e8-reveal-scroll .fnl-reveal.fnl-reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Effet désactivé → tout est visible immédiatement */
+.fnl-root:not(.fx-e8-reveal-scroll) .fnl-reveal {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fnl-root .fnl-reveal,
+  .fnl-root.fx-e8-reveal-scroll .fnl-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

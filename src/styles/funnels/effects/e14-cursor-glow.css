@@ -1,0 +1,38 @@
+/* ============================================================
+   E14 — Cursor glow desktop (TOGGLE, OFF par défaut)
+   ============================================================
+   Halo lumineux teinté de la couleur principale qui suit le curseur
+   sur le hero. Effet "wow" mais gadget, donc opt-in.
+
+   Implémenté via un pseudo `::before` sur `.fnl-cursor-glow-target`
+   dont la position est mise à jour par le hook useCursorGlow.
+
+   Désactivé sur mobile (pas de cursor) et si prefers-reduced-motion.
+   ============================================================ */
+
+.fnl-root.fx-e14-cursor-glow .fnl-cursor-glow-target {
+  --fnl-cursor-x: 50%;
+  --fnl-cursor-y: 50%;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .fnl-root.fx-e14-cursor-glow .fnl-cursor-glow-target::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(
+      400px circle at var(--fnl-cursor-x) var(--fnl-cursor-y),
+      rgba(var(--fnl-primary-rgb), 0.18) 0%,
+      rgba(var(--fnl-primary-rgb), 0.08) 30%,
+      transparent 60%
+    );
+    pointer-events: none;
+    z-index: 2;
+    transition: background 0.1s ease-out;
+  }
+}

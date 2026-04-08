@@ -1,0 +1,43 @@
+/* ============================================================
+   E15 — Sticky CTA mobile (TOGGLE, ON par défaut)
+   ============================================================
+   Barre fixe en bas de l'écran (mobile uniquement, ≤ 768px) qui
+   contient un bouton CTA principal pour qu'il soit toujours
+   accessible pendant que le visiteur scrolle.
+
+   - Cachée par défaut (display: none)
+   - Affichée uniquement si `.fx-e15-sticky-cta` ET viewport mobile
+   - Sur desktop (>768px), reste cachée même si l'effet est activé
+   - Padding-bottom ajouté au footer pour ne pas être recouvert
+   ============================================================ */
+
+.fnl-root .fnl-sticky-cta {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .fnl-root.fx-e15-sticky-cta .fnl-sticky-cta {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 12px 20px;
+    z-index: 50;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .fnl-root.fx-e15-sticky-cta .fnl-sticky-cta .fnl-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 14px;
+    text-align: center;
+  }
+
+  /* Évite que le sticky CTA recouvre le footer */
+  .fnl-root.fx-e15-sticky-cta .fnl-footer {
+    padding-bottom: 90px;
+  }
+}

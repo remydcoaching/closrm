@@ -1,0 +1,53 @@
+/* ============================================================
+   E1 — Shimmer text (TOGGLE, ON par défaut)
+   ============================================================
+   Animation de gradient qui se déplace sur une portion de texte
+   mise en avant via la classe `.fnl-shimmer`. Donne un effet de
+   brillance qui attire l'œil sur les mots-clés ("atteindre tes
+   objectifs", "doubler ton CA", etc.).
+
+   Quand l'effet est désactivé : la portion de texte garde la couleur
+   principale du preset en statique (pas de transparence, pas d'animation).
+   ============================================================ */
+
+/* État OFF — texte coloré statique en couleur principale */
+.fnl-root .fnl-shimmer {
+  color: var(--fnl-primary);
+  font-weight: 800;
+}
+
+/* État ON — gradient animé qui traverse */
+.fnl-root.fx-e1-shimmer .fnl-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--fnl-primary) 0%,
+    var(--fnl-primary-light) 50%,
+    var(--fnl-primary) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  animation: fnl-shimmer 5.5s ease-in-out infinite;
+}
+
+@keyframes fnl-shimmer {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+
+/* Respect des préférences "réduire les animations" */
+@media (prefers-reduced-motion: reduce) {
+  .fnl-root.fx-e1-shimmer .fnl-shimmer {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: var(--fnl-primary);
+    color: var(--fnl-primary);
+  }
+}

@@ -1,0 +1,34 @@
+/* ============================================================
+   E4 — Colored shadow (FORCÉ)
+   ============================================================
+   Ombre teintée par la couleur principale du preset, appliquée aux
+   éléments d'action (boutons, cards de témoignages, images mises en avant).
+
+   Effet forcé : toujours actif sur tout funnel v2.
+   La couleur est dérivée de --fnl-primary-rgb, donc s'adapte automatiquement
+   au preset choisi.
+   ============================================================ */
+
+/* Boutons */
+.fnl-root .fnl-btn {
+  box-shadow:
+    0 8px 30px rgba(var(--fnl-primary-rgb), 0.4),
+    0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.fnl-root .fnl-btn:hover {
+  box-shadow:
+    0 12px 40px rgba(var(--fnl-primary-rgb), 0.55),
+    0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Cards génériques (témoignages, pricing, etc.) */
+.fnl-root .fnl-card-shadow {
+  box-shadow: 0 8px 30px rgba(var(--fnl-primary-rgb), 0.12);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.fnl-root .fnl-card-shadow:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 60px rgba(var(--fnl-primary-rgb), 0.25);
+}
