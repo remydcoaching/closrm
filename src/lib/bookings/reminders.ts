@@ -16,19 +16,19 @@ export function computeSendAt(
   let sendAt: Date
 
   if (reminder.at_time) {
-    // Specific time: X days before at HH:MM
+    // Specific time: X days before at HH:MM (UTC)
     const [hours, minutes] = reminder.at_time.split(':').map(Number)
     const daysToSubtract = reminder.delay_unit === 'days'
       ? reminder.delay_value
       : Math.ceil(reminder.delay_value / 24)
     sendAt = new Date(bookingDate)
-    sendAt.setDate(sendAt.getDate() - daysToSubtract)
-    sendAt.setHours(hours, minutes, 0, 0)
+    sendAt.setUTCDate(sendAt.getUTCDate() - daysToSubtract)
+    sendAt.setUTCHours(hours, minutes, 0, 0)
   } else {
-    // Relative: subtract delay from booking time
+    // Relative: subtract delay from booking time (pure arithmetic, timezone-safe)
     sendAt = new Date(bookingDate)
     if (reminder.delay_unit === 'days') {
-      sendAt.setDate(sendAt.getDate() - reminder.delay_value)
+      sendAt.setTime(sendAt.getTime() - reminder.delay_value * 24 * 60 * 60 * 1000)
     } else {
       sendAt.setTime(sendAt.getTime() - reminder.delay_value * 60 * 60 * 1000)
     }
@@ -138,9 +138,10 @@ export async function rescheduleBookingReminders(params: {
   const { workspaceId, bookingId, leadId, newScheduledAt, calendarId, lead } = params
   const supabase = createServiceClient()
 
+  // Cancel old pending reminders (not delete — keeps audit trail)
   await supabase
     .from('booking_reminders')
-    .delete()
+    .update({ status: 'cancelled' })
     .eq('booking_id', bookingId)
     .eq('status', 'pending')
 
