@@ -70,9 +70,9 @@ function statusFromThresholdsInverted(
 }
 
 const STATUS_LABELS: Record<PerformanceInsight['status'], string> = {
-  action_required: 'Action Required',
-  needs_optimization: 'Needs Optimization',
-  on_track: 'On Track',
+  action_required: 'Action requise',
+  needs_optimization: 'A optimiser',
+  on_track: 'En bonne voie',
 }
 
 // ─── Insight 1: Conversation-to-Appointment Gap ────────────────────────────
@@ -92,24 +92,24 @@ function conversationToAppointmentInsight(
   return {
     id: 'conversation-to-appointment',
     icon: 'MessageSquare',
-    title: 'Conversation-to-Appointment Gap',
+    title: 'Taux conversation → RDV',
     status,
     statusLabel: STATUS_LABELS[status],
     currentValue: formatPercent(rate),
     targetValue: `${target}%+`,
     description:
       funnel.conversations === 0
-        ? 'No conversations recorded yet. Start engaging with followers to generate appointments.'
-        : `${formatPercent(rate)} of conversations convert to appointments (target: ${target}%+).`,
+        ? 'Aucune conversation enregistree. Commencez a engager vos followers pour generer des RDV.'
+        : `${formatPercent(rate)} des conversations aboutissent a un RDV (objectif : ${target}%+).`,
     expectedImpact:
       additionalAppointments > 0
-        ? `+${additionalAppointments} additional appointment${additionalAppointments > 1 ? 's' : ''} per period if target is reached`
-        : 'Conversion rate is at or above target',
+        ? `+${additionalAppointments} RDV supplementaire${additionalAppointments > 1 ? 's' : ''} si l'objectif est atteint`
+        : 'Le taux de conversion est dans l\'objectif',
     actionSteps: [
-      'Set up auto-responder within 60 minutes',
-      'Create 3 DM templates with clear CTAs',
-      'Add urgency messaging and limited availability',
-      'Follow up within 24hrs if no booking',
+      'Configurer une reponse auto en moins de 60 minutes',
+      'Creer 3 templates de DM avec des CTA clairs',
+      'Ajouter un message d\'urgence et de disponibilite limitee',
+      'Relancer sous 24h si pas de reservation',
     ],
   }
 }
@@ -126,19 +126,19 @@ function adSpendEfficiencyInsight(
     return {
       id: 'ad-spend-efficiency',
       icon: 'TrendingUp',
-      title: 'Optimize Ad Spend Efficiency',
+      title: 'Optimiser les depenses pub',
       status: 'on_track',
       statusLabel: STATUS_LABELS.on_track,
       currentValue: funnel.followers > 0 ? formatCurrency(cpf) : 'N/A',
-      targetValue: 'Compare sources',
+      targetValue: 'Comparer les sources',
       description:
-        'Not enough data to compare sources. Connect multiple ad sources to unlock this insight.',
-      expectedImpact: 'Add more ad sources to calculate potential savings',
+        'Pas assez de donnees pour comparer les sources. Connectez plusieurs sources pub pour debloquer cet insight.',
+      expectedImpact: 'Ajoutez plus de sources pour calculer les economies potentielles',
       actionSteps: [
-        'Ensure multiple ad sources are tracked',
-        'Compare cost-per-follower across sources',
-        'Reallocate budget toward the most efficient source',
-        'Pause underperforming sources',
+        'Verifier que plusieurs sources sont trackees',
+        'Comparer le cout/follower entre les sources',
+        'Reallouer le budget vers la source la plus efficace',
+        'Mettre en pause les sources sous-performantes',
       ],
     }
   }
@@ -151,19 +151,19 @@ function adSpendEfficiencyInsight(
     return {
       id: 'ad-spend-efficiency',
       icon: 'TrendingUp',
-      title: 'Optimize Ad Spend Efficiency',
+      title: 'Optimiser les depenses pub',
       status: 'on_track',
       statusLabel: STATUS_LABELS.on_track,
       currentValue: 'N/A',
-      targetValue: 'Compare sources',
+      targetValue: 'Comparer les sources',
       description:
-        'Only one source has data. Need at least two sources with followers to compare efficiency.',
-      expectedImpact: 'Add more sources to unlock optimization',
+        'Une seule source a des donnees. Il faut au moins deux sources avec des followers pour comparer.',
+      expectedImpact: 'Ajoutez plus de sources pour debloquer l\'optimisation',
       actionSteps: [
-        'Ensure multiple ad sources are tracked',
-        'Compare cost-per-follower across sources',
-        'Reallocate budget toward the most efficient source',
-        'Pause underperforming sources',
+        'Verifier que plusieurs sources sont trackees',
+        'Comparer le cout/follower entre les sources',
+        'Reallouer le budget vers la source la plus efficace',
+        'Mettre en pause les sources sous-performantes',
       ],
     }
   }
@@ -186,21 +186,21 @@ function adSpendEfficiencyInsight(
   return {
     id: 'ad-spend-efficiency',
     icon: 'TrendingUp',
-    title: 'Optimize Ad Spend Efficiency',
+    title: 'Optimiser les depenses pub',
     status,
     statusLabel: STATUS_LABELS[status],
-    currentValue: `${ratio.toFixed(1)}x gap`,
-    targetValue: '<2x gap',
-    description: `${mostExpensive.type} costs ${formatCurrency(mostExpensive.cpf)}/follower vs ${formatCurrency(cheapest.cpf)} for ${cheapest.type} (${ratio.toFixed(1)}x difference).`,
+    currentValue: `ecart ${ratio.toFixed(1)}x`,
+    targetValue: '<2x',
+    description: `${mostExpensive.type} coute ${formatCurrency(mostExpensive.cpf)}/follower vs ${formatCurrency(cheapest.cpf)} pour ${cheapest.type} (ecart de ${ratio.toFixed(1)}x).`,
     expectedImpact:
       monthlySavings > 0
-        ? `~${formatCurrency(monthlySavings)} savings/period by reallocating budget`
-        : 'Sources are within acceptable efficiency range',
+        ? `~${formatCurrency(monthlySavings)} d'economies/periode en reallouant le budget`
+        : 'Les sources sont dans une fourchette acceptable',
     actionSteps: [
-      `Reduce budget on ${mostExpensive.type} by 60%`,
-      `Reallocate to ${cheapest.type}`,
-      'Create 10 new ad variations',
-      `Pause ads with CPF > ${formatCurrency(mostExpensive.cpf)}`,
+      `Reduire le budget ${mostExpensive.type} de 60%`,
+      `Reallouer vers ${cheapest.type}`,
+      'Creer 10 nouvelles variations de pub',
+      `Mettre en pause les pubs avec CPF > ${formatCurrency(mostExpensive.cpf)}`,
     ],
   }
 }
@@ -215,24 +215,24 @@ function profileConversionInsight(funnel: FunnelData): PerformanceInsight {
   return {
     id: 'profile-conversion',
     icon: 'UserPlus',
-    title: 'Profile Conversion',
+    title: 'Conversion du profil',
     status,
     statusLabel: STATUS_LABELS[status],
     currentValue: formatPercent(rate),
     targetValue: `${target}%+`,
     description:
       funnel.profile_visits === 0
-        ? 'No profile visits recorded yet. Run ads to drive traffic to your profile.'
-        : `${formatPercent(rate)} of profile visitors become followers (target: ${target}%+).`,
+        ? 'Aucune visite de profil enregistree. Lancez des pubs pour generer du trafic.'
+        : `${formatPercent(rate)} des visiteurs du profil deviennent followers (objectif : ${target}%+).`,
     expectedImpact:
       funnel.profile_visits > 0
-        ? `+${Math.max(0, Math.round((target / 100) * funnel.profile_visits) - funnel.followers)} additional followers if target is reached`
-        : 'Drive profile visits to measure conversion',
+        ? `+${Math.max(0, Math.round((target / 100) * funnel.profile_visits) - funnel.followers)} followers supplementaires si l'objectif est atteint`
+        : 'Generez des visites pour mesurer la conversion',
     actionSteps: [
-      'Rewrite bio with clear value proposition',
-      'Add direct CTA in bio',
-      'Create 5 Instagram Highlights',
-      'Pin 3 best-performing posts',
+      'Reecrire la bio avec une proposition de valeur claire',
+      'Ajouter un CTA direct dans la bio',
+      'Creer 5 Highlights Instagram',
+      'Epingler les 3 meilleurs posts',
     ],
   }
 }
@@ -253,24 +253,24 @@ function costPerFollowerInsight(
   return {
     id: 'cost-per-follower',
     icon: 'DollarSign',
-    title: 'Cost Per Follower',
+    title: 'Cout par follower',
     status,
     statusLabel: STATUS_LABELS[status],
     currentValue: funnel.followers > 0 ? formatCurrency(cpf) : 'N/A',
     targetValue: `<${formatCurrency(target)}`,
     description:
       funnel.followers === 0
-        ? 'No followers gained in this period. Check your ads are running and targeting is correct.'
-        : `Each new follower costs ${formatCurrency(cpf)} (target: <${formatCurrency(target)}).`,
+        ? 'Aucun follower gagne sur cette periode. Verifiez que vos pubs tournent et que le ciblage est correct.'
+        : `Chaque nouveau follower coute ${formatCurrency(cpf)} (objectif : <${formatCurrency(target)}).`,
     expectedImpact:
       funnel.followers > 0 && cpf > target
-        ? `${formatCurrency((cpf - target) * funnel.followers)} potential savings if target CPF is reached`
-        : 'CPF is within target range',
+        ? `${formatCurrency((cpf - target) * funnel.followers)} d'economies potentielles si l'objectif CPF est atteint`
+        : 'Le CPF est dans l\'objectif',
     actionSteps: [
-      'Run weekly creative A/B tests',
-      `Pause ads with CPF > ${formatCurrency(5)}`,
-      `Double budget on ads < ${formatCurrency(3.5)} CPF`,
-      'Refresh creative every 7-10 days',
+      'Lancer des A/B tests creatifs chaque semaine',
+      `Mettre en pause les pubs avec CPF > ${formatCurrency(5)}`,
+      `Doubler le budget sur les pubs < ${formatCurrency(3.5)} CPF`,
+      'Rafraichir les creatifs tous les 7-10 jours',
     ],
   }
 }
@@ -285,24 +285,24 @@ function showUpRateInsight(funnel: FunnelData): PerformanceInsight {
   return {
     id: 'show-up-rate',
     icon: 'CalendarCheck',
-    title: 'Show-Up Rate',
+    title: 'Taux de presence',
     status,
     statusLabel: STATUS_LABELS[status],
     currentValue: formatPercent(rate),
     targetValue: `${target}%+`,
     description:
       funnel.appointments === 0
-        ? 'No appointments scheduled in this period.'
-        : `${formatPercent(rate)} of booked appointments resulted in show-ups (target: ${target}%+).`,
+        ? 'Aucun RDV planifie sur cette periode.'
+        : `${formatPercent(rate)} des RDV reserves ont abouti a une presence (objectif : ${target}%+).`,
     expectedImpact:
       funnel.appointments > 0
-        ? `+${Math.max(0, Math.round((target / 100) * funnel.appointments) - funnel.show_ups)} additional show-ups if target is reached`
-        : 'Schedule appointments to measure show-up rate',
+        ? `+${Math.max(0, Math.round((target / 100) * funnel.appointments) - funnel.show_ups)} presences supplementaires si l'objectif est atteint`
+        : 'Planifiez des RDV pour mesurer le taux de presence',
     actionSteps: [
-      'Document confirmation process',
-      'Keep 24-hour and 2-hour reminders',
-      'Add confirmation questions',
-      'Train team on this process',
+      'Documenter le processus de confirmation',
+      'Garder les rappels 24h et 2h avant',
+      'Ajouter des questions de confirmation',
+      'Former l\'equipe sur ce processus',
     ],
   }
 }
@@ -317,24 +317,24 @@ function qualificationSuccessInsight(funnel: FunnelData): PerformanceInsight {
   return {
     id: 'qualification-success',
     icon: 'Target',
-    title: 'Qualification Success',
+    title: 'Taux de qualification',
     status,
     statusLabel: STATUS_LABELS[status],
     currentValue: formatPercent(rate),
     targetValue: `${target}%+`,
     description:
       funnel.followers_total === 0
-        ? 'No followers recorded. Build your audience to measure qualification rate.'
-        : `${formatPercent(rate)} of total followers are qualified leads (target: ${target}%+).`,
+        ? 'Aucun follower enregistre. Developpez votre audience pour mesurer le taux de qualification.'
+        : `${formatPercent(rate)} de vos followers sont des leads qualifies (objectif : ${target}%+).`,
     expectedImpact:
       funnel.followers_total > 0
-        ? `+${Math.max(0, Math.round((target / 100) * funnel.followers_total) - funnel.qualified_followers)} additional qualified leads if targeting improves`
-        : 'Grow your follower base to unlock this insight',
+        ? `+${Math.max(0, Math.round((target / 100) * funnel.followers_total) - funnel.qualified_followers)} leads qualifies supplementaires si le ciblage s'ameliore`
+        : 'Developpez votre base followers pour debloquer cet insight',
     actionSteps: [
-      'Screenshot ad targeting settings',
-      'Document best-performing Story Ads',
-      'Create targeting template',
-      'Test 1 lookalike audience',
+      'Capturer les parametres de ciblage publicitaire',
+      'Documenter les Story Ads les plus performantes',
+      'Creer un template de ciblage',
+      'Tester 1 audience lookalike',
     ],
   }
 }
