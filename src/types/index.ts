@@ -390,6 +390,21 @@ export type FunnelBlockType =
   | 'image'
   | 'spacer'
 
+/**
+ * Config des effets visuels activables au niveau d'un bloc spécifique.
+ * Utilisée par les blocs Hero, CTA et Text (les seuls qui supportent des
+ * effets "locaux" en T-028 Phase 9). Les autres effets (glow hero, noise,
+ * parallax, etc.) restent globaux au funnel via `effects_config`.
+ *
+ * Un champ undefined/absent = effet désactivé (pas de fallback sur default).
+ */
+export interface BlockEffectsJSON {
+  /** E1 — Shimmer texte animé sur `.fnl-shimmer` dans ce bloc. */
+  shimmer?: boolean
+  /** E3 — Reflet lumineux animé sur `.fnl-btn` dans ce bloc. */
+  buttonShine?: boolean
+}
+
 export interface HeroBlockConfig {
   title: string
   subtitle: string
@@ -397,6 +412,10 @@ export interface HeroBlockConfig {
   ctaUrl: string
   backgroundImage: string | null
   alignment: 'left' | 'center' | 'right'
+  // T-028 Phase 9 — Badge pulsant au-dessus du titre. Vide = pas de badge.
+  badgeText?: string
+  // T-028 Phase 9 — Effets activables au niveau du bloc (shimmer / button shine)
+  effects?: BlockEffectsJSON
 }
 
 export interface VideoBlockConfig {
@@ -478,11 +497,15 @@ export interface CtaBlockConfig {
   style: 'primary' | 'secondary' | 'outline'
   size: 'sm' | 'md' | 'lg'
   alignment: 'left' | 'center' | 'right'
+  // T-028 Phase 9 — Effets activables au niveau du bloc (button shine)
+  effects?: BlockEffectsJSON
 }
 
 export interface FunnelTextBlockConfig {
   content: string
   alignment: 'left' | 'center' | 'right'
+  // T-028 Phase 9 — Effets activables au niveau du bloc (shimmer)
+  effects?: BlockEffectsJSON
 }
 
 export interface FunnelImageBlockConfig {

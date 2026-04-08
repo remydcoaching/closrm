@@ -13,7 +13,7 @@
  * `onDesignChange` qui débounce la persistance backend.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   FUNNEL_PRESETS,
   getPresetByIdOrDefault,
@@ -28,6 +28,22 @@ import type {
   FunnelPresetOverrideJSON,
   FunnelEffectsConfigJSON,
 } from '@/types'
+
+/**
+ * T-028 Phase 9 — 4 presets "featured" affichés en premier dans la sidebar.
+ * Les 16 autres sont repliés derrière un bouton "Voir tout (20)".
+ * Ordre validé par Rémy le 2026-04-07.
+ */
+const FEATURED_PRESET_IDS = ['ocean', 'foret', 'violet', 'impact'] as const
+
+/**
+ * T-028 Phase 9 — Seuls les effets `global` et `forced` sont affichés dans
+ * la sidebar. Les effets `block` (E1 shimmer, E3 button-shine) sont
+ * désormais gérés par bloc via l'inspector de droite (cf. BlockEffectsPanel).
+ */
+const SIDEBAR_EFFECTS = EFFECT_META.filter(
+  (meta) => meta.category === 'forced' || meta.category === 'global',
+)
 
 interface Props {
   /** ID du preset actuellement sélectionné. */
@@ -57,6 +73,25 @@ export default function DirectionArtistiquePanel({
   onDesignChange,
 }: Props) {
   const preset = getPresetByIdOrDefault(presetId)
+
+  // T-028 Phase 9 — État "voir tous les presets" : false par défaut = n'affiche
+  // que les 4 featured (Ocean, Forêt, Violet, Impact). Si le preset actif n'est
+  // pas dans les featured, on l'ajoute systématiquement à la liste visible
+  // pour que le coach voie son choix courant même en mode replié.
+  const [showAllPresets, setShowAllPresets] = useState(false)
+
+  const visiblePresets = useMemo<readonly FunnelPreset[]>(() => {
+    if (showAllPresets) return FUNNEL_PRESETS
+    const featured = FUNNEL_PRESETS.filter((p) =>
+      (FEATURED_PRESET_IDS as readonly string[]).includes(p.id),
+    )
+    // Si le preset actuel n'est pas dans les featured, l'ajouter en tête
+    if (!(FEATURED_PRESET_IDS as readonly string[]).includes(presetId)) {
+      const current = FUNNEL_PRESETS.find((p) => p.id === presetId)
+      if (current) return [current, ...featured]
+    }
+    return featured
+  }, [showAllPresets, presetId])
 
   // Détermine si le mode "lier les fonds" est actuellement actif :
   // c'est le cas quand les 3 fonds overridés ont la même valeur.
@@ -154,9 +189,11 @@ export default function DirectionArtistiquePanel({
 
       {/* ─── PRESETS ─────────────────────────────────────────────────────── */}
       <section>
-        <h3 style={sectionTitleStyle}>Preset ({FUNNEL_PRESETS.length})</h3>
+        <h3 style={sectionTitleStyle}>
+          Preset ({showAllPresets ? FUNNEL_PRESETS.length : visiblePresets.length}/{FUNNEL_PRESETS.length})
+        </h3>
         <div style={presetGridStyle}>
-          {FUNNEL_PRESETS.map((p) => {
+          {visiblePresets.map((p) => {
             const active = p.id === presetId
             return (
               <button
@@ -176,6 +213,13 @@ export default function DirectionArtistiquePanel({
             )
           })}
         </div>
+        <button
+          type="button"
+          onClick={() => setShowAllPresets((s) => !s)}
+          style={seeAllButtonStyle}
+        >
+          {showAllPresets ? 'Masquer' : `Voir tout (${FUNNEL_PRESETS.length})`}
+        </button>
       </section>
 
       {/* ─── COULEURS ────────────────────────────────────────────────────── */}
@@ -248,11 +292,14 @@ export default function DirectionArtistiquePanel({
         </div>
       </section>
 
-      {/* ─── EFFETS ──────────────────────────────────────────────────────── */}
+      {/* ─── EFFETS GLOBAUX (forced + global) ────────────────────────────── */}
+      {/* T-028 Phase 9 — Ne contient que les effets qui s'appliquent à tout le
+          funnel. Les effets par-bloc (shimmer, button shine) sont dans
+          l'inspector de droite via BlockEffectsPanel. */}
       <section>
-        <h3 style={sectionTitleStyle}>Effets ({EFFECT_META.length})</h3>
+        <h3 style={sectionTitleStyle}>Effets globaux ({SIDEBAR_EFFECTS.length})</h3>
         <div style={effectsListStyle}>
-          {EFFECT_META.map((meta) => {
+          {SIDEBAR_EFFECTS.map((meta) => {
             const isForced = meta.category === 'forced'
             const enabled = isForced
               ? true
@@ -385,6 +432,23 @@ const presetGridStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(2, 1fr)',
   gap: 6,
+}
+
+const seeAllButtonStyle: React.CSSProperties = {
+  width: '100%',
+  marginTop: 8,
+  padding: '6px 10px',
+  fontSize: 10,
+  fontWeight: 700,
+  color: 'rgba(255,255,255,0.7)',
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 6,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+  transition: 'all 0.15s ease',
 }
 
 const presetCardStyle = (active: boolean): React.CSSProperties => ({

@@ -13,55 +13,60 @@
 
 import type { FunnelEffectId, FunnelEffectMeta, FunnelEffectsConfig } from './design-types'
 
+/**
+ * T-028 Phase 9 — Configuration par défaut de TOUS les effets listés dans
+ * `FunnelEffectId`. N'inclut plus E7, E9, E10, E11 (retirés du catalogue).
+ *
+ * Les effets "par bloc" (E1, E3) ont ici leur valeur "default global" pour
+ * les cas legacy/sandbox où on active tout en bloc. À l'usage réel du
+ * builder, ils sont gérés par `block.config.effects.*`, pas via cette map.
+ */
 export const DEFAULT_EFFECTS: Record<FunnelEffectId, boolean> = {
   // Forcés (toujours actifs)
   'e4-colored-shadow': true,
   'e5-badge-pulse': true,
   'e6-lightbox': true,
-  // Toggleables ON par défaut
+  // Effets par-bloc (defaults pour fallback legacy — gérés via block.config.effects au runtime)
   'e1-shimmer': true,
-  'e2-hero-glow': true,
   'e3-button-shine': true,
-  'e7-count-up': true,
+  // Globaux toggleables ON par défaut
+  'e2-hero-glow': true,
   'e8-reveal-scroll': true,
   'e12-noise': true,
   'e15-sticky-cta': true,
-  // Toggleables OFF par défaut
-  'e9-marquee': false,
-  'e10-countdown': false,
-  'e11-before-after': false,
-  'e13-parallax': false,
-  'e14-cursor-glow': false,
 }
 
 /**
  * Métadonnées d'affichage des effets pour la sidebar du builder.
  * L'ordre dans ce tableau est l'ordre d'affichage dans l'UI.
+ *
+ * T-028 Phase 9 — 3 catégories :
+ * - `forced` : toujours actifs, grisés dans la sidebar globale
+ * - `global` : toggles de la sidebar "Direction artistique" (s'applique à tout le funnel)
+ * - `block`  : toggles de l'inspector de droite (s'applique au bloc sélectionné)
  */
 export const EFFECT_META: readonly FunnelEffectMeta[] = [
-  // Forcés en premier (grisés / non cliquables dans le builder)
+  // ─── Forcés (toujours actifs, non cliquables) ────────────────────────
   { id: 'e4-colored-shadow', label: 'Ombre colorée', description: 'Ombre teintée par la couleur principale sur les boutons et cards', category: 'forced', defaultEnabled: true },
   { id: 'e5-badge-pulse', label: 'Badge pulsant', description: 'Animation de pulse sur les badges (point clignotant)', category: 'forced', defaultEnabled: true },
   { id: 'e6-lightbox', label: 'Lightbox images', description: 'Ouverture en grand des images de témoignages au clic', category: 'forced', defaultEnabled: true },
-  // Toggleables ON par défaut
-  { id: 'e1-shimmer', label: 'Shimmer texte', description: 'Animation de brillance sur les portions de texte mises en avant', category: 'toggleable', defaultEnabled: true },
-  { id: 'e2-hero-glow', label: 'Glow hero', description: 'Cercles lumineux flous derrière le hero (radial gradients)', category: 'toggleable', defaultEnabled: true },
-  { id: 'e3-button-shine', label: 'Shine boutons', description: 'Reflet blanc qui traverse les boutons toutes les 4-5s', category: 'toggleable', defaultEnabled: true },
-  { id: 'e7-count-up', label: 'Compteur animé', description: 'Les chiffres clés montent de 0 à leur valeur cible quand ils apparaissent', category: 'toggleable', defaultEnabled: true },
-  { id: 'e8-reveal-scroll', label: 'Reveal au scroll', description: 'Les blocs apparaissent en fade-in au scroll', category: 'toggleable', defaultEnabled: true },
-  { id: 'e12-noise', label: 'Texture grain', description: 'Léger grain (noise) sur tout le funnel pour un rendu premium', category: 'toggleable', defaultEnabled: true },
-  { id: 'e15-sticky-cta', label: 'CTA sticky mobile', description: 'Bouton principal toujours visible en bas sur mobile', category: 'toggleable', defaultEnabled: true },
-  // Toggleables OFF par défaut
-  { id: 'e9-marquee', label: 'Bandeau logos défilant', description: 'Logos clients qui défilent en boucle (logo bar)', category: 'toggleable', defaultEnabled: false },
-  { id: 'e10-countdown', label: 'Compte à rebours', description: 'Timer JJ:HH:MM:SS avant fin d\'offre, sticky au-dessus du CTA', category: 'toggleable', defaultEnabled: false },
-  { id: 'e11-before-after', label: 'Slider avant/après', description: 'Image avec curseur draggable pour révéler avant/après', category: 'toggleable', defaultEnabled: false },
-  { id: 'e13-parallax', label: 'Parallax hero', description: 'Le fond du hero se déplace légèrement avec le scroll', category: 'toggleable', defaultEnabled: false },
-  { id: 'e14-cursor-glow', label: 'Halo curseur', description: 'Halo lumineux qui suit la souris sur le hero (desktop seulement)', category: 'toggleable', defaultEnabled: false },
+
+  // ─── Globaux toggleables (sidebar Direction artistique) ──────────────
+  { id: 'e2-hero-glow', label: 'Glow hero', description: 'Cercles lumineux flous derrière le hero (radial gradients)', category: 'global', defaultEnabled: true },
+  { id: 'e8-reveal-scroll', label: 'Reveal au scroll', description: 'Les blocs apparaissent en fade-in au scroll', category: 'global', defaultEnabled: true },
+  { id: 'e12-noise', label: 'Texture grain', description: 'Léger grain (noise) sur tout le funnel pour un rendu premium', category: 'global', defaultEnabled: true },
+  { id: 'e15-sticky-cta', label: 'CTA sticky mobile', description: 'Bouton principal toujours visible en bas sur mobile', category: 'global', defaultEnabled: true },
+
+  // ─── Par bloc (inspector de droite) ──────────────────────────────────
+  { id: 'e1-shimmer', label: 'Shimmer texte', description: 'Animation de brillance sur les portions de texte mises en avant', category: 'block', defaultEnabled: true },
+  { id: 'e3-button-shine', label: 'Shine bouton', description: 'Reflet blanc qui traverse le bouton toutes les 4-5s', category: 'block', defaultEnabled: true },
 ] as const
 
 /**
  * Merge une config utilisateur partielle avec les defaults.
  * Les effets forcés sont systématiquement réécrits à `true`.
+ * Les effets par-bloc (E1, E3) NE SONT PAS appliqués globalement à travers
+ * cette map — ils sont gérés au niveau de chaque bloc via `block.config.effects`.
  */
 export function mergeEffectsConfig(userConfig?: FunnelEffectsConfig): Record<FunnelEffectId, boolean> {
   return {
@@ -71,5 +76,9 @@ export function mergeEffectsConfig(userConfig?: FunnelEffectsConfig): Record<Fun
     'e4-colored-shadow': true,
     'e5-badge-pulse': true,
     'e6-lightbox': true,
+    // Effets par-bloc désactivés au niveau global (ils ne s'appliquent que
+    // via block.config.effects dans l'inspector)
+    'e1-shimmer': false,
+    'e3-button-shine': false,
   }
 }

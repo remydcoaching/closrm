@@ -16,8 +16,11 @@
   font-weight: 800;
 }
 
-/* État ON — gradient animé qui traverse */
-.fnl-root.fx-e1-shimmer .fnl-shimmer {
+/* État ON — gradient animé qui traverse.
+   T-028 Phase 9 : sélecteur `.fx-e1-shimmer .fnl-shimmer` sans `.fnl-root`,
+   pour que la classe puisse être appliquée soit sur `.fnl-root` (mode global
+   legacy) soit sur un wrapper de bloc précis (mode per-block du nouveau builder). */
+.fx-e1-shimmer .fnl-shimmer {
   background: linear-gradient(
     90deg,
     var(--fnl-primary) 0%,
@@ -44,7 +47,7 @@
 
 /* Respect des préférences "réduire les animations" */
 @media (prefers-reduced-motion: reduce) {
-  .fnl-root.fx-e1-shimmer .fnl-shimmer {
+  .fx-e1-shimmer .fnl-shimmer {
     animation: none;
     background: none;
     -webkit-text-fill-color: var(--fnl-primary);

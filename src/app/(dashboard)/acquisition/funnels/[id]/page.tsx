@@ -53,7 +53,15 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
   const fetchFunnel = useCallback(async () => {
     try {
       const res = await fetch(`/api/funnels/${id}`)
+      if (!res.ok) {
+        console.error('[FunnelBuilderPage] fetchFunnel failed:', res.status, await res.text())
+        return
+      }
       const json = await res.json()
+      if (json.error) {
+        console.error('[FunnelBuilderPage] fetchFunnel API error:', json.error)
+        return
+      }
       if (json.data) {
         const f = json.data as FunnelData
         setFunnel(f)
@@ -67,9 +75,19 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: 'Page 1', slug: 'page-1', blocks: [] }),
           })
-          const createJson = await createRes.json()
-          if (createJson.data) {
-            pgs = [createJson.data]
+          if (!createRes.ok) {
+            console.error(
+              '[FunnelBuilderPage] create default page failed:',
+              createRes.status,
+              await createRes.text(),
+            )
+          } else {
+            const createJson = await createRes.json()
+            if (createJson.error) {
+              console.error('[FunnelBuilderPage] create default page API error:', createJson.error)
+            } else if (createJson.data) {
+              pgs = [createJson.data]
+            }
           }
         }
 
@@ -80,8 +98,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           setActivePageId(pgs[0].id)
         }
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('[FunnelBuilderPage] fetchFunnel unexpected error:', err)
     } finally {
       setLoading(false)
     }
@@ -211,28 +229,44 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           blocks: [],
         }),
       })
+      if (!res.ok) {
+        const errText = await res.text()
+        console.error('[FunnelBuilderPage] handleAddPage failed:', res.status, errText)
+        alert(`Impossible d'ajouter la page (HTTP ${res.status}). Voir la console pour les détails.`)
+        return
+      }
       const json = await res.json()
+      if (json.error) {
+        console.error('[FunnelBuilderPage] handleAddPage API error:', json.error)
+        alert(`Impossible d'ajouter la page : ${json.error}`)
+        return
+      }
       if (json.data) {
         // T-028b Phase 6 — useUndoRedo expose `setState(value)`, pas de callback signature.
         // On lit la valeur courante via la closure (`pages` est dans les deps).
         setPages([...pages, json.data])
         setActivePageId(json.data.id)
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('[FunnelBuilderPage] handleAddPage unexpected error:', err)
+      alert('Erreur réseau lors de l\'ajout de la page. Voir la console pour les détails.')
     }
   }, [id, pages, setPages])
 
   const handleDeletePage = useCallback(async (pageId: string) => {
     try {
-      await fetch(`/api/funnels/${id}/pages/${pageId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/funnels/${id}/pages/${pageId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        console.error('[FunnelBuilderPage] handleDeletePage failed:', res.status, await res.text())
+        return
+      }
       const updated = pages.filter((p) => p.id !== pageId)
       setPages(updated)
       if (activePageId === pageId && updated.length > 0) {
         setActivePageId(updated[0].id)
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('[FunnelBuilderPage] handleDeletePage unexpected error:', err)
     }
   }, [id, activePageId, pages, setPages])
 

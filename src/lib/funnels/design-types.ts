@@ -32,6 +32,22 @@ export interface FunnelPreset {
 /**
  * Catalogue exhaustif des effets visuels du design system.
  * Chaque ID correspond à un fichier CSS sous src/styles/funnels/effects/.
+ *
+ * T-028 Phase 9 (refactor post-MVP) — 6 effets retirés du catalogue :
+ * - E7 count-up, E9 marquee, E10 countdown, E11 before-after : en réalité
+ *   des "types de contenu", pas des effets visuels. Seront implémentés
+ *   comme des blocs dédiés en V2 (MarqueeBlock, StatsBlock, BeforeAfterBlock).
+ *   Le CountdownBlock existe déjà (cf. src/components/funnels/blocks/).
+ * - E13 parallax, E14 cursor glow : dépendaient de hooks React (useParallax,
+ *   useCursorGlow) qui n'étaient appelés que dans la sandbox. Sans ces hooks,
+ *   les CSS vars --fnl-parallax-y / --fnl-cursor-x ne sont jamais setées en
+ *   production → ces effets ne fonctionnaient pas dans le vrai funnel.
+ *   Retirés pour éviter d'exposer des effets cassés. À réimplémenter en V2
+ *   avec une intégration directe dans FunnelBuilderV2 + rendu public si un
+ *   coach en fait la demande.
+ *
+ * T-028 Phase 9 — E1 shimmer et E3 button-shine déplacés des effets globaux
+ * vers les effets "par bloc" (activables sur Hero / CTA / Text via l'inspector).
  */
 export type FunnelEffectId =
   | 'e1-shimmer'
@@ -40,14 +56,8 @@ export type FunnelEffectId =
   | 'e4-colored-shadow'
   | 'e5-badge-pulse'
   | 'e6-lightbox'
-  | 'e7-count-up'
   | 'e8-reveal-scroll'
-  | 'e9-marquee'
-  | 'e10-countdown'
-  | 'e11-before-after'
   | 'e12-noise'
-  | 'e13-parallax'
-  | 'e14-cursor-glow'
   | 'e15-sticky-cta'
 
 /**
@@ -61,32 +71,49 @@ export const FORCED_EFFECTS: readonly FunnelEffectId[] = [
 ] as const
 
 /**
- * Effets toggleables — affichés comme switches dans la sidebar du builder.
- * Granularité globale au funnel (cf. T-028b).
+ * Effets toggleables GLOBAUX — affichés comme switches dans la sidebar
+ * "Direction artistique". S'appliquent à tout le funnel en bloc.
  */
-export const TOGGLEABLE_EFFECTS: readonly FunnelEffectId[] = [
-  'e1-shimmer',
+export const GLOBAL_TOGGLEABLE_EFFECTS: readonly FunnelEffectId[] = [
   'e2-hero-glow',
-  'e3-button-shine',
-  'e7-count-up',
   'e8-reveal-scroll',
-  'e9-marquee',
-  'e10-countdown',
-  'e11-before-after',
   'e12-noise',
-  'e13-parallax',
-  'e14-cursor-glow',
   'e15-sticky-cta',
 ] as const
 
 /**
+ * Effets toggleables PAR BLOC — affichés uniquement dans l'inspector à droite
+ * quand un bloc compatible est sélectionné (Hero, CTA, Text).
+ * Ils sont stockés dans `block.config.effects` (cf. BlockEffectsJSON).
+ */
+export const BLOCK_TOGGLEABLE_EFFECTS: readonly FunnelEffectId[] = [
+  'e1-shimmer',
+  'e3-button-shine',
+] as const
+
+/**
+ * @deprecated T-028 Phase 9 — Cette liste est gardée pour compat rétro avec
+ * les anciennes sandboxes (`/dev/funnels-sandbox` et `/dev/funnels-blocks-matrix`)
+ * qui testent encore tous les effets en un seul panneau. Les composants runtime
+ * doivent utiliser `GLOBAL_TOGGLEABLE_EFFECTS` et `BLOCK_TOGGLEABLE_EFFECTS`.
+ */
+export const TOGGLEABLE_EFFECTS: readonly FunnelEffectId[] = [
+  ...GLOBAL_TOGGLEABLE_EFFECTS,
+  ...BLOCK_TOGGLEABLE_EFFECTS,
+] as const
+
+/**
  * Métadonnées d'affichage d'un effet (label, description, catégorie pour le tri).
+ *
+ * T-028 Phase 9 — Nouvelle catégorie `block` pour les effets qui ne
+ * s'appliquent qu'à un bloc spécifique via l'inspector. La sidebar globale
+ * ne montre que `forced` + `global`. L'inspector ne montre que `block`.
  */
 export interface FunnelEffectMeta {
   id: FunnelEffectId
   label: string
   description: string
-  category: 'forced' | 'toggleable'
+  category: 'forced' | 'global' | 'block'
   defaultEnabled: boolean
 }
 

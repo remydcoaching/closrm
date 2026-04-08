@@ -59,10 +59,27 @@ export default function HeroBlock({ config }: Props) {
       } as React.CSSProperties)
     : {}
 
+  // T-028 Phase 9 — Badge pulsant (E5 forcé) affiché uniquement si `badgeText` non vide
+  const showBadge = config.badgeText && config.badgeText.trim().length > 0
+
   return (
     <section className="fnl-hero" style={{ ...sectionStyle, ...overrideTextStyle }}>
       <div className="fnl-hero-inner" style={innerStyle}>
-        <h1 className="fnl-headline">{config.title || 'Titre principal'}</h1>
+        {showBadge && (
+          <div className="fnl-badge">
+            <span className="fnl-badge-dot"></span>
+            <span className="fnl-badge-text">{config.badgeText}</span>
+          </div>
+        )}
+        {/*
+          Le titre est wrappé dans une `<span className="fnl-shimmer">` pour que
+          l'effet E1 shimmer (activable dans l'inspector via config.effects.shimmer)
+          s'applique quand la classe `fx-e1-shimmer` est présente sur le wrapper
+          du bloc (ajoutée par FunnelPagePreview via getBlockEffectsClasses).
+        */}
+        <h1 className="fnl-headline">
+          <span className="fnl-shimmer">{config.title || 'Titre principal'}</span>
+        </h1>
         {config.subtitle && <p className="fnl-hook">{config.subtitle}</p>}
         {config.ctaText && (
           <a href={config.ctaUrl || '#'} className="fnl-btn">

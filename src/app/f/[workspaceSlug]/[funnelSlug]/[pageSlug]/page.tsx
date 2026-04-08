@@ -55,22 +55,17 @@ import { loadFunnelDesign } from '@/lib/funnels/load-funnel-design'
 // CSS du design system T-028a — chargés ici pour que toutes les classes
 // .fnl-* (et les pseudo-éléments des effets) soient disponibles dans le DOM
 // dès que la page publique est servie.
+// T-028 Phase 9 — Seuls les 9 effets encore au catalogue sont importés.
 import '@/styles/funnels/tokens.css'
 import '@/styles/funnels/base.css'
 import '@/styles/funnels/effects/e4-colored-shadow.css'
 import '@/styles/funnels/effects/e5-badge-pulse.css'
 import '@/styles/funnels/effects/e6-lightbox.css'
 import '@/styles/funnels/effects/e1-shimmer.css'
-import '@/styles/funnels/effects/e2-hero-glow.css'
 import '@/styles/funnels/effects/e3-button-shine.css'
-import '@/styles/funnels/effects/e7-count-up.css'
+import '@/styles/funnels/effects/e2-hero-glow.css'
 import '@/styles/funnels/effects/e8-reveal-scroll.css'
-import '@/styles/funnels/effects/e9-marquee.css'
-import '@/styles/funnels/effects/e10-countdown.css'
-import '@/styles/funnels/effects/e11-before-after.css'
 import '@/styles/funnels/effects/e12-noise.css'
-import '@/styles/funnels/effects/e13-parallax.css'
-import '@/styles/funnels/effects/e14-cursor-glow.css'
 import '@/styles/funnels/effects/e15-sticky-cta.css'
 
 // ─── Types ──────────────────────────────────────────────────────────────────

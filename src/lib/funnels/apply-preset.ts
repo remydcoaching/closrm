@@ -8,6 +8,7 @@
  *    (utile dans la sandbox quand on change le preset à la volée)
  */
 
+import type { FunnelBlock, BlockEffectsJSON } from '@/types'
 import type { FunnelPreset, FunnelPresetOverride } from './design-types'
 import type { FunnelEffectId, FunnelEffectsConfig } from './design-types'
 import { hexToRgb, lighten, darken } from './color-utils'
@@ -66,10 +67,11 @@ export function applyPresetToElement(
  * Construit la liste des classes CSS à appliquer sur le container `.fnl-root`
  * pour activer les effets toggleables sélectionnés.
  *
- * Convention : un effet `eX-foo` activé ajoute la classe `fx-eX-foo` au container.
- * Les CSS modules d'effets ciblent `.fnl-root.fx-eX-foo .selecteur` pour ne s'appliquer
- * que lorsque la classe est présente.
+ * T-028 Phase 9 — Ne retourne que les classes des effets **forcés + globaux**.
+ * Les effets par-bloc (E1 shimmer, E3 button-shine) sont désormais appliqués
+ * via `getBlockEffectsClasses(block)` sur un wrapper dédié, PAS sur `.fnl-root`.
  *
+ * Convention : un effet `eX-foo` activé ajoute la classe `fx-eX-foo` au container.
  * Les effets forcés sont toujours inclus (peu importe la config user).
  */
 export function getEffectsClassNames(userConfig?: FunnelEffectsConfig): string[] {
@@ -81,4 +83,57 @@ export function getEffectsClassNames(userConfig?: FunnelEffectsConfig): string[]
     }
   }
   return classes
+}
+
+/**
+ * T-028 Phase 9 — Retourne les classes CSS à appliquer sur un wrapper autour
+ * d'un bloc précis, en fonction de sa config `effects` (stockée dans le JSONB
+ * `blocks` de `funnel_pages`).
+ *
+ * Tous les types de blocs ne supportent pas tous les effets :
+ * - `hero` : shimmer (titre) + buttonShine (CTA)
+ * - `cta`  : buttonShine
+ * - `text` : shimmer
+ * - autres : aucun effet par-bloc (retourne `[]`)
+ *
+ * Appelée par le renderer pour décider si on wrap le bloc dans un `<div>`
+ * avec les classes `fx-e1-shimmer fx-e3-button-shine`.
+ */
+export function getBlockEffectsClasses(block: FunnelBlock): string[] {
+  const classes: string[] = []
+  const effects = (block.config as { effects?: BlockEffectsJSON }).effects
+
+  if (!effects) return classes
+
+  // Shimmer — Hero + Text
+  if (effects.shimmer && (block.type === 'hero' || block.type === 'text')) {
+    classes.push('fx-e1-shimmer')
+  }
+  // Button shine — Hero + CTA
+  if (effects.buttonShine && (block.type === 'hero' || block.type === 'cta')) {
+    classes.push('fx-e3-button-shine')
+  }
+
+  return classes
+}
+
+/**
+ * T-028 Phase 9 — Defaults per-block effects selon le type du bloc.
+ * Utilisé au moment de créer un nouveau bloc dans le builder pour initialiser
+ * `config.effects` avec des valeurs cohérentes (shimmer ON sur Hero par
+ * défaut, button shine ON sur CTA par défaut, etc.).
+ */
+export function getDefaultBlockEffects(
+  type: FunnelBlock['type'],
+): BlockEffectsJSON | undefined {
+  switch (type) {
+    case 'hero':
+      return { shimmer: true, buttonShine: true }
+    case 'cta':
+      return { buttonShine: true }
+    case 'text':
+      return { shimmer: false }
+    default:
+      return undefined
+  }
 }

@@ -28,28 +28,26 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, X } from 'lucide-react'
 import type { FunnelBlock, Funnel } from '@/types'
 import { loadFunnelDesign } from '@/lib/funnels/load-funnel-design'
+import { getBlockEffectsClasses } from '@/lib/funnels/apply-preset'
 
 // CSS du design system T-028a — importé ici pour que tous les rendus
 // (builder admin + page publique) bénéficient des classes .fnl-* dès qu'un
 // container `.fnl-root` est présent dans le DOM.
+// T-028 Phase 9 — Seuls les effets encore au catalogue sont importés
+// (E7, E9, E10, E11, E13, E14 retirés — cf. design-types.ts).
 import '@/styles/funnels/tokens.css'
 import '@/styles/funnels/base.css'
 // Effets forcés (toujours actifs)
 import '@/styles/funnels/effects/e4-colored-shadow.css'
 import '@/styles/funnels/effects/e5-badge-pulse.css'
 import '@/styles/funnels/effects/e6-lightbox.css'
-// Effets toggleables (l'activation se fait via les classes fx-* sur .fnl-root)
+// Effets par-bloc (classes appliquées sur un wrapper du bloc via getBlockEffectsClasses)
 import '@/styles/funnels/effects/e1-shimmer.css'
-import '@/styles/funnels/effects/e2-hero-glow.css'
 import '@/styles/funnels/effects/e3-button-shine.css'
-import '@/styles/funnels/effects/e7-count-up.css'
+// Effets globaux (classes appliquées sur .fnl-root via getEffectsClassNames)
+import '@/styles/funnels/effects/e2-hero-glow.css'
 import '@/styles/funnels/effects/e8-reveal-scroll.css'
-import '@/styles/funnels/effects/e9-marquee.css'
-import '@/styles/funnels/effects/e10-countdown.css'
-import '@/styles/funnels/effects/e11-before-after.css'
 import '@/styles/funnels/effects/e12-noise.css'
-import '@/styles/funnels/effects/e13-parallax.css'
-import '@/styles/funnels/effects/e14-cursor-glow.css'
 import '@/styles/funnels/effects/e15-sticky-cta.css'
 
 import HeroBlock from './blocks/HeroBlock'
@@ -93,7 +91,21 @@ interface Props {
   funnel?: Pick<Funnel, 'preset_id' | 'preset_override' | 'effects_config'> | null
 }
 
+/**
+ * Dispatche un FunnelBlock vers son composant React dédié selon son `type`.
+ * T-028 Phase 9 — Wrap le rendu dans un `<div className="fx-e1-shimmer fx-e3-button-shine">`
+ * quand le bloc a des effets par-bloc activés (cf. getBlockEffectsClasses).
+ * Ça permet au CSS des effets `.fx-eX-name .selecteur` de ne s'appliquer qu'à
+ * CE bloc et pas au reste du funnel.
+ */
 function BlockRenderer({ block }: { block: FunnelBlock }) {
+  const content = renderBlockContent(block)
+  const fxClasses = getBlockEffectsClasses(block)
+  if (fxClasses.length === 0) return content
+  return <div className={fxClasses.join(' ')}>{content}</div>
+}
+
+function renderBlockContent(block: FunnelBlock): React.ReactNode {
   switch (block.type) {
     case 'hero': return <HeroBlock config={block.config as Parameters<typeof HeroBlock>[0]['config']} />
     case 'video': return <VideoBlock config={block.config as Parameters<typeof VideoBlock>[0]['config']} />

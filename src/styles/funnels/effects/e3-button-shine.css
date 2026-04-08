@@ -9,7 +9,10 @@
    (E4 forcé).
    ============================================================ */
 
-.fnl-root.fx-e3-button-shine .fnl-btn::before {
+/* T-028 Phase 9 : sélecteur `.fx-e3-button-shine .fnl-btn` sans `.fnl-root`,
+   pour que la classe puisse être appliquée soit sur `.fnl-root` (mode global
+   legacy) soit sur un wrapper de bloc précis (mode per-block du nouveau builder). */
+.fx-e3-button-shine .fnl-btn::before {
   content: '';
   position: absolute;
   top: 0;
@@ -39,7 +42,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fnl-root.fx-e3-button-shine .fnl-btn::before {
+  .fx-e3-button-shine .fnl-btn::before {
     animation: none;
     opacity: 0;
   }

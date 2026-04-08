@@ -48,10 +48,12 @@ import type {
   FunnelPresetOverrideJSON,
   FunnelEffectsConfigJSON,
 } from '@/types'
+import type { BlockEffectsJSON } from '@/types'
 import FunnelPagePreview, { type FunnelPreviewMode } from '../FunnelPagePreview'
 import FunnelBlockConfigPanel from '../FunnelBlockConfig'
 import DirectionArtistiquePanel from './sidebar/DirectionArtistiquePanel'
 import SectionsListPanel from './sidebar/SectionsListPanel'
+import BlockEffectsPanel from './inspector/BlockEffectsPanel'
 
 // Labels FR des types de blocs (utilisés dans le header de l'inspector)
 const BLOCK_LABELS: Record<FunnelBlockType, string> = {
@@ -99,12 +101,15 @@ function getDefaultConfig(type: FunnelBlockType): FunnelBlockConfig {
   switch (type) {
     case 'hero':
       return {
-        title: 'Titre principal',
-        subtitle: '',
-        ctaText: '',
-        ctaUrl: '',
+        title: 'Transformez votre vie en 90 jours',
+        subtitle: 'Découvrez la méthode qui a déjà aidé +500 personnes à atteindre leurs objectifs.',
+        ctaText: 'Voir la vidéo',
+        ctaUrl: '#',
         backgroundImage: null,
         alignment: 'center' as const,
+        // T-028 Phase 9 — Nouveau bloc Hero : badge par défaut + effets activés
+        badgeText: 'Atelier 100% Gratuit',
+        effects: { shimmer: true, buttonShine: true },
       }
     case 'video':
       return { url: '', autoplay: false, controls: true, aspectRatio: '16:9' as const }
@@ -159,9 +164,16 @@ function getDefaultConfig(type: FunnelBlockType): FunnelBlockConfig {
         style: 'primary' as const,
         size: 'lg' as const,
         alignment: 'center' as const,
+        // T-028 Phase 9 — Nouveau CTA : shine activé par défaut
+        effects: { buttonShine: true },
       }
     case 'text':
-      return { content: 'Votre texte ici...', alignment: 'center' as const }
+      return {
+        content: 'Votre texte ici...',
+        alignment: 'center' as const,
+        // T-028 Phase 9 — Nouveau Text : shimmer OFF par défaut (rare de vouloir animer un paragraphe entier)
+        effects: { shimmer: false },
+      }
     case 'image':
       return { src: '', alt: '', width: null, alignment: 'center' as const, linkUrl: null }
     case 'spacer':
@@ -217,6 +229,17 @@ export default function FunnelBuilderV2({
     updateActivePageBlocks((current) =>
       current.map((b) => (b.id === updatedBlock.id ? updatedBlock : b))
     )
+  }
+
+  /**
+   * T-028 Phase 9 — Callback du BlockEffectsPanel : met à jour uniquement
+   * le champ `effects` du bloc sélectionné. On merge sur la config actuelle
+   * pour ne pas écraser les autres champs (titre, ctaText, etc.).
+   */
+  function handleBlockEffectsChange(effects: BlockEffectsJSON) {
+    if (!selectedBlock) return
+    const nextConfig = { ...selectedBlock.config, effects } as FunnelBlockConfig
+    handleBlockChange({ ...selectedBlock, config: nextConfig })
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -297,6 +320,12 @@ export default function FunnelBuilderV2({
               </button>
             </div>
             <FunnelBlockConfigPanel block={selectedBlock} onChange={handleBlockChange} />
+            {/* T-028 Phase 9 — Panneau des effets propres au bloc
+                (shimmer, button shine) affiché uniquement pour Hero/CTA/Text */}
+            <BlockEffectsPanel
+              block={selectedBlock}
+              onChange={handleBlockEffectsChange}
+            />
           </div>
         ) : (
           <div style={inspectorEmptyStyle}>
