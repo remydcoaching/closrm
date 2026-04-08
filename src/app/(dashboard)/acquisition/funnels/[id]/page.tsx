@@ -12,7 +12,11 @@ import FunnelPageTabs from '@/components/funnels/FunnelPageTabs'
 import FunnelBuilderV2 from '@/components/funnels/v2/FunnelBuilderV2'
 import { useUndoRedo } from '@/components/funnels/v2/use-undo-redo'
 import { useAutosave } from '@/components/funnels/v2/use-autosave'
-import { getDefaultPageBlocks } from '@/lib/funnels/defaults'
+import {
+  getDefaultPageBlocks,
+  getDefaultPageBlocksForTemplate,
+  type FunnelPageTemplate,
+} from '@/lib/funnels/defaults'
 
 interface FunnelData {
   id: string
@@ -225,7 +229,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
     }
   }, [publishing, handleSave, id])
 
-  const handleAddPage = useCallback(async () => {
+  const handleAddPage = useCallback(async (template: FunnelPageTemplate = 'blank') => {
     const pageNum = pages.length + 1
     try {
       const res = await fetch(`/api/funnels/${id}/pages`, {
@@ -234,8 +238,9 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         body: JSON.stringify({
           name: `Page ${pageNum}`,
           slug: `page-${pageNum}`,
-          // T-028 Phase 10 — Même squelette par défaut que la première page
-          blocks: getDefaultPageBlocks(),
+          // T-028 Phase 11 — Squelette selon le template choisi par le coach
+          // via le menu du bouton "+" dans FunnelPageTabs.
+          blocks: getDefaultPageBlocksForTemplate(template),
         }),
       })
       if (!res.ok) {

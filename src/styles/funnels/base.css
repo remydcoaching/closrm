@@ -89,11 +89,16 @@
 }
 
 /* ─── Container racine d'une page funnel ───────────────────── */
+/* T-028 Phase 11 — Flex column + min-height pour que le footer puisse
+   être poussé en bas via `margin-top: auto`. Sans ça, le footer suit
+   simplement le dernier bloc dans le flux normal. */
 
 .fnl-root {
   min-height: 100vh;
   background: var(--fnl-section-bg);
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ─── Section hero (.fnl-hero) ─────────────────────────────── */
@@ -140,9 +145,14 @@
 }
 
 /* ─── Footer (.fnl-footer) ─────────────────────────────────── */
+/* T-028 Phase 11 — `margin-top: auto` pousse le footer en bas du container
+   flex parent (.fnl-root). Combiné avec `min-height: 100vh` sur le root,
+   ça garantit que le footer est toujours collé en bas même si le contenu
+   est court (pas de "footer qui flotte au milieu" visuellement). */
 
 .fnl-root .fnl-footer {
   background: var(--fnl-footer-bg);
   padding: 50px 20px;
   text-align: center;
+  margin-top: auto;
 }

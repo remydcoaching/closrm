@@ -164,21 +164,154 @@ export function createDefaultBlock(type: FunnelBlockType): FunnelBlock {
 }
 
 /**
- * Retourne le **squelette par défaut** d'une nouvelle page de funnel.
+ * T-028 Phase 11 — Templates de page proposés quand le coach clique sur
+ * le "+" à côté des onglets de pages dans le builder. Chaque template
+ * est un squelette de blocs pré-remplis adaptés à un usage spécifique
+ * (VSL, capture lead, remerciement, prise de RDV, ou vierge).
  *
- * Validé avec Rémy le 2026-04-07 : chaque page créée (soit la première auto
- * d'un funnel vide, soit une nouvelle page ajoutée par le coach) doit
- * contenir au minimum Hero + Text + Footer. Le coach peut les supprimer
- * ensuite s'il veut, mais il n'aura jamais à démarrer d'une page vraiment
- * vide.
- *
- * Pourquoi ces 3 blocs :
- * - **Hero** : le point d'entrée visuel de toute page de coaching (badge,
- *   titre accrocheur, sous-titre, CTA principal)
- * - **Text** : un paragraphe au milieu pour expliquer l'offre, raconter
- *   l'histoire du coach ou renforcer l'engagement avant le CTA final
- * - **Footer** : brand + copyright + année — identité visuelle basique
+ * Le coach peut ensuite modifier/supprimer n'importe quel bloc une fois
+ * la page créée. Les templates ne sont qu'un point de départ.
+ */
+export type FunnelPageTemplate =
+  | 'blank'
+  | 'vsl'
+  | 'capture'
+  | 'thank-you'
+  | 'booking'
+
+export interface FunnelPageTemplateMeta {
+  id: FunnelPageTemplate
+  label: string
+  description: string
+  emoji: string
+}
+
+export const PAGE_TEMPLATES: readonly FunnelPageTemplateMeta[] = [
+  {
+    id: 'blank',
+    label: 'Page vierge',
+    description: 'Hero + Texte + Footer (squelette minimal)',
+    emoji: '📄',
+  },
+  {
+    id: 'vsl',
+    label: 'Page VSL classique',
+    description: 'Hero + Vidéo + Témoignages + CTA + Footer',
+    emoji: '🎬',
+  },
+  {
+    id: 'capture',
+    label: 'Page de capture',
+    description: 'Hero + Formulaire + Footer',
+    emoji: '📧',
+  },
+  {
+    id: 'thank-you',
+    label: 'Page de remerciement',
+    description: 'Hero + Texte de confirmation + Footer',
+    emoji: '🙏',
+  },
+  {
+    id: 'booking',
+    label: 'Page de prise de RDV',
+    description: 'Hero + Bouton de réservation + Footer',
+    emoji: '📅',
+  },
+] as const
+
+/**
+ * Retourne le squelette de blocs d'une nouvelle page selon le template choisi.
+ * Validé avec Rémy le 2026-04-07 : chaque page démarre avec quelque chose de
+ * concret au lieu d'être vide.
+ */
+export function getDefaultPageBlocksForTemplate(
+  template: FunnelPageTemplate,
+): FunnelBlock[] {
+  switch (template) {
+    // ─── Page vierge (Hero + Text + Footer) ──────────────────────────────
+    case 'blank':
+      return [
+        createDefaultBlock('hero'),
+        createDefaultBlock('text'),
+        createDefaultBlock('footer'),
+      ]
+
+    // ─── VSL : Hero d'accroche + Vidéo + Témoignages + CTA + Footer ──────
+    case 'vsl': {
+      const hero = createDefaultBlock('hero')
+      // Ajuste le CTA du Hero pour qu'il scroll vers la vidéo au lieu de "#"
+      ;(hero.config as { ctaText: string }).ctaText = 'Regarde la vidéo'
+      return [
+        hero,
+        createDefaultBlock('video'),
+        createDefaultBlock('testimonials'),
+        createDefaultBlock('cta'),
+        createDefaultBlock('footer'),
+      ]
+    }
+
+    // ─── Capture : Hero (promesse) + Form + Footer ────────────────────────
+    case 'capture': {
+      const hero = createDefaultBlock('hero')
+      const heroConfig = hero.config as {
+        title: string
+        subtitle: string
+        ctaText: string
+        badgeText: string
+      }
+      heroConfig.title = 'Reçois le guide gratuit'
+      heroConfig.subtitle =
+        "Laisse ton email pour recevoir la méthode complète directement dans ta boîte de réception."
+      heroConfig.ctaText = 'Je veux le guide'
+      heroConfig.badgeText = 'Guide 100% Gratuit'
+      return [hero, createDefaultBlock('form'), createDefaultBlock('footer')]
+    }
+
+    // ─── Remerciement : Hero de confirmation + Text + Footer ──────────────
+    case 'thank-you': {
+      const hero = createDefaultBlock('hero')
+      const heroConfig = hero.config as {
+        title: string
+        subtitle: string
+        ctaText: string
+        badgeText: string
+      }
+      heroConfig.title = 'Merci ! Ton inscription est confirmée 🎉'
+      heroConfig.subtitle =
+        "Tu vas recevoir un email dans quelques minutes avec toutes les informations."
+      heroConfig.ctaText = ''
+      heroConfig.badgeText = 'Confirmé'
+
+      const text = createDefaultBlock('text')
+      ;(text.config as { content: string }).content =
+        "En attendant, n'hésite pas à ajouter notre email à tes contacts pour être sûr de bien recevoir nos messages. À très vite !"
+
+      return [hero, text, createDefaultBlock('footer')]
+    }
+
+    // ─── Booking : Hero + Booking placeholder + Footer ────────────────────
+    case 'booking': {
+      const hero = createDefaultBlock('hero')
+      const heroConfig = hero.config as {
+        title: string
+        subtitle: string
+        ctaText: string
+        badgeText: string
+      }
+      heroConfig.title = 'Réserve ton appel découverte'
+      heroConfig.subtitle =
+        "30 minutes pour qu'on fasse le point sur ta situation et comment on peut t'aider."
+      heroConfig.ctaText = ''
+      heroConfig.badgeText = 'Appel Offert'
+      return [hero, createDefaultBlock('booking'), createDefaultBlock('footer')]
+    }
+  }
+}
+
+/**
+ * @deprecated T-028 Phase 11 — Gardé pour compat avec les appels qui ne
+ * spécifient pas de template. Équivalent à `getDefaultPageBlocksForTemplate('blank')`.
  */
 export function getDefaultPageBlocks(): FunnelBlock[] {
-  return [createDefaultBlock('hero'), createDefaultBlock('text'), createDefaultBlock('footer')]
+  return getDefaultPageBlocksForTemplate('blank')
 }
