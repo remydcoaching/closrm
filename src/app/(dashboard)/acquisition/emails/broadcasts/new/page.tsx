@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { EmailTemplate, EmailBroadcastFilters } from '@/types'
 import BroadcastFilterBuilder from '@/components/emails/BroadcastFilterBuilder'
+import EmailPreview from '@/components/emails/EmailPreview'
 
 export default function NewBroadcastPage() {
   const router = useRouter()
@@ -14,6 +15,7 @@ export default function NewBroadcastPage() {
   const [filters, setFilters] = useState<EmailBroadcastFilters>({})
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const selectedTemplate = templates.find(t => t.id === templateId)
 
   useEffect(() => {
     fetch('/api/emails/templates').then(r => r.json()).then(d => setTemplates(Array.isArray(d) ? d : []))
@@ -61,7 +63,7 @@ export default function NewBroadcastPage() {
   }
 
   return (
-    <div style={{ padding: '24px 32px', maxWidth: 800 }}>
+    <div style={{ padding: '24px 32px' }}>
       <button onClick={() => router.push('/acquisition/emails/broadcasts')} style={{
         fontSize: 13, color: '#666', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 24,
       }}>
@@ -73,7 +75,7 @@ export default function NewBroadcastPage() {
       </h2>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        {/* Left: config */}
+        {/* Left: config + filters */}
         <div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, color: '#555', display: 'block', marginBottom: 4 }}>Nom de la campagne</label>
@@ -111,6 +113,12 @@ export default function NewBroadcastPage() {
             />
           </div>
 
+          {/* Filters */}
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Ciblage</h3>
+            <BroadcastFilterBuilder filters={filters} onChange={setFilters} />
+          </div>
+
           {error && <div style={{ fontSize: 12, color: '#E53E3E', marginBottom: 12 }}>{error}</div>}
 
           <button onClick={handleSend} disabled={sending} style={{
@@ -123,10 +131,19 @@ export default function NewBroadcastPage() {
           </button>
         </div>
 
-        {/* Right: filters */}
+        {/* Right: email preview */}
         <div>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Ciblage</h3>
-          <BroadcastFilterBuilder filters={filters} onChange={setFilters} />
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Apercu de l&apos;email</h3>
+          {selectedTemplate ? (
+            <EmailPreview blocks={selectedTemplate.blocks || []} previewText={selectedTemplate.preview_text ?? undefined} />
+          ) : (
+            <div style={{
+              background: '#141414', border: '1px solid #262626', borderRadius: 10,
+              padding: 40, textAlign: 'center', color: '#555', fontSize: 13,
+            }}>
+              Selectionne un template pour voir l&apos;apercu
+            </div>
+          )}
         </div>
       </div>
     </div>
