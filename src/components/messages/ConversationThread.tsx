@@ -11,15 +11,12 @@ function isSameDay(d1: string, d2: string): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
 
-function isToday(dateStr: string): boolean {
-  return isSameDay(dateStr, new Date().toISOString())
-}
+function isToday(dateStr: string): boolean { return isSameDay(dateStr, new Date().toISOString()) }
 
 function isYesterday(dateStr: string): boolean {
   const d = new Date(dateStr)
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  return d.getFullYear() === yesterday.getFullYear() && d.getMonth() === yesterday.getMonth() && d.getDate() === yesterday.getDate()
+  const y = new Date(); y.setDate(y.getDate() - 1)
+  return d.getFullYear() === y.getFullYear() && d.getMonth() === y.getMonth() && d.getDate() === y.getDate()
 }
 
 function formatDateSeparator(dateStr: string): string {
@@ -49,22 +46,17 @@ export default function ConversationThread({ messages }: Props) {
 
   if (messages.length === 0) return (
     <div className="flex-1 flex items-center justify-center">
-      <span className="text-sm text-[#3a3a3a]">Aucun message</span>
+      <span className="text-[14px] text-[var(--text-tertiary)]">Aucun message</span>
     </div>
   )
 
   return (
-    <div
-      className="flex-1 py-6 flex flex-col gap-[3px]"
-      style={{ overflowY: 'auto', overflowX: 'hidden', paddingLeft: 24, paddingRight: 24 }}
-    >
+    <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-[3px]" style={{ overflowX: 'hidden' }}>
       {messages.map((msg, idx) => {
         const isUser = msg.sender_type === 'user'
         const isOptimistic = msg._optimistic
         const prevMsg = idx > 0 ? messages[idx - 1] : null
         const showDateSep = !prevMsg || !isSameDay(prevMsg.sent_at, msg.sent_at)
-
-        // Group consecutive messages from same sender — only show time on last
         const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null
         const isLastInGroup = !nextMsg || nextMsg.sender_type !== msg.sender_type || !isSameDay(nextMsg.sent_at, msg.sent_at)
 
@@ -72,58 +64,45 @@ export default function ConversationThread({ messages }: Props) {
           <div key={msg.id}>
             {showDateSep && (
               <div className="flex justify-center my-5">
-                <span
-                  className="text-[10px] font-medium tracking-wide"
-                  style={{
-                    color: '#555',
-                    background: '#141414',
-                    border: '1px solid #1e1e1e',
-                    borderRadius: 20,
-                    padding: '5px 16px',
-                  }}
-                >
+                <span className="text-[10px] font-medium tracking-wide text-[var(--text-tertiary)] bg-[var(--bg-elevated)] border border-[var(--border-primary)] rounded-full px-4 py-1.5">
                   {formatDateSeparator(msg.sent_at)}
                 </span>
               </div>
             )}
 
-            {/* Message row */}
-            <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
-              <div style={{ maxWidth: '70%', display: 'flex', flexDirection: 'column', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
-                {/* Media */}
+            <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
+              <div className={`flex flex-col max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
                 {msg.media_url && (
-                  <div style={{ marginBottom: 4, maxWidth: 220 }}>
+                  <div className="mb-1 max-w-[220px]">
                     {msg.media_type === 'video' ? (
-                      <video src={msg.media_url} controls style={{ width: '100%', borderRadius: 16 }} />
+                      <video src={msg.media_url} controls className="w-full rounded-2xl" />
                     ) : msg.media_type === 'audio' ? (
-                      <audio src={msg.media_url} controls style={{ width: '100%', height: 40 }} />
+                      <audio src={msg.media_url} controls className="w-full h-10" />
                     ) : (
-                      <img src={msg.media_url} alt="" style={{ width: '100%', borderRadius: 16, maxWidth: msg.media_type === 'sticker' ? 100 : undefined }} />
+                      <img src={msg.media_url} alt="" className={`w-full rounded-2xl ${msg.media_type === 'sticker' ? 'max-w-[100px]' : ''}`} />
                     )}
                   </div>
                 )}
 
-                {/* Bubble */}
                 {msg.text && (
                   <div
+                    className={isOptimistic ? 'opacity-55' : ''}
                     style={{
                       padding: '10px 16px',
-                      fontSize: 13.5,
+                      fontSize: 14,
                       lineHeight: 1.5,
-                      overflowWrap: 'anywhere' as const,
-                      wordBreak: 'break-word' as const,
-                      opacity: isOptimistic ? 0.55 : 1,
+                      overflowWrap: 'anywhere',
+                      wordBreak: 'break-word',
                       ...(isUser
                         ? {
-                            background: 'linear-gradient(135deg, #E53E3E, #C53030)',
+                            background: 'var(--color-primary)',
                             color: '#fff',
                             borderRadius: '20px 20px 6px 20px',
-                            boxShadow: '0 2px 10px rgba(229,62,62,0.18)',
                           }
                         : {
-                            background: '#161616',
-                            border: '1px solid #1e1e1e',
-                            color: '#e0e0e0',
+                            background: 'var(--bg-elevated)',
+                            border: '1px solid var(--border-primary)',
+                            color: 'var(--text-primary)',
                             borderRadius: '20px 20px 20px 6px',
                           }),
                     }}
@@ -132,18 +111,8 @@ export default function ConversationThread({ messages }: Props) {
                   </div>
                 )}
 
-                {/* Timestamp — only on last message in group */}
                 {isLastInGroup && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: '#4a4a4a',
-                      marginTop: 4,
-                      paddingLeft: 4,
-                      paddingRight: 4,
-                      fontStyle: isOptimistic ? 'italic' : undefined,
-                    }}
-                  >
+                  <span className={`text-[10px] text-[var(--text-tertiary)] mt-1 px-1.5 ${isOptimistic ? 'italic' : ''}`}>
                     {isOptimistic ? 'Envoi...' : formatTime(msg.sent_at)}
                   </span>
                 )}
