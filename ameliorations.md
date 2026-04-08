@@ -417,6 +417,33 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 **Description :** Les presets de couleurs de T-028a (20 presets) pourraient être réutilisés pour styler les emails transactionnels et les séquences email du module Emails (T-020 — non encore implémenté).
 **Proposition :** Quand T-020 sera abordé, prévoir une architecture où les CSS vars `--fnl-*` sont renommées plus génériquement `--brand-*` et exposées aux deux modules (funnels + emails) pour garantir une cohérence de marque à travers toute la communication du coach.
 
+### A-028b-01 · Quiz funnel template (template complet)
+**Priorité :** Moyenne
+**Contexte :** Demandé par Rémy pendant la Phase 12 de T-028 (2026-04-07). Format très en vogue dans le coaching.
+**Description :** Funnel sous forme de quiz interactif : le visiteur répond à quelques questions (multi-steps), reçoit un résultat personnalisé, puis une offre adaptée au profil détecté. Excellent taux de capture car il engage activement l'utilisateur au lieu de lui demander passivement son email.
+**Proposition :**
+1. Créer un nouveau type de bloc `quiz` avec config `{ questions: QuizQuestion[], results: QuizResult[], scoring: 'points' | 'categories' }`
+2. Chaque `QuizQuestion` a un label + plusieurs options avec une valeur scorée
+3. Le résultat affiché dépend du cumul des scores ou de la catégorie dominante
+4. Créer le template `tpl-quiz-funnel` dans `src/lib/funnels/templates.ts` avec une structure : Page 1 quiz (3-5 questions) → Page 2 résultat + offre personnalisée → Page 3 merci
+5. Déjà visible comme template "À venir" grisé dans `/acquisition/funnels/new` depuis la Phase 12 (cf. `templates.ts` entrée `tpl-quiz-funnel`)
+**Ne pas faire sans validation** : Rémy veut réfléchir au modèle de données quiz et aux variations possibles (skip logic, conditionnelles) avant implémentation.
+
+### A-028b-02 · Webinar funnel template (template complet)
+**Priorité :** Moyenne
+**Contexte :** Demandé par Rémy pendant la Phase 12 de T-028 (2026-04-07). Format classique des lancements de programmes de coaching.
+**Description :** Funnel d'inscription à un webinaire composé de plusieurs pages : inscription + confirmation + replay + vente post-webinar. Permet au coach de capturer des leads qualifiés et de les convertir à la fin du webinar quand l'engagement est maximal.
+**Proposition :**
+1. Créer le template `tpl-webinar-funnel` dans `src/lib/funnels/templates.ts` avec 4 pages :
+   - **Page 1 — Inscription** : Hero + promesse du webinar + formulaire d'inscription + témoignages
+   - **Page 2 — Confirmation** : Hero "Tu es inscrit !" + détails date/heure + rappel Google Agenda + texte "vérifie ta boîte mail"
+   - **Page 3 — Replay** : Hero "Revoir le webinar" + Video + CTA principal
+   - **Page 4 — Vente post-webinar** : Hero offre spéciale + Pricing + FAQ + Countdown (offre limitée) + Testimonials + CTA final
+2. Intégration future avec le module Calendriers (T-022) pour créer un événement associé au webinar et envoyer des rappels automatiques aux inscrits
+3. Intégration future avec le module Emails (T-020) pour la séquence "rappel J-1", "le webinar commence", "merci + replay disponible"
+4. Déjà visible comme template "À venir" grisé dans `/acquisition/funnels/new` depuis la Phase 12 (cf. `templates.ts` entrée `tpl-webinar-funnel`)
+**Ne pas faire sans validation** : dépend de T-022 (Calendriers) + T-020 (Emails) pour l'intégration complète. À reprendre une fois les 2 modules en place.
+
 ---
 
 *Mis à jour le 2026-04-07 par Claude Code — ClosRM*
