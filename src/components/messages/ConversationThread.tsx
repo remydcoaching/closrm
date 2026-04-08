@@ -70,8 +70,8 @@ export default function ConversationThread({ messages }: Props) {
               </div>
             )}
 
-            <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex flex-col max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
+            <div style={{ display: 'flex', width: '100%', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '70%', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
                 {msg.media_url && (
                   <div className="mb-1 max-w-[220px]">
                     {msg.media_type === 'video' ? (
