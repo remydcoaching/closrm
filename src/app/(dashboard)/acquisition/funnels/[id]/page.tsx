@@ -12,6 +12,7 @@ import type {
 import FunnelPageTabs from '@/components/funnels/FunnelPageTabs'
 import FunnelBuilderV2 from '@/components/funnels/v2/FunnelBuilderV2'
 import WorkspaceNameModal from '@/components/funnels/v2/WorkspaceNameModal'
+import FullscreenPreview from '@/components/funnels/v2/FullscreenPreview'
 import { useUndoRedo } from '@/components/funnels/v2/use-undo-redo'
 import { useAutosave } from '@/components/funnels/v2/use-autosave'
 import {
@@ -75,6 +76,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
   // T-028 Phase 17 — Modale "Choisissez un nom" ouverte quand le coach
   // clique Publier sans avoir configuré de slug workspace.
   const [showSlugModal, setShowSlugModal] = useState(false)
+  // T-028 Phase 19 — Overlay plein écran de prévisualisation
+  const [showPreview, setShowPreview] = useState(false)
 
   // T-028 Phase 15 — Garde anti-double-exécution pour fetchFunnel.
   // React 19 StrictMode exécute les useEffect 2x en dev, ce qui créait 2 POST
@@ -612,25 +615,11 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           </button>
         </div>
 
-        {/* T-028 Phase 18 — Bouton "Prévisualiser" remplace "Sauvegarder"
-            (l'autosave debounced 1.5s rend le bouton save inutile).
-            Ouvre la page active du funnel en plein écran dans un nouvel onglet
-            pour que le coach voie le rendu final avec tous les effets (reveal
-            au scroll, etc.) qui ne marchent pas dans le preview réduit du builder. */}
+        {/* T-028 Phase 19 — Bouton "Prévisualiser" : overlay plein écran dans
+            l'app (pas un nouvel onglet). Fonctionne même si le funnel n'est pas
+            publié, car on rend les composants React directement. */}
         <button
-          onClick={() => {
-            const activePage = pages.find(p => p.id === activePageId)
-            const pageSlug = activePage?.slug ?? pages[0]?.slug
-            const url = buildPublicFunnelUrl(workspaceSlug, funnel.slug, pageSlug ?? null)
-            if (url) {
-              window.open(url, '_blank')
-            } else {
-              // Fallback si pas de slug workspace : ouvrir quand même le funnel
-              // en mode "preview" via la route publique (qui retournera 404 si
-              // le funnel n'est pas publié, mais c'est OK comme feedback)
-              alert('Publie d\'abord ton funnel pour le prévisualiser en plein écran.')
-            }
-          }}
+          onClick={() => setShowPreview(true)}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 16px', fontSize: 12, fontWeight: 600,
@@ -643,7 +632,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#444' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary, #262626)' }}
-          title="Ouvrir un aperçu plein écran dans un nouvel onglet"
+          title="Prévisualiser en plein écran (Échap pour fermer)"
         >
           <Eye size={14} />
           Prévisualiser
@@ -804,6 +793,15 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           </div>
         )
       })()}
+
+      {/* T-028 Phase 19 — Overlay de prévisualisation plein écran */}
+      {showPreview && (
+        <FullscreenPreview
+          blocks={pages.find(p => p.id === activePageId)?.blocks ?? []}
+          funnel={funnel}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
 
       {/* T-028 Phase 17 — Modale "Choisissez un nom pour vos pages" */}
       {showSlugModal && (

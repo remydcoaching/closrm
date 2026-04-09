@@ -64,7 +64,7 @@ export default function FunnelsPage() {
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '9px 18px', fontSize: 13, fontWeight: 600,
-            background: '#E53E3E', color: '#fff', borderRadius: 8,
+            background: 'var(--color-primary, #00C853)', color: '#fff', borderRadius: 8,
             textDecoration: 'none', border: 'none', cursor: 'pointer',
           }}
         >
@@ -95,12 +95,12 @@ export default function FunnelsPage() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '9px 18px', fontSize: 13, fontWeight: 600,
-              background: '#E53E3E', color: '#fff', borderRadius: 8,
+              background: 'var(--color-primary, #00C853)', color: '#fff', borderRadius: 8,
               textDecoration: 'none',
             }}
           >
             <Plus size={14} />
-            Creer un funnel
+            Créer un funnel
           </Link>
         </div>
       ) : (
