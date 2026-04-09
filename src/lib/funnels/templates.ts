@@ -12,9 +12,17 @@ export interface FunnelTemplate {
   id: string
   name: string
   description: string
-  category: 'vsl' | 'capture' | 'complet' | 'merci'
+  category: 'vsl' | 'capture' | 'complet' | 'merci' | 'quiz' | 'webinar'
   pages: FunnelTemplatePage[]
   thumbnail: string | null
+  /**
+   * T-028 Phase 12 — Si true, le template est affiché dans la liste mais
+   * non-cliquable (grisé avec un tag "À venir"). Permet de montrer la
+   * roadmap aux coachs sans qu'ils puissent créer un funnel cassé.
+   * Utilisé actuellement pour Quiz funnel et Webinar funnel (cf.
+   * ameliorations.md → A-028b-01).
+   */
+  comingSoon?: boolean
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -366,5 +374,29 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
         ],
       },
     ],
+  },
+
+  // ─── T-028 Phase 12 — Templates "À venir" affichés dans la liste mais
+  // non-cliquables. Validés avec Rémy le 2026-04-07. Détails dans
+  // ameliorations.md → A-028b-01 (Quiz funnels) et A-028b-02 (Webinar funnels).
+  {
+    id: 'tpl-quiz-funnel',
+    name: 'Quiz funnel',
+    description:
+      'Funnel sous forme de quiz interactif : le visiteur répond à quelques questions et reçoit un résultat personnalisé + une offre adaptée. Format très en vogue, excellent taux de capture.',
+    category: 'quiz',
+    thumbnail: null,
+    comingSoon: true,
+    pages: [],
+  },
+  {
+    id: 'tpl-webinar-funnel',
+    name: 'Webinar funnel',
+    description:
+      'Funnel d\'inscription à un webinaire : page d\'inscription + page de remerciement + page de replay + page de vente post-webinar. Idéal pour les lancements de programmes.',
+    category: 'webinar',
+    thumbnail: null,
+    comingSoon: true,
+    pages: [],
   },
 ]

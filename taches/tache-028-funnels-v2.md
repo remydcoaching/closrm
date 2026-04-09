@@ -1,118 +1,107 @@
-# Tâche 028 — Funnels v2 : refonte builder + templates + analytics
+# Tâche 028 — Funnels v2 : refonte builder + design system + migration blocs
 
-> **Statut :** ⬜ Non démarré
+> **Statut :** ✅ Terminée (2026-04-07) — les 3 sous-tâches a/c/b livrées et pushées
 > **Développeur :** Rémy
-> **Date de création :** 2026-04-07
-> **Branche Git prévue :** `feature/remy-funnels-v2`
+> **Type :** Fiche **parente** — pointe vers les 3 sous-tâches T-028a/b/c
 
 ---
 
-## Objectif
+## Contexte
 
-Le module Funnels existe (livré par Pierre en T-023 funnel-builder) mais reste
-"clairement améliorable" selon Rémy. Cette tâche est une **refonte qualitative**
-du builder et de l'expérience pour atteindre un niveau "production" comparable
-à Systeme.io / GoHighLevel.
+Le module Funnels existe (livré par Pierre en T-023) mais reste "clairement améliorable" :
+- Le rendu public des pages est jugé esthétiquement faible
+- Le builder a des bugs et une UX peu fluide
+- Pas de système de presets de couleurs cohérent
+- Effets visuels (shimmer, glow, shine, lightbox...) absents ou mal intégrés
 
-> ⚠️ Périmètre exact à préciser après audit du module actuel : commencer par
-> faire le tour de l'existant, identifier les blocs faibles, puis prioriser.
-
----
-
-## Périmètre (à affiner après audit)
-
-### Phase 1 — Audit de l'existant
-- [ ] Faire le tour de tous les blocs disponibles aujourd'hui (Hero, Video,
-      Form, Booking, Pricing, FAQ, Countdown, CTA, Text, Image, Spacer)
-- [ ] Tester chaque bloc en preview + publication
-- [ ] Lister les bugs/manques dans une section "Findings" de cette fiche
-
-### Phase 2 — Builder UX
-- [ ] Améliorer le drag & drop (snap visuel, drop zones plus claires)
-- [ ] Inspector latéral pour chaque bloc (au lieu de modales empilées)
-- [ ] Preview live desktop/mobile/tablet en temps réel
-- [ ] Undo/Redo (Cmd+Z) — mémo des dernières actions
-- [ ] Duplication de bloc rapide (Cmd+D)
-- [ ] Réorganisation au clavier (haut/bas)
-
-### Phase 3 — Nouveaux blocs
-- [ ] Bloc Témoignages avancé (carousel, ratings, photos avant/après)
-- [ ] Bloc Garantie (badge + texte)
-- [ ] Bloc Comparaison "avant/après"
-- [ ] Bloc Quizz / Diagnostic (multi-step → résultat → form)
-- [ ] Bloc Logo bar (clients/médias)
-
-### Phase 4 — Templates par niche
-- [ ] Galerie de templates "prêts à l'emploi"
-- [ ] Templates : Coach business, Coach sport, Coach mindset, Immobilier,
-      Formation en ligne, Mastermind, Bootcamp
-- [ ] Cloner un template → page éditable
-
-### Phase 5 — Analytics par funnel
-- [ ] Page stats par funnel : vues, leads, taux de conversion par étape
-- [ ] Heatmap de scroll (V2.1 — optionnel)
-- [ ] A/B testing simple : 2 variantes d'une page, split 50/50
-- [ ] Funnel visuel global : étape 1 → étape 2 → conversion finale
-
-### Phase 6 — Publication / Domaines
-- [ ] Vérifier que l'attachement à un domaine custom (déjà géré côté Email)
-      fonctionne pour les funnels
-- [ ] SSL automatique (Vercel domains)
-- [ ] Page de remerciement post-conversion configurable
+L'objectif de T-028 est une **refonte qualitative** pour atteindre un niveau "production" comparable à Systeme.io / GoHighLevel / l'app concurrente Uptrainer (inspiration uniquement, le nom ne doit jamais apparaître dans ClosRM).
 
 ---
 
-## Fichiers concernés
+## Découpage en 3 sous-tâches
 
-### Fichiers à auditer
-- `src/components/funnels/FunnelBuilder.tsx`
-- `src/components/funnels/FunnelPagePreview.tsx`
-- `src/components/funnels/blocks/*` (tous les blocs)
-- `src/app/api/funnels/` (toutes les routes)
-- `src/app/(public)/funnels/[slug]/page.tsx` (rendu public)
-- `supabase/migrations/008_funnels.sql`
+> Initialement prévue comme une seule grosse tâche, T-028 a été découpée en 3 sous-tâches pour rester pilotable. Les fiches détaillées sont chacune dans leur propre fichier.
 
-### Fichiers à créer (estimation)
-- `src/components/funnels/Inspector.tsx` — panneau latéral d'édition
-- `src/components/funnels/blocks/Testimonials*` (refonte)
-- `src/components/funnels/blocks/Quiz*`
-- `src/components/funnels/templates/` — templates pré-faits
-- `src/components/funnels/FunnelStats.tsx`
-- `src/lib/funnels/ab-test.ts`
+| # | Sous-tâche | Périmètre court | Fiche |
+|---|---|---|---|
+| **T-028a** | **Direction artistique** | 20 presets de couleurs + 15 effets visuels (CSS modules) + design tokens CSS vars `--fnl-*` + sandbox de test | [tache-028a-direction-artistique.md](tache-028a-direction-artistique.md) |
+| **T-028c** | **Migration des blocs** | Porter les 12 blocs Funnels existants au nouveau design system de T-028a + nettoyer ancien CSS | [tache-028c-blocks-migration.md](tache-028c-blocks-migration.md) |
+| **T-028b** | **Builder UX** | Refonte de l'éditeur : sidebar gauche presets + toggles effets, preview live, drag&drop amélioré, undo/redo, inspector latéral | [tache-028b-builder-ux.md](tache-028b-builder-ux.md) |
+
+**Ordre d'exécution validé :** **T-028a → T-028c → T-028b**
+La raison : T-028b (builder) a besoin d'afficher les nouveaux blocs migrés, donc T-028c doit passer avant T-028b. T-028a est le prérequis design system de tout le reste.
+
+---
+
+## Référence visuelle
+
+Le fichier [mockups/t028a-preview.html](../mockups/t028a-preview.html) est la **source de vérité visuelle** pour T-028a. Il contient déjà les 20 presets + 8 effets implémentés en HTML/CSS pur. C'est l'artefact issu de la phase de planification.
+
+Pour le visualiser : `npx http-server mockups -p 8889` puis ouvrir `http://localhost:8889/t028a-preview.html`.
+
+L'autre référence est le PDF [Prompt — Tunnel de vente.pdf](../Prompt — Tunnel de vente.pdf) à la racine du projet, qui définit les effets CSS de référence (Poppins, glow radial, shimmer animé, shine boutons, lightbox, etc.).
+
+---
+
+## Décisions structurantes (validées le 2026-04-07)
+
+1. **20 presets** au total (fusion des anciens "Presets" et "Palettes par niche", suppression de "UpTrainer", des doublons et de la "Palette IA personnalisée")
+2. **15 effets visuels** numérotés E1 à E15, dont :
+   - **5 forcés** (toujours actifs, intégrés au design system) : hover boutons, hover images, lightbox, ombres colorées, badge pulse
+   - **10 toggleables** (case à cocher dans la sidebar, **granularité globale au funnel**) : E1 shimmer, E2 hero glow, E3 button shine, E7 count-up, E8 reveal scroll, E9 marquee logos, E10 countdown, E11 avant/après slider, E12 noise overlay, E13 parallax, E14 cursor glow, E15 sticky CTA mobile, E_underline (rare, OFF par défaut)
+   - Liste exhaustive dans la fiche T-028a
+3. **Tweak post-preset** : on peut ajuster la couleur principale d'un preset après l'avoir appliqué (preset = base + overrides utilisateur)
+4. **Pas de "Palette IA personnalisée"** — trop compliqué, retiré du périmètre
+5. **Drag & drop des sections** — à garder (ça marche bien dans l'existant), mais à améliorer (snap visuel, drop zones plus claires) → T-028b
+6. **Granularité des toggles d'effets** : globale au funnel (option (a)). Pas de toggle par bloc en V1.
+7. **Bugs de l'ancien builder** : à NE PAS fixer pendant T-028. L'ancien builder sera remplacé par T-028b. Patcher = perte de temps.
 
 ---
 
 ## Tâches liées
 
 | Relation | Tâche | Description |
-|----------|-------|-------------|
-| Refactor de | T-023 (Pierre) | Module Funnels initial |
-| Liée à | T-020 | Module Emails (sync entre soumission funnel → ajout séquence) |
-| Liée à | T-022 | Module Booking (bloc Booking dans funnel) |
+|---|---|---|
+| Refonte de | T-023 (Pierre) | Module Funnels initial — c'est le code qu'on refacto |
+| Liée à | T-022 | Module Booking (bloc Booking dans funnel à conserver) |
+| Liée à | T-020 | Module Emails (sync soumission funnel → séquence email) |
 
 ---
 
-## Notes techniques
+## Coordination Pierre
 
-### À voir avec Pierre avant de démarrer
-- Pierre a construit le funnel builder initial : valider qu'il accepte que
-  Rémy refasse une grosse partie du code (ou se répartir : Rémy refait les
-  blocs, Pierre garde le moteur)
-- Aligner la convention de stockage des `FunnelBlockConfig` (déjà typée dans
-  `src/types/index.ts:471`)
-
-### Risque : périmètre énorme
-Cette tâche est volontairement large. Découper en sous-tâches T-028a, T-028b,
-T-028c après l'audit Phase 1.
+- Pierre a livré T-023 funnel-builder. Le valider qu'il accepte que Rémy refasse une grosse partie du code. **À faire avant de pousser T-028a.**
+- Aligner la convention de stockage des `FunnelBlockConfig` (déjà typée dans `src/types/index.ts`)
+- Vérifier qu'aucun commit récent de Pierre sur sa branche `feature/pierre-funnel-builder` ne touche aux fichiers funnels (au 2026-04-07 : non, Pierre travaille sur Instagram + Booking)
 
 ---
 
 ## Résultat final
 
-_À remplir à la fin de la tâche._
+✅ **Les 3 sous-tâches T-028a / T-028c / T-028b sont terminées et pushées sur leur branche respective le 2026-04-07.** Voir les "Résultat final" de chaque fiche pour le détail.
+
+**Récap rapide :**
+- T-028a : 24 nouveaux fichiers (5 TS dans `lib/funnels/`, 17 CSS dans `styles/funnels/`, 6 React dans `components/funnels/v2/`, 1 sandbox `app/dev/funnels-sandbox/`) — design system 20 presets + 15 effets, validé visuellement
+- T-028c : migration SQL `015_funnels_design_v2.sql` + 12 blocs migrés au design system + helper `loadFunnelDesign()` + page publique branchée + matrice de tests visuels `app/dev/funnels-blocks-matrix/`
+- T-028b : nouveau builder `FunnelBuilderV2.tsx` (3 colonnes) + 2 panels sidebar (Direction artistique, Sections) + Undo/Redo + autosave debounced + suppression du legacy `FunnelBuilder.tsx` et `FunnelBlockPalette.tsx`
+
+**Branches sur origin :**
+- `feature/remy-funnels-v2-direction-artistique` (T-028a)
+- `feature/remy-funnels-v2-blocks-migration` (T-028c, parent T-028a)
+- `feature/remy-funnels-v2-builder` (T-028b, parent T-028c)
+
+**Prochaine étape :** créer une PR de merge `feature/remy-funnels-v2-builder` → `develop` qui contient les 3 sous-tâches d'un coup (vu que T-028b dépend de T-028c qui dépend de T-028a, la PR finale embarque tout le diff).
+
+**Hors V1 (déjà documenté dans ameliorations.md) :**
+- A-028a-01 : brancher BookingBlock sur T-022 calendriers internes
+- A-028a-02 : brancher FormBlock sur API submission + création lead + workflow trigger
+- A-028a-03 : partager les design tokens `--fnl-*` avec le module Email V2 sous le namespace `--brand-*`
 
 ---
 
-## Améliorations identifiées pendant cette tâche
+## Améliorations identifiées pendant la planification
 
-_À remplir au fil de l'eau._
+- Galerie de templates par niche (coaching biz / sport / mindset / immo / formation / mastermind / bootcamp) → reportée hors V1, voir si pertinent en V2
+- Analytics par funnel (vues, leads, taux conversion par étape, A/B test) → reportée hors V1
+- Domaines custom + page de remerciement configurable → existe déjà côté Email, à brancher en V2
+- Heatmap de scroll → V2.1 optionnel

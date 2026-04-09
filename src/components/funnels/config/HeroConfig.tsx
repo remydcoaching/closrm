@@ -11,6 +11,16 @@ export default function HeroConfig({ config, onChange }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
+        <label style={labelStyle}>Badge (au-dessus du titre)</label>
+        <input
+          type="text"
+          value={config.badgeText || ''}
+          onChange={e => onChange({ ...config, badgeText: e.target.value })}
+          placeholder="Atelier 100% Gratuit"
+          style={inputStyle}
+        />
+      </div>
+      <div>
         <label style={labelStyle}>Titre</label>
         <input
           type="text"

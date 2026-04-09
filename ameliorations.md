@@ -383,6 +383,67 @@ Chaque amélioration suit ce format :
 **Description :** Couche IA avec recommandations actionnables : "Ton CPL est à 18€, voici 3 actions pour le baisser". Inspiré des screenshots du benchmark.
 **Proposition :** Module séparé "Performance Insights" avec règles métier (heuristiques) ou appel à un LLM. Action steps + expected impact + statut (Action Required / On Track).
 
+### A-028a-01 · BookingBlock → brancher sur le module Calendriers interne (T-022)
+**Priorité :** Haute (à faire dès que T-028 est validée)
+**Contexte :** Identifié pendant l'audit Phase 1 de T-028a le 2026-04-07.
+**Description :** Actuellement `src/components/funnels/blocks/BookingBlock.tsx` est un **simple placeholder visuel** (bordure dashed + emoji 📅 + texte "Booking intégré"). Il ne fait rien, n'est connecté à aucun calendrier, et le champ `calendarId` de la config n'est pas utilisé.
+Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (livré par Pierre en T-022 — voir `tache-022-module-calendrier-booking.md`) avec :
+- API `/api/booking-calendars/*` et `/api/bookings/*`
+- Page publique `/book/[workspaceSlug]/[calendarSlug]/page.tsx`
+- Page paramètres `/parametres/calendriers/[id]/page.tsx`
+- Tables `booking_calendars`, `bookings`, `booking_locations`
+**Proposition :** Créer une tâche T-0XX dédiée qui :
+1. Transforme BookingBlock en vrai composant qui charge un `booking_calendar` du workspace via `config.calendarId`
+2. Affiche le widget de créneaux (extrait/réutilisé depuis `app/book/[workspaceSlug]/[calendarSlug]/page.tsx`) directement dans le funnel
+3. Crée un `booking` au workspace quand le visiteur réserve, avec attribution `funnel_id` → traçabilité
+4. Sync couleurs avec le preset du funnel (primary color du calendrier ← preset)
+**Scope T-028a/c (en attendant) :** garder BookingBlock visible dans la palette de blocs mais avec un label "**À venir**" et le rendre non-draggable/non-cliquable. Documenté dans la fiche T-028c.
+
+### A-028a-02 · FormBlock → persister les submissions + créer un lead + redirection
+**Priorité :** Haute (à faire dès que T-028 est validée)
+**Contexte :** Identifié pendant l'audit Phase 1 de T-028a le 2026-04-07.
+**Description :** Actuellement `src/components/funnels/blocks/FormBlock.tsx` (ligne 64) fait un `console.log` sur submit et ne persiste rien. Le champ `config.redirectUrl` est défini dans le type mais jamais utilisé. Le `successMessage` est bien affiché en inline mais pas de redirection réelle.
+**Ce qu'est censé faire un FormBlock dans un funnel de coaching :** c'est le **formulaire de candidature** qui vient après la VSL ou en pop-up sur une page d'optin — il collecte prénom/nom/téléphone/email/budget/réponses qualifiantes et crée automatiquement un **lead** dans le CRM avec une source qui permet de tracer d'où il vient (funnel, page). Idéalement il déclenche aussi le trigger `lead_imported` ou équivalent du workflow engine (T-029) pour que l'automation coach se déclenche (WhatsApp de bienvenue, email, etc.).
+**Proposition :** Créer une tâche T-0XX dédiée qui :
+1. Crée une API route publique `POST /api/public/funnels/[funnelId]/submit` qui prend les champs, crée un `lead` dans le workspace du funnel, triggue le workflow
+2. Branche FormBlock sur cette API (fetch au submit, loading state, gestion erreurs)
+3. Implémente la redirection `config.redirectUrl` après succès (ou fallback `successMessage`)
+4. Tracking : compteurs `funnel_page_views` vs `funnel_form_submissions` pour les stats par funnel
+**Scope T-028a/c (en attendant) :** même traitement que BookingBlock — visible dans la palette avec label "**À venir**", non-draggable/non-cliquable.
+
+### A-028a-03 · Design tokens funnels partagés avec le module Email
+**Priorité :** Basse (V2)
+**Contexte :** Identifié pendant la planification T-028 le 2026-04-07.
+**Description :** Les presets de couleurs de T-028a (20 presets) pourraient être réutilisés pour styler les emails transactionnels et les séquences email du module Emails (T-020 — non encore implémenté).
+**Proposition :** Quand T-020 sera abordé, prévoir une architecture où les CSS vars `--fnl-*` sont renommées plus génériquement `--brand-*` et exposées aux deux modules (funnels + emails) pour garantir une cohérence de marque à travers toute la communication du coach.
+
+### A-028b-01 · Quiz funnel template (template complet)
+**Priorité :** Moyenne
+**Contexte :** Demandé par Rémy pendant la Phase 12 de T-028 (2026-04-07). Format très en vogue dans le coaching.
+**Description :** Funnel sous forme de quiz interactif : le visiteur répond à quelques questions (multi-steps), reçoit un résultat personnalisé, puis une offre adaptée au profil détecté. Excellent taux de capture car il engage activement l'utilisateur au lieu de lui demander passivement son email.
+**Proposition :**
+1. Créer un nouveau type de bloc `quiz` avec config `{ questions: QuizQuestion[], results: QuizResult[], scoring: 'points' | 'categories' }`
+2. Chaque `QuizQuestion` a un label + plusieurs options avec une valeur scorée
+3. Le résultat affiché dépend du cumul des scores ou de la catégorie dominante
+4. Créer le template `tpl-quiz-funnel` dans `src/lib/funnels/templates.ts` avec une structure : Page 1 quiz (3-5 questions) → Page 2 résultat + offre personnalisée → Page 3 merci
+5. Déjà visible comme template "À venir" grisé dans `/acquisition/funnels/new` depuis la Phase 12 (cf. `templates.ts` entrée `tpl-quiz-funnel`)
+**Ne pas faire sans validation** : Rémy veut réfléchir au modèle de données quiz et aux variations possibles (skip logic, conditionnelles) avant implémentation.
+
+### A-028b-02 · Webinar funnel template (template complet)
+**Priorité :** Moyenne
+**Contexte :** Demandé par Rémy pendant la Phase 12 de T-028 (2026-04-07). Format classique des lancements de programmes de coaching.
+**Description :** Funnel d'inscription à un webinaire composé de plusieurs pages : inscription + confirmation + replay + vente post-webinar. Permet au coach de capturer des leads qualifiés et de les convertir à la fin du webinar quand l'engagement est maximal.
+**Proposition :**
+1. Créer le template `tpl-webinar-funnel` dans `src/lib/funnels/templates.ts` avec 4 pages :
+   - **Page 1 — Inscription** : Hero + promesse du webinar + formulaire d'inscription + témoignages
+   - **Page 2 — Confirmation** : Hero "Tu es inscrit !" + détails date/heure + rappel Google Agenda + texte "vérifie ta boîte mail"
+   - **Page 3 — Replay** : Hero "Revoir le webinar" + Video + CTA principal
+   - **Page 4 — Vente post-webinar** : Hero offre spéciale + Pricing + FAQ + Countdown (offre limitée) + Testimonials + CTA final
+2. Intégration future avec le module Calendriers (T-022) pour créer un événement associé au webinar et envoyer des rappels automatiques aux inscrits
+3. Intégration future avec le module Emails (T-020) pour la séquence "rappel J-1", "le webinar commence", "merci + replay disponible"
+4. Déjà visible comme template "À venir" grisé dans `/acquisition/funnels/new` depuis la Phase 12 (cf. `templates.ts` entrée `tpl-webinar-funnel`)
+**Ne pas faire sans validation** : dépend de T-022 (Calendriers) + T-020 (Emails) pour l'intégration complète. À reprendre une fois les 2 modules en place.
+
 ---
 
 ### [A-010] Linktree interne — liens trackables par lead

@@ -1,0 +1,26 @@
+/* ============================================================
+   T-028a — Funnels v2 design tokens
+   ============================================================
+   Définit les CSS custom properties par défaut sur le container `.fnl-root`.
+   Ces valeurs sont systématiquement overridées par `apply-preset.ts` au runtime,
+   mais elles servent de fallback si jamais aucun preset n'est appliqué.
+
+   Le preset par défaut est "Ocean" (#3B82F6).
+   ============================================================ */
+
+.fnl-root {
+  /* Couleur principale (boutons, accents, glows) */
+  --fnl-primary: #3B82F6;
+  --fnl-primary-light: #59A0F4;
+  --fnl-primary-dark: #1D64D8;
+  --fnl-primary-rgb: 59, 130, 246;
+
+  /* Fonds de section */
+  --fnl-hero-bg: #E0F2FE;
+  --fnl-section-bg: #FFFFFF;
+  --fnl-footer-bg: #0F172A;
+
+  /* Couleurs de texte (varient selon style: light | dark du preset) */
+  --fnl-text: #2D2D2D;
+  --fnl-text-secondary: #555555;
+}

@@ -50,9 +50,11 @@
 | Planification auto Instagram (cron) | Pierre | ✅ Termine | T-024 |
 | **Assistant IA de Relance (Guidance + Convert + Brief + Self-learning)** | **Pierre** | **✅ Termine** | **T-032** |
 | **Lead magnets structures (titre + lien) dans Assistant IA** | **Pierre** | **✅ Termine** | **A-011** |
+| **Funnels v2 — Direction artistique (presets + 9 effets)** | **Remy** | **✅ Termine** | **T-028a** |
+| **Funnels v2 — Migration des 13 blocs** | **Remy** | **✅ Termine** | **T-028c** |
+| **Funnels v2 — Refonte builder UX** | **Remy** | **✅ Termine** | **T-028b** |
 | **Module Automations (v1+v2)** | **Pierre** | **⚠️ Code OK, APIs manquantes** | **T-014, T-029** |
 | Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non demarre | T-021 |
-| Funnels v2 (refonte builder + analytics + templates) | Remy | ⬜ Non demarre | T-028 |
 | Import portefeuille leads (CSV + alternatives) | Remy | ⬜ Non demarre | T-031 |
 | Linktree interne (liens trackables par lead) | — | ⬜ Non demarre | A-010 |
 | Followers-as-prospects (V2) | Remy | ❌ Abandonne (API IG) | T-026 |

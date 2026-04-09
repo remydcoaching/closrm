@@ -1,0 +1,49 @@
+/* ============================================================
+   E3 — Button shine (TOGGLE, ON par défaut)
+   ============================================================
+   Reflet blanc translucide qui traverse le bouton en boucle (~4.5s).
+   Effet "premium" très utilisé dans les CTA de coaching.
+
+   Le `::before` n'est créé que quand `.fx-e3-button-shine` est actif.
+   Sans la classe, le bouton garde juste son gradient + son ombre colorée
+   (E4 forcé).
+   ============================================================ */
+
+/* T-028 Phase 9 : sélecteur `.fx-e3-button-shine .fnl-btn` sans `.fnl-root`,
+   pour que la classe puisse être appliquée soit sur `.fnl-root` (mode global
+   legacy) soit sur un wrapper de bloc précis (mode per-block du nouveau builder). */
+.fx-e3-button-shine .fnl-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 150%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 20%,
+    rgba(255, 255, 255, 0.35) 50%,
+    rgba(255, 255, 255, 0.15) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  animation: fnl-shine 4.5s ease-in-out infinite;
+}
+
+@keyframes fnl-shine {
+  0% {
+    left: -150%;
+  }
+  50%,
+  100% {
+    left: 150%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-e3-button-shine .fnl-btn::before {
+    animation: none;
+    opacity: 0;
+  }
+}

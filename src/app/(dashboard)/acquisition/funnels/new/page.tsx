@@ -11,6 +11,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   capture: 'Capture',
   complet: 'Complet',
   merci: 'Merci',
+  quiz: 'Quiz',
+  webinar: 'Webinar',
 }
 
 export default function NewFunnelPage() {
@@ -74,9 +76,9 @@ export default function NewFunnelPage() {
 
       {error && (
         <div style={{
-          background: 'rgba(229,62,62,0.08)', border: '1px solid rgba(229,62,62,0.25)',
+          background: 'rgba(0,200,83,0.08)', border: '1px solid rgba(0,200,83,0.25)',
           borderRadius: 10, padding: '12px 16px', marginBottom: 20,
-          fontSize: 13, color: '#E53E3E', display: 'flex', alignItems: 'center', gap: 8,
+          fontSize: 13, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <span style={{ fontSize: 16 }}>!</span>
           {error}
@@ -94,7 +96,7 @@ export default function NewFunnelPage() {
           marginBottom: 32, opacity: creating ? 0.5 : 1,
           transition: 'all 0.2s ease',
         }}
-        onMouseEnter={e => { if (!creating) { e.currentTarget.style.borderColor = '#E53E3E'; e.currentTarget.style.background = 'rgba(229,62,62,0.03)' } }}
+        onMouseEnter={e => { if (!creating) { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'rgba(0,200,83,0.03)' } }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary, #333)'; e.currentTarget.style.background = 'var(--bg-secondary, #141414)' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -115,7 +117,7 @@ export default function NewFunnelPage() {
           {creating === 'blank' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{
-                width: 16, height: 16, border: '2px solid #333', borderTopColor: '#E53E3E',
+                width: 16, height: 16, border: '2px solid #333', borderTopColor: 'var(--color-primary)',
                 borderRadius: '50%', animation: 'spin 0.8s linear infinite',
               }} />
               <span style={{ fontSize: 12, color: 'var(--text-secondary, #888)', fontWeight: 500 }}>Création...</span>
@@ -136,28 +138,44 @@ export default function NewFunnelPage() {
         gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
         gap: 16,
       }}>
-        {FUNNEL_TEMPLATES.map(template => (
+        {FUNNEL_TEMPLATES.map(template => {
+          // T-028 Phase 12 — templates "À venir" (Quiz, Webinar) : grisés + non-cliquables
+          const isComingSoon = template.comingSoon === true
+          return (
           <div
             key={template.id}
-            onClick={() => !creating && createFunnel(template.id, template.name)}
+            onClick={() => !creating && !isComingSoon && createFunnel(template.id, template.name)}
+            title={isComingSoon ? 'Ce template sera disponible bientôt' : undefined}
             style={{
               background: 'var(--bg-secondary, #141414)',
               border: '1px solid var(--border-primary, #262626)',
               borderRadius: 12, padding: 22,
-              cursor: creating ? 'not-allowed' : 'pointer',
-              opacity: creating ? 0.5 : 1,
+              cursor: creating || isComingSoon ? 'not-allowed' : 'pointer',
+              opacity: creating ? 0.5 : isComingSoon ? 0.55 : 1,
               transition: 'all 0.2s ease',
+              position: 'relative',
             }}
-            onMouseEnter={e => { if (!creating) { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)' } }}
+            onMouseEnter={e => { if (!creating && !isComingSoon) { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)' } }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary, #262626)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
           >
+            {isComingSoon && (
+              <div style={{
+                position: 'absolute', top: 12, right: 12,
+                padding: '3px 10px', borderRadius: 12, fontSize: 9, fontWeight: 700,
+                background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
+                color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5,
+                boxShadow: '0 2px 8px rgba(0,200,83,0.3)',
+              }}>
+                À venir
+              </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{
                 width: 38, height: 38, borderRadius: 10,
-                background: 'rgba(229,62,62,0.08)', border: '1px solid rgba(229,62,62,0.12)',
+                background: 'rgba(0,200,83,0.08)', border: '1px solid rgba(0,200,83,0.12)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <Layers size={16} color="#E53E3E" />
+                <Layers size={16} color="var(--color-primary)" />
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <span style={{
@@ -167,13 +185,15 @@ export default function NewFunnelPage() {
                 }}>
                   {CATEGORY_LABELS[template.category] || template.category}
                 </span>
-                <span style={{
-                  padding: '3px 10px', borderRadius: 12, fontSize: 10, fontWeight: 600,
-                  background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary, #888)',
-                  border: '1px solid rgba(255,255,255,0.04)',
-                }}>
-                  {template.pages.length} page{template.pages.length > 1 ? 's' : ''}
-                </span>
+                {!isComingSoon && (
+                  <span style={{
+                    padding: '3px 10px', borderRadius: 12, fontSize: 10, fontWeight: 600,
+                    background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary, #888)',
+                    border: '1px solid rgba(255,255,255,0.04)',
+                  }}>
+                    {template.pages.length} page{template.pages.length > 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #fff)', marginBottom: 6 }}>
@@ -185,14 +205,15 @@ export default function NewFunnelPage() {
             {creating === template.id && (
               <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
-                  width: 14, height: 14, border: '2px solid #333', borderTopColor: '#E53E3E',
+                  width: 14, height: 14, border: '2px solid #333', borderTopColor: 'var(--color-primary)',
                   borderRadius: '50%', animation: 'spin 0.8s linear infinite',
                 }} />
                 <span style={{ fontSize: 12, color: 'var(--text-secondary, #888)', fontWeight: 500 }}>Création...</span>
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
