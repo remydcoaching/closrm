@@ -86,6 +86,11 @@ export interface MetaInsightRow {
   ctr: string
   actions?: MetaInsightAction[]
   cost_per_action_type?: MetaInsightAction[]
+  video_play_actions?: { action_type: string; value: string }[]
+  video_p25_watched_actions?: { action_type: string; value: string }[]
+  video_p50_watched_actions?: { action_type: string; value: string }[]
+  video_p75_watched_actions?: { action_type: string; value: string }[]
+  frequency?: string
 }
 
 export interface InsightsParams {
@@ -291,6 +296,9 @@ export async function getInsights(
   const baseFields = [
     'spend', 'impressions', 'clicks', 'ctr',
     'actions', 'cost_per_action_type',
+    'video_play_actions', 'video_p25_watched_actions',
+    'video_p50_watched_actions', 'video_p75_watched_actions',
+    'frequency',
   ]
 
   // Add ID + name fields based on level so Meta returns them
@@ -368,6 +376,32 @@ export function extractCostPerLead(row: MetaInsightRow): number | null {
   return cplAction ? parseFloat(cplAction.value) : null
 }
 
+// ─── Video insight helpers ──────────────────────────────────────────────────
+
+function extractVideoActionValue(
+  actions: { action_type: string; value: string }[] | undefined
+): number {
+  if (!actions) return 0
+  const action = actions.find(a => a.action_type === 'video_view')
+  return action ? parseInt(action.value, 10) : 0
+}
+
+export function extractVideoPlays(row: MetaInsightRow): number {
+  return extractVideoActionValue(row.video_play_actions)
+}
+
+export function extractVideoP25(row: MetaInsightRow): number {
+  return extractVideoActionValue(row.video_p25_watched_actions)
+}
+
+export function extractVideoP50(row: MetaInsightRow): number {
+  return extractVideoActionValue(row.video_p50_watched_actions)
+}
+
+export function extractVideoP75(row: MetaInsightRow): number {
+  return extractVideoActionValue(row.video_p75_watched_actions)
+}
+
 // ─── Lead data ───────────────────────────────────────────────────────────────
 
 export async function getLeadData(
@@ -408,6 +442,65 @@ const FIELD_ALIASES: Record<string, keyof ParsedLead> = {
   mobile_phone: 'phone',
   telephone: 'phone',
 }
+
+// ─── Ad Creative ────────────────────────────────────────────────────────────
+
+export interface MetaAdCreative {
+  id: string
+  name: string
+  image_url: string | null
+  video_url: string | null
+  thumbnail_url: string | null
+  body: string | null
+  title: string | null
+  link_url: string | null
+}
+
+export async function getAdCreative(adId: string, token: string): Promise<MetaAdCreative | null> {
+  const fields = 'id,name,creative{id,image_url,thumbnail_url,body,title,object_story_spec,asset_feed_spec}'
+  const res = await fetch(`${GRAPH_URL}/${adId}?fields=${fields}&access_token=${token}`)
+  if (!res.ok) return null
+  const data = await res.json()
+  const creative = data.creative || {}
+  const storySpec = creative.object_story_spec || {}
+
+  // Extract video URL from video_data or link_data
+  let videoUrl: string | null = null
+  if (storySpec.video_data?.video_id) {
+    // Fetch video source URL
+    try {
+      const videoRes = await fetch(`${GRAPH_URL}/${storySpec.video_data.video_id}?fields=source&access_token=${token}`)
+      if (videoRes.ok) {
+        const videoData = await videoRes.json()
+        videoUrl = videoData.source || null
+      }
+    } catch { /* non-blocking */ }
+  }
+
+  // Fallback: check link_data for video
+  if (!videoUrl && storySpec.link_data?.image_hash === undefined && storySpec.link_data?.video_id) {
+    try {
+      const videoRes = await fetch(`${GRAPH_URL}/${storySpec.link_data.video_id}?fields=source&access_token=${token}`)
+      if (videoRes.ok) {
+        const videoData = await videoRes.json()
+        videoUrl = videoData.source || null
+      }
+    } catch { /* non-blocking */ }
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    image_url: creative.image_url || storySpec.link_data?.picture || null,
+    video_url: videoUrl,
+    thumbnail_url: creative.thumbnail_url || storySpec.video_data?.image_url || creative.image_url || null,
+    body: creative.body || storySpec.link_data?.message || storySpec.video_data?.message || null,
+    title: creative.title || storySpec.link_data?.name || storySpec.video_data?.title || null,
+    link_url: storySpec.link_data?.link || null,
+  }
+}
+
+// ─── Field mapping ───────────────────────────────────────────────────────────
 
 export function parseLeadFields(fields: MetaLeadField[]): ParsedLead {
   const result: ParsedLead = { first_name: '', last_name: '', email: null, phone: '' }

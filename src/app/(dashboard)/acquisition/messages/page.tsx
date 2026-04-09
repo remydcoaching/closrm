@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { RefreshCw, Search, PanelRightOpen, PanelRightClose } from 'lucide-react'
 import ConversationList from '@/components/messages/ConversationList'
 import ConversationThread from '@/components/messages/ConversationThread'
 import MessageInput from '@/components/messages/MessageInput'
+import ContactPanel from '@/components/messages/ContactPanel'
 import IgNotConnected from '@/components/social/instagram/IgNotConnected'
 import type { IgConversation, IgMessage } from '@/types'
 
@@ -14,52 +16,65 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hasAccount, setHasAccount] = useState(true)
+  const [syncWarning, setSyncWarning] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [sending, setSending] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [showPanel, setShowPanel] = useState(false)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const initialSyncDone = useRef(false)
+  const hasLoadedOnce = useRef(false)
 
-  // Debounce search input by 300ms
   const handleSearchChange = (value: string) => {
     setSearch(value)
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    searchTimerRef.current = setTimeout(() => {
-      setDebouncedSearch(value)
-    }, 300)
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(value), 300)
   }
 
   useEffect(() => {
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    }
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
   }, [])
 
-  const fetchConversations = useCallback(async () => {
-    setLoading(true)
+  const fetchConversations = useCallback(async (withSync = false) => {
+    if (!hasLoadedOnce.current) setLoading(true)
     setError(null)
     try {
-      let accRes = await fetch('/api/instagram/account')
-      let accJson = await accRes.json()
-      if (!accJson.data) {
-        accRes = await fetch('/api/instagram/account', { method: 'POST' })
-        accJson = await accRes.json()
-        if (!accJson.data) { setHasAccount(false); setLoading(false); return }
-      }
-
+      const accRes = await fetch('/api/instagram/account')
+      const accJson = await accRes.json()
+      if (!accJson.data) { setHasAccount(false); setLoading(false); return }
       const params = new URLSearchParams()
       if (debouncedSearch) params.set('search', debouncedSearch)
+      if (withSync) params.set('sync', 'true')
       const res = await fetch(`/api/instagram/conversations?${params}`)
-      if (!res.ok) throw new Error('Erreur lors du chargement des conversations')
+      if (!res.ok) throw new Error('Erreur lors du chargement')
       const json = await res.json()
       setConversations(json.data ?? [])
+      setSyncWarning(json.syncWarning ?? null)
+      hasLoadedOnce.current = true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
+      setError(err instanceof Error ? err.message : 'Erreur')
     } finally {
       setLoading(false)
     }
   }, [debouncedSearch])
 
-  useEffect(() => { fetchConversations() }, [fetchConversations])
+  useEffect(() => {
+    if (!initialSyncDone.current) {
+      initialSyncDone.current = true
+      fetchConversations(false).then(() => {
+        fetch('/api/instagram/conversations?sync=true').catch(() => {})
+      })
+    } else {
+      fetchConversations(false)
+    }
+  }, [fetchConversations])
+
+  const handleSync = async () => {
+    setSyncing(true)
+    await fetchConversations(true)
+    setSyncing(false)
+  }
 
   const fetchMessages = useCallback(async (convo: IgConversation) => {
     setSelected(convo)
@@ -67,143 +82,231 @@ export default function MessagesPage() {
       const res = await fetch(`/api/instagram/messages?conversation_id=${convo.id}`)
       const json = await res.json()
       setMessages(json.data ?? [])
-    } catch {
-      setMessages([])
-    }
+    } catch { setMessages([]) }
   }, [])
 
   const handleSend = async (text: string) => {
     if (!selected || sending) return
     setSending(true)
-
-    // Optimistic message
     const optimisticId = `optimistic-${Date.now()}`
-    const optimisticMsg = {
-      id: optimisticId,
-      workspace_id: '',
-      conversation_id: selected.id,
-      sender_type: 'user' as const,
-      text,
-      sent_at: new Date().toISOString(),
-      media_url: null,
-      media_type: null,
-      ig_message_id: null,
-      is_read: true,
-      _optimistic: true,
-    }
-    setMessages(prev => [...prev, optimisticMsg])
-
+    setMessages(prev => [...prev, {
+      id: optimisticId, workspace_id: '', conversation_id: selected.id,
+      sender_type: 'user' as const, text, sent_at: new Date().toISOString(),
+      media_url: null, media_type: null, ig_message_id: null, is_read: true, _optimistic: true,
+    }])
     try {
       const res = await fetch('/api/instagram/messages/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversation_id: selected.id, text }),
       })
       if (res.ok) {
         const json = await res.json()
-        // Replace optimistic message with real one
         setMessages(prev => prev.map(m => m.id === optimisticId ? json.data : m))
         setConversations(prev => prev.map(c =>
-          c.id === selected.id
-            ? { ...c, last_message_text: text, last_message_at: new Date().toISOString() }
-            : c
+          c.id === selected.id ? { ...c, last_message_text: text, last_message_at: new Date().toISOString() } : c
         ))
-      } else {
-        // Remove optimistic message on failure
-        setMessages(prev => prev.filter(m => m.id !== optimisticId))
-      }
-    } catch {
-      setMessages(prev => prev.filter(m => m.id !== optimisticId))
-    } finally {
-      setSending(false)
-    }
+      } else { setMessages(prev => prev.filter(m => m.id !== optimisticId)) }
+    } catch { setMessages(prev => prev.filter(m => m.id !== optimisticId)) }
+    finally { setSending(false) }
   }
+
+  const handleSendImage = async (file: File) => {
+    if (!selected) return
+    const formData = new FormData()
+    formData.append('conversation_id', selected.id)
+    formData.append('image', file)
+    try {
+      const res = await fetch('/api/instagram/messages/send-image', { method: 'POST', body: formData })
+      if (res.ok) {
+        const json = await res.json()
+        setMessages(prev => [...prev, json.data])
+        setConversations(prev => prev.map(c =>
+          c.id === selected.id ? { ...c, last_message_text: '📷 Photo', last_message_at: new Date().toISOString() } : c
+        ))
+      }
+    } catch { /* silent */ }
+  }
+
+  useEffect(() => {
+    if (!selected) return
+    const interval = setInterval(() => {
+      fetch(`/api/instagram/messages?conversation_id=${selected.id}&refresh=true`)
+        .then(r => r.json()).then(j => { if (j.data) setMessages(j.data) }).catch(() => {})
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [selected?.id])
+
+  useEffect(() => {
+    if (!hasAccount) return
+    const interval = setInterval(() => fetchConversations(false), 15000)
+    return () => clearInterval(interval)
+  }, [hasAccount, fetchConversations])
 
   if (!hasAccount) {
     return (
-      <div className="px-10 py-8 max-w-[1200px]">
-        <h1 className="text-[22px] font-bold text-[var(--text-primary)] mb-1.5">Messages</h1>
-        <p className="text-[13px] text-[var(--text-tertiary)] mb-6">Conversations Instagram</p>
+      <div style={{ padding: '40px' }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>Messages</h1>
         <IgNotConnected />
       </div>
     )
   }
 
   return (
-    <div className="px-10 py-8 max-w-[1200px]">
-      <h1 className="text-[22px] font-bold text-[var(--text-primary)] mb-1.5">Messages</h1>
-      <p className="text-[13px] text-[var(--text-tertiary)] mb-6">Conversations Instagram</p>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
 
-      <div className="flex h-[calc(100vh-200px)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl overflow-hidden">
-        {/* Conversation list sidebar */}
-        <div className="w-[350px] border-r border-[var(--border-primary)] flex flex-col">
-          <div className="p-3">
+      {/* ── Left column ── */}
+      <div style={{ width: 340, flexShrink: 0, borderRight: '1px solid var(--border-primary)', display: 'flex', flexDirection: 'column' }}>
+
+        {/* Header */}
+        <div style={{ padding: '24px 24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Messages</h1>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            title="Synchroniser les conversations"
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              border: '1px solid var(--border-primary)',
+              background: 'var(--bg-secondary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'all 0.2s',
+              opacity: syncing ? 0.5 : 1,
+            }}
+          >
+            <RefreshCw size={15} color="var(--text-tertiary)" className={syncing ? 'animate-spin' : ''} />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div style={{ padding: '0 24px 16px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
+            borderRadius: 14, padding: '11px 16px',
+          }}>
+            <Search size={16} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
             <input
               placeholder="Rechercher..."
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
-              className="w-full px-3 py-2 text-[13px] bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-lg outline-none focus:ring-1 focus:ring-[var(--color-primary)] transition-shadow"
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                fontSize: 14, color: 'var(--text-primary)', fontFamily: 'inherit',
+              }}
             />
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {error ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4 gap-3">
-                <svg className="w-8 h-8 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-                </svg>
-                <p className="text-[13px] text-[var(--text-tertiary)] text-center">{error}</p>
-                <button
-                  onClick={fetchConversations}
-                  className="px-4 py-1.5 text-[12px] font-medium bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity"
-                >
-                  Réessayer
-                </button>
-              </div>
-            ) : (
-              <ConversationList conversations={conversations} selected={selected} onSelect={fetchMessages} loading={loading} />
-            )}
           </div>
         </div>
 
-        {/* Thread panel */}
-        <div className="flex-1 flex flex-col">
-          {selected ? (
-            <>
-              {/* Header */}
-              <div className="px-4 py-3 border-b border-[var(--border-primary)] flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center text-sm font-semibold text-[var(--text-primary)] overflow-hidden shrink-0">
-                  {selected.participant_avatar_url
-                    ? <img src={selected.participant_avatar_url} alt="" className="w-full h-full object-cover" />
-                    : (selected.participant_name?.[0] ?? selected.participant_username?.[0] ?? '?')
-                  }
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-[var(--text-primary)]">
-                    {selected.participant_name ?? selected.participant_username}
-                  </div>
-                  {selected.participant_username && (
-                    <div className="text-[11px] text-[var(--text-tertiary)]">@{selected.participant_username}</div>
-                  )}
-                </div>
-                {selected.lead_id && (
-                  <a href={`/leads/${selected.lead_id}`} className="ml-auto text-xs text-[var(--color-primary)] hover:underline transition-colors">
-                    Voir la fiche lead &rarr;
-                  </a>
-                )}
-              </div>
-              <ConversationThread messages={messages} />
-              <MessageInput onSend={handleSend} disabled={sending} />
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-tertiary)]">
-              <svg className="w-12 h-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-              </svg>
-              <p className="text-[13px]">Selectionnez une conversation</p>
+        {/* Warning */}
+        {syncWarning && (
+          <div style={{ margin: '0 24px 12px', padding: '8px 14px', borderRadius: 10, background: 'rgba(214,158,46,0.06)', fontSize: 12, color: '#D69E2E', lineHeight: 1.4 }}>
+            {syncWarning}
+          </div>
+        )}
+
+        {/* Conversation list */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {error ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 24px', gap: 12 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>{error}</p>
+              <button
+                onClick={() => fetchConversations(true)}
+                style={{ padding: '8px 20px', fontSize: 13, fontWeight: 600, background: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer' }}
+              >
+                Réessayer
+              </button>
             </div>
+          ) : (
+            <ConversationList conversations={conversations} selected={selected} onSelect={fetchMessages} loading={loading} />
           )}
         </div>
       </div>
+
+      {/* ── Center column ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        {selected ? (
+          <>
+            {/* Thread header */}
+            <div style={{
+              padding: '16px 24px',
+              borderBottom: '1px solid var(--border-primary)',
+              display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0,
+            }}>
+              <div style={{
+                width: 42, height: 42, borderRadius: '50%',
+                background: selected.participant_avatar_url ? 'transparent' : 'var(--color-primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 16, fontWeight: 700, color: '#fff',
+                flexShrink: 0, overflow: 'hidden',
+              }}>
+                {selected.participant_avatar_url
+                  ? <img src={selected.participant_avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : (selected.participant_name?.[0] ?? selected.participant_username?.[0] ?? '?').toUpperCase()
+                }
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {selected.participant_name ?? selected.participant_username}
+                </div>
+                {selected.participant_username && (
+                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>@{selected.participant_username}</div>
+                )}
+              </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                {selected.lead_id && (
+                  <a
+                    href={`/leads/${selected.lead_id}`}
+                    style={{
+                      fontSize: 13, fontWeight: 500,
+                      color: 'var(--color-primary)', textDecoration: 'none',
+                      padding: '7px 18px', borderRadius: 20,
+                      border: '1px solid var(--border-primary)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Voir le lead →
+                  </a>
+                )}
+                <button
+                  onClick={() => setShowPanel(p => !p)}
+                  title={showPanel ? 'Masquer le panel' : 'Infos contact'}
+                  style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    border: '1px solid var(--border-primary)',
+                    background: showPanel ? 'var(--bg-active)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                >
+                  {showPanel
+                    ? <PanelRightClose size={16} color="var(--color-primary)" />
+                    : <PanelRightOpen size={16} color="var(--text-tertiary)" />
+                  }
+                </button>
+              </div>
+            </div>
+
+            <ConversationThread messages={messages} />
+            <MessageInput onSend={handleSend} onSendImage={handleSendImage} disabled={sending} />
+          </>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: '50%',
+              background: 'var(--bg-elevated)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth={1} style={{ opacity: 0.4 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+              </svg>
+            </div>
+            <span style={{ fontSize: 15, color: 'var(--text-tertiary)', fontWeight: 500 }}>Sélectionnez une conversation</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Right column (togglable) ── */}
+      {selected && showPanel && <ContactPanel conversation={selected} />}
     </div>
   )
 }

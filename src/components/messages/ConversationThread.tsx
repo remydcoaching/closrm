@@ -11,15 +11,12 @@ function isSameDay(d1: string, d2: string): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
 
-function isToday(dateStr: string): boolean {
-  return isSameDay(dateStr, new Date().toISOString())
-}
+function isToday(dateStr: string): boolean { return isSameDay(dateStr, new Date().toISOString()) }
 
 function isYesterday(dateStr: string): boolean {
   const d = new Date(dateStr)
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  return d.getFullYear() === yesterday.getFullYear() && d.getMonth() === yesterday.getMonth() && d.getDate() === yesterday.getDate()
+  const y = new Date(); y.setDate(y.getDate() - 1)
+  return d.getFullYear() === y.getFullYear() && d.getMonth() === y.getMonth() && d.getDate() === y.getDate()
 }
 
 function formatDateSeparator(dateStr: string): string {
@@ -28,52 +25,14 @@ function formatDateSeparator(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-function formatTimestamp(dateStr: string): string {
-  if (isToday(dateStr)) {
-    return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  }
-  return new Date(dateStr).toLocaleString('fr-FR', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  })
-}
-
-function renderMedia(msg: IgMessage) {
-  if (!msg.media_url) return null
-  const type = msg.media_type?.toLowerCase()
-
-  if (type === 'video') {
-    return (
-      <div className="mb-1 max-w-[220px]">
-        <video src={msg.media_url} controls className="w-full rounded-xl" />
-      </div>
-    )
-  }
-
-  if (type === 'audio') {
-    return (
-      <div className="mb-1 max-w-[260px]">
-        <audio src={msg.media_url} controls className="w-full h-10" />
-      </div>
-    )
-  }
-
-  // image, sticker, or fallback
-  return (
-    <div className="mb-1 max-w-[220px]">
-      <img
-        src={msg.media_url}
-        alt=""
-        className={`w-full rounded-xl ${type === 'sticker' ? 'max-w-[120px]' : ''}`}
-      />
-    </div>
-  )
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
 export default function ConversationThread({ messages }: Props) {
   const endRef = useRef<HTMLDivElement>(null)
   const prevLengthRef = useRef(messages.length)
 
-  // Only auto-scroll when new messages arrive (not on every render)
   useEffect(() => {
     if (messages.length > prevLengthRef.current || prevLengthRef.current === 0) {
       endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -81,52 +40,97 @@ export default function ConversationThread({ messages }: Props) {
     prevLengthRef.current = messages.length
   }, [messages.length])
 
-  // Also scroll when conversation changes (messages reset)
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [messages.length === 0 ? 0 : messages[0]?.id])
 
   if (messages.length === 0) return (
-    <div className="flex-1 flex items-center justify-center text-[var(--text-tertiary)] text-[13px]">
-      Aucun message
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Aucun message</span>
     </div>
   )
 
   return (
-    <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-1">
+    <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 3 }}>
       {messages.map((msg, idx) => {
         const isUser = msg.sender_type === 'user'
         const isOptimistic = msg._optimistic
         const prevMsg = idx > 0 ? messages[idx - 1] : null
-        const showDateSeparator = !prevMsg || !isSameDay(prevMsg.sent_at, msg.sent_at)
+        const showDateSep = !prevMsg || !isSameDay(prevMsg.sent_at, msg.sent_at)
+        const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null
+        const isLastInGroup = !nextMsg || nextMsg.sender_type !== msg.sender_type || !isSameDay(nextMsg.sent_at, msg.sent_at)
 
         return (
           <div key={msg.id}>
-            {showDateSeparator && (
-              <div className="flex items-center justify-center my-3">
-                <div className="px-3 py-1 rounded-full bg-[var(--bg-elevated)] text-[11px] text-[var(--text-tertiary)] font-medium">
+            {showDateSep && (
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '20px 0' }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 500, letterSpacing: 0.3,
+                  color: 'var(--text-tertiary)',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 20, padding: '6px 18px',
+                }}>
                   {formatDateSeparator(msg.sent_at)}
-                </div>
+                </span>
               </div>
             )}
-            <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-              {renderMedia(msg)}
-              {msg.text && (
-                <div
-                  className={`px-3.5 py-2 rounded-2xl max-w-[320px] text-[13px] leading-[1.4] break-words
-                    ${isUser
-                      ? 'bg-[var(--color-primary)] text-white'
-                      : 'bg-[var(--bg-elevated)] text-[var(--text-primary)]'
-                    }
-                    ${isOptimistic ? 'opacity-60' : ''}
-                  `}
-                  style={{ overflowWrap: 'anywhere' }}
-                >
-                  {msg.text}
-                </div>
-              )}
-              <div className={`text-[10px] text-[var(--text-tertiary)] mt-0.5 px-1 flex items-center gap-1 ${isOptimistic ? 'italic' : ''}`}>
-                {isOptimistic ? 'Envoi...' : formatTimestamp(msg.sent_at)}
+
+            <div style={{ display: 'flex', width: '100%', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '65%', alignItems: isUser ? 'flex-end' : 'flex-start' }}>
+
+                {/* Media */}
+                {msg.media_url && (
+                  <div style={{ marginBottom: 4, maxWidth: 240 }}>
+                    {msg.media_type === 'video' ? (
+                      <video src={msg.media_url} controls style={{ width: '100%', borderRadius: 16 }} />
+                    ) : msg.media_type === 'audio' ? (
+                      <audio src={msg.media_url} controls style={{ width: '100%', height: 40 }} />
+                    ) : (
+                      <img src={msg.media_url} alt="" style={{
+                        width: '100%', borderRadius: 16,
+                        maxWidth: msg.media_type === 'sticker' ? 100 : undefined,
+                      }} />
+                    )}
+                  </div>
+                )}
+
+                {/* Bubble */}
+                {msg.text && (
+                  <div style={{
+                    padding: '10px 16px',
+                    fontSize: 14,
+                    lineHeight: 1.55,
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                    opacity: isOptimistic ? 0.55 : 1,
+                    ...(isUser
+                      ? {
+                          background: 'var(--color-primary)',
+                          color: '#fff',
+                          borderRadius: '20px 20px 6px 20px',
+                        }
+                      : {
+                          background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-primary)',
+                          color: 'var(--text-primary)',
+                          borderRadius: '20px 20px 20px 6px',
+                        }),
+                  }}>
+                    {msg.text}
+                  </div>
+                )}
+
+                {/* Timestamp */}
+                {isLastInGroup && (
+                  <span style={{
+                    fontSize: 11, color: 'var(--text-tertiary)',
+                    marginTop: 4, padding: '0 4px',
+                    fontStyle: isOptimistic ? 'italic' : undefined,
+                  }}>
+                    {isOptimistic ? 'Envoi...' : formatTime(msg.sent_at)}
+                  </span>
+                )}
               </div>
             </div>
           </div>

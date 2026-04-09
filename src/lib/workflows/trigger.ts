@@ -92,9 +92,35 @@ function matchesTriggerConfig(
       return true
     }
 
-    case 'booking_created':
-      // No config matching needed — fire for any booking_created trigger
+    case 'lead_imported': {
+      // Optional source filter
+      if (config.source && config.source !== data.source) return false
       return true
+    }
+
+    case 'lead_with_ig_handle':
+      // No config — fires whenever a lead is created with an instagram_handle
+      return true
+
+    case 'booking_no_show':
+    case 'booking_created':
+    case 'booking_cancelled':
+    case 'booking_completed': {
+      // Optional calendar_id filter — if set, only fire for that calendar
+      if (config.calendar_id && config.calendar_id !== data.calendar_id) return false
+      return true
+    }
+
+    case 'booking_in_x_hours':
+      // Handled by cron job, similar to call_in_x_hours
+      return false
+
+    case 'lead_inactive_x_days': {
+      // Config has `days`, triggerData has `days_inactive`
+      const configDays = (config.days as number) ?? 30
+      const inactiveDays = (data.days_inactive as number) ?? 0
+      return inactiveDays >= configDays
+    }
 
     case 'call_in_x_hours':
       // Handled by cron job, not direct trigger dispatch

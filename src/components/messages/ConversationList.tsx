@@ -30,14 +30,11 @@ function timeAgo(dateStr: string | null | undefined): string {
 
 function SkeletonItem() {
   return (
-    <div className="flex gap-2.5 px-4 py-3 border-b border-[var(--border-primary)]">
-      <div className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] animate-pulse shrink-0" />
-      <div className="flex-1 min-w-0 space-y-2 py-1">
-        <div className="flex justify-between">
-          <div className="h-3.5 w-24 bg-[var(--bg-elevated)] rounded animate-pulse" />
-          <div className="h-3 w-8 bg-[var(--bg-elevated)] rounded animate-pulse" />
-        </div>
-        <div className="h-3 w-40 bg-[var(--bg-elevated)] rounded animate-pulse" />
+    <div style={{ display: 'flex', gap: 12, padding: '14px 20px' }}>
+      <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--bg-elevated)', flexShrink: 0 }} className="animate-pulse" />
+      <div style={{ flex: 1, paddingTop: 4 }}>
+        <div style={{ height: 12, width: 100, background: 'var(--bg-elevated)', borderRadius: 6, marginBottom: 8 }} className="animate-pulse" />
+        <div style={{ height: 10, width: 150, background: 'var(--bg-elevated)', borderRadius: 6 }} className="animate-pulse" />
       </div>
     </div>
   )
@@ -45,22 +42,16 @@ function SkeletonItem() {
 
 export default function ConversationList({ conversations, selected, onSelect, loading }: Props) {
   if (loading) {
-    return (
-      <div>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <SkeletonItem key={i} />
-        ))}
-      </div>
-    )
+    return <div>{Array.from({ length: 7 }).map((_, i) => <SkeletonItem key={i} />)}</div>
   }
 
   if (conversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 gap-3">
-        <svg className="w-10 h-10 text-[var(--text-tertiary)] opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', gap: 8 }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth={1.5} style={{ opacity: 0.4 }}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
         </svg>
-        <p className="text-[13px] text-[var(--text-tertiary)]">Aucune conversation</p>
+        <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Aucune conversation</span>
       </div>
     )
   }
@@ -68,41 +59,75 @@ export default function ConversationList({ conversations, selected, onSelect, lo
   return (
     <div>
       {conversations.map(c => {
-        const isSelected = selected?.id === c.id
-        const hasUnread = c.unread_count > 0
+        const active = selected?.id === c.id
+        const unread = c.unread_count > 0
+        const initial = (c.participant_name?.[0] ?? c.participant_username?.[0] ?? '?').toUpperCase()
+
         return (
-          <button
+          <div
             key={c.id}
             onClick={() => onSelect(c)}
-            className={`flex gap-2.5 px-4 py-3 w-full border-none cursor-pointer text-left border-b border-b-[var(--border-primary)] transition-colors duration-150
-              ${isSelected
-                ? 'bg-[var(--bg-active)]'
-                : 'bg-transparent hover:bg-[var(--bg-primary)]'
-              }`}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => { if (e.key === 'Enter') onSelect(c) }}
+            style={{
+              display: 'flex',
+              gap: 12,
+              padding: '14px 20px',
+              cursor: 'pointer',
+              position: 'relative',
+              background: active ? 'var(--bg-active)' : 'transparent',
+              transition: 'background 0.15s',
+              outline: 'none',
+              border: 'none',
+            }}
+            onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-secondary)' }}
+            onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
           >
-            <div className="w-10 h-10 rounded-full shrink-0 bg-[var(--bg-elevated)] flex items-center justify-center text-sm font-semibold text-[var(--text-primary)] overflow-hidden">
+            {active && (
+              <div style={{ position: 'absolute', left: 0, top: 10, bottom: 10, width: 3, borderRadius: '0 4px 4px 0', background: 'var(--color-primary)' }} />
+            )}
+
+            {/* Avatar */}
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, fontWeight: 600, overflow: 'hidden',
+              background: c.participant_avatar_url ? 'transparent' : (active ? 'var(--color-primary)' : 'var(--bg-elevated)'),
+              color: active ? '#fff' : 'var(--text-tertiary)',
+            }}>
               {c.participant_avatar_url
-                ? <img src={c.participant_avatar_url} alt="" className="w-full h-full object-cover" />
-                : (c.participant_name?.[0] ?? c.participant_username?.[0] ?? '?')
+                ? <img src={c.participant_avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : initial
               }
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between mb-0.5">
-                <span className={`text-[13px] text-[var(--text-primary)] overflow-hidden text-ellipsis whitespace-nowrap ${hasUnread ? 'font-bold' : 'font-medium'}`}>
+
+            {/* Info */}
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{
+                  fontSize: 14, color: 'var(--text-primary)',
+                  fontWeight: unread ? 700 : 500,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
                   {c.participant_name ?? c.participant_username ?? 'Inconnu'}
                 </span>
-                <span className="text-[11px] text-[var(--text-tertiary)] shrink-0 ml-2">{timeAgo(c.last_message_at)}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0, marginLeft: 8 }}>
+                  {timeAgo(c.last_message_at)}
+                </span>
               </div>
-              <div className={`text-xs overflow-hidden text-ellipsis whitespace-nowrap ${hasUnread ? 'text-[var(--text-secondary)] font-semibold' : 'text-[var(--text-tertiary)] font-normal'}`}>
+              <div style={{
+                fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                color: unread ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+              }}>
                 {c.last_message_text ?? ''}
               </div>
             </div>
-            {hasUnread && (
-              <div className="w-5 h-5 rounded-full shrink-0 bg-[var(--color-primary)] flex items-center justify-center text-[10px] font-bold text-white self-center">
-                {c.unread_count}
-              </div>
+
+            {unread && (
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0, alignSelf: 'center' }} />
             )}
-          </button>
+          </div>
         )
       })}
     </div>

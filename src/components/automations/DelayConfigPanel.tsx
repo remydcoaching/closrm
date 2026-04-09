@@ -43,15 +43,28 @@ export default function DelayConfigPanel({ step, onChange }: Props) {
 
   return (
     <div>
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: 'var(--text-primary)',
-          marginBottom: 20,
-        }}
-      >
-        Configuration du délai
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        marginBottom: 22, paddingBottom: 14,
+        borderBottom: '1px solid var(--border-primary)',
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: 'rgba(214,158,46,0.08)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+            Delai
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Temps d&apos;attente avant la suite
+          </div>
+        </div>
       </div>
 
       <div style={{ marginBottom: 14 }}>

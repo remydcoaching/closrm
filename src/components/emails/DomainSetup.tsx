@@ -89,8 +89,12 @@ export default function DomainSetup() {
     setSavingFrom(false)
   }
 
+  const [copiedText, setCopiedText] = useState('')
+
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text)
+    setCopiedText(text)
+    setTimeout(() => setCopiedText(''), 1500)
   }
 
   if (loading) {
@@ -114,11 +118,11 @@ export default function DomainSetup() {
             type="text"
             value={newDomain}
             onChange={e => setNewDomain(e.target.value)}
-            placeholder="moncoaching.com"
+            placeholder="mondomaine.com"
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
             style={{
-              flex: 1, padding: '8px 12px', fontSize: 13,
-              background: '#0a0a0a', border: '1px solid #333', borderRadius: 8,
+              flex: 1, padding: '12px 16px', fontSize: 15,
+              background: '#0a0a0a', border: '1px solid #333', borderRadius: 10,
               color: '#fff', outline: 'none',
             }}
           />
@@ -126,23 +130,24 @@ export default function DomainSetup() {
             onClick={handleAdd}
             disabled={adding}
             style={{
-              padding: '8px 16px', fontSize: 13, fontWeight: 600,
+              padding: '12px 20px', fontSize: 14, fontWeight: 600,
               background: 'var(--color-primary)', color: '#fff', border: 'none',
-              borderRadius: 8, cursor: 'pointer', opacity: adding ? 0.6 : 1,
+              borderRadius: 10, cursor: 'pointer', opacity: adding ? 0.6 : 1,
+              whiteSpace: 'nowrap',
             }}
           >
-            {adding ? '...' : 'Ajouter'}
+            {adding ? 'Ajout...' : 'Ajouter le domaine'}
           </button>
         </div>
 
         {error && <div style={{ fontSize: 12, color: '#E53E3E', marginBottom: 8 }}>{error}</div>}
 
-        <div style={{ fontSize: 11, color: '#444', lineHeight: 1.5 }}>
-          Tu n&apos;as pas encore de domaine ? Achète-en un sur{' '}
-          <a href="https://www.ovh.com" target="_blank" rel="noopener noreferrer" style={{ color: '#666' }}>OVH</a>,{' '}
-          <a href="https://www.namecheap.com" target="_blank" rel="noopener noreferrer" style={{ color: '#666' }}>Namecheap</a> ou{' '}
-          <a href="https://www.godaddy.com" target="_blank" rel="noopener noreferrer" style={{ color: '#666' }}>GoDaddy</a>,
-          puis reviens ici.
+        <div style={{ fontSize: 12, color: '#555', lineHeight: 1.6 }}>
+          Tu n&apos;as pas encore de domaine ? Achete-en un sur{' '}
+          <a href="https://www.ovh.com" target="_blank" rel="noopener noreferrer" style={{ color: '#888', textDecoration: 'underline' }}>OVH</a>,{' '}
+          <a href="https://www.namecheap.com" target="_blank" rel="noopener noreferrer" style={{ color: '#888', textDecoration: 'underline' }}>Namecheap</a> ou{' '}
+          <a href="https://www.godaddy.com" target="_blank" rel="noopener noreferrer" style={{ color: '#888', textDecoration: 'underline' }}>GoDaddy</a>,
+          puis reviens ici pour le connecter.
         </div>
       </CardShell>
     )
@@ -172,40 +177,54 @@ export default function DomainSetup() {
           </button>
         </div>
 
-        <div style={{ fontSize: 12, color: '#888', marginBottom: 12 }}>
-          Ajoute ces enregistrements DNS chez ton registrar :
+        <div style={{
+          background: '#0a0a0a', border: '1px solid #262626', borderRadius: 8,
+          padding: '12px 14px', marginBottom: 16, fontSize: 12, color: '#888', lineHeight: 1.6,
+        }}>
+          <strong style={{ color: '#ccc' }}>Instructions :</strong> Allez dans votre espace client OVH (ou autre registrar) &gt; DNS Zone &gt; Ajouter une entree.
+          Copiez chaque enregistrement ci-dessous et ajoutez-le comme entree DNS. La propagation peut prendre jusqu&apos;a 48h.
         </div>
 
         <div style={{ overflowX: 'auto', marginBottom: 16 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #262626' }}>
+              <tr style={{ borderBottom: '1px solid #333' }}>
                 {['Type', 'Nom', 'Valeur', 'Statut', ''].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: '#555', fontWeight: 500 }}>{h}</th>
+                  <th key={h} style={{ textAlign: 'left', padding: '8px 10px', color: '#666', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {(domain.dns_records || []).map((record: ResendDnsRecord, i: number) => (
                 <tr key={i} style={{ borderBottom: '1px solid #1a1a1a' }}>
-                  <td style={{ padding: '6px 8px', color: '#aaa', fontFamily: 'monospace' }}>{record.type}</td>
-                  <td style={{ padding: '6px 8px', color: '#aaa', fontFamily: 'monospace', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.name}</td>
-                  <td style={{ padding: '6px 8px', color: '#aaa', fontFamily: 'monospace', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.value}</td>
-                  <td style={{ padding: '6px 8px' }}>
+                  <td style={{ padding: '10px', color: '#ccc', fontFamily: 'monospace', fontWeight: 600 }}>{record.type}</td>
+                  <td style={{ padding: '10px', color: '#aaa', fontFamily: 'monospace', fontSize: 11, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.name}</td>
+                  <td style={{ padding: '10px', color: '#aaa', fontFamily: 'monospace', fontSize: 11, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.value}</td>
+                  <td style={{ padding: '10px' }}>
                     <span style={{
-                      fontSize: 10, padding: '2px 6px', borderRadius: 4,
-                      background: record.status === 'verified' ? 'rgba(0,200,83,0.1)' : 'rgba(214,158,46,0.1)',
-                      color: record.status === 'verified' ? '#00C853' : '#D69E2E',
+                      fontSize: 11, padding: '3px 8px', borderRadius: 4, fontWeight: 500,
+                      background: record.status === 'verified'
+                        ? 'rgba(0,200,83,0.1)'
+                        : record.status === 'failed'
+                          ? 'rgba(229,62,62,0.1)'
+                          : 'rgba(214,158,46,0.1)',
+                      color: record.status === 'verified'
+                        ? '#00C853'
+                        : record.status === 'failed'
+                          ? '#E53E3E'
+                          : '#D69E2E',
                     }}>
-                      {record.status === 'verified' ? 'OK' : 'En attente'}
+                      {record.status === 'verified' ? 'Verifie' : record.status === 'failed' ? 'Echoue' : 'En attente'}
                     </span>
                   </td>
-                  <td style={{ padding: '6px 8px' }}>
+                  <td style={{ padding: '10px' }}>
                     <button onClick={() => copyToClipboard(record.value)} style={{
-                      fontSize: 10, color: '#666', background: '#1a1a1a', border: '1px solid #333',
-                      borderRadius: 4, padding: '2px 6px', cursor: 'pointer',
+                      fontSize: 11, color: copiedText === record.value ? '#00C853' : '#888',
+                      background: '#1a1a1a', border: '1px solid #333',
+                      borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+                      transition: 'color 0.2s',
                     }}>
-                      Copier
+                      {copiedText === record.value ? 'Copie !' : 'Copier'}
                     </button>
                   </td>
                 </tr>
@@ -217,12 +236,21 @@ export default function DomainSetup() {
         {error && <div style={{ fontSize: 12, color: '#E53E3E', marginBottom: 8 }}>{error}</div>}
 
         <button onClick={handleVerify} disabled={verifying} style={{
-          padding: '8px 20px', fontSize: 13, fontWeight: 600,
+          padding: '10px 24px', fontSize: 13, fontWeight: 600,
           background: 'var(--color-primary)', color: '#fff', border: 'none',
           borderRadius: 8, cursor: 'pointer', opacity: verifying ? 0.6 : 1,
+          display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          {verifying ? 'Vérification...' : 'Vérifier les DNS'}
+          {verifying && (
+            <span style={{
+              width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)',
+              borderTopColor: '#fff', borderRadius: '50%',
+              display: 'inline-block', animation: 'spin 0.8s linear infinite',
+            }} />
+          )}
+          {verifying ? 'Verification en cours...' : 'Verifier les DNS'}
         </button>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </CardShell>
     )
   }

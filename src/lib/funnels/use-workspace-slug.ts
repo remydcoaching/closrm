@@ -71,8 +71,10 @@ export function useWorkspaceSlug(): string | null {
  * Retourne `null` si un des slugs manque (workspace non configuré, funnel
  * sans page, etc.).
  *
- * Origin : utilise `window.location.origin` au runtime pour que l'URL
- * fonctionne en dev (`http://localhost:3000`) comme en prod (`https://closrm.app`).
+ * Utilise `NEXT_PUBLIC_APP_URL` (défini dans .env.local et dans les env vars
+ * Vercel) comme base URL. En dev = `http://localhost:3000`, en prod =
+ * `https://closrm.vercel.app`. Fallback sur `window.location.origin` si la
+ * variable d'env n'est pas définie.
  */
 export function buildPublicFunnelUrl(
   workspaceSlug: string | null,
@@ -80,6 +82,8 @@ export function buildPublicFunnelUrl(
   pageSlug: string | null,
 ): string | null {
   if (!workspaceSlug || !funnelSlug || !pageSlug) return null
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : '')
   return `${origin}/f/${workspaceSlug}/${funnelSlug}/${pageSlug}`
 }

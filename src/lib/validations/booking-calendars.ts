@@ -25,6 +25,15 @@ const weekAvailabilitySchema = z.object({
   sunday: dayAvailabilitySchema.default([]),
 })
 
+const calendarReminderSchema = z.object({
+  id: z.string().uuid(),
+  delay_value: z.number().int().min(0).max(365),
+  delay_unit: z.enum(['hours', 'days']),
+  at_time: z.string().regex(/^\d{2}:\d{2}$/).nullable().default(null),
+  channel: z.enum(['email', 'whatsapp', 'instagram_dm']),
+  message: z.string().min(1).max(1000),
+})
+
 export const createBookingCalendarSchema = z.object({
   name: z.string().min(1, 'Le nom est requis.').max(100),
   slug: z.string().min(1, 'Le slug est requis.').max(100)
@@ -44,6 +53,9 @@ export const createBookingCalendarSchema = z.object({
     friday: [], saturday: [], sunday: [],
   }),
   buffer_minutes: z.number().int().min(0).max(120).default(0),
+  location_ids: z.array(z.string().uuid()).default([]),
+  purpose: z.enum(['setting', 'closing', 'other']).default('other'),
+  reminders: z.array(calendarReminderSchema).max(10).default([]),
   is_active: z.boolean().default(true),
 })
 

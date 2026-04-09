@@ -8,6 +8,7 @@ import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
 import LeadFilters from '@/components/leads/LeadFilters'
 import LeadForm from '@/components/leads/LeadForm'
+import ClosingModal from '@/components/leads/ClosingModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import { format } from 'date-fns'
@@ -63,6 +64,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   const [tagInput, setTagInput] = useState('')
   const [confirm, setConfirm] = useState<{ title: string; message: string; danger?: boolean; onConfirm: () => void } | null>(null)
   const [scheduleTarget, setScheduleTarget] = useState<Lead | null>(null)
+  const [closingTarget, setClosingTarget] = useState<Lead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
   const dropdownPanelRef = useRef<HTMLDivElement>(null)
   const tagInputRef = useRef<HTMLInputElement>(null)
@@ -165,6 +167,10 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
 
   function setStatus(lead: Lead, status: LeadStatus) {
     setDropdown(null)
+    if (status === 'clos') {
+      setClosingTarget(lead)
+      return
+    }
     patchLead(lead.id, { status })
   }
 
@@ -269,9 +275,11 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                 <tr key={lead.id} style={{
                   borderBottom: i < leads.length - 1 ? '1px solid var(--bg-hover)' : 'none',
                   transition: 'background 0.1s',
+                  cursor: 'pointer',
                 }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-subtle)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  onClick={() => setSidePanelLeadId(lead.id)}
                 >
                   {/* Date */}
                   <td style={{ padding: '12px 16px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
@@ -383,7 +391,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                   </td>
 
                   {/* Actions */}
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                       <button onClick={() => callLead(lead)} title="Appeler" style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -400,14 +408,6 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                         color: 'var(--color-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
                       }}>
                         <Calendar size={11} /> Planifier
-                      </button>
-                      <button onClick={() => setSidePanelLeadId(lead.id)} title="Voir le profil" style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'var(--bg-hover)', border: '1px solid var(--border-primary)',
-                        color: 'var(--text-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
-                      }}>
-                        <ExternalLink size={11} /> Voir
                       </button>
                       <button onClick={() => archiveLead(lead)} title="Archiver" style={{
                         display: 'inline-flex', alignItems: 'center',
@@ -574,6 +574,23 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
           confirmDanger={confirm.danger}
           onConfirm={confirm.onConfirm}
           onCancel={() => setConfirm(null)}
+        />
+      )}
+
+      {closingTarget && (
+        <ClosingModal
+          leadName={`${closingTarget.first_name} ${closingTarget.last_name}`}
+          onClose={() => setClosingTarget(null)}
+          onConfirm={(data) => {
+            patchLead(closingTarget.id, {
+              status: 'clos',
+              deal_amount: data.deal_amount,
+              deal_installments: data.deal_installments,
+              cash_collected: data.cash_collected,
+              closed_at: new Date().toISOString(),
+            } as Partial<Lead>)
+            setClosingTarget(null)
+          }}
         />
       )}
 

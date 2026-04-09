@@ -21,6 +21,10 @@ export interface TriggerData {
   [key: string]: unknown
 }
 
+export interface ExecuteOptions {
+  dryRun?: boolean
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -30,8 +34,10 @@ export interface TriggerData {
 export async function executeWorkflow(
   workflowId: string,
   workspaceId: string,
-  triggerData: TriggerData
+  triggerData: TriggerData,
+  options?: ExecuteOptions
 ): Promise<void> {
+  const dryRun = options?.dryRun ?? false
   const supabase = createServiceClient()
 
   // 1. Create execution record
@@ -70,7 +76,7 @@ export async function executeWorkflow(
   const templateContext = await buildTemplateContext(supabase, workspaceId, triggerData)
 
   // 4. Run steps starting from 1
-  await runSteps(supabase, execution.id, workflowId, workspaceId, steps, 1, triggerData, templateContext)
+  await runSteps(supabase, execution.id, workflowId, workspaceId, steps, 1, triggerData, templateContext, dryRun)
 }
 
 /**
@@ -130,7 +136,8 @@ async function runSteps(
   steps: WorkflowStep[],
   startFromOrder: number,
   triggerData: TriggerData,
-  templateContext: TemplateContext
+  templateContext: TemplateContext,
+  dryRun = false
 ): Promise<void> {
   // Fetch lead data for condition evaluation
   let leadData: Record<string, unknown> = {}
@@ -178,11 +185,19 @@ async function runSteps(
           lead: leadData,
           coach: templateContext.coach,
           actionType,
+          dryRun,
           resolveTemplate: resolveTemplateFn,
           supabase,
         }
 
-        const result = await handler(step.action_config ?? {}, context)
+        let result: { success: boolean; result?: Record<string, unknown>; error?: string }
+
+        if (dryRun) {
+          // Dry run: don't execute, just log what would happen
+          result = { success: true, result: { dry_run: true, action_type: actionType, config: step.action_config } }
+        } else {
+          result = await handler(step.action_config ?? {}, context)
+        }
 
         await logStep(
           supabase,
@@ -193,8 +208,18 @@ async function runSteps(
           result.error
         )
 
+        // Update last_activity_at for actions that mutate the lead
+        const leadMutatingActions = ['change_lead_status', 'add_tag', 'remove_tag', 'update_lead_field', 'add_note', 'set_reached']
+        if (!dryRun && result.success && triggerData.lead_id && leadMutatingActions.includes(actionType)) {
+          await supabase
+            .from('leads')
+            .update({ last_activity_at: new Date().toISOString() })
+            .eq('id', triggerData.lead_id)
+            .eq('workspace_id', workspaceId)
+        }
+
         // Re-fetch lead data after mutations (status change, tag change)
-        if (result.success && (actionType === 'change_lead_status' || actionType === 'add_tag' || actionType === 'remove_tag')) {
+        if (result.success && (actionType === 'change_lead_status' || actionType === 'add_tag' || actionType === 'remove_tag' || actionType === 'update_lead_field')) {
           if (triggerData.lead_id) {
             const { data } = await supabase
               .from('leads')
@@ -518,6 +543,41 @@ async function markFailed(
       completed_at: new Date().toISOString(),
     })
     .eq('id', executionId)
+
+  // Send failure notification if enabled on the workflow
+  try {
+    const { data: execution } = await supabase
+      .from('workflow_executions')
+      .select('workflow_id, workspace_id')
+      .eq('id', executionId)
+      .single()
+
+    if (execution) {
+      const { data: workflow } = await supabase
+        .from('workflows')
+        .select('notify_on_failure, failure_notification_channel, name')
+        .eq('id', execution.workflow_id)
+        .single()
+
+      if (workflow?.notify_on_failure && workflow.failure_notification_channel) {
+        const { execute: sendNotification } = await import('./actions/send-notification')
+        const notifContext: ExecutionContext = {
+          workspaceId: execution.workspace_id,
+          resolveTemplate: (t: string) => t,
+          supabase,
+        }
+        await sendNotification(
+          {
+            channel: workflow.failure_notification_channel,
+            message: `Workflow "${workflow.name}" a echoue: ${errorMessage}`,
+          },
+          notifContext
+        ).catch(() => {})
+      }
+    }
+  } catch {
+    // Never fail on notification failure
+  }
 }
 
 async function markCompleted(

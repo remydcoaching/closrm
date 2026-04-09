@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Phone, Calendar, Loader2 } from 'lucide-react'
+import { ArrowLeft, Phone, Calendar, Loader2, MessageCircle } from 'lucide-react'
 import { Lead, Call, FollowUp } from '@/types'
 import StatusBadge from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
 import LeadDetail from '@/components/leads/LeadDetail'
+import LeadMessagesTab from '@/components/leads/LeadMessagesTab'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 
@@ -25,6 +26,7 @@ export default function LeadDetailPage() {
   const [showCallModal, setShowCallModal] = useState(false)
   const [callingLoading, setCallingLoading] = useState(false)
   const [confirmCall, setConfirmCall] = useState(false)
+  const [activeTab, setActiveTab] = useState<'detail' | 'messages'>('detail')
 
   async function fetchLead() {
     setLoading(true)
@@ -141,9 +143,46 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      {lead.instagram_handle && (
+        <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border-primary)' }}>
+          <button
+            onClick={() => setActiveTab('detail')}
+            style={{
+              padding: '10px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: 'transparent',
+              color: activeTab === 'detail' ? 'var(--text-primary)' : 'var(--text-muted)',
+              borderBottom: activeTab === 'detail' ? '2px solid #E53E3E' : '2px solid transparent',
+            }}
+          >
+            Fiche
+          </button>
+          <button
+            onClick={() => setActiveTab('messages')}
+            style={{
+              padding: '10px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: 'transparent',
+              color: activeTab === 'messages' ? 'var(--text-primary)' : 'var(--text-muted)',
+              borderBottom: activeTab === 'messages' ? '2px solid #E53E3E' : '2px solid transparent',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            <MessageCircle size={14} /> Messagerie
+          </button>
+        </div>
+      )}
+
       {/* Contenu principal */}
+      {activeTab === 'messages' && lead.instagram_handle ? (
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+          borderRadius: 14, overflow: 'hidden',
+        }}>
+          <LeadMessagesTab leadId={lead.id} instagramHandle={lead.instagram_handle} />
+        </div>
+      ) : (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
-        {/* Colonne gauche — détail */}
+        {/* Colonne gauche — detail */}
         <LeadDetail lead={lead} onUpdate={handleUpdate} />
 
         {/* Colonne droite — infos rapides */}
@@ -187,6 +226,7 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Modale planifier appel */}
       {showCallModal && (

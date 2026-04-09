@@ -3,9 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { BookingCalendar, WeekAvailability, FormField } from '@/types'
+import { BookingCalendar, WeekAvailability, FormField, CalendarPurpose } from '@/types'
+import type { CalendarReminder } from '@/types'
 import AvailabilityEditor from '@/components/booking-calendars/AvailabilityEditor'
 import FormFieldsEditor from '@/components/booking-calendars/FormFieldsEditor'
+import LocationEditor from '@/components/booking-calendars/LocationEditor'
+import PurposeEditor from '@/components/booking-calendars/PurposeEditor'
+import RemindersEditor from '@/components/booking-calendars/RemindersEditor'
 
 const DEFAULT_AVAILABILITY: WeekAvailability = {
   monday: [{ start: '09:00', end: '17:00' }],
@@ -37,6 +41,10 @@ export default function EditCalendarPage() {
   const [color, setColor] = useState('#E53E3E')
   const [availability, setAvailability] = useState<WeekAvailability>(DEFAULT_AVAILABILITY)
   const [formFields, setFormFields] = useState<FormField[]>([])
+  const [locationIds, setLocationIds] = useState<string[]>([])
+  const [purpose, setPurpose] = useState<CalendarPurpose>('other')
+  const [reminders, setReminders] = useState<CalendarReminder[]>([])
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
 
   useEffect(() => {
     async function fetchCalendar() {
@@ -54,6 +62,9 @@ export default function EditCalendarPage() {
         setColor(cal.color)
         setAvailability(cal.availability ?? DEFAULT_AVAILABILITY)
         setFormFields(cal.form_fields ?? [])
+        setLocationIds(cal.location_ids ?? [])
+        setPurpose((cal as unknown as { purpose?: CalendarPurpose }).purpose ?? 'other')
+        setReminders((cal as unknown as { reminders?: CalendarReminder[] }).reminders ?? [])
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur inconnue')
       } finally {
@@ -61,6 +72,15 @@ export default function EditCalendarPage() {
       }
     }
     fetchCalendar()
+
+    // Check Google Calendar integration status
+    fetch('/api/integrations?type=google_calendar')
+      .then((res) => res.ok ? res.json() : null)
+      .then((json) => {
+        const integration = json?.data?.[0] ?? json?.data
+        setGoogleCalendarConnected(!!integration?.is_active)
+      })
+      .catch(() => {})
   }, [id])
 
   async function handleSave() {
@@ -80,6 +100,9 @@ export default function EditCalendarPage() {
           color,
           availability,
           form_fields: formFields,
+          location_ids: locationIds,
+          purpose,
+          reminders,
         }),
       })
       if (!res.ok) {
@@ -113,7 +136,7 @@ export default function EditCalendarPage() {
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 720 }}>
+    <div style={{ padding: '32px 40px', maxWidth: 860, margin: '0 auto' }}>
       {/* Back link */}
       <Link
         href="/parametres/calendriers"
@@ -151,13 +174,13 @@ export default function EditCalendarPage() {
             onClick={handleSave}
             disabled={saving}
             style={{
-              background: '#E53E3E',
+              background: 'var(--color-primary)',
               border: 'none',
               borderRadius: 8,
               padding: '9px 20px',
               fontSize: 14,
               fontWeight: 600,
-              color: 'var(--text-primary)',
+              color: '#000',
               cursor: saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.6 : 1,
             }}
@@ -185,7 +208,7 @@ export default function EditCalendarPage() {
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 10,
+            borderRadius: 12,
             padding: 24,
             display: 'flex',
             flexDirection: 'column',
@@ -310,11 +333,85 @@ export default function EditCalendarPage() {
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 10,
+            borderRadius: 12,
             padding: 24,
           }}
         >
           <AvailabilityEditor availability={availability} onChange={setAvailability} />
+        </div>
+      </section>
+
+      {/* Section: Objectif */}
+      <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Objectif du calendrier
+        </h2>
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+          borderRadius: 12, padding: 24,
+        }}>
+          <PurposeEditor value={purpose} onChange={setPurpose} />
+        </div>
+      </section>
+
+      {/* Section: Rappels automatiques */}
+      <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Rappels automatiques
+        </h2>
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+          borderRadius: 12, padding: 24,
+        }}>
+          <RemindersEditor reminders={reminders} onChange={setReminders} />
+        </div>
+      </section>
+
+      {/* Section: Lieux */}
+      <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Type de rendez-vous
+        </h2>
+        <div
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 12,
+            padding: 24,
+          }}
+        >
+          <LocationEditor
+            selectedLocationIds={locationIds}
+            onChange={setLocationIds}
+            googleCalendarConnected={googleCalendarConnected}
+          />
         </div>
       </section>
 
@@ -336,7 +433,7 @@ export default function EditCalendarPage() {
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-primary)',
-            borderRadius: 10,
+            borderRadius: 12,
             padding: 24,
           }}
         >

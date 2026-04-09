@@ -446,4 +446,40 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-*Mis à jour le 2026-04-07 par Claude Code — ClosRM*
+### [A-010] Linktree interne — liens trackables par lead
+- **Contexte :** Session IA assistant — le coach envoie des lead magnets via DM
+- **Description :** Systeme de liens trackables integre dans ClosRM (style Linktree). Chaque contenu a un titre + lien + redirect. On sait quel lead a clique, combien de fois, quel contenu convertit le mieux. Redirect intelligent qui ouvre YouTube/Spotify directement au lieu du browser IG.
+- **Priorite estimee :** Moyenne
+- **Effort estime :** Eleve
+
+**Proposition :** Table `content_links` (titre, url, short_code, workspace_id), table `content_clicks` (link_id, lead_id, clicked_at, referrer). Route publique `/c/[code]` qui redirige + log le clic. Dashboard analytics par contenu. En V1 simple : utiliser les liens Linktree du coach directement.
+
+### [A-011] Champ contenus en 2 colonnes (titre + lien) dans Assistant IA
+- **Contexte :** Session IA assistant — le champ lead magnets est un textarea simple
+- **Description :** Remplacer le textarea par une liste structuree : chaque contenu = titre + URL. Affiche en 2 colonnes dans les parametres. L'IA peut citer le titre ET inclure le lien dans le message suggere.
+- **Priorite estimee :** Haute
+- **Effort estime :** Faible
+
+### [A-012] Trigger comment_keyword + dm_keyword (T-021)
+- **Contexte :** Deja dans les types du moteur workflow mais stub non branche
+- **Description :** Reponse auto aux commentaires reels/posts contenant un mot-cle → DM automatique. Comme Mochi (delai configurable, 5min recommande).
+- **Priorite estimee :** Haute
+- **Effort estime :** Moyen
+
+---
+
+### [A-013] Indicateurs personnalises dans la table Ads
+- **Contexte :** Le coach veut creer ses propres KPIs comme sur Meta Ads Manager
+- **Description :** Builder d'indicateurs custom : nom + formule (2 metriques + operateur) + format (%, €, nombre) + seuils couleur (vert/orange/rouge). Stocke en DB par workspace. Apparait dans le column picker.
+- **Priorite estimee :** Moyenne
+- **Effort estime :** Eleve
+
+### [A-014] Selecteur de compte publicitaire Meta dans Integrations
+- **Contexte :** Si le coach a plusieurs comptes pub Meta, ClosRM prend le premier automatiquement (souvent le mauvais)
+- **Description :** Dropdown dans la carte Meta sur la page Integrations pour choisir parmi les comptes pub disponibles. Appelle /api/integrations/meta/switch-ad-account.
+- **Priorite estimee :** Haute
+- **Effort estime :** Faible
+
+---
+
+*Mis a jour le 2026-04-09 par Claude Code — ClosRM*
