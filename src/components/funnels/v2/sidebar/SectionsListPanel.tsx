@@ -19,7 +19,13 @@
 import { useState } from 'react'
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, X, Plus } from 'lucide-react'
+import {
+  GripVertical, X, Plus,
+  // Icônes pour chaque type de bloc (remplacent les emojis)
+  Crosshair, Video, Type, ImageIcon, MousePointerClick, DollarSign,
+  MessageSquareQuote, HelpCircle, Timer, ArrowUpDown, PanelBottom,
+  Calendar, FileText,
+} from 'lucide-react'
 import type { FunnelBlock, FunnelBlockType } from '@/types'
 
 interface Props {
@@ -33,26 +39,28 @@ interface Props {
 interface BlockTypeMeta {
   type: FunnelBlockType
   label: string
-  emoji: string
+  icon: React.ReactNode
   /** Si true, le bloc est affiché grisé "À venir" et non-cliquable dans le menu d'ajout. */
   comingSoon?: boolean
 }
 
+const ICON_SIZE = 14
+
 const BLOCK_TYPES: BlockTypeMeta[] = [
-  { type: 'hero', label: 'Hero', emoji: '🎯' },
-  { type: 'video', label: 'Vidéo', emoji: '🎬' },
-  { type: 'text', label: 'Texte', emoji: '📄' },
-  { type: 'image', label: 'Image', emoji: '🖼️' },
-  { type: 'cta', label: 'Bouton CTA', emoji: '🔘' },
-  { type: 'pricing', label: 'Tarification', emoji: '💰' },
-  { type: 'testimonials', label: 'Témoignages', emoji: '💬' },
-  { type: 'faq', label: 'FAQ', emoji: '❓' },
-  { type: 'countdown', label: 'Compte à rebours', emoji: '⏰' },
-  { type: 'spacer', label: 'Espacement', emoji: '↕️' },
-  { type: 'footer', label: 'Footer', emoji: '🔻' },
+  { type: 'hero', label: 'Hero', icon: <Crosshair size={ICON_SIZE} /> },
+  { type: 'video', label: 'Vidéo', icon: <Video size={ICON_SIZE} /> },
+  { type: 'text', label: 'Texte', icon: <Type size={ICON_SIZE} /> },
+  { type: 'image', label: 'Image', icon: <ImageIcon size={ICON_SIZE} /> },
+  { type: 'cta', label: 'Bouton CTA', icon: <MousePointerClick size={ICON_SIZE} /> },
+  { type: 'pricing', label: 'Tarification', icon: <DollarSign size={ICON_SIZE} /> },
+  { type: 'testimonials', label: 'Témoignages', icon: <MessageSquareQuote size={ICON_SIZE} /> },
+  { type: 'faq', label: 'FAQ', icon: <HelpCircle size={ICON_SIZE} /> },
+  { type: 'countdown', label: 'Compte à rebours', icon: <Timer size={ICON_SIZE} /> },
+  { type: 'spacer', label: 'Espacement', icon: <ArrowUpDown size={ICON_SIZE} /> },
+  { type: 'footer', label: 'Footer', icon: <PanelBottom size={ICON_SIZE} /> },
   // Stubs "À venir" — visible mais non-ajoutables
-  { type: 'booking', label: 'Réservation', emoji: '📅', comingSoon: true },
-  { type: 'form', label: 'Formulaire', emoji: '📝', comingSoon: true },
+  { type: 'booking', label: 'Réservation', icon: <Calendar size={ICON_SIZE} />, comingSoon: true },
+  { type: 'form', label: 'Formulaire', icon: <FileText size={ICON_SIZE} />, comingSoon: true },
 ]
 
 const BLOCK_LABELS: Record<FunnelBlockType, string> = BLOCK_TYPES.reduce(
@@ -60,9 +68,9 @@ const BLOCK_LABELS: Record<FunnelBlockType, string> = BLOCK_TYPES.reduce(
   {} as Record<FunnelBlockType, string>,
 )
 
-const BLOCK_EMOJIS: Record<FunnelBlockType, string> = BLOCK_TYPES.reduce(
-  (acc, b) => ({ ...acc, [b.type]: b.emoji }),
-  {} as Record<FunnelBlockType, string>,
+const BLOCK_ICONS: Record<FunnelBlockType, React.ReactNode> = BLOCK_TYPES.reduce(
+  (acc, b) => ({ ...acc, [b.type]: b.icon }),
+  {} as Record<FunnelBlockType, React.ReactNode>,
 )
 
 export default function SectionsListPanel({
@@ -90,7 +98,7 @@ export default function SectionsListPanel({
       {/* Liste des blocs */}
       {blocks.length === 0 ? (
         <div style={emptyStateStyle}>
-          <span style={{ fontSize: 24, marginBottom: 8 }}>📐</span>
+          <Plus size={24} style={{ marginBottom: 8, color: 'var(--text-secondary, #888)' }} />
           <span style={emptyTitleStyle}>Aucune section</span>
           <span style={emptyDescStyle}>
             Clique sur &quot;Ajouter&quot; ci-dessous pour commencer à construire ta page.
@@ -147,7 +155,7 @@ export default function SectionsListPanel({
                         : `Ajouter un bloc ${meta.label}`
                     }
                   >
-                    <span style={menuEmojiStyle}>{meta.emoji}</span>
+                    <span style={menuIconStyle}>{meta.icon}</span>
                     <span style={menuLabelStyle}>{meta.label}</span>
                     {isComingSoon && <span style={comingSoonTagStyle}>À venir</span>}
                   </button>
@@ -180,9 +188,9 @@ function SortableSectionRow({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: transition || 'background 0.15s ease, border-color 0.15s ease',
-    background: isSelected ? 'rgba(34, 211, 238, 0.12)' : 'rgba(255,255,255,0.02)',
+    background: isSelected ? 'rgba(0,200,83, 0.12)' : 'rgba(255,255,255,0.02)',
     border: isSelected
-      ? '1px solid rgba(34, 211, 238, 0.5)'
+      ? '1px solid rgba(0,200,83, 0.5)'
       : '1px solid rgba(255,255,255,0.06)',
     borderRadius: 6,
     padding: '8px 6px',
@@ -208,7 +216,7 @@ function SortableSectionRow({
       </button>
 
       {/* Emoji + label */}
-      <span style={rowEmojiStyle}>{BLOCK_EMOJIS[block.type]}</span>
+      <span style={rowIconStyle}>{BLOCK_ICONS[block.type]}</span>
       <span style={rowLabelStyle}>{BLOCK_LABELS[block.type]}</span>
 
       {/* Delete button */}
@@ -304,11 +312,13 @@ const dragHandleStyle: React.CSSProperties = {
   flexShrink: 0,
 }
 
-const rowEmojiStyle: React.CSSProperties = {
-  fontSize: 14,
+const rowIconStyle: React.CSSProperties = {
   width: 18,
-  textAlign: 'center',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   flexShrink: 0,
+  color: 'var(--text-secondary, #888)',
 }
 
 const rowLabelStyle: React.CSSProperties = {
@@ -342,10 +352,10 @@ const addButtonStyle = (active: boolean): React.CSSProperties => ({
   padding: '8px 12px',
   fontSize: 11,
   fontWeight: 700,
-  color: active ? '#22d3ee' : '#fff',
-  background: active ? 'rgba(34, 211, 238, 0.1)' : 'rgba(255,255,255,0.04)',
+  color: active ? 'var(--color-primary)' : '#fff',
+  background: active ? 'rgba(0,200,83, 0.1)' : 'rgba(255,255,255,0.04)',
   border: active
-    ? '1px dashed rgba(34, 211, 238, 0.5)'
+    ? '1px dashed rgba(0,200,83, 0.5)'
     : '1px dashed rgba(255,255,255,0.15)',
   borderRadius: 8,
   cursor: 'pointer',
@@ -395,11 +405,13 @@ const menuItemStyle = (isComingSoon: boolean): React.CSSProperties => ({
   opacity: isComingSoon ? 0.6 : 1,
 })
 
-const menuEmojiStyle: React.CSSProperties = {
-  fontSize: 14,
+const menuIconStyle: React.CSSProperties = {
   width: 18,
-  textAlign: 'center',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   flexShrink: 0,
+  color: 'var(--text-secondary, #888)',
 }
 
 const menuLabelStyle: React.CSSProperties = {

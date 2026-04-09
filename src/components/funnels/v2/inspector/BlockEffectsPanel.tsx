@@ -128,9 +128,9 @@ const rowStyle = (enabled: boolean): React.CSSProperties => ({
   justifyContent: 'space-between',
   gap: 8,
   padding: '7px 10px',
-  background: enabled ? 'rgba(34, 211, 238, 0.06)' : 'rgba(255,255,255,0.02)',
+  background: enabled ? 'rgba(0,200,83, 0.06)' : 'rgba(255,255,255,0.02)',
   border: enabled
-    ? '1px solid rgba(34, 211, 238, 0.25)'
+    ? '1px solid rgba(0,200,83, 0.25)'
     : '1px solid rgba(255,255,255,0.05)',
   borderRadius: 6,
   cursor: 'pointer',
@@ -150,7 +150,7 @@ const switchTrackStyle = (enabled: boolean): React.CSSProperties => ({
   width: 26,
   height: 14,
   borderRadius: 8,
-  background: enabled ? '#22d3ee' : 'rgba(255,255,255,0.15)',
+  background: enabled ? 'var(--color-primary)' : 'rgba(255,255,255,0.15)',
   position: 'relative',
   flexShrink: 0,
   transition: 'background 0.15s ease',

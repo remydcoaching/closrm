@@ -76,9 +76,9 @@ export default function NewFunnelPage() {
 
       {error && (
         <div style={{
-          background: 'rgba(229,62,62,0.08)', border: '1px solid rgba(229,62,62,0.25)',
+          background: 'rgba(0,200,83,0.08)', border: '1px solid rgba(0,200,83,0.25)',
           borderRadius: 10, padding: '12px 16px', marginBottom: 20,
-          fontSize: 13, color: '#E53E3E', display: 'flex', alignItems: 'center', gap: 8,
+          fontSize: 13, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <span style={{ fontSize: 16 }}>!</span>
           {error}
@@ -96,7 +96,7 @@ export default function NewFunnelPage() {
           marginBottom: 32, opacity: creating ? 0.5 : 1,
           transition: 'all 0.2s ease',
         }}
-        onMouseEnter={e => { if (!creating) { e.currentTarget.style.borderColor = '#E53E3E'; e.currentTarget.style.background = 'rgba(229,62,62,0.03)' } }}
+        onMouseEnter={e => { if (!creating) { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'rgba(0,200,83,0.03)' } }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary, #333)'; e.currentTarget.style.background = 'var(--bg-secondary, #141414)' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -117,7 +117,7 @@ export default function NewFunnelPage() {
           {creating === 'blank' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{
-                width: 16, height: 16, border: '2px solid #333', borderTopColor: '#E53E3E',
+                width: 16, height: 16, border: '2px solid #333', borderTopColor: 'var(--color-primary)',
                 borderRadius: '50%', animation: 'spin 0.8s linear infinite',
               }} />
               <span style={{ fontSize: 12, color: 'var(--text-secondary, #888)', fontWeight: 500 }}>Création...</span>
@@ -162,9 +162,9 @@ export default function NewFunnelPage() {
               <div style={{
                 position: 'absolute', top: 12, right: 12,
                 padding: '3px 10px', borderRadius: 12, fontSize: 9, fontWeight: 700,
-                background: 'linear-gradient(135deg, #E53E3E 0%, #ED5E5E 100%)',
+                background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
                 color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5,
-                boxShadow: '0 2px 8px rgba(229,62,62,0.3)',
+                boxShadow: '0 2px 8px rgba(0,200,83,0.3)',
               }}>
                 À venir
               </div>
@@ -172,10 +172,10 @@ export default function NewFunnelPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{
                 width: 38, height: 38, borderRadius: 10,
-                background: 'rgba(229,62,62,0.08)', border: '1px solid rgba(229,62,62,0.12)',
+                background: 'rgba(0,200,83,0.08)', border: '1px solid rgba(0,200,83,0.12)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <Layers size={16} color="#E53E3E" />
+                <Layers size={16} color="var(--color-primary)" />
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <span style={{
@@ -205,7 +205,7 @@ export default function NewFunnelPage() {
             {creating === template.id && (
               <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
-                  width: 14, height: 14, border: '2px solid #333', borderTopColor: '#E53E3E',
+                  width: 14, height: 14, border: '2px solid #333', borderTopColor: 'var(--color-primary)',
                   borderRadius: '50%', animation: 'spin 0.8s linear infinite',
                 }} />
                 <span style={{ fontSize: 12, color: 'var(--text-secondary, #888)', fontWeight: 500 }}>Création...</span>

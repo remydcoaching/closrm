@@ -168,7 +168,7 @@ export default function FunnelCard({ funnel, workspaceSlug, workspaceSlugFetched
                         onClick={e => { e.stopPropagation(); onDelete(funnel.id) }}
                         style={{
                           padding: '5px 12px', fontSize: 11, fontWeight: 600,
-                          background: '#E53E3E', color: '#fff', border: 'none',
+                          background: 'var(--color-primary)', color: '#fff', border: 'none',
                           borderRadius: 6, cursor: 'pointer', flex: 1,
                         }}
                       >
@@ -194,11 +194,11 @@ export default function FunnelCard({ funnel, workspaceSlug, workspaceSlugFetched
                       width: '100%', padding: '8px 10px',
                       background: 'transparent', border: 'none',
                       borderRadius: 4, cursor: 'pointer',
-                      fontSize: 12, color: '#E53E3E',
+                      fontSize: 12, color: 'var(--color-primary)',
                       fontFamily: 'inherit', textAlign: 'left',
                       transition: 'background 0.12s ease',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(229,62,62,0.1)' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,200,83,0.1)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                   >
                     <Trash2 size={13} />

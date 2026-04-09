@@ -375,7 +375,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         height: '100vh', gap: 16, background: 'var(--bg-primary, #0A0A0A)',
       }}>
         <div style={{
-          width: 32, height: 32, border: '3px solid #262626', borderTopColor: '#E53E3E',
+          width: 32, height: 32, border: '3px solid #262626', borderTopColor: 'var(--color-primary)',
           borderRadius: '50%', animation: 'spin 0.8s linear infinite',
         }} />
         <span style={{ fontSize: 13, color: 'var(--text-secondary, #A0A0A0)', fontWeight: 500 }}>
@@ -400,10 +400,10 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           onClick={() => router.push('/acquisition/funnels')}
           style={{
             marginTop: 8, padding: '8px 20px', fontSize: 13, fontWeight: 600,
-            background: 'transparent', color: '#E53E3E', border: '1px solid rgba(229,62,62,0.3)',
+            background: 'transparent', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.3)',
             borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s ease',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(229,62,62,0.08)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,200,83,0.08)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
         >
           Retour aux funnels
@@ -448,7 +448,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             onKeyDown={e => { if (e.key === 'Enter') setEditingName(false) }}
             style={{
               fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #fff)',
-              background: 'var(--bg-primary, #0a0a0a)', border: '1px solid #E53E3E',
+              background: 'var(--bg-primary, #0a0a0a)', border: '1px solid var(--color-primary)',
               borderRadius: 8, padding: '6px 12px', outline: 'none', width: 220,
               transition: 'border-color 0.2s ease',
             }}
@@ -561,7 +561,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             <>
               <span style={{
                 width: 6, height: 6, borderRadius: '50%',
-                background: '#E53E3E',
+                background: 'var(--color-primary)',
               }} />
               <span>Erreur de save</span>
             </>
@@ -580,8 +580,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 32, height: 28, borderRadius: 6, border: 'none',
-              background: mode === 'desktop' ? 'rgba(229,62,62,0.15)' : 'transparent',
-              color: mode === 'desktop' ? '#E53E3E' : 'var(--text-secondary, #555)',
+              background: mode === 'desktop' ? 'rgba(0,200,83,0.15)' : 'transparent',
+              color: mode === 'desktop' ? 'var(--color-primary)' : 'var(--text-secondary, #555)',
               cursor: 'pointer', padding: 0, transition: 'all 0.2s ease',
             }}
           >
@@ -593,8 +593,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 32, height: 28, borderRadius: 6, border: 'none',
-              background: mode === 'tablet' ? 'rgba(229,62,62,0.15)' : 'transparent',
-              color: mode === 'tablet' ? '#E53E3E' : 'var(--text-secondary, #555)',
+              background: mode === 'tablet' ? 'rgba(0,200,83,0.15)' : 'transparent',
+              color: mode === 'tablet' ? 'var(--color-primary)' : 'var(--text-secondary, #555)',
               cursor: 'pointer', padding: 0, transition: 'all 0.2s ease',
             }}
           >
@@ -606,8 +606,8 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 32, height: 28, borderRadius: 6, border: 'none',
-              background: mode === 'mobile' ? 'rgba(229,62,62,0.15)' : 'transparent',
-              color: mode === 'mobile' ? '#E53E3E' : 'var(--text-secondary, #555)',
+              background: mode === 'mobile' ? 'rgba(0,200,83,0.15)' : 'transparent',
+              color: mode === 'mobile' ? 'var(--color-primary)' : 'var(--text-secondary, #555)',
               cursor: 'pointer', padding: 0, transition: 'all 0.2s ease',
             }}
           >
@@ -646,12 +646,12 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 16px', fontSize: 12, fontWeight: 600,
-            background: publishFeedback ? '#38A169' : '#E53E3E',
+            background: publishFeedback ? '#38A169' : 'var(--color-primary)',
             color: '#fff', border: 'none', borderRadius: 8,
             cursor: publishing ? 'not-allowed' : 'pointer', flexShrink: 0,
             opacity: publishing ? 0.7 : 1,
             transition: 'all 0.2s ease',
-            boxShadow: publishFeedback ? '0 0 12px rgba(56,161,105,0.3)' : '0 0 12px rgba(229,62,62,0.2)',
+            boxShadow: publishFeedback ? '0 0 12px rgba(56,161,105,0.3)' : '0 0 12px rgba(0,200,83,0.2)',
           }}
           onMouseEnter={e => { if (!publishing) e.currentTarget.style.opacity = '0.9' }}
           onMouseLeave={e => { e.currentTarget.style.opacity = publishing ? '0.7' : '1' }}

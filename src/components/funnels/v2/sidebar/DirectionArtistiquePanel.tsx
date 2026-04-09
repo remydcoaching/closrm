@@ -14,6 +14,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import { Link as LinkIcon, Unlink } from 'lucide-react'
 import {
   FUNNEL_PRESETS,
   getPresetByIdOrDefault,
@@ -74,10 +75,7 @@ export default function DirectionArtistiquePanel({
 }: Props) {
   const preset = getPresetByIdOrDefault(presetId)
 
-  // T-028 Phase 9 — État "voir tous les presets" : false par défaut = n'affiche
-  // que les 4 featured (Ocean, Forêt, Violet, Impact). Si le preset actif n'est
-  // pas dans les featured, on l'ajoute systématiquement à la liste visible
-  // pour que le coach voie son choix courant même en mode replié.
+  // T-028 Phase 9 — État "voir tous les presets"
   const [showAllPresets, setShowAllPresets] = useState(false)
 
   const visiblePresets = useMemo<readonly FunnelPreset[]>(() => {
@@ -85,7 +83,6 @@ export default function DirectionArtistiquePanel({
     const featured = FUNNEL_PRESETS.filter((p) =>
       (FEATURED_PRESET_IDS as readonly string[]).includes(p.id),
     )
-    // Si le preset actuel n'est pas dans les featured, l'ajouter en tête
     if (!(FEATURED_PRESET_IDS as readonly string[]).includes(presetId)) {
       const current = FUNNEL_PRESETS.find((p) => p.id === presetId)
       if (current) return [current, ...featured]
@@ -93,14 +90,21 @@ export default function DirectionArtistiquePanel({
     return featured
   }, [showAllPresets, presetId])
 
-  // Détermine si le mode "lier les fonds" est actuellement actif :
-  // c'est le cas quand les 3 fonds overridés ont la même valeur.
-  const linkBackgrounds = useMemo(() => {
+  // T-028 Phase 21 fix — "lier les fonds" est maintenant un STATE LOCAL
+  // au lieu d'être dérivé des valeurs des fonds. Le problème du mode dérivé
+  // était que quand les 3 fonds étaient identiques et qu'on cliquait pour
+  // désactiver, le handler ne pouvait rien faire (les fonds restent identiques
+  // → dérivé = toujours true → impossible de décocher). Le state local permet
+  // un vrai toggle ON/OFF.
+  //
+  // Initialisé à `true` si les 3 fonds sont déjà identiques dans les overrides
+  // (cas d'un funnel déjà configuré avec les fonds liés). Sinon `false`.
+  const [linkBackgrounds, setLinkBackgrounds] = useState(() => {
     if (!presetOverride) return false
     const { heroBg, sectionBg, footerBg } = presetOverride
     if (!heroBg && !sectionBg && !footerBg) return false
     return heroBg === sectionBg && sectionBg === footerBg
-  }, [presetOverride])
+  })
 
   // Helper : valeur affichée par un picker (override si défini, sinon preset)
   const pickerValue = (key: 'primary' | 'heroBg' | 'sectionBg' | 'footerBg'): string => {
@@ -138,30 +142,23 @@ export default function DirectionArtistiquePanel({
 
   const handleToggleLinkBackgrounds = () => {
     if (linkBackgrounds) {
-      // Désactivation : on garde les valeurs actuelles, juste les pickers redeviennent indépendants
-      // Rien à changer dans les overrides — c'est juste le state UI dérivé qui change
-      // En pratique, comme on dérive linkBackgrounds des values, désactiver = changer une des 3 pour qu'elles diffèrent
-      // Plus simple : ne rien faire ici, c'est uniquement la prochaine modif qui rompra le lien.
-      // → MAIS l'utilisateur attend un feedback visuel clair → on force la divergence en changeant légèrement l'un des fonds
-      // → C'est trop subtil. Solution : on stocke linkBackgrounds dans le parent state OU on l'oublie ici.
-      // Pour la V1, le toggle se contente de "réaligner les 3 fonds sur heroBg" quand on l'active,
-      // et de "ne rien faire" quand on le désactive (les 3 fonds restent égaux mais le picker autorise la divergence).
-      // Pour vraiment "désactiver", on passe par un trick : on copie une des valeurs avec une variation imperceptible.
-      // → BEAUCOUP trop hacky. Mieux : tracker linkBackgrounds dans un state local du panneau plutôt que dérivé.
-      // C'est ce qu'on va faire dans la version Phase 7 polish.
-      // Pour Phase 2, comportement minimal : le toggle aligne au activate, et au deactivate on assume.
-      return
+      // Désactivation — on passe juste le state à false. Les 3 fonds gardent
+      // leurs valeurs actuelles mais les prochaines modifs ne propageront plus.
+      setLinkBackgrounds(false)
+    } else {
+      // Activation — on aligne les 3 fonds sur la valeur actuelle de heroBg
+      // et on passe le state à true.
+      setLinkBackgrounds(true)
+      const targetBg = presetOverride?.heroBg ?? preset.heroBg
+      onDesignChange({
+        preset_override: {
+          ...(presetOverride ?? {}),
+          heroBg: targetBg,
+          sectionBg: targetBg,
+          footerBg: targetBg,
+        },
+      })
     }
-    // Activation : aligner les 3 fonds sur la valeur actuelle de heroBg
-    const targetBg = presetOverride?.heroBg ?? preset.heroBg
-    onDesignChange({
-      preset_override: {
-        ...(presetOverride ?? {}),
-        heroBg: targetBg,
-        sectionBg: targetBg,
-        footerBg: targetBg,
-      },
-    })
   }
 
   const handleResetOverrides = () => {
@@ -261,7 +258,7 @@ export default function DirectionArtistiquePanel({
             }
             aria-pressed={linkBackgrounds}
           >
-            {linkBackgrounds ? '🔗' : '🔓'}
+            {linkBackgrounds ? <LinkIcon size={13} /> : <Unlink size={13} />}
           </button>
           <div style={bgPickersStyle}>
             <div style={pickerRowStyle}>
@@ -404,8 +401,8 @@ const headerTitleStyle: React.CSSProperties = {
 
 const headerHintStyle: React.CSSProperties = {
   fontSize: 10,
-  color: '#22d3ee',
-  background: 'rgba(34, 211, 238, 0.1)',
+  color: 'var(--color-primary)',
+  background: 'rgba(0,200,83, 0.1)',
   padding: '2px 8px',
   borderRadius: 50,
   fontWeight: 600,
@@ -497,7 +494,7 @@ const colorSwatchWrapperStyle = (isOverridden: boolean): React.CSSProperties => 
   width: 28,
   height: 28,
   borderRadius: 6,
-  border: isOverridden ? '2px solid #22d3ee' : '2px solid rgba(255,255,255,0.15)',
+  border: isOverridden ? '2px solid var(--color-primary)' : '2px solid rgba(255,255,255,0.15)',
   overflow: 'hidden',
   cursor: 'pointer',
   flexShrink: 0,
@@ -521,7 +518,7 @@ const overrideDotStyle: React.CSSProperties = {
   width: 7,
   height: 7,
   borderRadius: '50%',
-  background: '#22d3ee',
+  background: 'var(--color-primary)',
   border: '1px solid #141414',
   pointerEvents: 'none',
 }
@@ -553,8 +550,8 @@ const linkButtonStyle = (active: boolean): React.CSSProperties => ({
   width: 28,
   height: 28,
   borderRadius: 6,
-  border: active ? '2px solid #22d3ee' : '2px solid rgba(255,255,255,0.15)',
-  background: active ? 'rgba(34, 211, 238, 0.15)' : 'transparent',
+  border: active ? '2px solid var(--color-primary)' : '2px solid rgba(255,255,255,0.15)',
+  background: active ? 'rgba(0,200,83, 0.15)' : 'transparent',
   color: '#fff',
   fontSize: 13,
   cursor: 'pointer',
@@ -591,10 +588,10 @@ const effectRowStyle = (enabled: boolean, isForced: boolean): React.CSSPropertie
   justifyContent: 'space-between',
   gap: 8,
   padding: '7px 10px',
-  background: enabled && !isForced ? 'rgba(34, 211, 238, 0.06)' : 'rgba(255,255,255,0.02)',
+  background: enabled && !isForced ? 'rgba(0,200,83, 0.06)' : 'rgba(255,255,255,0.02)',
   border:
     enabled && !isForced
-      ? '1px solid rgba(34, 211, 238, 0.25)'
+      ? '1px solid rgba(0,200,83, 0.25)'
       : '1px solid rgba(255,255,255,0.05)',
   borderRadius: 6,
   cursor: isForced ? 'not-allowed' : 'pointer',
@@ -629,7 +626,7 @@ const switchTrackStyle = (enabled: boolean): React.CSSProperties => ({
   width: 26,
   height: 14,
   borderRadius: 8,
-  background: enabled ? '#22d3ee' : 'rgba(255,255,255,0.15)',
+  background: enabled ? 'var(--color-primary)' : 'rgba(255,255,255,0.15)',
   position: 'relative',
   flexShrink: 0,
   transition: 'background 0.15s ease',

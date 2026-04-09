@@ -48,6 +48,7 @@ import type {
   FunnelPresetOverrideJSON,
   FunnelEffectsConfigJSON,
 } from '@/types'
+import { SlidersHorizontal } from 'lucide-react'
 import type { BlockEffectsJSON } from '@/types'
 import FunnelPagePreview, { type FunnelPreviewMode } from '../FunnelPagePreview'
 import FunnelBlockConfigPanel from '../FunnelBlockConfig'
@@ -245,7 +246,7 @@ export default function FunnelBuilderV2({
           </div>
         ) : (
           <div style={inspectorEmptyStyle}>
-            <span style={{ fontSize: 24, marginBottom: 8 }}>🎛️</span>
+            <SlidersHorizontal size={24} style={{ marginBottom: 8, color: 'var(--text-secondary, #888)' }} />
             <span style={inspectorEmptyTitleStyle}>Inspector</span>
             <span style={inspectorEmptyDescStyle}>
               Sélectionne une section dans la liste de gauche ou clique sur un bloc dans

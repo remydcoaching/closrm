@@ -110,8 +110,8 @@ export default function FunnelPageTabs({
               fontSize: 13,
               fontWeight: isActive ? 600 : 400,
               color: isActive ? '#fff' : '#888',
-              borderBottom: isActive ? '2px solid #E53E3E' : '2px solid transparent',
-              background: isActive ? 'rgba(229,62,62,0.08)' : 'transparent',
+              borderBottom: isActive ? '2px solid var(--color-primary)' : '2px solid transparent',
+              background: isActive ? 'rgba(0,200,83,0.08)' : 'transparent',
               transition: 'all 0.15s ease',
               whiteSpace: 'nowrap',
             }}
@@ -137,7 +137,7 @@ export default function FunnelPageTabs({
                   padding: 0,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#E53E3E'
+                  e.currentTarget.style.color = 'var(--color-primary)'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.color = '#888'
@@ -161,9 +161,9 @@ export default function FunnelPageTabs({
           width: 28,
           height: 28,
           borderRadius: 6,
-          background: menuOpen ? 'rgba(229,62,62,0.12)' : 'transparent',
-          border: menuOpen ? '1px solid rgba(229,62,62,0.4)' : '1px solid #333',
-          color: menuOpen ? '#E53E3E' : '#888',
+          background: menuOpen ? 'rgba(0,200,83,0.12)' : 'transparent',
+          border: menuOpen ? '1px solid rgba(0,200,83,0.4)' : '1px solid #333',
+          color: menuOpen ? 'var(--color-primary)' : '#888',
           cursor: 'pointer',
           marginLeft: 4,
           flexShrink: 0,
