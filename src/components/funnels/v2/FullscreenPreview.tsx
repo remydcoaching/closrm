@@ -15,7 +15,7 @@
  * - Scroll vertical complet (le contenu peut être plus long que le viewport)
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FunnelBlock, Funnel } from '@/types'
 import { loadFunnelDesign } from '@/lib/funnels/load-funnel-design'
 
@@ -82,6 +82,29 @@ function renderBlockContent(block: FunnelBlock): React.ReactNode {
 
 export default function FullscreenPreview({ blocks, funnel, onClose }: Props) {
   const [deviceWidth, setDeviceWidth] = useState<'100%' | '768px' | '375px'>('100%')
+  const previewAreaRef = useRef<HTMLDivElement>(null)
+  const [previewScale, setPreviewScale] = useState(1)
+
+  // Calcule le scale pour que le container device tienne dans la zone de preview
+  const updateScale = useCallback(() => {
+    if (deviceWidth === '100%') {
+      setPreviewScale(1)
+      return
+    }
+    const area = previewAreaRef.current
+    if (!area) return
+    const areaWidth = area.clientWidth - 40 // 20px padding de chaque côté
+    const targetWidth = parseInt(deviceWidth)
+    const scale = Math.min(1, areaWidth / targetWidth)
+    setPreviewScale(scale)
+  }, [deviceWidth])
+
+  useEffect(() => {
+    // Microtask pour éviter la règle react-hooks/set-state-in-effect
+    Promise.resolve().then(updateScale)
+    window.addEventListener('resize', updateScale)
+    return () => window.removeEventListener('resize', updateScale)
+  }, [updateScale])
 
   // Échap pour fermer + lock scroll body
   useEffect(() => {
@@ -136,6 +159,11 @@ export default function FullscreenPreview({ blocks, funnel, onClose }: Props) {
 
         <span style={{ fontSize: 12, color: '#888', fontWeight: 500 }}>
           Prévisualisation
+          {deviceWidth !== '100%' && (
+            <span style={{ fontSize: 10, color: '#555', marginLeft: 8 }}>
+              (aperçu simulé — {deviceWidth})
+            </span>
+          )}
         </span>
 
         {/* Bouton fermer */}
@@ -159,22 +187,53 @@ export default function FullscreenPreview({ blocks, funnel, onClose }: Props) {
         </button>
       </div>
 
-      {/* Preview area */}
-      <div style={{
-        flex: 1, overflow: 'auto',
-        display: 'flex', justifyContent: 'center',
-        background: '#0a0a0a',
-        padding: deviceWidth === '100%' ? 0 : '20px 0',
-      }}>
+      {/* Preview area — T-028 Phase 19 fix mobile : en mode tablet/mobile,
+          on rend le contenu dans un container de taille fixe (768/375px) puis on
+          applique un `transform: scale()` pour le réduire visuellement à la taille
+          de l'écran disponible. Ça simule le rendu mobile sans que les media queries
+          du design system aient besoin de se déclencher (elles ciblent le viewport,
+          pas le container).
+
+          ⚠️ Compromis V1 — les media queries CSS ne se déclenchent PAS (le viewport
+          réel du navigateur reste large). Seul un rendu via iframe permettrait un vrai
+          preview responsive. Noté dans ameliorations.md pour V2.
+
+          Le scale est calculé dynamiquement pour que le container de 375/768px
+          tienne dans la zone de preview disponible (viewport - topbar). */}
+      <div
+        ref={previewAreaRef}
+        style={{
+          flex: 1, overflow: 'auto',
+          display: 'flex', justifyContent: 'center', alignItems: deviceWidth === '100%' ? 'stretch' : 'flex-start',
+          background: '#0a0a0a',
+          padding: deviceWidth === '100%' ? 0 : '20px 0',
+        }}
+      >
         <div
-          className={`fnl-root ${design.effectsClassName}`}
           style={{
-            width: deviceWidth,
+            width: deviceWidth === '100%' ? '100%' : parseInt(deviceWidth) + 'px',
             maxWidth: '100%',
-            ...design.cssVars,
+            transformOrigin: 'top center',
+            transform: deviceWidth === '100%' ? undefined : `scale(${previewScale})`,
+            // Quand on scale down, le container prend toujours sa taille réelle dans le layout.
+            // Pour éviter un espace blanc en bas, on ajuste la hauteur du wrapper.
+            ...(deviceWidth !== '100%' ? {
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 20,
+              overflow: 'hidden',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+            } : {}),
           }}
         >
-          {blocks.map(block => renderBlock(block))}
+          <div
+            className={`fnl-root ${design.effectsClassName}`}
+            style={{
+              width: '100%',
+              ...design.cssVars,
+            }}
+          >
+            {blocks.map(block => renderBlock(block))}
+          </div>
         </div>
       </div>
     </div>
