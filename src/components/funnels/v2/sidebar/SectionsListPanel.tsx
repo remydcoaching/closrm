@@ -58,9 +58,8 @@ const BLOCK_TYPES: BlockTypeMeta[] = [
   { type: 'countdown', label: 'Compte à rebours', icon: <Timer size={ICON_SIZE} /> },
   { type: 'spacer', label: 'Espacement', icon: <ArrowUpDown size={ICON_SIZE} /> },
   { type: 'footer', label: 'Footer', icon: <PanelBottom size={ICON_SIZE} /> },
-  // Stubs "À venir" — visible mais non-ajoutables
-  { type: 'booking', label: 'Réservation', icon: <Calendar size={ICON_SIZE} />, comingSoon: true },
-  { type: 'form', label: 'Formulaire', icon: <FileText size={ICON_SIZE} />, comingSoon: true },
+  { type: 'booking', label: 'Réservation', icon: <Calendar size={ICON_SIZE} /> },
+  { type: 'form', label: 'Formulaire', icon: <FileText size={ICON_SIZE} /> },
 ]
 
 const BLOCK_LABELS: Record<FunnelBlockType, string> = BLOCK_TYPES.reduce(

@@ -102,8 +102,9 @@ interface Props {
 function BlockRenderer({ block }: { block: FunnelBlock }) {
   const content = renderBlockContent(block)
   const fxClasses = getBlockEffectsClasses(block)
-  if (fxClasses.length === 0) return content
-  return <div className={fxClasses.join(' ')}>{content}</div>
+  // Chaque bloc a un id HTML pour supporter les ancres internes (#block-{id})
+  if (fxClasses.length === 0) return <div id={`block-${block.id}`}>{content}</div>
+  return <div id={`block-${block.id}`} className={fxClasses.join(' ')}>{content}</div>
 }
 
 function renderBlockContent(block: FunnelBlock): React.ReactNode {
@@ -293,9 +294,21 @@ export default function FunnelPagePreview({
   // tous les blocs enfants. La maxWidth dépend du mode (desktop/tablet/mobile).
   const maxWidth = PREVIEW_MAX_WIDTHS[mode]
   const isMobileLike = mode === 'mobile' || mode === 'tablet'
+  // Neutralise la navigation des liens dans le builder preview.
+  // Les <a> sont rendus normalement (pour le style) mais le clic ne navigue nulle part.
+  function handlePreviewClick(e: React.MouseEvent) {
+    const target = e.target as HTMLElement
+    const anchor = target.closest('a')
+    if (anchor) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+  }
+
   const innerCard = (
     <div
       className={design ? `fnl-root ${design.effectsClassName}` : ''}
+      onClickCapture={handlePreviewClick}
       style={{
         width: '100%',
         maxWidth,

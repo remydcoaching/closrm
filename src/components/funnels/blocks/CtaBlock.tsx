@@ -22,6 +22,7 @@
  */
 
 import type { CtaBlockConfig } from '@/types'
+import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
 
 interface Props {
   config: CtaBlockConfig
@@ -57,7 +58,7 @@ export default function CtaBlock({ config }: Props) {
         }}
       >
         <a
-          href={config.url || '#'}
+          href={resolveFunnelUrl(config.url)}
           style={{
             ...sizeStyle,
             display: 'inline-block',
@@ -89,7 +90,7 @@ export default function CtaBlock({ config }: Props) {
         justifyContent,
       }}
     >
-      <a href={config.url || '#'} className="fnl-btn" style={sizeStyle}>
+      <a href={resolveFunnelUrl(config.url)} className="fnl-btn" style={sizeStyle}>
         {config.text || 'Cliquez ici'}
       </a>
     </div>

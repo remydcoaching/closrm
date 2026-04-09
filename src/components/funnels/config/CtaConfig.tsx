@@ -1,36 +1,27 @@
 'use client'
 
-import type { CtaBlockConfig } from '@/types'
+import type { CtaBlockConfig, FunnelPage, FunnelBlock } from '@/types'
+import RedirectPicker from './RedirectPicker'
 
 interface Props {
   config: CtaBlockConfig
   onChange: (config: CtaBlockConfig) => void
+  pages?: FunnelPage[]
+  blocks?: FunnelBlock[]
 }
 
-export default function CtaConfig({ config, onChange }: Props) {
+export default function CtaConfig({ config, onChange, pages, blocks }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Texte</label>
-          <input
-            type="text"
-            value={config.text}
-            onChange={e => onChange({ ...config, text: e.target.value })}
-            placeholder="Réserver maintenant"
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>URL</label>
-          <input
-            type="url"
-            value={config.url}
-            onChange={e => onChange({ ...config, url: e.target.value })}
-            placeholder="https://..."
-            style={inputStyle}
-          />
-        </div>
+      <div>
+        <label style={labelStyle}>Texte</label>
+        <input
+          type="text"
+          value={config.text}
+          onChange={e => onChange({ ...config, text: e.target.value })}
+          placeholder="Réserver maintenant"
+          style={inputStyle}
+        />
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 1 }}>
@@ -70,6 +61,14 @@ export default function CtaConfig({ config, onChange }: Props) {
           </select>
         </div>
       </div>
+      <RedirectPicker
+        value={config.url || null}
+        onChange={val => onChange({ ...config, url: val || '' })}
+        pages={pages}
+        blocks={blocks}
+        label="Lien du bouton"
+        required
+      />
     </div>
   )
 }

@@ -24,6 +24,7 @@
  */
 
 import type { HeroBlockConfig } from '@/types'
+import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
 
 interface Props {
   config: HeroBlockConfig
@@ -82,7 +83,7 @@ export default function HeroBlock({ config }: Props) {
         </h1>
         {config.subtitle && <p className="fnl-hook">{config.subtitle}</p>}
         {config.ctaText && (
-          <a href={config.ctaUrl || '#'} className="fnl-btn">
+          <a href={resolveFunnelUrl(config.ctaUrl)} className="fnl-btn">
             {config.ctaText}
           </a>
         )}

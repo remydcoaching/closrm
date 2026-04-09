@@ -50,6 +50,7 @@ import TextBlock from '@/components/funnels/blocks/TextBlock'
 import ImageBlock from '@/components/funnels/blocks/ImageBlock'
 import SpacerBlock from '@/components/funnels/blocks/SpacerBlock'
 import FunnelTracker from '@/components/funnels/FunnelTracker'
+import { FunnelRenderProvider } from '@/components/funnels/FunnelRenderContext'
 import { loadFunnelDesign } from '@/lib/funnels/load-funnel-design'
 
 // CSS du design system T-028a — chargés ici pour que toutes les classes
@@ -92,34 +93,37 @@ interface ApiResponse {
 // ─── Block Renderer ─────────────────────────────────────────────────────────
 
 function renderBlock(block: FunnelBlock) {
+  let content: React.ReactNode
   switch (block.type) {
     case 'hero':
-      return <HeroBlock key={block.id} config={block.config as HeroBlockConfig} />
+      content = <HeroBlock config={block.config as HeroBlockConfig} />; break
     case 'video':
-      return <VideoBlock key={block.id} config={block.config as VideoBlockConfig} />
+      content = <VideoBlock config={block.config as VideoBlockConfig} />; break
     case 'testimonials':
-      return <TestimonialsBlock key={block.id} config={block.config as TestimonialsBlockConfig} />
+      content = <TestimonialsBlock config={block.config as TestimonialsBlockConfig} />; break
     case 'form':
-      return <FormBlock key={block.id} config={block.config as FormBlockConfig} />
+      content = <FormBlock config={block.config as FormBlockConfig} />; break
     case 'booking':
-      return <BookingBlock key={block.id} config={block.config as BookingBlockConfig} />
+      content = <BookingBlock config={block.config as BookingBlockConfig} />; break
     case 'pricing':
-      return <PricingBlock key={block.id} config={block.config as PricingBlockConfig} />
+      content = <PricingBlock config={block.config as PricingBlockConfig} />; break
     case 'faq':
-      return <FaqBlock key={block.id} config={block.config as FaqBlockConfig} />
+      content = <FaqBlock config={block.config as FaqBlockConfig} />; break
     case 'countdown':
-      return <CountdownBlock key={block.id} config={block.config as CountdownBlockConfig} />
+      content = <CountdownBlock config={block.config as CountdownBlockConfig} />; break
     case 'cta':
-      return <CtaBlock key={block.id} config={block.config as CtaBlockConfig} />
+      content = <CtaBlock config={block.config as CtaBlockConfig} />; break
     case 'text':
-      return <TextBlock key={block.id} config={block.config as FunnelTextBlockConfig} />
+      content = <TextBlock config={block.config as FunnelTextBlockConfig} />; break
     case 'image':
-      return <ImageBlock key={block.id} config={block.config as FunnelImageBlockConfig} />
+      content = <ImageBlock config={block.config as FunnelImageBlockConfig} />; break
     case 'spacer':
-      return <SpacerBlock key={block.id} config={block.config as SpacerBlockConfig} />
+      content = <SpacerBlock config={block.config as SpacerBlockConfig} />; break
     default:
       return null
   }
+  // Chaque bloc a un id HTML pour supporter les ancres internes (#block-{id})
+  return <div key={block.id} id={`block-${block.id}`}>{content}</div>
 }
 
 // ─── Page Component ─────────────────────────────────────────────────────────
@@ -234,22 +238,25 @@ export default function PublicFunnelPage() {
           Background body neutre — les couleurs viennent maintenant du preset. */}
       <style>{`
         :root { --color-primary: ${accentColor}; }
+        html { scroll-behavior: smooth; }
         body { margin: 0; background: #ffffff; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
       `}</style>
 
-      <FunnelTracker funnelPageId={page.id} />
+      <FunnelRenderProvider isPreview={false} funnelPageId={page.id}>
+        <FunnelTracker funnelPageId={page.id} />
 
-      {/* Container racine .fnl-root qui apporte les CSS vars du preset
-          et les classes fx-* pour activer les effets toggleables. */}
-      <main
-        className={design ? `fnl-root ${design.effectsClassName}` : ''}
-        style={{
-          minHeight: '100vh',
-          ...(design?.cssVars ?? {}),
-        }}
-      >
-        {(page.blocks ?? []).map((block) => renderBlock(block))}
-      </main>
+        {/* Container racine .fnl-root qui apporte les CSS vars du preset
+            et les classes fx-* pour activer les effets toggleables. */}
+        <main
+          className={design ? `fnl-root ${design.effectsClassName}` : ''}
+          style={{
+            minHeight: '100vh',
+            ...(design?.cssVars ?? {}),
+          }}
+        >
+          {(page.blocks ?? []).map((block) => renderBlock(block))}
+        </main>
+      </FunnelRenderProvider>
     </>
   )
 }

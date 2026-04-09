@@ -111,7 +111,20 @@ export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: b
                   color: active ? 'var(--color-primary)' : 'var(--text-tertiary)',
                   background: active ? 'var(--bg-active)' : 'transparent',
                   transition: 'all 0.15s ease',
-                }}>
+                }}
+                  onMouseEnter={e => {
+                    if (!active) {
+                      e.currentTarget.style.background = 'var(--bg-hover)'
+                      e.currentTarget.style.color = 'var(--text-primary)'
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!active) {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = 'var(--text-tertiary)'
+                    }
+                  }}
+                >
                   <Icon size={16} style={{ flexShrink: 0 }} />
                   {!collapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{item.label}</span>}
                 </Link>
@@ -129,7 +142,10 @@ export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: b
           padding: collapsed ? '8px 0' : '7px 10px', justifyContent: collapsed ? 'center' : 'flex-start',
           borderRadius: 8, fontSize: 13, color: 'var(--text-tertiary)', background: 'transparent',
           border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
-        }}>
+        }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+        >
           <LogOut size={16} style={{ flexShrink: 0 }} />
           {!collapsed && <span>Déconnexion</span>}
         </button>

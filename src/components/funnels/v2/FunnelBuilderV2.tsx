@@ -70,8 +70,8 @@ const BLOCK_LABELS: Record<FunnelBlockType, string> = {
   countdown: 'Compte à rebours',
   spacer: 'Espacement',
   footer: 'Footer',
-  booking: 'Réservation (À venir)',
-  form: 'Formulaire (À venir)',
+  booking: 'Réservation',
+  form: 'Formulaire',
 }
 
 interface Props {
@@ -236,7 +236,7 @@ export default function FunnelBuilderV2({
                 ×
               </button>
             </div>
-            <FunnelBlockConfigPanel block={selectedBlock} onChange={handleBlockChange} />
+            <FunnelBlockConfigPanel block={selectedBlock} onChange={handleBlockChange} pages={pages} blocks={blocks} />
             {/* T-028 Phase 9 — Panneau des effets propres au bloc
                 (shimmer, button shine) affiché uniquement pour Hero/CTA/Text */}
             <BlockEffectsPanel

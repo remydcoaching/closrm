@@ -15,7 +15,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FileText, ExternalLink, AlertTriangle, MoreHorizontal, Trash2 } from 'lucide-react'
-import { createPortal } from 'react-dom'
 import { buildPublicFunnelUrl } from '@/lib/funnels/use-workspace-slug'
 
 interface FunnelData {
@@ -116,33 +115,14 @@ export default function FunnelCard({ funnel, workspaceSlug, workspaceSlugFetched
               <MoreHorizontal size={16} />
             </button>
 
-            {/* Dropdown menu */}
-            {menuOpen && typeof window !== 'undefined' && createPortal(
+            {/* Backdrop + Menu inline */}
+            {menuOpen && (
               <>
                 <div
-                  style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+                  style={{ position: 'fixed', inset: 0, zIndex: 99 }}
                   onClick={e => { e.stopPropagation(); setMenuOpen(false); setConfirmDelete(false) }}
                   aria-hidden="true"
                 />
-                <div
-                  style={{
-                    position: 'fixed',
-                    // On ne peut pas facilement calculer la position exacte sans ref
-                    // → on utilise une astuce : la card a position: relative et on
-                    // place le menu inline dans le DOM tree, pas via portal.
-                    // Mais le portal est nécessaire pour échapper aux overflow parents.
-                    // Compromis V1 : on place le dropdown en bas-droite du viewport
-                    // via le onClick du bouton ⋯ qui set la position.
-                    zIndex: 9999,
-                  }}
-                >
-                </div>
-              </>,
-              document.body,
-            )}
-
-            {/* Menu inline (pas portal — la card n'a pas d'overflow qui clip) */}
-            {menuOpen && (
               <div
                 onClick={e => e.stopPropagation()}
                 style={{
@@ -206,6 +186,7 @@ export default function FunnelCard({ funnel, workspaceSlug, workspaceSlugFetched
                   </button>
                 )}
               </div>
+              </>
             )}
           </div>
         </div>
