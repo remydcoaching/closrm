@@ -18,6 +18,7 @@
  */
 
 import type { FunnelImageBlockConfig } from '@/types'
+import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
 
 interface Props {
   config: FunnelImageBlockConfig
@@ -69,7 +70,7 @@ export default function ImageBlock({ config }: Props) {
     <div style={{ padding: 20 }}>
       {config.linkUrl ? (
         <a
-          href={config.linkUrl}
+          href={resolveFunnelUrl(config.linkUrl)}
           target="_blank"
           rel="noopener noreferrer"
           style={{ display: 'block' }}

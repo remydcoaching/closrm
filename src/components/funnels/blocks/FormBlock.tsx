@@ -1,30 +1,238 @@
 'use client'
 
 /**
- * T-028c — FormBlock (stub visuel "À venir").
+ * A-028a-02 — FormBlock fonctionnel.
  *
- * ⚠️ Ce bloc est volontairement un PLACEHOLDER fonctionnel en V1.
- * La logique réelle de soumission (création de lead, déclenchement workflow,
- * redirection) sera ajoutée dans une tâche dédiée — voir
- * `ameliorations.md → A-028a-02` pour le plan complet.
+ * Formulaire de capture de leads intégré dans les funnels. En mode public
+ * (page publiée), soumet les données via POST /api/public/f/submit qui
+ * crée le lead + fire les triggers workflow + incrémente submissions_count.
  *
- * Décision T-028a/c (validée le 2026-04-07) :
- * - On redesigne visuellement le bloc pour qu'il s'intègre au design system
- * - On affiche les champs en preview (read-only / désactivés visuellement)
- * - On bloque la soumission avec un overlay "À venir"
+ * En mode preview (builder), les champs sont interactifs pour tester le
+ * rendu mais la soumission est désactivée.
  *
- * Visuellement : titre + sous-titre + champs grisés + bouton de submit avec
- * label "À venir". Toutes les couleurs viennent du preset.
- *
- * Note : on garde le rendu des champs configurés pour que le coach puisse
- * voir à quoi ressemblera son formulaire dans le builder. Les champs sont
- * juste désactivés (`disabled`) et le `onSubmit` est neutralisé.
+ * Après soumission :
+ * - Si config.redirectUrl → redirection
+ * - Sinon → affiche config.successMessage
  */
 
+import { useState } from 'react'
 import type { FormBlockConfig, FunnelFormField } from '@/types'
+import { useFunnelRender } from '../FunnelRenderContext'
+import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
 
 interface Props {
   config: FormBlockConfig
+}
+
+export default function FormBlock({ config }: Props) {
+  const { funnelPageId } = useFunnelRender()
+  const [formData, setFormData] = useState<Record<string, string>>({})
+  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+
+    // En mode preview (builder), simuler le succès sans appel API
+    if (!funnelPageId) {
+      if (config.redirectUrl) {
+        window.location.href = resolveFunnelUrl(config.redirectUrl)
+        return
+      }
+      setSubmitted(true)
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/public/f/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          funnel_page_id: funnelPageId,
+          fields: formData,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error ?? 'Erreur lors de l\'envoi.')
+        return
+      }
+
+      // Redirect or show success message
+      if (config.redirectUrl) {
+        window.location.href = resolveFunnelUrl(config.redirectUrl)
+        return
+      }
+
+      setSubmitted(true)
+    } catch {
+      setError('Erreur réseau. Veuillez réessayer.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // ─── Success state ──────────────────────────────────────────────────────
+
+  if (submitted) {
+    return (
+      <div style={{ padding: '40px 20px', maxWidth: 540, margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
+        <h2 style={titleStyle}>
+          {config.successMessage || 'Merci ! Nous reviendrons vers toi sous 24h.'}
+        </h2>
+      </div>
+    )
+  }
+
+  // ─── Form ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div style={{ padding: '40px 20px', maxWidth: 540, margin: '0 auto' }}>
+      <div style={cardStyle}>
+        {config.title && (
+          <h2 style={titleStyle}>{config.title}</h2>
+        )}
+        {config.subtitle && (
+          <p style={subtitleStyle}>{config.subtitle}</p>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+        >
+          {(config.fields || []).map((field, i) => (
+            <div key={i}>
+              <label style={labelStyle}>
+                {field.label}
+                {field.required && (
+                  <span style={{ color: 'var(--fnl-primary)', marginLeft: 4 }}>*</span>
+                )}
+              </label>
+              <FormField
+                field={field}
+                value={formData[field.key] ?? ''}
+                onChange={(val) => setFormData(p => ({ ...p, [field.key]: val }))}
+                disabled={false}
+              />
+            </div>
+          ))}
+
+          {error && (
+            <div style={{ color: 'var(--fnl-primary)', fontSize: 13 }}>{error}</div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            style={submitButtonStyle(submitting)}
+          >
+            {submitting ? 'Envoi en cours...' : config.submitText || 'Envoyer'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Field renderer ─────────────────────────────────────────────────────────
+
+function FormField({
+  field,
+  value,
+  onChange,
+  disabled,
+}: {
+  field: FunnelFormField
+  value: string
+  onChange: (val: string) => void
+  disabled: boolean
+}) {
+  if (field.type === 'textarea') {
+    return (
+      <textarea
+        name={field.key}
+        placeholder={field.placeholder}
+        rows={4}
+        required={field.required}
+        disabled={disabled}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{ ...fieldStyle, resize: 'vertical' }}
+      />
+    )
+  }
+
+  if (field.type === 'select') {
+    return (
+      <select
+        name={field.key}
+        required={field.required}
+        disabled={disabled}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={fieldStyle}
+      >
+        <option value="">{field.placeholder || 'Sélectionner...'}</option>
+        {(field.options || []).map((opt, i) => (
+          <option key={i} value={opt}>{opt}</option>
+        ))}
+      </select>
+    )
+  }
+
+  return (
+    <input
+      type={field.type}
+      name={field.key}
+      placeholder={field.placeholder}
+      required={field.required}
+      disabled={disabled}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      style={fieldStyle}
+    />
+  )
+}
+
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
+const cardStyle: React.CSSProperties = {
+  position: 'relative',
+  background: 'var(--fnl-section-bg, rgba(var(--fnl-primary-rgb), 0.02))',
+  borderRadius: 20,
+  padding: 32,
+  border: '1px solid rgba(var(--fnl-primary-rgb), 0.12)',
+}
+
+const titleStyle: React.CSSProperties = {
+  fontSize: 26,
+  fontWeight: 800,
+  color: 'var(--fnl-primary)',
+  margin: '0 0 8px',
+  textAlign: 'center',
+  lineHeight: 1.3,
+}
+
+const subtitleStyle: React.CSSProperties = {
+  fontSize: 14,
+  color: 'var(--fnl-text-secondary)',
+  margin: '0 0 24px',
+  textAlign: 'center',
+  lineHeight: 1.6,
+}
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: 'var(--fnl-text)',
+  display: 'block',
+  marginBottom: 6,
 }
 
 const fieldStyle: React.CSSProperties = {
@@ -38,172 +246,21 @@ const fieldStyle: React.CSSProperties = {
   outline: 'none',
   boxSizing: 'border-box',
   fontFamily: 'Poppins, sans-serif',
-  cursor: 'not-allowed',
-  opacity: 0.7,
 }
 
-function FormField({ field }: { field: FunnelFormField }) {
-  // Tous les champs sont disabled — submission désactivée tant que A-028a-02 pas faite
-  if (field.type === 'textarea') {
-    return (
-      <textarea
-        name={field.key}
-        placeholder={field.placeholder}
-        rows={4}
-        disabled
-        style={{ ...fieldStyle, resize: 'vertical' }}
-      />
-    )
-  }
-
-  if (field.type === 'select') {
-    return (
-      <select name={field.key} disabled style={fieldStyle}>
-        <option value="">{field.placeholder || 'Sélectionner...'}</option>
-        {(field.options || []).map((opt, i) => (
-          <option key={i} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
-    )
-  }
-
-  return (
-    <input
-      type={field.type}
-      name={field.key}
-      placeholder={field.placeholder}
-      disabled
-      style={fieldStyle}
-    />
-  )
-}
-
-export default function FormBlock({ config }: Props) {
-  // Pas de state submitted ici : la submission est désactivée. Le coach peut
-  // voir le formulaire en preview mais aucune interaction n'est possible.
-  return (
-    <div style={{ padding: '40px 20px', maxWidth: 540, margin: '0 auto' }}>
-      <div
-        style={{
-          position: 'relative',
-          background: 'var(--fnl-section-bg)',
-          borderRadius: 20,
-          padding: 32,
-          border: '2px dashed rgba(var(--fnl-primary-rgb), 0.3)',
-        }}
-      >
-        {/* Badge "À venir" en haut à droite de la card */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 16,
-            right: 16,
-            padding: '6px 14px',
-            background:
-              'linear-gradient(135deg, var(--fnl-primary) 0%, var(--fnl-primary-light) 100%)',
-            color: 'white',
-            fontSize: 11,
-            fontWeight: 800,
-            letterSpacing: 1,
-            textTransform: 'uppercase',
-            borderRadius: 50,
-            boxShadow: '0 4px 15px rgba(var(--fnl-primary-rgb), 0.3)',
-          }}
-        >
-          À venir
-        </div>
-
-        {config.title && (
-          <h2
-            style={{
-              fontSize: 26,
-              fontWeight: 800,
-              color: 'var(--fnl-primary)',
-              margin: '0 0 8px',
-              textAlign: 'center',
-              lineHeight: 1.3,
-            }}
-          >
-            {config.title}
-          </h2>
-        )}
-        {config.subtitle && (
-          <p
-            style={{
-              fontSize: 14,
-              color: 'var(--fnl-text-secondary)',
-              margin: '0 0 24px',
-              textAlign: 'center',
-              lineHeight: 1.6,
-            }}
-          >
-            {config.subtitle}
-          </p>
-        )}
-
-        <form
-          onSubmit={(e) => e.preventDefault()}
-          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
-        >
-          {(config.fields || []).map((field, i) => (
-            <div key={i}>
-              <label
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: 'var(--fnl-text)',
-                  display: 'block',
-                  marginBottom: 6,
-                }}
-              >
-                {field.label}
-                {field.required && (
-                  <span style={{ color: 'var(--fnl-primary)', marginLeft: 4 }}>*</span>
-                )}
-              </label>
-              <FormField field={field} />
-            </div>
-          ))}
-
-          <button
-            type="submit"
-            disabled
-            style={{
-              padding: '14px 28px',
-              fontSize: 16,
-              fontWeight: 700,
-              color: '#fff',
-              background:
-                'linear-gradient(135deg, var(--fnl-primary) 0%, var(--fnl-primary-light) 100%)',
-              border: 'none',
-              borderRadius: 50,
-              marginTop: 8,
-              opacity: 0.5,
-              cursor: 'not-allowed',
-              fontFamily: 'Poppins, sans-serif',
-              boxShadow: '0 6px 20px rgba(var(--fnl-primary-rgb), 0.2)',
-            }}
-          >
-            {config.submitText || 'Envoyer'} (à venir)
-          </button>
-        </form>
-
-        <p
-          style={{
-            fontSize: 11,
-            color: 'var(--fnl-text-secondary)',
-            opacity: 0.7,
-            margin: '16px 0 0',
-            textAlign: 'center',
-            lineHeight: 1.5,
-          }}
-        >
-          Bientôt : création automatique de lead dans ClosRM, déclenchement de
-          workflow et redirection.
-        </p>
-      </div>
-    </div>
-  )
-}
+const submitButtonStyle = (disabled: boolean): React.CSSProperties => ({
+  padding: '14px 28px',
+  fontSize: 16,
+  fontWeight: 700,
+  color: '#fff',
+  background: disabled
+    ? 'rgba(var(--fnl-primary-rgb), 0.4)'
+    : 'linear-gradient(135deg, var(--fnl-primary) 0%, var(--fnl-primary-light) 100%)',
+  border: 'none',
+  borderRadius: 50,
+  marginTop: 8,
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  fontFamily: 'Poppins, sans-serif',
+  boxShadow: disabled ? 'none' : '0 6px 20px rgba(var(--fnl-primary-rgb), 0.2)',
+  transition: 'all 0.2s',
+})

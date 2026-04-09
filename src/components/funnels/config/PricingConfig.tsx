@@ -1,13 +1,16 @@
 'use client'
 
-import type { PricingBlockConfig } from '@/types'
+import type { PricingBlockConfig, FunnelPage, FunnelBlock } from '@/types'
+import RedirectPicker from './RedirectPicker'
 
 interface Props {
   config: PricingBlockConfig
   onChange: (config: PricingBlockConfig) => void
+  pages?: FunnelPage[]
+  blocks?: FunnelBlock[]
 }
 
-export default function PricingConfig({ config, onChange }: Props) {
+export default function PricingConfig({ config, onChange, pages, blocks }: Props) {
   const features = config.features || []
 
   const updateFeature = (index: number, value: string) => {
@@ -98,28 +101,24 @@ export default function PricingConfig({ config, onChange }: Props) {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Texte du bouton</label>
-          <input
-            type="text"
-            value={config.ctaText}
-            onChange={e => onChange({ ...config, ctaText: e.target.value })}
-            placeholder="Commencer"
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>URL du bouton</label>
-          <input
-            type="url"
-            value={config.ctaUrl}
-            onChange={e => onChange({ ...config, ctaUrl: e.target.value })}
-            placeholder="https://..."
-            style={inputStyle}
-          />
-        </div>
+      <div>
+        <label style={labelStyle}>Texte du bouton</label>
+        <input
+          type="text"
+          value={config.ctaText}
+          onChange={e => onChange({ ...config, ctaText: e.target.value })}
+          placeholder="Commencer"
+          style={inputStyle}
+        />
       </div>
+      <RedirectPicker
+        value={config.ctaUrl || null}
+        onChange={val => onChange({ ...config, ctaUrl: val || '' })}
+        pages={pages}
+        blocks={blocks}
+        label="Lien du bouton"
+        required
+      />
 
       <label style={{ fontSize: 12, color: '#aaa', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
         <input

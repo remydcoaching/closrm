@@ -61,10 +61,24 @@ export function getDefaultBlockConfig(type: FunnelBlockType): FunnelBlockConfig 
         subtitle: 'Réponds aux questions pour qu\'on évalue si on peut t\'aider.',
         fields: [
           {
+            key: 'prenom',
+            label: 'Prénom',
+            type: 'text',
+            placeholder: 'Ton prénom',
+            required: true,
+          },
+          {
             key: 'email',
             label: 'Email',
             type: 'email',
             placeholder: 'votre@email.com',
+            required: true,
+          },
+          {
+            key: 'telephone',
+            label: 'Téléphone',
+            type: 'tel',
+            placeholder: '06 12 34 56 78',
             required: true,
           },
         ],

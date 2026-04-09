@@ -17,6 +17,7 @@
  */
 
 import type { PricingBlockConfig } from '@/types'
+import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
 
 interface Props {
   config: PricingBlockConfig
@@ -132,7 +133,7 @@ export default function PricingBlock({ config }: Props) {
         )}
         {config.ctaText && (
           <a
-            href={config.ctaUrl || '#'}
+            href={resolveFunnelUrl(config.ctaUrl)}
             className="fnl-btn"
             style={{ width: '100%', boxSizing: 'border-box' }}
           >
