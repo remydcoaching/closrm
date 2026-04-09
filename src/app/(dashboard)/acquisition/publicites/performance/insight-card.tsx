@@ -136,9 +136,9 @@ export default function InsightCard(insight: PerformanceInsight) {
         alignItems: 'center',
         gap: 6,
       }}>
-        <span>Current: {currentValue}</span>
-        <span style={{ color: 'var(--text-muted, #666)' }}>\u2192</span>
-        <span>Target: {targetValue}</span>
+        <span>Actuel : {currentValue}</span>
+        <span style={{ color: 'var(--text-muted, #666)' }}>{'→'}</span>
+        <span>Objectif : {targetValue}</span>
       </div>
 
       {/* Description */}

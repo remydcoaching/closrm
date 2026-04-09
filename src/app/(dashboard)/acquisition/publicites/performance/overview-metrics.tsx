@@ -151,7 +151,7 @@ export default function OverviewMetrics({
       iconColor: '#38A169',
       iconBg: 'rgba(56, 161, 105, 0.12)',
       change: formatChange(conversionRate, conversionRatePrev),
-      subtitle: 'Visite \u2192 Abonne',
+      subtitle: 'Visite → Abonne',
     },
     {
       label: 'Budget publicitaire',
@@ -160,7 +160,7 @@ export default function OverviewMetrics({
       iconColor: '#E53E3E',
       iconBg: 'rgba(229, 62, 62, 0.12)',
       change: formatChange(adSpend, adSpendPrev),
-      subtitle: 'Total ad investment',
+      subtitle: 'Investissement total',
     },
   ]
 

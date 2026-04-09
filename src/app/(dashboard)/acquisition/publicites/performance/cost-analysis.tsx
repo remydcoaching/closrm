@@ -15,7 +15,7 @@ interface Props {
 }
 
 function formatEuro(n: number): string {
-  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' \u20AC'
+  return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 }
 
 function formatNumber(n: number): string {
@@ -102,10 +102,10 @@ function CostRow({ label, value, change, previous, target, isAlt }: CostRowProps
         textAlign: 'right',
       }}>
         <span style={{ fontSize: 11, color: 'var(--text-muted, #666)' }}>
-          Precedent: {previous}
+          Precedent : {previous}
         </span>
         <span style={{ fontSize: 11, color: 'var(--text-muted, #666)' }}>
-          Target: {target}
+          Objectif : {target}
         </span>
       </div>
     </div>
@@ -247,14 +247,14 @@ export default function CostAnalysis({
             value={formatEuro(cpf)}
             change={formatChange(cpf, cpfPrev)}
             previous={formatEuro(cpfPrev)}
-            target="4,00 \u20AC"
+            target="4,00 €"
           />
           <CostRow
             label="Cout par RDV"
             value={formatEuro(cpa)}
             change={formatChange(cpa, cpaPrev)}
             previous={formatEuro(cpaPrev)}
-            target="120,00 \u20AC"
+            target="120,00 €"
             isAlt
           />
         </div>
