@@ -11,6 +11,7 @@ import type {
 } from '@/types'
 import FunnelPageTabs from '@/components/funnels/FunnelPageTabs'
 import FunnelBuilderV2 from '@/components/funnels/v2/FunnelBuilderV2'
+import WorkspaceNameModal from '@/components/funnels/v2/WorkspaceNameModal'
 import { useUndoRedo } from '@/components/funnels/v2/use-undo-redo'
 import { useAutosave } from '@/components/funnels/v2/use-autosave'
 import {
@@ -64,8 +65,16 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
   // `workspaceSlug` = la valeur (ou null si pas configuré)
   // `workspaceSlugFetched` = true une fois le fetch terminé (permet de
   // distinguer "en cours" de "definitivement null" pour l'UX du warning)
-  const { slug: workspaceSlug, fetched: workspaceSlugFetched } = useWorkspaceSlugState()
+  const [wsSlugState, setWsSlugState] = useState<{ slug: string | null; fetched: boolean }>({ slug: null, fetched: false })
+  const wsSlugHook = useWorkspaceSlugState()
+  // Sync le hook avec le state local (le state local peut être mis à jour
+  // par la modale sans re-fetch)
+  const workspaceSlug = wsSlugState.slug ?? wsSlugHook.slug
+  const workspaceSlugFetched = wsSlugState.fetched || wsSlugHook.fetched
   const [copiedUrl, setCopiedUrl] = useState(false)
+  // T-028 Phase 17 — Modale "Choisissez un nom" ouverte quand le coach
+  // clique Publier sans avoir configuré de slug workspace.
+  const [showSlugModal, setShowSlugModal] = useState(false)
 
   // T-028 Phase 15 — Garde anti-double-exécution pour fetchFunnel.
   // React 19 StrictMode exécute les useEffect 2x en dev, ce qui créait 2 POST
@@ -244,22 +253,19 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
     enabled: !loading && funnel !== null,
   })
 
-  const handlePublish = useCallback(async () => {
-    if (publishing) return
-    // Save first
-    await handleSave()
+  /**
+   * T-028 Phase 17 — Exécute la publication réelle (POST /api/funnels/[id]/publish).
+   * Séparée de handlePublish pour pouvoir être appelée après la modale slug.
+   */
+  const doPublish = useCallback(async () => {
     setPublishing(true)
     setPublishFeedback(null)
-
     try {
       const res = await fetch(`/api/funnels/${id}/publish`, { method: 'POST' })
       const json = await res.json()
       if (json.data) {
         const newStatus = json.data.status as 'draft' | 'published'
         setFunnel(prev => prev ? { ...prev, status: newStatus } : prev)
-        // T-028 Phase 14 — Montre le bon feedback selon la nouvelle action.
-        // Si on vient de passer en `draft`, le bouton montre "Dépublié ✓"
-        // au lieu de "Publié ✓" comme avant (bug reporté par Rémy).
         setPublishFeedback(newStatus === 'published' ? 'published' : 'unpublished')
         setTimeout(() => setPublishFeedback(null), 2000)
       }
@@ -268,7 +274,26 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
     } finally {
       setPublishing(false)
     }
-  }, [publishing, handleSave, id])
+  }, [id])
+
+  const handlePublish = useCallback(async () => {
+    if (publishing) return
+
+    // T-028 Phase 17 — Si on essaie de PUBLIER (pas dépublier) et que le
+    // slug workspace n'est pas configuré, on ouvre la modale "Choisissez un nom"
+    // au lieu de publier directement. La modale s'occupe de sauvegarder le slug
+    // puis appelle onSaved → doPublish.
+    // Si on DÉPUBLIE (funnel déjà publié), pas besoin de slug → on publie direct.
+    const isCurrentlyPublished = funnel?.status === 'published'
+    if (!isCurrentlyPublished && !workspaceSlug && workspaceSlugFetched) {
+      setShowSlugModal(true)
+      return
+    }
+
+    // Save first, puis publie
+    await handleSave()
+    await doPublish()
+  }, [publishing, handleSave, doPublish, funnel?.status, workspaceSlug, workspaceSlugFetched])
 
   // T-028 Phase 14 — Copie l'URL publique du funnel dans le presse-papiers
   // et affiche un feedback "Copié !" pendant 1.5s.
@@ -762,8 +787,22 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         )
       })()}
 
-      {/* Builder v2 (T-028b) — l'ancien `<FunnelBuilder>` reste sur disque
-          jusqu'à la Phase 8 de T-028b où on le supprimera proprement. */}
+      {/* T-028 Phase 17 — Modale "Choisissez un nom pour vos pages" */}
+      {showSlugModal && (
+        <WorkspaceNameModal
+          onCancel={() => setShowSlugModal(false)}
+          onSaved={async (slug) => {
+            // Sauvegarder le slug dans le state local
+            setWsSlugState({ slug, fetched: true })
+            setShowSlugModal(false)
+            // Enchaîner : sauvegarder + publier
+            await handleSave()
+            await doPublish()
+          }}
+        />
+      )}
+
+      {/* Builder v2 */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <FunnelBuilderV2
           funnel={funnel}
