@@ -346,6 +346,8 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
           loading={loading}
           tabKey={tab}
           campaignType={campaignType}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
           onRowClick={
             tab === 'campaigns'
               ? (id, name) => handleDrillIntoCampaign(id, name)

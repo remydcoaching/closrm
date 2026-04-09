@@ -1,8 +1,18 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { MetaInsightsResponse } from '@/app/api/meta/insights/route'
 import type { CampaignType } from './health-thresholds'
+
+interface CrmFunnelData {
+  calls_total: number
+  calls_reached: number
+  bookings_total: number
+  bookings_show_up: number
+  closings: number
+  deal_amount_total: number
+  cash_collected_total: number
+}
 
 interface AdsTableTabProps {
   data: MetaInsightsResponse | null
@@ -10,9 +20,31 @@ interface AdsTableTabProps {
   tabKey: string // 'campaigns' | 'adsets' | 'ads' — used to persist column prefs per tab
   campaignType: CampaignType | 'all'
   onRowClick?: (id: string, name: string) => void // drill-down: click campaign → adsets, click adset → ads
+  dateFrom?: string
+  dateTo?: string
 }
 
-type ColumnKey = 'name' | 'status' | 'campaign_type' | 'spend' | 'impressions' | 'clicks' | 'ctr' | 'leads' | 'cpl' | 'cpm' | 'cost_per_click'
+type ColumnKey =
+  | 'name' | 'status' | 'campaign_type' | 'spend' | 'impressions' | 'clicks' | 'ctr' | 'leads' | 'cpl' | 'cpm' | 'cost_per_click'
+  // Video Meta
+  | 'frequency' | 'hook_rate' | 'hold_rate_25' | 'hold_rate_50' | 'hold_rate_75'
+  // CRM funnel — Appels
+  | 'cr1' | 'calls_total' | 'calls_reached' | 'cpar' | 'joignabilite' | 'cr2'
+  // CRM funnel — Bookings
+  | 'bookings_total' | 'cpsb' | 'cr3' | 'bookings_show_up' | 'cpsp' | 'no_show_rate'
+  // CRM funnel — Closing
+  | 'closings' | 'cpclose' | 'closing_rate'
+  // Financier
+  | 'deal_amount' | 'cash_collected' | 'marge_brute'
+
+// Columns that are not sortable per-row (CRM data is global, not per-campaign)
+const CRM_COLUMNS: Set<ColumnKey> = new Set([
+  'cr1', 'calls_total', 'calls_reached', 'cpar', 'joignabilite', 'cr2',
+  'bookings_total', 'cpsb', 'cr3', 'bookings_show_up', 'cpsp', 'no_show_rate',
+  'closings', 'cpclose', 'closing_rate',
+  'deal_amount', 'cash_collected', 'marge_brute',
+])
+
 type SortKey = Exclude<ColumnKey, 'status' | 'campaign_type'>
 type SortState = { key: SortKey; dir: 'asc' | 'desc' } | null
 
@@ -21,31 +53,81 @@ interface ColumnDef {
   label: string
   sortable: boolean
   align: 'left' | 'right'
+  category: string
 }
 
-// Build the available columns for a given campaignType + tabKey.
-// Default visibility differs based on the campaign type filter.
-function getColumnsForType(campaignType: CampaignType | 'all'): ColumnDef[] {
-  const base: ColumnDef[] = [
-    { key: 'name', label: 'Nom', sortable: true, align: 'left' },
-    { key: 'status', label: 'Statut', sortable: false, align: 'left' },
-  ]
-  if (campaignType === 'all') {
-    base.push({ key: 'campaign_type', label: 'Type', sortable: false, align: 'left' })
-  }
-  base.push({ key: 'spend', label: 'Dépensé', sortable: true, align: 'right' })
-  base.push({ key: 'impressions', label: 'Impressions', sortable: true, align: 'right' })
-  base.push({ key: 'clicks', label: 'Clics', sortable: true, align: 'right' })
-  base.push({ key: 'ctr', label: 'CTR', sortable: true, align: 'right' })
+// All column definitions grouped by category
+const ALL_COLUMN_DEFS: ColumnDef[] = [
+  // Meta Ads (core — always present)
+  { key: 'name', label: 'Nom', sortable: true, align: 'left', category: 'Meta Ads' },
+  { key: 'status', label: 'Statut', sortable: false, align: 'left', category: 'Meta Ads' },
+  { key: 'campaign_type', label: 'Type', sortable: false, align: 'left', category: 'Meta Ads' },
+  { key: 'spend', label: 'Dépensé', sortable: true, align: 'right', category: 'Meta Ads' },
+  { key: 'impressions', label: 'Impressions', sortable: true, align: 'right', category: 'Meta Ads' },
+  { key: 'cpm', label: 'CPM', sortable: true, align: 'right', category: 'Meta Ads' },
+  { key: 'clicks', label: 'Clics', sortable: true, align: 'right', category: 'Meta Ads' },
+  { key: 'cost_per_click', label: 'CPC', sortable: true, align: 'right', category: 'Meta Ads' },
+  { key: 'ctr', label: 'CTR', sortable: true, align: 'right', category: 'Meta Ads' },
+  { key: 'leads', label: 'Leads', sortable: true, align: 'right', category: 'Meta Ads' },
+  { key: 'cpl', label: 'CPL', sortable: true, align: 'right', category: 'Meta Ads' },
+  { key: 'frequency', label: 'Répétition', sortable: true, align: 'right', category: 'Meta Ads' },
+  // Video
+  { key: 'hook_rate', label: 'Hook rate', sortable: true, align: 'right', category: 'Video' },
+  { key: 'hold_rate_25', label: 'Hold 25%', sortable: true, align: 'right', category: 'Video' },
+  { key: 'hold_rate_50', label: 'Hold 50%', sortable: true, align: 'right', category: 'Video' },
+  { key: 'hold_rate_75', label: 'Hold 75%', sortable: true, align: 'right', category: 'Video' },
+  // Appels
+  { key: 'calls_total', label: 'Appels passés', sortable: false, align: 'right', category: 'Appels' },
+  { key: 'calls_reached', label: 'Appels répondus', sortable: false, align: 'right', category: 'Appels' },
+  { key: 'cpar', label: 'CPAr', sortable: false, align: 'right', category: 'Appels' },
+  { key: 'joignabilite', label: '% Joignabilité', sortable: false, align: 'right', category: 'Appels' },
+  // Conversions
+  { key: 'cr1', label: 'CR1', sortable: false, align: 'right', category: 'Conversions' },
+  { key: 'cr2', label: 'CR2', sortable: false, align: 'right', category: 'Conversions' },
+  { key: 'cr3', label: 'CR3', sortable: false, align: 'right', category: 'Conversions' },
+  // Bookings
+  { key: 'bookings_total', label: 'Séances bookées', sortable: false, align: 'right', category: 'Bookings' },
+  { key: 'cpsb', label: 'CPSb', sortable: false, align: 'right', category: 'Bookings' },
+  { key: 'bookings_show_up', label: 'Séances présentes', sortable: false, align: 'right', category: 'Bookings' },
+  { key: 'cpsp', label: 'CPSp', sortable: false, align: 'right', category: 'Bookings' },
+  { key: 'no_show_rate', label: '% No show', sortable: false, align: 'right', category: 'Bookings' },
+  // Closing
+  { key: 'closings', label: 'Closings', sortable: false, align: 'right', category: 'Closing' },
+  { key: 'cpclose', label: 'CPClose', sortable: false, align: 'right', category: 'Closing' },
+  { key: 'closing_rate', label: '% Closing', sortable: false, align: 'right', category: 'Closing' },
+  // Financier
+  { key: 'deal_amount', label: 'CA contracté', sortable: false, align: 'right', category: 'Financier' },
+  { key: 'cash_collected', label: 'Cash collecté', sortable: false, align: 'right', category: 'Financier' },
+  { key: 'marge_brute', label: 'Marge brute', sortable: false, align: 'right', category: 'Financier' },
+]
 
-  if (campaignType === 'follow_ads') {
-    base.push({ key: 'cpm', label: 'CPM', sortable: true, align: 'right' })
-    base.push({ key: 'cost_per_click', label: 'Coût/clic', sortable: true, align: 'right' })
-  } else {
-    base.push({ key: 'leads', label: 'Leads', sortable: true, align: 'right' })
-    base.push({ key: 'cpl', label: 'CPL', sortable: true, align: 'right' })
-  }
-  return base
+// Category display order for the column picker
+const CATEGORY_ORDER = ['Meta Ads', 'Video', 'Appels', 'Conversions', 'Bookings', 'Closing', 'Financier']
+
+// Default visible columns per campaign type
+const DEFAULT_VISIBLE_LEADFORM: ColumnKey[] = [
+  'name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl',
+]
+const DEFAULT_VISIBLE_FOLLOW_ADS: ColumnKey[] = [
+  'name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'cpm', 'cost_per_click',
+]
+const DEFAULT_VISIBLE_ALL: ColumnKey[] = [
+  'name', 'status', 'campaign_type', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl',
+]
+
+// Build the available columns for a given campaignType.
+function getColumnsForType(campaignType: CampaignType | 'all'): ColumnDef[] {
+  return ALL_COLUMN_DEFS.filter(col => {
+    // campaign_type column only when filter is 'all'
+    if (col.key === 'campaign_type' && campaignType !== 'all') return false
+    return true
+  })
+}
+
+function getDefaultVisibleCols(campaignType: CampaignType | 'all'): ColumnKey[] {
+  if (campaignType === 'follow_ads') return DEFAULT_VISIBLE_FOLLOW_ADS
+  if (campaignType === 'all') return DEFAULT_VISIBLE_ALL
+  return DEFAULT_VISIBLE_LEADFORM
 }
 
 function formatEuro(n: number): string {
@@ -54,6 +136,24 @@ function formatEuro(n: number): string {
 
 function formatNumber(n: number): string {
   return n.toLocaleString('fr-FR')
+}
+
+function formatCurrency(n: number): string {
+  return n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+function formatPct(n: number): string {
+  return n.toFixed(1) + '%'
+}
+
+/** Returns a colored percentage span: green if above threshold, red if below (inverted if `invertColor`). */
+function formatPctColored(value: number, threshold: number, invertColor = false): React.ReactNode {
+  const isGood = invertColor ? value < threshold : value >= threshold
+  return (
+    <span style={{ color: isGood ? '#38A169' : '#E53E3E', fontWeight: 500 }}>
+      {value.toFixed(1)}%
+    </span>
+  )
 }
 
 function getStatusLabel(status: string): { label: string; bg: string; color: string } {
@@ -110,12 +210,27 @@ const inputStyle: React.CSSProperties = {
   width: 220,
 }
 
-export default function AdsTableTab({ data, loading, tabKey, campaignType, onRowClick }: AdsTableTabProps) {
+export default function AdsTableTab({ data, loading, tabKey, campaignType, onRowClick, dateFrom, dateTo }: AdsTableTabProps) {
   const [sort, setSort] = useState<SortState>(null) // null = default (spend desc)
   const [search, setSearch] = useState('')
+  const [crmData, setCrmData] = useState<CrmFunnelData | null>(null)
 
   // Available columns depend on the campaign type filter
   const availableColumns = useMemo(() => getColumnsForType(campaignType), [campaignType])
+
+  // Grouped columns for the picker
+  const columnsByCategory = useMemo(() => {
+    const map = new Map<string, ColumnDef[]>()
+    for (const col of availableColumns) {
+      const list = map.get(col.category) ?? []
+      list.push(col)
+      map.set(col.category, list)
+    }
+    return CATEGORY_ORDER.filter(cat => map.has(cat)).map(cat => ({
+      category: cat,
+      columns: map.get(cat)!,
+    }))
+  }, [availableColumns])
 
   // localStorage key includes campaignType so prefs are scoped per type
   const storageKey = `ads-columns-${tabKey}-${campaignType}`
@@ -129,7 +244,7 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
         } catch { /* ignore */ }
       }
     }
-    return new Set(availableColumns.map(c => c.key))
+    return new Set(getDefaultVisibleCols(campaignType))
   })
   const [showColumnPicker, setShowColumnPicker] = useState(false)
 
@@ -144,8 +259,23 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
         return
       } catch { /* ignore */ }
     }
-    setVisibleCols(new Set(availableColumns.map(c => c.key)))
-  }, [storageKey, availableColumns])
+    setVisibleCols(new Set(getDefaultVisibleCols(campaignType)))
+  }, [storageKey, campaignType])
+
+  // Fetch CRM funnel data
+  useEffect(() => {
+    const effectiveDateFrom = dateFrom ?? new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+    const effectiveDateTo = dateTo ?? new Date().toISOString().slice(0, 10)
+
+    let cancelled = false
+    fetch(`/api/performance/crm-funnel?date_from=${effectiveDateFrom}&date_to=${effectiveDateTo}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(json => {
+        if (!cancelled && json?.data) setCrmData(json.data as CrmFunnelData)
+      })
+      .catch(() => { /* non-critical */ })
+    return () => { cancelled = true }
+  }, [dateFrom, dateTo])
 
   // Persist column prefs
   function toggleColumn(key: ColumnKey) {
@@ -176,6 +306,7 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
 
   // Helper: get sortable value for a row + key (handles calculated fields like cpm, cost_per_click)
   function getRowValue(row: (typeof filtered)[0], key: SortKey): number | string {
+    if (CRM_COLUMNS.has(key)) return 0 // CRM columns are global, not sortable per-row
     if (key === 'cpm') {
       return row.impressions > 0 ? (row.spend / row.impressions) * 1000 : 0
     }
@@ -224,6 +355,11 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
     if (!sort || sort.key !== key) return ''
     return sort.dir === 'asc' ? ' ↑' : ' ↓'
   }
+
+  // Helpers for CRM-derived KPIs (use kpis from data + crmData)
+  const kpis = data?.kpis
+  const totalSpend = kpis?.spend ?? 0
+  const totalLeads = kpis?.leads ?? 0
 
   function renderCell(row: (typeof sorted)[0], col: ColumnDef) {
     switch (col.key) {
@@ -288,6 +424,89 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
         const cpc = row.clicks > 0 ? row.spend / row.clicks : null
         return cpc !== null ? formatEuro(cpc) : '—'
       }
+
+      // ── Video Meta (per-row) ──
+      case 'frequency':
+        return row.frequency != null ? row.frequency.toFixed(1) : '—'
+      case 'hook_rate':
+        return row.hook_rate != null ? formatPct(row.hook_rate) : '—'
+      case 'hold_rate_25':
+        return row.hold_rate_25 != null ? formatPct(row.hold_rate_25) : '—'
+      case 'hold_rate_50':
+        return row.hold_rate_50 != null ? formatPct(row.hold_rate_50) : '—'
+      case 'hold_rate_75':
+        return row.hold_rate_75 != null ? formatPct(row.hold_rate_75) : '—'
+
+      // ── CRM Appels (global) ──
+      case 'calls_total':
+        return crmData ? formatNumber(crmData.calls_total) : '—'
+      case 'calls_reached':
+        return crmData ? formatNumber(crmData.calls_reached) : '—'
+      case 'cpar':
+        return crmData && crmData.calls_reached > 0
+          ? formatEuro(totalSpend / crmData.calls_reached)
+          : '—'
+      case 'joignabilite':
+        return crmData && crmData.calls_total > 0
+          ? formatPctColored((crmData.calls_reached / crmData.calls_total) * 100, 60)
+          : '—'
+
+      // ── CRM Conversions (global) ──
+      case 'cr1': {
+        // CR1 = leads / clicks
+        const clicks = kpis?.clicks ?? 0
+        return clicks > 0 ? formatPctColored((totalLeads / clicks) * 100, 5) : '—'
+      }
+      case 'cr2':
+        // CR2 = calls_reached / leads
+        return crmData && totalLeads > 0
+          ? formatPctColored((crmData.calls_reached / totalLeads) * 100, 30)
+          : '—'
+      case 'cr3':
+        // CR3 = closings / bookings_show_up
+        return crmData && crmData.bookings_show_up > 0
+          ? formatPctColored((crmData.closings / crmData.bookings_show_up) * 100, 20)
+          : '—'
+
+      // ── CRM Bookings (global) ──
+      case 'bookings_total':
+        return crmData ? formatNumber(crmData.bookings_total) : '—'
+      case 'cpsb':
+        return crmData && crmData.bookings_total > 0
+          ? formatEuro(totalSpend / crmData.bookings_total)
+          : '—'
+      case 'bookings_show_up':
+        return crmData ? formatNumber(crmData.bookings_show_up) : '—'
+      case 'cpsp':
+        return crmData && crmData.bookings_show_up > 0
+          ? formatEuro(totalSpend / crmData.bookings_show_up)
+          : '—'
+      case 'no_show_rate': {
+        if (!crmData || crmData.bookings_total === 0) return '—'
+        const noShowPct = ((crmData.bookings_total - crmData.bookings_show_up) / crmData.bookings_total) * 100
+        // High no-show is bad → invert color logic
+        return formatPctColored(noShowPct, 30, true)
+      }
+
+      // ── CRM Closing (global) ──
+      case 'closings':
+        return crmData ? formatNumber(crmData.closings) : '—'
+      case 'cpclose':
+        return crmData && crmData.closings > 0
+          ? formatEuro(totalSpend / crmData.closings)
+          : '—'
+      case 'closing_rate':
+        return crmData && crmData.bookings_show_up > 0
+          ? formatPctColored((crmData.closings / crmData.bookings_show_up) * 100, 20)
+          : '—'
+
+      // ── Financier (global) ──
+      case 'deal_amount':
+        return crmData ? formatCurrency(crmData.deal_amount_total) : '—'
+      case 'cash_collected':
+        return crmData ? formatCurrency(crmData.cash_collected_total) : '—'
+      case 'marge_brute':
+        return crmData ? formatCurrency(crmData.deal_amount_total - totalSpend) : '—'
     }
   }
 
@@ -328,35 +547,51 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
               background: 'var(--bg-elevated)',
               border: '1px solid var(--border-primary)',
               borderRadius: 8,
-              padding: 8,
+              padding: '8px 4px',
               zIndex: 50,
-              minWidth: 160,
+              minWidth: 200,
+              maxHeight: 420,
+              overflowY: 'auto',
               boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
             }}>
-              {availableColumns.map(col => (
-                <label
-                  key={col.key}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '5px 8px',
-                    borderRadius: 4,
-                    cursor: col.key === 'name' ? 'default' : 'pointer',
-                    opacity: col.key === 'name' ? 0.5 : 1,
-                    fontSize: 12,
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={visibleCols.has(col.key)}
-                    disabled={col.key === 'name'}
-                    onChange={() => toggleColumn(col.key)}
-                    style={{ accentColor: '#1877F2' }}
-                  />
-                  {col.label}
-                </label>
+              {columnsByCategory.map(({ category, columns: cols }) => (
+                <div key={category}>
+                  <div style={{
+                    padding: '8px 10px 4px',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: 'var(--text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                  }}>
+                    {category}
+                  </div>
+                  {cols.map(col => (
+                    <label
+                      key={col.key}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '4px 10px',
+                        borderRadius: 4,
+                        cursor: col.key === 'name' ? 'default' : 'pointer',
+                        opacity: col.key === 'name' ? 0.5 : 1,
+                        fontSize: 12,
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={visibleCols.has(col.key)}
+                        disabled={col.key === 'name'}
+                        onChange={() => toggleColumn(col.key)}
+                        style={{ accentColor: '#1877F2' }}
+                      />
+                      {col.label}
+                    </label>
+                  ))}
+                </div>
               ))}
             </div>
           )}
