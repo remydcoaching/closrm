@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Monitor, Smartphone, Tablet, Save, Globe, Check, Undo2, Redo2, ExternalLink, Copy, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Monitor, Smartphone, Tablet, Eye, Globe, Check, Undo2, Redo2, ExternalLink, Copy, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import type {
   FunnelPage,
@@ -612,26 +612,41 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           </button>
         </div>
 
-        {/* Save */}
+        {/* T-028 Phase 18 — Bouton "Prévisualiser" remplace "Sauvegarder"
+            (l'autosave debounced 1.5s rend le bouton save inutile).
+            Ouvre la page active du funnel en plein écran dans un nouvel onglet
+            pour que le coach voie le rendu final avec tous les effets (reveal
+            au scroll, etc.) qui ne marchent pas dans le preview réduit du builder. */}
         <button
-          onClick={handleSave}
-          disabled={saving}
+          onClick={() => {
+            const activePage = pages.find(p => p.id === activePageId)
+            const pageSlug = activePage?.slug ?? pages[0]?.slug
+            const url = buildPublicFunnelUrl(workspaceSlug, funnel.slug, pageSlug ?? null)
+            if (url) {
+              window.open(url, '_blank')
+            } else {
+              // Fallback si pas de slug workspace : ouvrir quand même le funnel
+              // en mode "preview" via la route publique (qui retournera 404 si
+              // le funnel n'est pas publié, mais c'est OK comme feedback)
+              alert('Publie d\'abord ton funnel pour le prévisualiser en plein écran.')
+            }
+          }}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 16px', fontSize: 12, fontWeight: 600,
-            background: saved ? 'rgba(56,161,105,0.1)' : 'rgba(255,255,255,0.04)',
-            color: saved ? '#38A169' : 'var(--text-primary, #ccc)',
-            border: saved ? '1px solid rgba(56,161,105,0.3)' : '1px solid var(--border-primary, #262626)',
+            background: 'rgba(255,255,255,0.04)',
+            color: 'var(--text-primary, #ccc)',
+            border: '1px solid var(--border-primary, #262626)',
             borderRadius: 8,
-            cursor: saving ? 'not-allowed' : 'pointer', flexShrink: 0,
-            opacity: saving ? 0.6 : 1,
+            cursor: 'pointer', flexShrink: 0,
             transition: 'all 0.2s ease',
           }}
-          onMouseEnter={e => { if (!saving) e.currentTarget.style.borderColor = '#444' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = saved ? 'rgba(56,161,105,0.3)' : 'var(--border-primary, #262626)' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#444' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-primary, #262626)' }}
+          title="Ouvrir un aperçu plein écran dans un nouvel onglet"
         >
-          {saved ? <Check size={14} /> : <Save size={14} />}
-          {saving ? 'Sauvegarde...' : saved ? 'Sauvegardé' : 'Sauvegarder'}
+          <Eye size={14} />
+          Prévisualiser
         </button>
 
         {/* Publish / Unpublish — T-028 Phase 14 fix : feedback correct
@@ -710,8 +725,11 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           )
         }
 
-        // Cas 3 : on a le slug workspace — on peut construire l'URL
-        const publicUrl = buildPublicFunnelUrl(workspaceSlug, funnel.slug, pageSlug)
+        // Cas 3 : on a le slug workspace — on construit l'URL avec la PAGE ACTIVE
+        // (pas toujours la première page — T-028 Phase 18)
+        const activePage = pages.find(p => p.id === activePageId)
+        const activePageSlug = activePage?.slug ?? pageSlug
+        const publicUrl = buildPublicFunnelUrl(workspaceSlug, funnel.slug, activePageSlug)
         if (!publicUrl) return null
         return (
           <div style={{

@@ -84,7 +84,7 @@ export default function FunnelCard({ funnel, workspaceSlug, workspaceSlugFetched
           background: isPublished ? 'rgba(56,161,105,0.12)' : 'rgba(255,255,255,0.06)',
           color: isPublished ? '#38A169' : '#888',
         }}>
-          {isPublished ? 'Publie' : 'Brouillon'}
+          {isPublished ? 'Publié' : 'Brouillon'}
         </span>
       </div>
 
@@ -191,7 +191,7 @@ export default function FunnelCard({ funnel, workspaceSlug, workspaceSlugFetched
           Le conteneur reste `position: absolute` avec bottom/right pour flotter
           au-dessus du contenu au hover sans décaler la mise en page de la card. */}
       {hovered && (
-        <div style={{ position: 'absolute', bottom: 16, right: 16 }}>
+        <div style={{ position: 'absolute', top: 16, left: 16 }}>
           {confirmDelete ? (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button
