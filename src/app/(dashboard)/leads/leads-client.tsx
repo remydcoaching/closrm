@@ -8,6 +8,7 @@ import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
 import LeadFilters from '@/components/leads/LeadFilters'
 import LeadForm from '@/components/leads/LeadForm'
+import ClosingModal from '@/components/leads/ClosingModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import { format } from 'date-fns'
@@ -63,6 +64,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   const [tagInput, setTagInput] = useState('')
   const [confirm, setConfirm] = useState<{ title: string; message: string; danger?: boolean; onConfirm: () => void } | null>(null)
   const [scheduleTarget, setScheduleTarget] = useState<Lead | null>(null)
+  const [closingTarget, setClosingTarget] = useState<Lead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
   const dropdownPanelRef = useRef<HTMLDivElement>(null)
   const tagInputRef = useRef<HTMLInputElement>(null)
@@ -165,6 +167,10 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
 
   function setStatus(lead: Lead, status: LeadStatus) {
     setDropdown(null)
+    if (status === 'clos') {
+      setClosingTarget(lead)
+      return
+    }
     patchLead(lead.id, { status })
   }
 
@@ -568,6 +574,23 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
           confirmDanger={confirm.danger}
           onConfirm={confirm.onConfirm}
           onCancel={() => setConfirm(null)}
+        />
+      )}
+
+      {closingTarget && (
+        <ClosingModal
+          leadName={`${closingTarget.first_name} ${closingTarget.last_name}`}
+          onClose={() => setClosingTarget(null)}
+          onConfirm={(data) => {
+            patchLead(closingTarget.id, {
+              status: 'clos',
+              deal_amount: data.deal_amount,
+              deal_installments: data.deal_installments,
+              cash_collected: data.cash_collected,
+              closed_at: new Date().toISOString(),
+            } as Partial<Lead>)
+            setClosingTarget(null)
+          }}
         />
       )}
 

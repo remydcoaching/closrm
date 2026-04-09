@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check, Sparkles } from 'lucide-react'
 import { Lead, Call, FollowUp, LeadStatus, IgConversation, IgMessage } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
+import ClosingModal from '@/components/leads/ClosingModal'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
 import CallOutcomeBadge from '@/components/closing/CallOutcomeBadge'
@@ -29,6 +30,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   const [editValue, setEditValue] = useState('')
   const [newTag, setNewTag] = useState('')
   const [notes, setNotes] = useState('')
+  const [showClosingModal, setShowClosingModal] = useState(false)
   const notesTimer = useRef<NodeJS.Timeout>(null)
 
   // Tab state
@@ -232,7 +234,10 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   const active = lead.status === s
                   const cfg = STATUS_CONFIG[s]
                   return (
-                    <button key={s} onClick={() => patchLead({ status: s })} style={{
+                    <button key={s} onClick={() => {
+                      if (s === 'clos') { setShowClosingModal(true); return }
+                      patchLead({ status: s })
+                    }} style={{
                       padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer',
                       border: active ? `2px solid ${cfg.color}` : '1px solid var(--border-primary)',
                       background: active ? cfg.bg : 'transparent', color: active ? cfg.color : 'var(--text-muted)',
@@ -379,6 +384,23 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
           </>
         )}
       </div>
+
+      {showClosingModal && lead && (
+        <ClosingModal
+          leadName={`${lead.first_name} ${lead.last_name}`}
+          onClose={() => setShowClosingModal(false)}
+          onConfirm={(data) => {
+            setShowClosingModal(false)
+            patchLead({
+              status: 'clos',
+              deal_amount: data.deal_amount,
+              deal_installments: data.deal_installments,
+              cash_collected: data.cash_collected,
+              closed_at: new Date().toISOString(),
+            } as Partial<Lead>)
+          }}
+        />
+      )}
     </>
   )
 }

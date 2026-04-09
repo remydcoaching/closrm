@@ -59,6 +59,10 @@ export interface Lead {
   email_unsubscribed: boolean
   email_unsubscribed_at: string | null
   last_activity_at: string | null
+  deal_amount: number | null
+  deal_installments: number
+  cash_collected: number
+  closed_at: string | null
   created_at: string
   updated_at: string
 }

@@ -22,6 +22,10 @@ export const updateLeadSchema = z.object({
   notes: z.string().max(5000).optional(),
   reached: z.boolean().optional(),
   call_attempts: z.number().int().min(0).optional(),
+  deal_amount: z.number().min(0).nullable().optional(),
+  deal_installments: z.number().int().min(1).max(12).optional(),
+  cash_collected: z.number().min(0).optional(),
+  closed_at: z.string().datetime().nullable().optional(),
 })
 
 export const leadFiltersSchema = z.object({
