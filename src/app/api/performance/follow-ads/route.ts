@@ -69,30 +69,50 @@ async function fetchFunnelData(
     .gte('created_at', dateFrom)
     .lte('created_at', dateTo + 'T23:59:59.999Z')
 
-  // 3. Conversations
-  const { count: conversations } = await supabase
-    .from('ig_conversations')
-    .select('id', { count: 'exact', head: true })
+  // 3. Conversations — only IG conversations linked to follow_ads/instagram_ads leads
+  // First get lead IDs from follow ads sources
+  const { data: followAdsLeads } = await supabase
+    .from('leads')
+    .select('id')
     .eq('workspace_id', workspaceId)
-    .gte('created_at', dateFrom)
-    .lte('created_at', dateTo + 'T23:59:59.999Z')
+    .in('source', ['follow_ads', 'instagram_ads'])
 
-  // 4. Appointments (all bookings in period)
-  const { count: appointments } = await supabase
-    .from('bookings')
-    .select('id', { count: 'exact', head: true })
-    .eq('workspace_id', workspaceId)
-    .gte('scheduled_at', dateFrom)
-    .lte('scheduled_at', dateTo + 'T23:59:59.999Z')
+  const followAdsLeadIds = (followAdsLeads ?? []).map(l => l.id)
 
-  // 5. Show-ups (completed or confirmed bookings)
-  const { count: showUps } = await supabase
-    .from('bookings')
-    .select('id', { count: 'exact', head: true })
-    .eq('workspace_id', workspaceId)
-    .in('status', ['completed', 'confirmed'])
-    .gte('scheduled_at', dateFrom)
-    .lte('scheduled_at', dateTo + 'T23:59:59.999Z')
+  let conversations = 0
+  if (followAdsLeadIds.length > 0) {
+    const { count } = await supabase
+      .from('ig_conversations')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .in('lead_id', followAdsLeadIds)
+    conversations = count ?? 0
+  }
+
+  // 4. Appointments — only bookings linked to follow_ads/instagram_ads leads
+  let appointments = 0
+  let showUps = 0
+  if (followAdsLeadIds.length > 0) {
+    const { count: apptCount } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .in('lead_id', followAdsLeadIds)
+      .gte('scheduled_at', dateFrom)
+      .lte('scheduled_at', dateTo + 'T23:59:59.999Z')
+    appointments = apptCount ?? 0
+
+    // 5. Show-ups — only completed/confirmed bookings for follow ads leads
+    const { count: showCount } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .in('lead_id', followAdsLeadIds)
+      .in('status', ['completed', 'confirmed'])
+      .gte('scheduled_at', dateFrom)
+      .lte('scheduled_at', dateTo + 'T23:59:59.999Z')
+    showUps = showCount ?? 0
+  }
 
   return {
     profile_visits: profileVisits,

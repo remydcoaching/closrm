@@ -243,18 +243,18 @@ export default function CostAnalysis({
           overflow: 'hidden',
         }}>
           <CostRow
-            label="Cost Per Follower"
+            label="Cout par abonne"
             value={formatEuro(cpf)}
             change={formatChange(cpf, cpfPrev)}
             previous={formatEuro(cpfPrev)}
-            target="4.00 \u20AC"
+            target="4,00 \u20AC"
           />
           <CostRow
-            label="Cost Per Appointment"
+            label="Cout par RDV"
             value={formatEuro(cpa)}
             change={formatChange(cpa, cpaPrev)}
             previous={formatEuro(cpaPrev)}
-            target="120.00 \u20AC"
+            target="120,00 \u20AC"
             isAlt
           />
         </div>
@@ -343,7 +343,7 @@ export default function CostAnalysis({
                 {formatNumber(followers)}
               </div>
               <div style={{ fontSize: 10, color: 'var(--text-muted, #666)' }}>
-                Total Followers
+                Total abonnes
               </div>
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function CostAnalysis({
                 {formatNumber(profileVisits)}
               </div>
               <div style={{ fontSize: 10, color: 'var(--text-muted, #666)' }}>
-                Profile Visits
+                Visites du profil
               </div>
             </div>
           </div>
