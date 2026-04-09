@@ -407,4 +407,18 @@ Chaque amélioration suit ce format :
 
 ---
 
-*Mis a jour le 2026-04-08 par Claude Code — ClosRM*
+### [A-013] Indicateurs personnalises dans la table Ads
+- **Contexte :** Le coach veut creer ses propres KPIs comme sur Meta Ads Manager
+- **Description :** Builder d'indicateurs custom : nom + formule (2 metriques + operateur) + format (%, €, nombre) + seuils couleur (vert/orange/rouge). Stocke en DB par workspace. Apparait dans le column picker.
+- **Priorite estimee :** Moyenne
+- **Effort estime :** Eleve
+
+### [A-014] Selecteur de compte publicitaire Meta dans Integrations
+- **Contexte :** Si le coach a plusieurs comptes pub Meta, ClosRM prend le premier automatiquement (souvent le mauvais)
+- **Description :** Dropdown dans la carte Meta sur la page Integrations pour choisir parmi les comptes pub disponibles. Appelle /api/integrations/meta/switch-ad-account.
+- **Priorite estimee :** Haute
+- **Effort estime :** Faible
+
+---
+
+*Mis a jour le 2026-04-09 par Claude Code — ClosRM*
