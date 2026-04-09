@@ -86,6 +86,11 @@ export interface MetaInsightRow {
   ctr: string
   actions?: MetaInsightAction[]
   cost_per_action_type?: MetaInsightAction[]
+  video_play_actions?: { action_type: string; value: string }[]
+  video_p25_watched_actions?: { action_type: string; value: string }[]
+  video_p50_watched_actions?: { action_type: string; value: string }[]
+  video_p75_watched_actions?: { action_type: string; value: string }[]
+  frequency?: string
 }
 
 export interface InsightsParams {
@@ -291,6 +296,9 @@ export async function getInsights(
   const baseFields = [
     'spend', 'impressions', 'clicks', 'ctr',
     'actions', 'cost_per_action_type',
+    'video_play_actions', 'video_p25_watched_actions',
+    'video_p50_watched_actions', 'video_p75_watched_actions',
+    'frequency',
   ]
 
   // Add ID + name fields based on level so Meta returns them
@@ -366,6 +374,32 @@ export function extractCostPerLead(row: MetaInsightRow): number | null {
     a => a.action_type === 'lead' || a.action_type === 'offsite_conversion.fb_pixel_lead'
   )
   return cplAction ? parseFloat(cplAction.value) : null
+}
+
+// ─── Video insight helpers ──────────────────────────────────────────────────
+
+function extractVideoActionValue(
+  actions: { action_type: string; value: string }[] | undefined
+): number {
+  if (!actions) return 0
+  const action = actions.find(a => a.action_type === 'video_view')
+  return action ? parseInt(action.value, 10) : 0
+}
+
+export function extractVideoPlays(row: MetaInsightRow): number {
+  return extractVideoActionValue(row.video_play_actions)
+}
+
+export function extractVideoP25(row: MetaInsightRow): number {
+  return extractVideoActionValue(row.video_p25_watched_actions)
+}
+
+export function extractVideoP50(row: MetaInsightRow): number {
+  return extractVideoActionValue(row.video_p50_watched_actions)
+}
+
+export function extractVideoP75(row: MetaInsightRow): number {
+  return extractVideoActionValue(row.video_p75_watched_actions)
 }
 
 // ─── Lead data ───────────────────────────────────────────────────────────────

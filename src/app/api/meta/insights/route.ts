@@ -7,6 +7,10 @@ import {
   listAdObjects,
   extractLeadCount,
   extractCostPerLead,
+  extractVideoPlays,
+  extractVideoP25,
+  extractVideoP50,
+  extractVideoP75,
   type MetaCredentials,
   type InsightsParams,
   type MetaInsightRow,
@@ -23,6 +27,15 @@ interface KpisData {
   ctr: number
   leads: number
   cpl: number | null
+  frequency: number
+  video_plays: number
+  video_p25: number
+  video_p50: number
+  video_p75: number
+  hook_rate: number
+  hold_rate_25: number
+  hold_rate_50: number
+  hold_rate_75: number
 }
 
 interface BreakdownRow {
@@ -36,6 +49,15 @@ interface BreakdownRow {
   ctr: number
   leads: number
   cpl: number | null
+  frequency: number
+  video_plays: number
+  video_p25: number
+  video_p50: number
+  video_p75: number
+  hook_rate: number
+  hold_rate_25: number
+  hold_rate_50: number
+  hold_rate_75: number
 }
 
 interface DailyRow {
@@ -62,13 +84,25 @@ export interface MetaInsightsResponse {
 
 function aggregateKpis(rows: MetaInsightRow[]): KpisData {
   let spend = 0, impressions = 0, clicks = 0, leads = 0
+  let videoPlays = 0, videoP25 = 0, videoP50 = 0, videoP75 = 0
+  let frequencySum = 0, frequencyCount = 0
   for (const row of rows) {
     spend += parseFloat(row.spend || '0')
     impressions += parseInt(row.impressions || '0', 10)
     clicks += parseInt(row.clicks || '0', 10)
     leads += extractLeadCount(row)
+    videoPlays += extractVideoPlays(row)
+    videoP25 += extractVideoP25(row)
+    videoP50 += extractVideoP50(row)
+    videoP75 += extractVideoP75(row)
+    const freq = parseFloat(row.frequency || '0')
+    if (freq > 0) {
+      frequencySum += freq
+      frequencyCount++
+    }
   }
   const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0
+  const frequency = frequencyCount > 0 ? frequencySum / frequencyCount : 0
   return {
     spend: Math.round(spend * 100) / 100,
     impressions,
@@ -76,6 +110,15 @@ function aggregateKpis(rows: MetaInsightRow[]): KpisData {
     ctr: Math.round(ctr * 100) / 100,
     leads,
     cpl: leads > 0 ? Math.round((spend / leads) * 100) / 100 : null,
+    frequency: Math.round(frequency * 100) / 100,
+    video_plays: videoPlays,
+    video_p25: videoP25,
+    video_p50: videoP50,
+    video_p75: videoP75,
+    hook_rate: impressions > 0 ? Math.round((videoPlays / impressions) * 100 * 100) / 100 : 0,
+    hold_rate_25: videoPlays > 0 ? Math.round((videoP25 / videoPlays) * 100 * 100) / 100 : 0,
+    hold_rate_50: videoPlays > 0 ? Math.round((videoP50 / videoPlays) * 100 * 100) / 100 : 0,
+    hold_rate_75: videoPlays > 0 ? Math.round((videoP75 / videoPlays) * 100 * 100) / 100 : 0,
   }
 }
 
@@ -203,7 +246,7 @@ export async function GET(request: NextRequest) {
       // If filter is set but no campaigns match, return empty response
       if (mainCampaignIds && mainCampaignIds.length === 0) {
         return NextResponse.json({
-          kpis: { spend: 0, impressions: 0, clicks: 0, ctr: 0, leads: 0, cpl: null },
+          kpis: { spend: 0, impressions: 0, clicks: 0, ctr: 0, leads: 0, cpl: null, frequency: 0, video_plays: 0, video_p25: 0, video_p50: 0, video_p75: 0, hook_rate: 0, hold_rate_25: 0, hold_rate_50: 0, hold_rate_75: 0 },
           breakdown: [],
           daily: [],
           campaignTypeFilter,
@@ -314,6 +357,11 @@ export async function GET(request: NextRequest) {
       const leads = extractLeadCount(row)
       const cpl = extractCostPerLead(row)
       const rowCtr = parseFloat(row.ctr || '0')
+      const videoPlays = extractVideoPlays(row)
+      const videoP25 = extractVideoP25(row)
+      const videoP50 = extractVideoP50(row)
+      const videoP75 = extractVideoP75(row)
+      const frequency = parseFloat(row.frequency || '0')
 
       let id = ''
       let name = ''
@@ -349,6 +397,15 @@ export async function GET(request: NextRequest) {
         ctr: Math.round(rowCtr * 100) / 100,
         leads,
         cpl: cpl !== null ? Math.round(cpl * 100) / 100 : null,
+        frequency: Math.round(frequency * 100) / 100,
+        video_plays: videoPlays,
+        video_p25: videoP25,
+        video_p50: videoP50,
+        video_p75: videoP75,
+        hook_rate: impressions > 0 ? Math.round((videoPlays / impressions) * 100 * 100) / 100 : 0,
+        hold_rate_25: videoPlays > 0 ? Math.round((videoP25 / videoPlays) * 100 * 100) / 100 : 0,
+        hold_rate_50: videoPlays > 0 ? Math.round((videoP50 / videoPlays) * 100 * 100) / 100 : 0,
+        hold_rate_75: videoPlays > 0 ? Math.round((videoP75 / videoPlays) * 100 * 100) / 100 : 0,
       })
     }
 
@@ -375,6 +432,15 @@ export async function GET(request: NextRequest) {
             ctr: 0,
             leads: 0,
             cpl: null,
+            frequency: 0,
+            video_plays: 0,
+            video_p25: 0,
+            video_p50: 0,
+            video_p75: 0,
+            hook_rate: 0,
+            hold_rate_25: 0,
+            hold_rate_50: 0,
+            hold_rate_75: 0,
           })
         }
       }
@@ -396,13 +462,24 @@ export async function GET(request: NextRequest) {
 
     // Recalculate KPIs from the filtered breakdown
     let totalSpend = 0, totalImpressions = 0, totalClicks = 0, totalLeads = 0
+    let totalVideoPlays = 0, totalVideoP25 = 0, totalVideoP50 = 0, totalVideoP75 = 0
+    let freqSum = 0, freqCount = 0
     for (const row of filteredBreakdown) {
       totalSpend += row.spend
       totalImpressions += row.impressions
       totalClicks += row.clicks
       totalLeads += row.leads
+      totalVideoPlays += row.video_plays
+      totalVideoP25 += row.video_p25
+      totalVideoP50 += row.video_p50
+      totalVideoP75 += row.video_p75
+      if (row.frequency > 0) {
+        freqSum += row.frequency
+        freqCount++
+      }
     }
     const overallCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
+    const overallFrequency = freqCount > 0 ? freqSum / freqCount : 0
 
     const response: MetaInsightsResponse = {
       kpis: {
@@ -412,6 +489,15 @@ export async function GET(request: NextRequest) {
         ctr: Math.round(overallCtr * 100) / 100,
         leads: totalLeads,
         cpl: totalLeads > 0 ? Math.round((totalSpend / totalLeads) * 100) / 100 : null,
+        frequency: Math.round(overallFrequency * 100) / 100,
+        video_plays: totalVideoPlays,
+        video_p25: totalVideoP25,
+        video_p50: totalVideoP50,
+        video_p75: totalVideoP75,
+        hook_rate: totalImpressions > 0 ? Math.round((totalVideoPlays / totalImpressions) * 100 * 100) / 100 : 0,
+        hold_rate_25: totalVideoPlays > 0 ? Math.round((totalVideoP25 / totalVideoPlays) * 100 * 100) / 100 : 0,
+        hold_rate_50: totalVideoPlays > 0 ? Math.round((totalVideoP50 / totalVideoPlays) * 100 * 100) / 100 : 0,
+        hold_rate_75: totalVideoPlays > 0 ? Math.round((totalVideoP75 / totalVideoPlays) * 100 * 100) / 100 : 0,
       },
       breakdown: filteredBreakdown.sort((a, b) => b.spend - a.spend),
       daily: [],
