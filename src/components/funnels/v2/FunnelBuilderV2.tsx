@@ -173,6 +173,7 @@ export default function FunnelBuilderV2({
   // ─── Rendu ───────────────────────────────────────────────────────────────
 
   return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
     <div style={containerStyle}>
       {/* T-028b Phase 7 — keyframes globaux utilisés par les indicateurs */}
       <style>{`
@@ -205,7 +206,6 @@ export default function FunnelBuilderV2({
 
       {/* ─── COLONNE CENTRALE : PREVIEW ──────────────────────────────────── */}
       <main style={previewStyle}>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <FunnelPagePreview
             blocks={blocks}
             selectedBlockId={selectedBlockId}
@@ -214,7 +214,6 @@ export default function FunnelBuilderV2({
             mode={mode}
             funnel={funnel}
           />
-        </DndContext>
       </main>
 
       {/* ─── COLONNE DROITE : INSPECTOR ──────────────────────────────────── */}
@@ -257,6 +256,7 @@ export default function FunnelBuilderV2({
       </aside>
 
     </div>
+    </DndContext>
   )
 }
 

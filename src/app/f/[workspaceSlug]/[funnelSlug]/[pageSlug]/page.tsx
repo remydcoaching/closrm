@@ -35,6 +35,7 @@ import type {
   FunnelTextBlockConfig,
   FunnelImageBlockConfig,
   SpacerBlockConfig,
+  FunnelFooterBlockConfig,
 } from '@/types'
 
 import HeroBlock from '@/components/funnels/blocks/HeroBlock'
@@ -49,6 +50,7 @@ import CtaBlock from '@/components/funnels/blocks/CtaBlock'
 import TextBlock from '@/components/funnels/blocks/TextBlock'
 import ImageBlock from '@/components/funnels/blocks/ImageBlock'
 import SpacerBlock from '@/components/funnels/blocks/SpacerBlock'
+import FooterBlock from '@/components/funnels/blocks/FooterBlock'
 import FunnelTracker from '@/components/funnels/FunnelTracker'
 import { FunnelRenderProvider } from '@/components/funnels/FunnelRenderContext'
 import { loadFunnelDesign } from '@/lib/funnels/load-funnel-design'
@@ -119,11 +121,15 @@ function renderBlock(block: FunnelBlock) {
       content = <ImageBlock config={block.config as FunnelImageBlockConfig} />; break
     case 'spacer':
       content = <SpacerBlock config={block.config as SpacerBlockConfig} />; break
+    case 'footer':
+      content = <FooterBlock config={block.config as FunnelFooterBlockConfig} />; break
     default:
       return null
   }
-  // Chaque bloc a un id HTML pour supporter les ancres internes (#block-{id})
-  return <div key={block.id} id={`block-${block.id}`}>{content}</div>
+  // Chaque bloc a un id HTML pour supporter les ancres internes (#block-{id}).
+  // Le footer a margin-top: auto pour coller au bas de la page (flex parent).
+  const style = block.type === 'footer' ? { marginTop: 'auto' } : undefined
+  return <div key={block.id} id={`block-${block.id}`} style={style}>{content}</div>
 }
 
 // ─── Page Component ─────────────────────────────────────────────────────────

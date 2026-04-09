@@ -102,9 +102,10 @@ interface Props {
 function BlockRenderer({ block }: { block: FunnelBlock }) {
   const content = renderBlockContent(block)
   const fxClasses = getBlockEffectsClasses(block)
-  // Chaque bloc a un id HTML pour supporter les ancres internes (#block-{id})
-  if (fxClasses.length === 0) return <div id={`block-${block.id}`}>{content}</div>
-  return <div id={`block-${block.id}`} className={fxClasses.join(' ')}>{content}</div>
+  // Footer: margin-top auto pour coller au bas de la page (flex parent)
+  const style = block.type === 'footer' ? { marginTop: 'auto' } : undefined
+  if (fxClasses.length === 0) return <div id={`block-${block.id}`} style={style}>{content}</div>
+  return <div id={`block-${block.id}`} className={fxClasses.join(' ')} style={style}>{content}</div>
 }
 
 function renderBlockContent(block: FunnelBlock): React.ReactNode {
