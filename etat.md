@@ -1,7 +1,7 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-04-08
+> Derniere mise a jour : 2026-04-10
 
 ---
 
@@ -53,6 +53,9 @@
 | **Funnels v2 — Direction artistique (presets + 9 effets)** | **Remy** | **✅ Termine** | **T-028a** |
 | **Funnels v2 — Migration des 13 blocs** | **Remy** | **✅ Termine** | **T-028c** |
 | **Funnels v2 — Refonte builder UX** | **Remy** | **✅ Termine** | **T-028b** |
+| **Funnels — BookingBlock fonctionnel (calendrier integre)** | **Remy** | **✅ Termine** | **A-028a-01** |
+| **Funnels — FormBlock fonctionnel (creation lead + workflows)** | **Remy** | **✅ Termine** | **A-028a-02** |
+| **Funnels — RedirectPicker unifie + templates enrichis** | **Remy** | **✅ Termine** | **A-028a-01/02** |
 | **Module Automations (v1+v2)** | **Pierre** | **⚠️ Code OK, APIs manquantes** | **T-014, T-029** |
 | Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non demarre | T-021 |
 | Import portefeuille leads (CSV + alternatives) | Remy | ⬜ Non demarre | T-031 |
