@@ -85,11 +85,12 @@ export async function POST(request: NextRequest) {
     const serviceClient = createServiceClient()
 
     // Create Supabase Auth account
+    // is_invited flag prevents handle_new_user trigger from creating a separate workspace
     const { data: authUser, error: authError } = await serviceClient.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: full_name || '' },
+      user_metadata: { full_name: full_name || '', is_invited: true },
     })
 
     if (authError) {
