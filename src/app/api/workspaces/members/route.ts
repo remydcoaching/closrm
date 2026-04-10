@@ -9,26 +9,10 @@ export async function GET() {
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
-    const { data, error } = await supabase
+    // Fetch members
+    const { data: members, error } = await supabase
       .from('workspace_members')
-      .select(`
-        id,
-        workspace_id,
-        user_id,
-        role,
-        status,
-        permissions,
-        invited_by,
-        invited_at,
-        activated_at,
-        created_at,
-        user:users!workspace_members_user_id_fkey (
-          id,
-          email,
-          full_name,
-          avatar_url
-        )
-      `)
+      .select('id, workspace_id, user_id, role, status, permissions, invited_by, invited_at, activated_at, created_at')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: true })
 
@@ -37,13 +21,21 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Supabase returns user as array from join — flatten to single object
-    const members = (data ?? []).map((row) => ({
-      ...row,
-      user: Array.isArray(row.user) ? row.user[0] : row.user,
-    })) as WorkspaceMemberWithUser[]
+    // Fetch user profiles separately (FK is to auth.users, not public.users)
+    const userIds = (members || []).map(m => m.user_id)
+    const { data: users } = userIds.length > 0
+      ? await supabase.from('users').select('id, email, full_name, avatar_url').in('id', userIds)
+      : { data: [] }
 
-    return NextResponse.json({ data: members })
+    const userMap = new Map((users || []).map(u => [u.id, u]))
+
+    // Merge members with user data
+    const enriched = (members || []).map((row) => ({
+      ...row,
+      user: userMap.get(row.user_id) || { id: row.user_id, email: '', full_name: 'Inconnu', avatar_url: null },
+    }))
+
+    return NextResponse.json({ data: enriched })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
