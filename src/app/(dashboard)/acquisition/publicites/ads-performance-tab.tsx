@@ -177,7 +177,7 @@ export default function AdsPerformanceTab({
         />
       </div>
 
-      {/* Performance Insights */}
+      {/* Indicateurs de performance */}
       {insights.length > 0 && (
         <div>
           <div style={{ marginBottom: 20 }}>
@@ -187,13 +187,13 @@ export default function AdsPerformanceTab({
               color: 'var(--text-primary, #FFFFFF)',
               marginBottom: 4,
             }}>
-              Performance Insights
+              Indicateurs de performance
             </div>
             <div style={{
               fontSize: 13,
               color: 'var(--text-muted, #666)',
             }}>
-              Data-driven recommendations to maximize your results
+              Recommandations basees sur vos donnees pour maximiser vos resultats
             </div>
           </div>
 

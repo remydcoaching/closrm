@@ -38,13 +38,13 @@ const cardStyle: React.CSSProperties = {
 
 export default function FunnelColumn({ funnel, adSpend }: Props) {
   const steps: FunnelStep[] = [
-    { label: 'Profile Visits', value: funnel.profile_visits, conversionTo: funnel.followers },
-    { label: 'Followers', value: funnel.followers, conversionTo: funnel.qualified_followers },
-    { label: 'Qualified Followers', value: funnel.qualified_followers, conversionTo: funnel.conversations },
+    { label: 'Visites du profil', value: funnel.profile_visits, conversionTo: funnel.followers },
+    { label: 'Abonnes', value: funnel.followers, conversionTo: funnel.qualified_followers },
+    { label: 'Abonnes qualifies', value: funnel.qualified_followers, conversionTo: funnel.conversations },
     { label: 'Conversations', value: funnel.conversations, conversionTo: funnel.appointments },
-    { label: 'Appointments', value: funnel.appointments, conversionTo: funnel.show_ups },
-    { label: 'Show Ups', value: funnel.show_ups, conversionTo: funnel.cash_collected },
-    { label: 'Cash Collected', value: funnel.cash_collected, isLast: true, isCash: true },
+    { label: 'RDV pris', value: funnel.appointments, conversionTo: funnel.show_ups },
+    { label: 'Presences', value: funnel.show_ups, conversionTo: funnel.cash_collected },
+    { label: 'CA genere', value: funnel.cash_collected, isLast: true, isCash: true },
   ]
 
   const costPerFollower = funnel.followers > 0

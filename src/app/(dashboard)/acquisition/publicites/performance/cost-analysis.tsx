@@ -102,10 +102,10 @@ function CostRow({ label, value, change, previous, target, isAlt }: CostRowProps
         textAlign: 'right',
       }}>
         <span style={{ fontSize: 11, color: 'var(--text-muted, #666)' }}>
-          Precedent: {previous}
+          Precedent : {previous}
         </span>
         <span style={{ fontSize: 11, color: 'var(--text-muted, #666)' }}>
-          Target: {target}
+          Objectif : {target}
         </span>
       </div>
     </div>
@@ -243,14 +243,14 @@ export default function CostAnalysis({
           overflow: 'hidden',
         }}>
           <CostRow
-            label="Cost Per Follower"
+            label="Cout par abonne"
             value={formatEuro(cpf)}
             change={formatChange(cpf, cpfPrev)}
             previous={formatEuro(cpfPrev)}
             target="4.00 \u20AC"
           />
           <CostRow
-            label="Cost Per Appointment"
+            label="Cout par RDV"
             value={formatEuro(cpa)}
             change={formatChange(cpa, cpaPrev)}
             previous={formatEuro(cpaPrev)}
@@ -343,7 +343,7 @@ export default function CostAnalysis({
                 {formatNumber(followers)}
               </div>
               <div style={{ fontSize: 10, color: 'var(--text-muted, #666)' }}>
-                Total Followers
+                Total abonnes
               </div>
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function CostAnalysis({
                 {formatNumber(profileVisits)}
               </div>
               <div style={{ fontSize: 10, color: 'var(--text-muted, #666)' }}>
-                Profile Visits
+                Visites du profil
               </div>
             </div>
           </div>

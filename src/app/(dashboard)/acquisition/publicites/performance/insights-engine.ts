@@ -70,9 +70,9 @@ function statusFromThresholdsInverted(
 }
 
 const STATUS_LABELS: Record<PerformanceInsight['status'], string> = {
-  action_required: 'Action Required',
-  needs_optimization: 'Needs Optimization',
-  on_track: 'On Track',
+  action_required: 'Action requise',
+  needs_optimization: 'A optimiser',
+  on_track: 'En bonne voie',
 }
 
 // ─── Insight 1: Conversation-to-Appointment Gap ────────────────────────────
