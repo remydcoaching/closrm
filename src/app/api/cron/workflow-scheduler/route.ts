@@ -7,6 +7,7 @@ import { sendWhatsAppMessage } from '@/lib/whatsapp/client'
 import { sendIgMessage } from '@/lib/instagram/api'
 import { getIntegrationCredentials } from '@/lib/integrations/get-credentials'
 import { cancelBookingReminders } from '@/lib/bookings/reminders'
+import { verifyDomain } from '@/lib/email/domains'
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
     booking_no_show_fired: 0,
     booking_reminders_fired: 0,
     calendar_reminders_sent: 0,
+    email_domains_verified: 0,
     lead_inactive_fired: 0,
     errors: [] as string[],
   }
@@ -443,6 +445,46 @@ export async function GET(request: NextRequest) {
               .update({ status: 'failed', error: err instanceof Error ? err.message : 'Unknown' })
               .eq('id', reminder.id)
             results.errors.push(`Reminder ${reminder.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
+          }
+        }
+      }
+    }
+    // ─── 7. Background DNS verification for pending email domains ─────
+    {
+      const { data: pendingDomains } = await supabase
+        .from('email_domains')
+        .select('id, resend_domain_id, status')
+        .eq('status', 'pending')
+
+      if (pendingDomains) {
+        for (const domain of pendingDomains) {
+          try {
+            if (!domain.resend_domain_id) continue
+
+            const result = await verifyDomain(domain.resend_domain_id)
+            if (!result.ok || !result.domain) continue
+
+            const resendDomain = result.domain
+            const newStatus = resendDomain.status === 'verified' ? 'verified'
+              : resendDomain.status === 'failed' ? 'failed'
+              : 'pending'
+
+            const dnsRecords = (resendDomain.records ?? []).map((r: { type: string; name: string; value: string; priority?: number; status: string }) => ({
+              type: r.type,
+              name: r.name,
+              value: r.value,
+              priority: r.priority ?? null,
+              status: r.status,
+            }))
+
+            await supabase
+              .from('email_domains')
+              .update({ status: newStatus, dns_records: dnsRecords })
+              .eq('id', domain.id)
+
+            if (newStatus === 'verified') results.email_domains_verified++
+          } catch (err) {
+            results.errors.push(`Email domain ${domain.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
           }
         }
       }
