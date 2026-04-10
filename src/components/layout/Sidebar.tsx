@@ -1,13 +1,16 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
   Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
-  CalendarDays, CalendarRange, Layers, Share2, MessageCircle, Sparkles,
+  CalendarDays, CalendarRange, Layers, Share2, MessageCircle, Sparkles, Users2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { isRouteVisible } from '@/lib/permissions'
+import type { WorkspaceRole } from '@/types'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 
 const NAV = [
@@ -41,6 +44,7 @@ const NAV = [
       { label: 'Intégrations', href: '/parametres/integrations', icon: Plug },
       { label: 'Calendriers', href: '/parametres/calendriers', icon: CalendarRange },
       { label: 'Assistant IA', href: '/parametres/assistant-ia', icon: Sparkles },
+      { label: 'Equipe', href: '/parametres/equipe', icon: Users2 },
     ],
   },
 ]
@@ -49,6 +53,45 @@ export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: b
   const pathname = usePathname()
   const router = useRouter()
   const W = collapsed ? 64 : 220
+  const [userRole, setUserRole] = useState<WorkspaceRole>('admin')
+
+  useEffect(() => {
+    async function fetchRole() {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Try workspace_members first
+        const { data: member } = await supabase
+          .from('workspace_members')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle()
+
+        if (member) {
+          setUserRole(member.role as WorkspaceRole)
+          return
+        }
+
+        // Fallback to users table
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+
+        if (profile) {
+          setUserRole((profile.role === 'coach' ? 'admin' : profile.role) as WorkspaceRole)
+        }
+      } catch {
+        // Default to admin on error (most permissive — avoids hiding nav on transient failures)
+      }
+    }
+    fetchRole()
+  }, [])
 
   async function logout() {
     const supabase = createClient()
@@ -93,14 +136,17 @@ export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: b
 
       {/* Nav */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 8px' }}>
-        {NAV.map((group) => (
+        {NAV.map((group) => {
+          const visibleItems = group.items.filter(item => isRouteVisible(item.href, userRole))
+          if (visibleItems.length === 0) return null
+          return (
           <div key={group.title} style={{ marginBottom: 20 }}>
             {!collapsed && (
               <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-label)', padding: '0 10px', marginBottom: 6, letterSpacing: '0.2em', textTransform: 'uppercase' as const }}>
                 {group.title}
               </div>
             )}
-            {group.items.map((item) => {
+            {visibleItems.map((item) => {
               const Icon = item.icon
               const active = pathname === item.href || pathname.startsWith(item.href + '/')
               return (
@@ -131,7 +177,8 @@ export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: b
               )
             })}
           </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Footer */}
