@@ -19,6 +19,8 @@
 | T-025 | Follow Ads Classification + KPIs adaptés + indicateurs de santé | ✅ | 2026-04-07 |
 | A-007 | Source `follow_ads` + channel `instagram_dm` (migration 014, types, UI) | ✅ | 2026-04-07 |
 | T-026 | ❌ Followers-as-prospects ABANDONNÉE (Instagram API ne donne pas les droits) | ❌ | 2026-04-07 |
+| A-028a-01 | BookingBlock fonctionnel — calendrier intégré dans les funnels (API publique, slot picker, booking) | ✅ | 2026-04-10 |
+| A-028a-02 | FormBlock fonctionnel — soumission formulaire, création lead, triggers workflow, RedirectPicker | ✅ | 2026-04-10 |
 
 ---
 
@@ -89,9 +91,11 @@
 
 | # | Tâche | Priorité | Statut |
 |---|-------|----------|--------|
-| **T-028a** | **Funnels v2 — Direction artistique (presets + effets)** | **Haute** | **⬜** |
-| **T-028c** | **Funnels v2 — Migration des 12 blocs** | **Haute** | **⬜** (bloquée par T-028a) |
-| **T-028b** | **Funnels v2 — Refonte builder UX** | **Haute** | **⬜** (bloquée par T-028a + T-028c) |
+| **T-028a** | **Funnels v2 — Direction artistique (presets + effets)** | **Haute** | **✅** |
+| **T-028c** | **Funnels v2 — Migration des 12 blocs** | **Haute** | **✅** |
+| **T-028b** | **Funnels v2 — Refonte builder UX** | **Haute** | **✅** |
+| **A-028a-01** | **BookingBlock fonctionnel (calendrier intégré)** | **Haute** | **✅** |
+| **A-028a-02** | **FormBlock fonctionnel (lead + workflows + RedirectPicker)** | **Haute** | **✅** |
 | **T-031** | **Import portefeuille leads (CSV + alternatives)** | **Moyenne** | **⬜** |
 
 ---
@@ -111,4 +115,4 @@ avant chaque push sur ces fichiers pour éviter les conflits.
 
 ---
 
-*Mis à jour le 2026-04-07 — ClosRM*
+*Mis à jour le 2026-04-10 — ClosRM*

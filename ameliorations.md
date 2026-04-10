@@ -384,7 +384,8 @@ Chaque amélioration suit ce format :
 **Proposition :** Module séparé "Performance Insights" avec règles métier (heuristiques) ou appel à un LLM. Action steps + expected impact + statut (Action Required / On Track).
 
 ### A-028a-01 · BookingBlock → brancher sur le module Calendriers interne (T-022)
-**Priorité :** Haute (à faire dès que T-028 est validée)
+**Priorité :** Haute
+**Statut :** ✅ Implémentée le 2026-04-10 par Rémy (branche feature/remy-booking-form-blocks, PR #196 → develop)
 **Contexte :** Identifié pendant l'audit Phase 1 de T-028a le 2026-04-07.
 **Description :** Actuellement `src/components/funnels/blocks/BookingBlock.tsx` est un **simple placeholder visuel** (bordure dashed + emoji 📅 + texte "Booking intégré"). Il ne fait rien, n'est connecté à aucun calendrier, et le champ `calendarId` de la config n'est pas utilisé.
 Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (livré par Pierre en T-022 — voir `tache-022-module-calendrier-booking.md`) avec :
@@ -400,7 +401,8 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 **Scope T-028a/c (en attendant) :** garder BookingBlock visible dans la palette de blocs mais avec un label "**À venir**" et le rendre non-draggable/non-cliquable. Documenté dans la fiche T-028c.
 
 ### A-028a-02 · FormBlock → persister les submissions + créer un lead + redirection
-**Priorité :** Haute (à faire dès que T-028 est validée)
+**Priorité :** Haute
+**Statut :** ✅ Implémentée le 2026-04-10 par Rémy (branche feature/remy-booking-form-blocks, PR #196 → develop)
 **Contexte :** Identifié pendant l'audit Phase 1 de T-028a le 2026-04-07.
 **Description :** Actuellement `src/components/funnels/blocks/FormBlock.tsx` (ligne 64) fait un `console.log` sur submit et ne persiste rien. Le champ `config.redirectUrl` est défini dans le type mais jamais utilisé. Le `successMessage` est bien affiché en inline mais pas de redirection réelle.
 **Ce qu'est censé faire un FormBlock dans un funnel de coaching :** c'est le **formulaire de candidature** qui vient après la VSL ou en pop-up sur une page d'optin — il collecte prénom/nom/téléphone/email/budget/réponses qualifiantes et crée automatiquement un **lead** dans le CRM avec une source qui permet de tracer d'où il vient (funnel, page). Idéalement il déclenche aussi le trigger `lead_imported` ou équivalent du workflow engine (T-029) pour que l'automation coach se déclenche (WhatsApp de bienvenue, email, etc.).
