@@ -17,7 +17,15 @@
  */
 
 import { useState } from 'react'
-import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { arrayMove, useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
   GripVertical, X, Plus,
@@ -34,6 +42,7 @@ interface Props {
   onSelectBlock: (id: string | null) => void
   onAddBlock: (type: FunnelBlockType) => void
   onDeleteBlock: (id: string) => void
+  onReorderBlocks?: (reordered: FunnelBlock[]) => void
 }
 
 interface BlockTypeMeta {
@@ -78,8 +87,22 @@ export default function SectionsListPanel({
   onSelectBlock,
   onAddBlock,
   onDeleteBlock,
+  onReorderBlocks,
 }: Props) {
   const [showAddMenu, setShowAddMenu] = useState(false)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
+
+  function handleSidebarDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = blocks.findIndex((b) => b.id === active.id)
+    const newIndex = blocks.findIndex((b) => b.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    onReorderBlocks?.(arrayMove(blocks, oldIndex, newIndex))
+  }
 
   const handleSelectType = (type: FunnelBlockType) => {
     onAddBlock(type)
@@ -104,19 +127,21 @@ export default function SectionsListPanel({
           </span>
         </div>
       ) : (
-        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-          <div style={blocksListStyle}>
-            {blocks.map((block) => (
-              <SortableSectionRow
-                key={block.id}
-                block={block}
-                isSelected={block.id === selectedBlockId}
-                onSelect={() => onSelectBlock(block.id)}
-                onDelete={() => onDeleteBlock(block.id)}
-              />
-            ))}
-          </div>
-        </SortableContext>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSidebarDragEnd}>
+          <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+            <div style={blocksListStyle}>
+              {blocks.map((block) => (
+                <SortableSectionRow
+                  key={block.id}
+                  block={block}
+                  isSelected={block.id === selectedBlockId}
+                  onSelect={() => onSelectBlock(block.id)}
+                  onDelete={() => onDeleteBlock(block.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Bouton Ajouter une section + menu déroulant */}
