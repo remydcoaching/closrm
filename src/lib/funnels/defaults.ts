@@ -197,7 +197,8 @@ export interface FunnelPageTemplateMeta {
   id: FunnelPageTemplate
   label: string
   description: string
-  emoji: string
+  /** Nom de l'icône Lucide à afficher. */
+  icon: 'file-text' | 'video' | 'file-input' | 'heart-handshake' | 'calendar'
 }
 
 export const PAGE_TEMPLATES: readonly FunnelPageTemplateMeta[] = [
@@ -205,31 +206,31 @@ export const PAGE_TEMPLATES: readonly FunnelPageTemplateMeta[] = [
     id: 'blank',
     label: 'Page vierge',
     description: 'Hero + Texte + Footer (squelette minimal)',
-    emoji: '📄',
+    icon: 'file-text',
   },
   {
     id: 'vsl',
     label: 'Page VSL classique',
     description: 'Hero + Vidéo + Témoignages + CTA + Footer',
-    emoji: '🎬',
+    icon: 'video',
   },
   {
     id: 'capture',
     label: 'Page de capture',
     description: 'Hero + Formulaire + Footer',
-    emoji: '📧',
+    icon: 'file-input',
   },
   {
     id: 'thank-you',
     label: 'Page de remerciement',
     description: 'Hero + Texte de confirmation + Footer',
-    emoji: '🙏',
+    icon: 'heart-handshake',
   },
   {
     id: 'booking',
     label: 'Page de prise de RDV',
     description: 'Hero + Bouton de réservation + Footer',
-    emoji: '📅',
+    icon: 'calendar',
   },
 ] as const
 

@@ -22,9 +22,22 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, FileText, Video, FileInput, HeartHandshake, Calendar } from 'lucide-react'
 import type { FunnelPage } from '@/types'
 import { PAGE_TEMPLATES, type FunnelPageTemplate } from '@/lib/funnels/defaults'
+
+const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
+  'file-text': FileText,
+  'video': Video,
+  'file-input': FileInput,
+  'heart-handshake': HeartHandshake,
+  'calendar': Calendar,
+}
+
+function templateIcon(iconName: string) {
+  const Icon = ICON_MAP[iconName] ?? FileText
+  return <Icon size={16} />
+}
 
 interface Props {
   pages: FunnelPage[]
@@ -259,8 +272,8 @@ export default function FunnelPageTabs({
                     e.currentTarget.style.background = 'transparent'
                   }}
                 >
-                  <span style={{ fontSize: 18, lineHeight: 1, marginTop: 1, flexShrink: 0 }}>
-                    {template.emoji}
+                  <span style={{ lineHeight: 1, marginTop: 2, flexShrink: 0, color: 'var(--color-primary)' }}>
+                    {templateIcon(template.icon)}
                   </span>
                   <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>

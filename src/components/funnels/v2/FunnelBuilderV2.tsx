@@ -200,6 +200,7 @@ export default function FunnelBuilderV2({
           onSelectBlock={setSelectedBlockId}
           onAddBlock={handleAddBlock}
           onDeleteBlock={handleDeleteBlock}
+          onReorderBlocks={(reordered) => updateActivePageBlocks(() => reordered)}
         />
       </aside>
 
