@@ -313,8 +313,8 @@ export default function FunnelPagePreview({
       style={{
         width: '100%',
         maxWidth,
-        // Si on a un design, le background vient de --fnl-section-bg via .fnl-root.
-        // Sinon (legacy), on garde le fond blanc historique pour ne rien casser.
+        // Ne pas étirer la card sur toute la hauteur du parent flex
+        alignSelf: 'flex-start',
         background: design ? undefined : '#fff',
         boxShadow: '0 8px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05)',
         borderRadius: mode === 'mobile' ? 20 : mode === 'tablet' ? 16 : 8,

@@ -103,7 +103,7 @@
 
 /* Dans le builder, pas de min-height 100vh (sinon espace blanc sous le footer) */
 .fnl-root.fnl-root--builder {
-  min-height: auto;
+  min-height: 0 !important;
 }
 
 /* ─── Section hero (.fnl-hero) ─────────────────────────────── */
