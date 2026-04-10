@@ -20,6 +20,28 @@ export interface User {
   created_at: string
 }
 
+// ─── Team / Workspace Members ───────────────────────────────────────────────
+
+export type WorkspaceRole = 'admin' | 'setter' | 'closer'
+export type MemberStatus = 'active' | 'invited' | 'suspended'
+
+export interface WorkspaceMember {
+  id: string
+  workspace_id: string
+  user_id: string
+  role: WorkspaceRole
+  status: MemberStatus
+  permissions: Record<string, boolean>
+  invited_by: string | null
+  invited_at: string
+  activated_at: string | null
+  created_at: string
+}
+
+export interface WorkspaceMemberWithUser extends WorkspaceMember {
+  user: Pick<User, 'id' | 'email' | 'full_name' | 'avatar_url'>
+}
+
 // ─── Lead ───────────────────────────────────────────────────────────────────
 
 export type LeadStatus =
@@ -63,6 +85,7 @@ export interface Lead {
   deal_installments: number
   cash_collected: number
   closed_at: string | null
+  assigned_to: string | null
   created_at: string
   updated_at: string
 }
@@ -84,6 +107,7 @@ export interface Call {
   reached: boolean
   duration_seconds: number | null
   closer_id: string | null
+  assigned_to: string | null
   created_at: string
 }
 
