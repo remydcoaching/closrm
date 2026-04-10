@@ -177,7 +177,7 @@ export default function AdsPerformanceTab({
         />
       </div>
 
-      {/* Performance Insights */}
+      {/* Indicateurs de performance */}
       {insights.length > 0 && (
         <div>
           <div style={{ marginBottom: 20 }}>

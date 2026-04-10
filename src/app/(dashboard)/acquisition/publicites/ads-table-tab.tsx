@@ -1,67 +1,39 @@
 'use client'
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import {
   DndContext,
   closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
+  DragOverlay,
+  type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core'
 import {
+  arrayMove,
   SortableContext,
   useSortable,
   horizontalListSortingStrategy,
   verticalListSortingStrategy,
-  arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Layers, Save, X, Plus } from 'lucide-react'
 import type { MetaInsightsResponse } from '@/app/api/meta/insights/route'
-import type { CampaignType } from './health-thresholds'
-
-interface CrmFunnelData {
-  calls_total: number
-  calls_reached: number
-  bookings_total: number
-  bookings_show_up: number
-  closings: number
-  deal_amount_total: number
-  cash_collected_total: number
-}
 
 interface AdsTableTabProps {
   data: MetaInsightsResponse | null
   loading: boolean
-  tabKey: string // 'campaigns' | 'adsets' | 'ads' — used to persist column prefs per tab
-  campaignType: CampaignType | 'all'
-  onRowClick?: (id: string, name: string) => void // drill-down: click campaign → adsets, click adset → ads
+  tabKey: string
+  campaignType?: string
   dateFrom?: string
   dateTo?: string
+  onRowClick?: (id: string, name: string) => void
 }
 
-type ColumnKey =
-  | 'name' | 'status' | 'campaign_type' | 'spend' | 'impressions' | 'clicks' | 'ctr' | 'leads' | 'cpl' | 'cpm' | 'cost_per_click'
-  // Video Meta
-  | 'frequency' | 'hook_rate' | 'hold_rate_25' | 'hold_rate_50' | 'hold_rate_75'
-  // CRM funnel — Appels
-  | 'cr1' | 'calls_total' | 'calls_reached' | 'cpar' | 'joignabilite' | 'cr2'
-  // CRM funnel — Bookings
-  | 'bookings_total' | 'cpsb' | 'cr3' | 'bookings_show_up' | 'cpsp' | 'no_show_rate'
-  // CRM funnel — Closing
-  | 'closings' | 'cpclose' | 'closing_rate'
-  // Financier
-  | 'deal_amount' | 'cash_collected' | 'marge_brute'
-
-// Columns that are not sortable per-row (CRM data is global, not per-campaign)
-const CRM_COLUMNS: Set<ColumnKey> = new Set([
-  'cr1', 'calls_total', 'calls_reached', 'cpar', 'joignabilite', 'cr2',
-  'bookings_total', 'cpsb', 'cr3', 'bookings_show_up', 'cpsp', 'no_show_rate',
-  'closings', 'cpclose', 'closing_rate',
-  'deal_amount', 'cash_collected', 'marge_brute',
-])
-
-type SortKey = Exclude<ColumnKey, 'status' | 'campaign_type'>
+type ColumnKey = 'name' | 'status' | 'spend' | 'impressions' | 'clicks' | 'ctr' | 'leads' | 'cpl'
+type SortKey = Exclude<ColumnKey, 'status'>
 type SortState = { key: SortKey; dir: 'asc' | 'desc' } | null
 
 interface ColumnDef {
@@ -69,87 +41,56 @@ interface ColumnDef {
   label: string
   sortable: boolean
   align: 'left' | 'right'
-  category: string
+  defaultVisible: boolean
 }
 
-// All column definitions grouped by category
-const ALL_COLUMN_DEFS: ColumnDef[] = [
-  // Meta Ads (core — always present)
-  { key: 'name', label: 'Nom', sortable: true, align: 'left', category: 'Meta Ads' },
-  { key: 'status', label: 'Statut', sortable: false, align: 'left', category: 'Meta Ads' },
-  { key: 'campaign_type', label: 'Type', sortable: false, align: 'left', category: 'Meta Ads' },
-  { key: 'spend', label: 'Dépensé', sortable: true, align: 'right', category: 'Meta Ads' },
-  { key: 'impressions', label: 'Impressions', sortable: true, align: 'right', category: 'Meta Ads' },
-  { key: 'cpm', label: 'CPM', sortable: true, align: 'right', category: 'Meta Ads' },
-  { key: 'clicks', label: 'Clics', sortable: true, align: 'right', category: 'Meta Ads' },
-  { key: 'cost_per_click', label: 'CPC', sortable: true, align: 'right', category: 'Meta Ads' },
-  { key: 'ctr', label: 'CTR', sortable: true, align: 'right', category: 'Meta Ads' },
-  { key: 'leads', label: 'Leads', sortable: true, align: 'right', category: 'Meta Ads' },
-  { key: 'cpl', label: 'CPL', sortable: true, align: 'right', category: 'Meta Ads' },
-  { key: 'frequency', label: 'Répétition', sortable: true, align: 'right', category: 'Meta Ads' },
-  // Video
-  { key: 'hook_rate', label: 'Hook rate', sortable: true, align: 'right', category: 'Video' },
-  { key: 'hold_rate_25', label: 'Hold 25%', sortable: true, align: 'right', category: 'Video' },
-  { key: 'hold_rate_50', label: 'Hold 50%', sortable: true, align: 'right', category: 'Video' },
-  { key: 'hold_rate_75', label: 'Hold 75%', sortable: true, align: 'right', category: 'Video' },
-  // Appels
-  { key: 'calls_total', label: 'Appels passés', sortable: false, align: 'right', category: 'Appels' },
-  { key: 'calls_reached', label: 'Appels répondus', sortable: false, align: 'right', category: 'Appels' },
-  { key: 'cpar', label: 'CPAr', sortable: false, align: 'right', category: 'Appels' },
-  { key: 'joignabilite', label: '% Joignabilité', sortable: false, align: 'right', category: 'Appels' },
-  // Conversions
-  { key: 'cr1', label: 'CR1', sortable: false, align: 'right', category: 'Conversions' },
-  { key: 'cr2', label: 'CR2', sortable: false, align: 'right', category: 'Conversions' },
-  { key: 'cr3', label: 'CR3', sortable: false, align: 'right', category: 'Conversions' },
-  // Bookings
-  { key: 'bookings_total', label: 'Séances bookées', sortable: false, align: 'right', category: 'Bookings' },
-  { key: 'cpsb', label: 'CPSb', sortable: false, align: 'right', category: 'Bookings' },
-  { key: 'bookings_show_up', label: 'Séances présentes', sortable: false, align: 'right', category: 'Bookings' },
-  { key: 'cpsp', label: 'CPSp', sortable: false, align: 'right', category: 'Bookings' },
-  { key: 'no_show_rate', label: '% No show', sortable: false, align: 'right', category: 'Bookings' },
-  // Closing
-  { key: 'closings', label: 'Closings', sortable: false, align: 'right', category: 'Closing' },
-  { key: 'cpclose', label: 'CPClose', sortable: false, align: 'right', category: 'Closing' },
-  { key: 'closing_rate', label: '% Closing', sortable: false, align: 'right', category: 'Closing' },
-  // Financier
-  { key: 'deal_amount', label: 'CA contracté', sortable: false, align: 'right', category: 'Financier' },
-  { key: 'cash_collected', label: 'Cash collecté', sortable: false, align: 'right', category: 'Financier' },
-  { key: 'marge_brute', label: 'Marge brute', sortable: false, align: 'right', category: 'Financier' },
-]
+/* ── Saved views ─────────────────────────────────────────────── */
 
-const COLUMN_DEF_MAP = new Map(ALL_COLUMN_DEFS.map(c => [c.key, c]))
-
-// Category display order for the column picker
-const CATEGORY_ORDER = ['Meta Ads', 'Video', 'Appels', 'Conversions', 'Bookings', 'Closing', 'Financier']
-
-// Default visible columns per campaign type (ordered)
-const DEFAULT_VISIBLE_LEADFORM: ColumnKey[] = [
-  'name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl',
-]
-const DEFAULT_VISIBLE_FOLLOW_ADS: ColumnKey[] = [
-  'name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'cpm', 'cost_per_click',
-]
-const DEFAULT_VISIBLE_ALL: ColumnKey[] = [
-  'name', 'status', 'campaign_type', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl',
-]
-
-// Build the available columns for a given campaignType.
-function getColumnsForType(campaignType: CampaignType | 'all'): ColumnDef[] {
-  return ALL_COLUMN_DEFS.filter(col => {
-    // campaign_type column only when filter is 'all'
-    if (col.key === 'campaign_type' && campaignType !== 'all') return false
-    return true
-  })
+interface SavedView {
+  id: string
+  name: string
+  columns: ColumnKey[]
 }
 
-function getDefaultVisibleCols(campaignType: CampaignType | 'all'): ColumnKey[] {
-  if (campaignType === 'follow_ads') return DEFAULT_VISIBLE_FOLLOW_ADS
-  if (campaignType === 'all') return DEFAULT_VISIBLE_ALL
-  return DEFAULT_VISIBLE_LEADFORM
+const ALL_COLUMN_KEYS: ColumnKey[] = ['name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl']
+
+const DEFAULT_VIEWS: SavedView[] = [
+  { id: 'essential', name: 'Essentiel', columns: ['name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl'] },
+  { id: 'video', name: 'Performance vidéo', columns: ['name', 'status', 'spend', 'impressions', 'clicks', 'ctr'] },
+  { id: 'funnel', name: 'Funnel complet', columns: ['name', 'status', 'spend', 'leads', 'cpl', 'clicks', 'ctr'] },
+]
+
+function loadCustomViews(tabKey: string): SavedView[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(`ads-views-${tabKey}`)
+    if (raw) return JSON.parse(raw) as SavedView[]
+  } catch { /* ignore */ }
+  return []
 }
 
-/** All valid ColumnKey values for validation */
-const ALL_COLUMN_KEYS = new Set(ALL_COLUMN_DEFS.map(c => c.key))
+function saveCustomViews(tabKey: string, views: SavedView[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`ads-views-${tabKey}`, JSON.stringify(views))
+  }
+}
+
+/* ── Column definitions ──────────────────────────────────────── */
+
+const ALL_COLUMNS: ColumnDef[] = [
+  { key: 'name', label: 'Nom', sortable: true, align: 'left', defaultVisible: true },
+  { key: 'status', label: 'Statut', sortable: false, align: 'left', defaultVisible: true },
+  { key: 'spend', label: 'Dépensé', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'impressions', label: 'Impressions', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'clicks', label: 'Clics', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'ctr', label: 'CTR', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'leads', label: 'Leads', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'cpl', label: 'CPL', sortable: true, align: 'right', defaultVisible: true },
+]
+
+const COLUMN_MAP = new Map(ALL_COLUMNS.map(c => [c.key, c]))
+
+/* ── Helpers ─────────────────────────────────────────────────── */
 
 function formatEuro(n: number): string {
   return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '€'
@@ -157,24 +98,6 @@ function formatEuro(n: number): string {
 
 function formatNumber(n: number): string {
   return n.toLocaleString('fr-FR')
-}
-
-function formatCurrency(n: number): string {
-  return n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })
-}
-
-function formatPct(n: number): string {
-  return n.toFixed(1) + '%'
-}
-
-/** Returns a colored percentage span: green if above threshold, red if below (inverted if `invertColor`). */
-function formatPctColored(value: number, threshold: number, invertColor = false): React.ReactNode {
-  const isGood = invertColor ? value < threshold : value >= threshold
-  return (
-    <span style={{ color: isGood ? '#38A169' : '#E53E3E', fontWeight: 500 }}>
-      {value.toFixed(1)}%
-    </span>
-  )
 }
 
 function getStatusLabel(status: string): { label: string; bg: string; color: string } {
@@ -196,10 +119,11 @@ function getStatusLabel(status: string): { label: string; bg: string; color: str
     case 'DISAPPROVED':
       return { label: 'Problème', bg: 'rgba(229,62,62,0.08)', color: '#E53E3E' }
     default:
-      // Covers statuses like PREAPPROVED, etc.
       return { label: 'Brouillon', bg: 'rgba(100,100,100,0.1)', color: '#888' }
   }
 }
+
+/* ── Styles ──────────────────────────────────────────────────── */
 
 const thStyle: React.CSSProperties = {
   padding: '8px 12px',
@@ -207,7 +131,6 @@ const thStyle: React.CSSProperties = {
   fontWeight: 600,
   color: 'var(--text-muted)',
   textAlign: 'left',
-  cursor: 'pointer',
   userSelect: 'none',
   borderBottom: '1px solid var(--border-primary)',
   whiteSpace: 'nowrap',
@@ -231,86 +154,58 @@ const inputStyle: React.CSSProperties = {
   width: 220,
 }
 
-// ── Grip icon (6 dots) for drag handles ──
-function GripIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" style={{ opacity: 0.4, flexShrink: 0 }}>
-      <circle cx="4" cy="2" r="1.2" />
-      <circle cx="8" cy="2" r="1.2" />
-      <circle cx="4" cy="6" r="1.2" />
-      <circle cx="8" cy="6" r="1.2" />
-      <circle cx="4" cy="10" r="1.2" />
-      <circle cx="8" cy="10" r="1.2" />
-    </svg>
-  )
-}
+/* ── Sortable column pill (in column picker) ─────────────────── */
 
-// ── Sortable item for the column picker (active columns section) ──
-function SortablePickerItem({
-  colKey,
-  label,
-  onToggle,
-}: {
-  colKey: ColumnKey
-  label: string
-  onToggle: (key: ColumnKey) => void
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: colKey })
+function SortableColumnPill({ colKey, label, onRemove }: { colKey: ColumnKey; label: string; onRemove: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: colKey })
 
   const style: React.CSSProperties = {
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
-    gap: 6,
-    padding: '5px 10px',
+    gap: 4,
+    padding: '3px 8px',
     borderRadius: 4,
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: 500,
     color: 'var(--text-secondary)',
-    background: isDragging ? 'rgba(24,119,242,0.08)' : 'transparent',
+    background: isDragging ? '#1a1a2e' : 'rgba(255,255,255,0.05)',
+    border: '1px solid',
+    borderColor: isDragging ? '#3b82f6' : 'var(--border-primary)',
+    cursor: isDragging ? 'grabbing' : 'grab',
+    opacity: isDragging ? 0.8 : 1,
+    boxShadow: isDragging ? '0 4px 12px rgba(59,130,246,0.3)' : 'none',
     transform: CSS.Transform.toString(transform),
     transition,
-    cursor: 'grab',
     userSelect: 'none',
   }
 
-  const isName = colKey === 'name'
-
   return (
-    <div ref={setNodeRef} style={style}>
-      <span {...attributes} {...listeners} style={{ cursor: 'grab', display: 'flex', alignItems: 'center' }}>
-        <GripIcon />
-      </span>
-      <label
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          cursor: isName ? 'default' : 'pointer',
-          opacity: isName ? 0.5 : 1,
-          flex: 1,
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        <input
-          type="checkbox"
-          checked
-          disabled={isName}
-          onChange={() => onToggle(colKey)}
-          style={{ accentColor: '#1877F2' }}
-        />
-        {label}
-      </label>
-    </div>
+    <span ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      ⠿ {label}
+      {colKey !== 'name' && (
+        <button
+          onClick={e => { e.stopPropagation(); onRemove() }}
+          onPointerDown={e => e.stopPropagation()}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            padding: 0,
+            fontSize: 12,
+            lineHeight: 1,
+            display: 'flex',
+          }}
+        >
+          <X size={10} />
+        </button>
+      )}
+    </span>
   )
 }
 
-// ── Sortable table header cell ──
+/* ── Sortable table header cell ──────────────────────────────── */
+
 function SortableHeaderCell({
   col,
   sortArrow,
@@ -320,25 +215,19 @@ function SortableHeaderCell({
   sortArrow: string
   onSort: () => void
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: col.key })
-
-  const canSort = col.sortable && col.key !== 'status' && col.key !== 'campaign_type'
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: col.key })
 
   const style: React.CSSProperties = {
     ...thStyle,
     textAlign: col.align,
-    cursor: canSort ? 'pointer' : 'default',
+    cursor: col.sortable ? 'pointer' : 'grab',
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    background: isDragging ? 'rgba(59,130,246,0.08)' : 'transparent',
+    boxShadow: isDragging ? '0 2px 8px rgba(59,130,246,0.2)' : 'none',
+    opacity: isDragging ? 0.85 : 1,
     position: 'relative',
+    zIndex: isDragging ? 10 : 'auto',
   }
 
   return (
@@ -347,138 +236,174 @@ function SortableHeaderCell({
       style={style}
       {...attributes}
       {...listeners}
-      onClick={(e) => {
-        // Only sort on click, not on drag
-        if (canSort && !isDragging) {
+      onClick={e => {
+        // Only trigger sort on click, not on drag
+        if (col.sortable && col.key !== 'status') {
           onSort()
         }
-        e.stopPropagation()
       }}
     >
-      {col.label}{canSort ? sortArrow : ''}
+      {col.label}{col.sortable && col.key !== 'status' ? sortArrow : ''}
     </th>
   )
 }
 
-export default function AdsTableTab({ data, loading, tabKey, campaignType, onRowClick, dateFrom, dateTo }: AdsTableTabProps) {
-  const [sort, setSort] = useState<SortState>(null) // null = default (spend desc)
+/* ── Main component ──────────────────────────────────────────── */
+
+export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTableTabProps) {
+  const [sort, setSort] = useState<SortState>(null)
   const [search, setSearch] = useState('')
-  const [crmData, setCrmData] = useState<CrmFunnelData | null>(null)
 
-  // Available columns depend on the campaign type filter
-  const availableColumns = useMemo(() => getColumnsForType(campaignType), [campaignType])
-  const availableKeySet = useMemo(() => new Set(availableColumns.map(c => c.key)), [availableColumns])
-
-  // localStorage key — v2 to ignore legacy saves
-  const storageKey = `ads-cols-v2-${tabKey}-${campaignType}`
-
-  // ── Ordered columns state (replaces the old Set<ColumnKey>) ──
+  // Ordered columns (replaces visibleCols Set — maintains order)
   const [orderedCols, setOrderedCols] = useState<ColumnKey[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(storageKey)
+      const saved = localStorage.getItem(`ads-cols-v2-${tabKey}`)
       if (saved) {
         try {
           const parsed = JSON.parse(saved) as ColumnKey[]
-          // Validate: all keys must be real column keys, filter out any stale ones
-          const valid = parsed.filter(k => ALL_COLUMN_KEYS.has(k))
-          if (valid.length > 0 && valid.includes('name')) return valid
+          // Validate keys
+          if (parsed.every(k => ALL_COLUMN_KEYS.includes(k))) return parsed
+        } catch { /* ignore */ }
+      }
+      // Fallback: try legacy format
+      const legacy = localStorage.getItem(`ads-columns-${tabKey}`)
+      if (legacy) {
+        try {
+          return JSON.parse(legacy) as ColumnKey[]
         } catch { /* ignore */ }
       }
     }
-    return getDefaultVisibleCols(campaignType)
+    return ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.key)
   })
+
   const [showColumnPicker, setShowColumnPicker] = useState(false)
-  const pickerRef = useRef<HTMLDivElement>(null)
 
-  // Close picker on click outside
+  // ── Views state ──
+  const [customViews, setCustomViews] = useState<SavedView[]>(() => loadCustomViews(tabKey))
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
+  const [showViewDropdown, setShowViewDropdown] = useState(false)
+  const [newViewName, setNewViewName] = useState('')
+  const [showNewViewInput, setShowNewViewInput] = useState(false)
+  const viewDropdownRef = useRef<HTMLDivElement>(null)
+
+  // ── Drag state (for column picker & header) ──
+  const [pickerDragId, setPickerDragId] = useState<string | null>(null)
+  const [headerDragId, setHeaderDragId] = useState<string | null>(null)
+
+  const pickerSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const headerSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  // Close view dropdown on outside click
   useEffect(() => {
-    if (!showColumnPicker) return
-    function handleClickOutside(e: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setShowColumnPicker(false)
+    function handleClick(e: MouseEvent) {
+      if (viewDropdownRef.current && !viewDropdownRef.current.contains(e.target as Node)) {
+        setShowViewDropdown(false)
+        setShowNewViewInput(false)
+        setNewViewName('')
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [showColumnPicker])
-
-  // When campaignType changes, restore from localStorage or reset to defaults
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const saved = localStorage.getItem(storageKey)
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as ColumnKey[]
-        const valid = parsed.filter(k => ALL_COLUMN_KEYS.has(k))
-        if (valid.length > 0 && valid.includes('name')) {
-          setOrderedCols(valid)
-          return
-        }
-      } catch { /* ignore */ }
+    if (showViewDropdown) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
     }
-    setOrderedCols(getDefaultVisibleCols(campaignType))
-  }, [storageKey, campaignType])
+  }, [showViewDropdown])
 
-  // Persist to localStorage whenever orderedCols changes
-  useEffect(() => {
+  // Persist column order
+  const persistCols = useCallback((cols: ColumnKey[]) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(storageKey, JSON.stringify(orderedCols))
+      localStorage.setItem(`ads-cols-v2-${tabKey}`, JSON.stringify(cols))
     }
-  }, [orderedCols, storageKey])
+  }, [tabKey])
 
-  // Grouped columns for the "available" section of the picker (inactive only)
-  const orderedColsSet = useMemo(() => new Set(orderedCols), [orderedCols])
+  function updateCols(cols: ColumnKey[]) {
+    setOrderedCols(cols)
+    persistCols(cols)
+    setActiveViewId(null) // custom change = no longer tracking a view
+  }
 
-  const inactiveByCategory = useMemo(() => {
-    const map = new Map<string, ColumnDef[]>()
-    for (const col of availableColumns) {
-      if (orderedColsSet.has(col.key)) continue // already active
-      const list = map.get(col.category) ?? []
-      list.push(col)
-      map.set(col.category, list)
+  function toggleColumn(key: ColumnKey) {
+    if (key === 'name') return
+    const idx = orderedCols.indexOf(key)
+    let next: ColumnKey[]
+    if (idx >= 0) {
+      next = orderedCols.filter(k => k !== key)
+    } else {
+      next = [...orderedCols, key]
     }
-    return CATEGORY_ORDER.filter(cat => map.has(cat)).map(cat => ({
-      category: cat,
-      columns: map.get(cat)!,
-    }))
-  }, [availableColumns, orderedColsSet])
+    updateCols(next)
+  }
 
-  // Fetch CRM funnel data
-  useEffect(() => {
-    const effectiveDateFrom = dateFrom ?? new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
-    const effectiveDateTo = dateTo ?? new Date().toISOString().slice(0, 10)
+  // ── View actions ──
+  function applyView(view: SavedView) {
+    // Filter to valid columns only
+    const cols = view.columns.filter(k => ALL_COLUMN_KEYS.includes(k))
+    setOrderedCols(cols)
+    persistCols(cols)
+    setActiveViewId(view.id)
+    setShowViewDropdown(false)
+  }
 
-    let cancelled = false
-    fetch(`/api/performance/crm-funnel?date_from=${effectiveDateFrom}&date_to=${effectiveDateTo}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(json => {
-        if (!cancelled && json?.data) setCrmData(json.data as CrmFunnelData)
-      })
-      .catch(() => { /* non-critical */ })
-    return () => { cancelled = true }
-  }, [dateFrom, dateTo])
+  function saveCurrentView() {
+    const name = newViewName.trim()
+    if (!name) return
+    const view: SavedView = {
+      id: `custom-${Date.now()}`,
+      name,
+      columns: [...orderedCols],
+    }
+    const next = [...customViews, view]
+    setCustomViews(next)
+    saveCustomViews(tabKey, next)
+    setActiveViewId(view.id)
+    setNewViewName('')
+    setShowNewViewInput(false)
+  }
 
-  // Toggle a column on/off
-  const toggleColumn = useCallback((key: ColumnKey) => {
-    if (key === 'name') return // can't hide name
-    setOrderedCols(prev => {
-      if (prev.includes(key)) {
-        // Remove
-        return prev.filter(k => k !== key)
-      } else {
-        // Add at end
-        return [...prev, key]
-      }
-    })
-  }, [])
+  function deleteView(id: string) {
+    const next = customViews.filter(v => v.id !== id)
+    setCustomViews(next)
+    saveCustomViews(tabKey, next)
+    if (activeViewId === id) setActiveViewId(null)
+  }
 
-  // Resolve ordered keys into ColumnDef[], filtering to only available columns
-  const columns: ColumnDef[] = useMemo(() => {
+  // ── Column picker drag ──
+  function handlePickerDragStart(e: DragStartEvent) {
+    setPickerDragId(e.active.id as string)
+  }
+
+  function handlePickerDragEnd(e: DragEndEvent) {
+    setPickerDragId(null)
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    const oldIdx = orderedCols.indexOf(active.id as ColumnKey)
+    const newIdx = orderedCols.indexOf(over.id as ColumnKey)
+    if (oldIdx < 0 || newIdx < 0) return
+    const next = arrayMove(orderedCols, oldIdx, newIdx)
+    updateCols(next)
+  }
+
+  // ── Header drag ──
+  function handleHeaderDragStart(e: DragStartEvent) {
+    setHeaderDragId(e.active.id as string)
+  }
+
+  function handleHeaderDragEnd(e: DragEndEvent) {
+    setHeaderDragId(null)
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    const oldIdx = orderedCols.indexOf(active.id as ColumnKey)
+    const newIdx = orderedCols.indexOf(over.id as ColumnKey)
+    if (oldIdx < 0 || newIdx < 0) return
+    const next = arrayMove(orderedCols, oldIdx, newIdx)
+    updateCols(next)
+  }
+
+  // Derive visible ColumnDefs from orderedCols
+  const columns = useMemo(() => {
     return orderedCols
-      .filter(key => availableKeySet.has(key))
-      .map(key => COLUMN_DEF_MAP.get(key))
+      .map(k => COLUMN_MAP.get(k))
       .filter((c): c is ColumnDef => c !== undefined)
-  }, [orderedCols, availableKeySet])
+  }, [orderedCols])
 
   // Filter by search
   const filtered = useMemo(() => {
@@ -488,29 +413,15 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
     return data.breakdown.filter(row => row.name.toLowerCase().includes(q))
   }, [data, search])
 
-  // Helper: get sortable value for a row + key (handles calculated fields like cpm, cost_per_click)
-  function getRowValue(row: (typeof filtered)[0], key: SortKey): number | string {
-    if (CRM_COLUMNS.has(key)) return 0 // CRM columns are global, not sortable per-row
-    if (key === 'cpm') {
-      return row.impressions > 0 ? (row.spend / row.impressions) * 1000 : 0
-    }
-    if (key === 'cost_per_click') {
-      return row.clicks > 0 ? row.spend / row.clicks : 0
-    }
-    const v = row[key as keyof typeof row]
-    if (v === null || v === undefined) return 0
-    return v as number | string
-  }
-
-  // Sort: null = default (spend desc), otherwise by key+dir
+  // Sort
   const sorted = useMemo(() => {
     const rows = [...filtered]
     const sortKey = sort?.key ?? 'spend'
     const sortDir = sort?.dir ?? 'desc'
 
     return rows.sort((a, b) => {
-      const valA = getRowValue(a, sortKey)
-      const valB = getRowValue(b, sortKey)
+      const valA = a[sortKey] ?? 0
+      const valB = b[sortKey] ?? 0
       if (typeof valA === 'string' && typeof valB === 'string') {
         return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
       }
@@ -520,49 +431,17 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
     })
   }, [filtered, sort])
 
-  // DnD sensors with activation distance to distinguish click from drag
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  )
-
-  // Picker DnD: reorder active columns
-  const handlePickerDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event
-    if (over && active.id !== over.id) {
-      setOrderedCols(prev => {
-        const oldIndex = prev.indexOf(active.id as ColumnKey)
-        const newIndex = prev.indexOf(over.id as ColumnKey)
-        if (oldIndex === -1 || newIndex === -1) return prev
-        return arrayMove(prev, oldIndex, newIndex)
-      })
-    }
-  }, [])
-
-  // Table header DnD: reorder columns from the table itself
-  const handleHeaderDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event
-    if (over && active.id !== over.id) {
-      setOrderedCols(prev => {
-        const oldIndex = prev.indexOf(active.id as ColumnKey)
-        const newIndex = prev.indexOf(over.id as ColumnKey)
-        if (oldIndex === -1 || newIndex === -1) return prev
-        return arrayMove(prev, oldIndex, newIndex)
-      })
-    }
-  }, [])
-
   if (loading || !data) {
     return <TableSkeleton />
   }
 
-  // Tri-state sort: click 1 = desc, click 2 = asc, click 3 = reset
   function handleSort(key: SortKey) {
     if (!sort || sort.key !== key) {
       setSort({ key, dir: 'desc' })
     } else if (sort.dir === 'desc') {
       setSort({ key, dir: 'asc' })
     } else {
-      setSort(null) // reset
+      setSort(null)
     }
   }
 
@@ -570,11 +449,6 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
     if (!sort || sort.key !== key) return ''
     return sort.dir === 'asc' ? ' ↑' : ' ↓'
   }
-
-  // Helpers for CRM-derived KPIs (use kpis from data + crmData)
-  const kpis = data?.kpis
-  const totalSpend = kpis?.spend ?? 0
-  const totalLeads = kpis?.leads ?? 0
 
   function renderCell(row: (typeof sorted)[0], col: ColumnDef) {
     switch (col.key) {
@@ -599,26 +473,6 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
           </span>
         )
       }
-      case 'campaign_type': {
-        const labels: Record<CampaignType, { text: string; color: string }> = {
-          leadform: { text: 'Leadform', color: '#1877F2' },
-          follow_ads: { text: 'Follow Ads', color: '#8B2BE2' },
-          other: { text: 'Autre', color: '#888' },
-        }
-        const l = labels[row.campaign_type] ?? labels.other
-        return (
-          <span style={{
-            fontSize: 10,
-            fontWeight: 600,
-            padding: '2px 8px',
-            borderRadius: 4,
-            background: `${l.color}1A`,
-            color: l.color,
-          }}>
-            {l.text}
-          </span>
-        )
-      }
       case 'spend':
         return formatEuro(row.spend)
       case 'impressions':
@@ -631,106 +485,19 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
         return <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{row.leads}</span>
       case 'cpl':
         return row.cpl !== null ? formatEuro(row.cpl) : '—'
-      case 'cpm': {
-        const cpm = row.impressions > 0 ? (row.spend / row.impressions) * 1000 : null
-        return cpm !== null ? formatEuro(cpm) : '—'
-      }
-      case 'cost_per_click': {
-        const cpc = row.clicks > 0 ? row.spend / row.clicks : null
-        return cpc !== null ? formatEuro(cpc) : '—'
-      }
-
-      // ── Video Meta (per-row) ──
-      case 'frequency':
-        return row.frequency != null ? row.frequency.toFixed(1) : '—'
-      case 'hook_rate':
-        return row.hook_rate != null ? formatPct(row.hook_rate) : '—'
-      case 'hold_rate_25':
-        return row.hold_rate_25 != null ? formatPct(row.hold_rate_25) : '—'
-      case 'hold_rate_50':
-        return row.hold_rate_50 != null ? formatPct(row.hold_rate_50) : '—'
-      case 'hold_rate_75':
-        return row.hold_rate_75 != null ? formatPct(row.hold_rate_75) : '—'
-
-      // ── CRM Appels (global) ──
-      case 'calls_total':
-        return crmData ? formatNumber(crmData.calls_total) : '—'
-      case 'calls_reached':
-        return crmData ? formatNumber(crmData.calls_reached) : '—'
-      case 'cpar':
-        return crmData && crmData.calls_reached > 0
-          ? formatEuro(totalSpend / crmData.calls_reached)
-          : '—'
-      case 'joignabilite':
-        return crmData && crmData.calls_total > 0
-          ? formatPctColored((crmData.calls_reached / crmData.calls_total) * 100, 60)
-          : '—'
-
-      // ── CRM Conversions (global) ──
-      case 'cr1': {
-        // CR1 = leads / clicks
-        const clicks = kpis?.clicks ?? 0
-        return clicks > 0 ? formatPctColored((totalLeads / clicks) * 100, 5) : '—'
-      }
-      case 'cr2':
-        // CR2 = calls_reached / leads
-        return crmData && totalLeads > 0
-          ? formatPctColored((crmData.calls_reached / totalLeads) * 100, 30)
-          : '—'
-      case 'cr3':
-        // CR3 = closings / bookings_show_up
-        return crmData && crmData.bookings_show_up > 0
-          ? formatPctColored((crmData.closings / crmData.bookings_show_up) * 100, 20)
-          : '—'
-
-      // ── CRM Bookings (global) ──
-      case 'bookings_total':
-        return crmData ? formatNumber(crmData.bookings_total) : '—'
-      case 'cpsb':
-        return crmData && crmData.bookings_total > 0
-          ? formatEuro(totalSpend / crmData.bookings_total)
-          : '—'
-      case 'bookings_show_up':
-        return crmData ? formatNumber(crmData.bookings_show_up) : '—'
-      case 'cpsp':
-        return crmData && crmData.bookings_show_up > 0
-          ? formatEuro(totalSpend / crmData.bookings_show_up)
-          : '—'
-      case 'no_show_rate': {
-        if (!crmData || crmData.bookings_total === 0) return '—'
-        const noShowPct = ((crmData.bookings_total - crmData.bookings_show_up) / crmData.bookings_total) * 100
-        // High no-show is bad → invert color logic
-        return formatPctColored(noShowPct, 30, true)
-      }
-
-      // ── CRM Closing (global) ──
-      case 'closings':
-        return crmData ? formatNumber(crmData.closings) : '—'
-      case 'cpclose':
-        return crmData && crmData.closings > 0
-          ? formatEuro(totalSpend / crmData.closings)
-          : '—'
-      case 'closing_rate':
-        return crmData && crmData.bookings_show_up > 0
-          ? formatPctColored((crmData.closings / crmData.bookings_show_up) * 100, 20)
-          : '—'
-
-      // ── Financier (global) ──
-      case 'deal_amount':
-        return crmData ? formatCurrency(crmData.deal_amount_total) : '—'
-      case 'cash_collected':
-        return crmData ? formatCurrency(crmData.cash_collected_total) : '—'
-      case 'marge_brute':
-        return crmData ? formatCurrency(crmData.deal_amount_total - totalSpend) : '—'
     }
   }
 
-  // Column keys for the table header DnD context
-  const columnKeys = columns.map(c => c.key)
+  // Find the active view label for the button
+  const allViews = [...DEFAULT_VIEWS, ...customViews]
+  const activeView = activeViewId ? allViews.find(v => v.id === activeViewId) : null
+
+  // Dragging header overlay content
+  const draggedHeaderCol = headerDragId ? COLUMN_MAP.get(headerDragId as ColumnKey) : null
 
   return (
     <div>
-      {/* Toolbar: search + column picker */}
+      {/* Toolbar: search + views + column picker */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
         <input
           type="text"
@@ -739,7 +506,193 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
           onChange={e => setSearch(e.target.value)}
           style={inputStyle}
         />
-        <div style={{ position: 'relative' }} ref={pickerRef}>
+
+        {/* Views dropdown */}
+        <div style={{ position: 'relative' }} ref={viewDropdownRef}>
+          <button
+            onClick={() => setShowViewDropdown(p => !p)}
+            style={{
+              padding: '7px 14px',
+              borderRadius: 6,
+              border: '1px solid var(--border-primary)',
+              background: activeViewId ? 'rgba(24,119,242,0.1)' : 'transparent',
+              color: activeViewId ? '#1877F2' : 'var(--text-secondary)',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Layers size={13} />
+            {activeView ? activeView.name : 'Vues'}
+            <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span>
+          </button>
+
+          {showViewDropdown && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: 4,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 8,
+              padding: 6,
+              zIndex: 50,
+              minWidth: 220,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            }}>
+              {/* Default views */}
+              <div style={{ padding: '4px 8px', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Vues par défaut
+              </div>
+              {DEFAULT_VIEWS.map(view => (
+                <button
+                  key={view.id}
+                  onClick={() => applyView(view)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    padding: '6px 8px',
+                    borderRadius: 4,
+                    border: 'none',
+                    background: activeViewId === view.id ? 'rgba(24,119,242,0.12)' : 'transparent',
+                    color: activeViewId === view.id ? '#1877F2' : 'var(--text-secondary)',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  {view.name}
+                </button>
+              ))}
+
+              {/* Custom views */}
+              {customViews.length > 0 && (
+                <>
+                  <div style={{ height: 1, background: 'var(--border-primary)', margin: '6px 0' }} />
+                  <div style={{ padding: '4px 8px', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Mes vues
+                  </div>
+                  {customViews.map(view => (
+                    <div
+                      key={view.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <button
+                        onClick={() => applyView(view)}
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '6px 8px',
+                          borderRadius: 4,
+                          border: 'none',
+                          background: activeViewId === view.id ? 'rgba(24,119,242,0.12)' : 'transparent',
+                          color: activeViewId === view.id ? '#1877F2' : 'var(--text-secondary)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        {view.name}
+                      </button>
+                      <button
+                        onClick={() => deleteView(view.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          borderRadius: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                        title="Supprimer la vue"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* Save new view */}
+              <div style={{ height: 1, background: 'var(--border-primary)', margin: '6px 0' }} />
+              {showNewViewInput ? (
+                <div style={{ display: 'flex', gap: 4, padding: '4px' }}>
+                  <input
+                    type="text"
+                    placeholder="Nom de la vue..."
+                    value={newViewName}
+                    onChange={e => setNewViewName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveCurrentView() }}
+                    autoFocus
+                    style={{
+                      flex: 1,
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: 4,
+                      padding: '4px 8px',
+                      color: 'var(--text-primary)',
+                      fontSize: 11,
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={saveCurrentView}
+                    disabled={!newViewName.trim()}
+                    style={{
+                      background: newViewName.trim() ? '#1877F2' : 'rgba(255,255,255,0.05)',
+                      border: 'none',
+                      borderRadius: 4,
+                      padding: '4px 6px',
+                      color: '#fff',
+                      cursor: newViewName.trim() ? 'pointer' : 'default',
+                      display: 'flex',
+                      alignItems: 'center',
+                      opacity: newViewName.trim() ? 1 : 0.4,
+                    }}
+                  >
+                    <Save size={12} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowNewViewInput(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    width: '100%',
+                    padding: '6px 8px',
+                    borderRadius: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Plus size={12} />
+                  Sauvegarder la vue actuelle
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Column picker */}
+        <div style={{ position: 'relative' }}>
           <button
             onClick={() => setShowColumnPicker(p => !p)}
             style={{
@@ -765,105 +718,93 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
               background: 'var(--bg-elevated)',
               border: '1px solid var(--border-primary)',
               borderRadius: 8,
-              padding: '8px 0',
+              padding: 8,
               zIndex: 50,
               minWidth: 260,
-              maxHeight: 520,
-              overflowY: 'auto',
               boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
             }}>
-              {/* ── Active columns (drag to reorder) ── */}
-              <div style={{
-                padding: '4px 12px 6px',
-                fontSize: 10,
-                fontWeight: 700,
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-              }}>
-                Colonnes actives
+              {/* Active columns — draggable to reorder */}
+              <div style={{ padding: '2px 8px 6px', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Colonnes actives (glisser pour réordonner)
               </div>
               <DndContext
-                sensors={sensors}
+                sensors={pickerSensors}
                 collisionDetection={closestCenter}
+                onDragStart={handlePickerDragStart}
                 onDragEnd={handlePickerDragEnd}
               >
                 <SortableContext items={orderedCols} strategy={verticalListSortingStrategy}>
-                  {orderedCols.map(key => {
-                    const def = COLUMN_DEF_MAP.get(key)
-                    if (!def || !availableKeySet.has(key)) return null
-                    return (
-                      <SortablePickerItem
-                        key={key}
-                        colKey={key}
-                        label={def.label}
-                        onToggle={toggleColumn}
-                      />
-                    )
-                  })}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 8 }}>
+                    {orderedCols.map(key => {
+                      const col = COLUMN_MAP.get(key)
+                      if (!col) return null
+                      return (
+                        <SortableColumnPill
+                          key={key}
+                          colKey={key}
+                          label={col.label}
+                          onRemove={() => toggleColumn(key)}
+                        />
+                      )
+                    })}
+                  </div>
                 </SortableContext>
+                <DragOverlay>
+                  {pickerDragId ? (
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '3px 8px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: '#fff',
+                      background: '#1a1a2e',
+                      border: '1px solid #3b82f6',
+                      boxShadow: '0 6px 16px rgba(59,130,246,0.35)',
+                      cursor: 'grabbing',
+                    }}>
+                      ⠿ {COLUMN_MAP.get(pickerDragId as ColumnKey)?.label ?? pickerDragId}
+                    </span>
+                  ) : null}
+                </DragOverlay>
               </DndContext>
 
-              {/* ── Separator ── */}
-              {inactiveByCategory.length > 0 && (
+              {/* Inactive columns — toggle to add */}
+              {ALL_COLUMNS.filter(c => !orderedCols.includes(c.key)).length > 0 && (
                 <>
-                  <div style={{
-                    margin: '8px 12px',
-                    borderTop: '1px solid var(--border-primary)',
-                  }} />
-                  <div style={{
-                    padding: '4px 12px 6px',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: 'var(--text-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                  }}>
-                    Ajouter des colonnes
+                  <div style={{ height: 1, background: 'var(--border-primary)', margin: '4px 0 6px' }} />
+                  <div style={{ padding: '2px 8px 4px', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Colonnes masquées
                   </div>
-
-                  {/* ── Inactive columns grouped by category ── */}
-                  {inactiveByCategory.map(({ category, columns: cols }) => (
-                    <div key={category}>
-                      <div style={{
-                        padding: '6px 12px 2px',
-                        fontSize: 10,
-                        fontWeight: 600,
+                  {ALL_COLUMNS.filter(c => !orderedCols.includes(c.key)).map(col => (
+                    <button
+                      key={col.key}
+                      onClick={() => toggleColumn(col.key)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        width: '100%',
+                        padding: '4px 8px',
+                        borderRadius: 4,
+                        border: 'none',
+                        background: 'transparent',
                         color: 'var(--text-muted)',
-                        opacity: 0.7,
-                      }}>
-                        {category}
-                      </div>
-                      {cols.map(col => (
-                        <label
-                          key={col.key}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            padding: '4px 12px',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            color: 'var(--text-secondary)',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            onChange={() => toggleColumn(col.key)}
-                            style={{ accentColor: '#1877F2' }}
-                          />
-                          {col.label}
-                        </label>
-                      ))}
-                    </div>
+                        fontSize: 11,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Plus size={10} /> {col.label}
+                    </button>
                   ))}
                 </>
               )}
             </div>
           )}
         </div>
+
         <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
           {filtered.length} résultat{filtered.length !== 1 ? 's' : ''}
         </span>
@@ -887,24 +828,21 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
           overflow: 'hidden',
         }}>
           <DndContext
-            sensors={sensors}
+            sensors={headerSensors}
             collisionDetection={closestCenter}
+            onDragStart={handleHeaderDragStart}
             onDragEnd={handleHeaderDragEnd}
           >
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <SortableContext items={columnKeys} strategy={horizontalListSortingStrategy}>
+                  <SortableContext items={orderedCols} strategy={horizontalListSortingStrategy}>
                     {columns.map(col => (
                       <SortableHeaderCell
                         key={col.key}
                         col={col}
-                        sortArrow={col.sortable && col.key !== 'status' && col.key !== 'campaign_type' ? arrow(col.key as SortKey) : ''}
-                        onSort={() => {
-                          if (col.sortable && col.key !== 'status' && col.key !== 'campaign_type') {
-                            handleSort(col.key as SortKey)
-                          }
-                        }}
+                        sortArrow={col.sortable && col.key !== 'status' ? arrow(col.key as SortKey) : ''}
+                        onSort={() => col.sortable && col.key !== 'status' && handleSort(col.key as SortKey)}
                       />
                     ))}
                   </SortableContext>
@@ -931,6 +869,24 @@ export default function AdsTableTab({ data, loading, tabKey, campaignType, onRow
                 ))}
               </tbody>
             </table>
+            <DragOverlay>
+              {draggedHeaderCol ? (
+                <div style={{
+                  padding: '8px 12px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: '#3b82f6',
+                  background: 'rgba(59,130,246,0.1)',
+                  border: '1px solid rgba(59,130,246,0.3)',
+                  borderRadius: 6,
+                  boxShadow: '0 4px 16px rgba(59,130,246,0.25)',
+                  whiteSpace: 'nowrap',
+                  cursor: 'grabbing',
+                }}>
+                  {draggedHeaderCol.label}
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         </div>
       )}
