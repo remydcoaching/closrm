@@ -20,7 +20,8 @@ interface Props {
 }
 
 export default function TextBlock({ config }: Props) {
-  const lines = (config.content || '').split('\n')
+  const content = config.content || ''
+  const isHtml = /<[a-z][\s\S]*>/i.test(content)
 
   return (
     <div
@@ -34,12 +35,16 @@ export default function TextBlock({ config }: Props) {
         textAlign: config.alignment || 'left',
       }}
     >
-      {lines.map((line, i) => (
-        <span key={i}>
-          {line}
-          {i < lines.length - 1 && <br />}
-        </span>
-      ))}
+      {isHtml ? (
+        <div dangerouslySetInnerHTML={{ __html: content }} />
+      ) : (
+        content.split('\n').map((line, i, arr) => (
+          <span key={i}>
+            {line}
+            {i < arr.length - 1 && <br />}
+          </span>
+        ))
+      )}
     </div>
   )
 }
