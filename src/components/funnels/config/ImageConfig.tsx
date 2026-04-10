@@ -1,13 +1,16 @@
 'use client'
 
-import type { FunnelImageBlockConfig } from '@/types'
+import type { FunnelImageBlockConfig, FunnelPage, FunnelBlock } from '@/types'
+import RedirectPicker from './RedirectPicker'
 
 interface Props {
   config: FunnelImageBlockConfig
   onChange: (config: FunnelImageBlockConfig) => void
+  pages?: FunnelPage[]
+  blocks?: FunnelBlock[]
 }
 
-export default function ImageConfig({ config, onChange }: Props) {
+export default function ImageConfig({ config, onChange, pages, blocks }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
@@ -54,16 +57,13 @@ export default function ImageConfig({ config, onChange }: Props) {
           </select>
         </div>
       </div>
-      <div>
-        <label style={labelStyle}>Lien (optionnel)</label>
-        <input
-          type="url"
-          value={config.linkUrl || ''}
-          onChange={e => onChange({ ...config, linkUrl: e.target.value || null })}
-          placeholder="https://..."
-          style={inputStyle}
-        />
-      </div>
+      <RedirectPicker
+        value={config.linkUrl}
+        onChange={val => onChange({ ...config, linkUrl: val })}
+        pages={pages}
+        blocks={blocks}
+        label="Lien au clic"
+      />
     </div>
   )
 }

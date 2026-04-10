@@ -12,9 +12,12 @@ export interface FunnelTemplate {
   id: string
   name: string
   description: string
-  category: 'vsl' | 'capture' | 'complet' | 'merci'
+  category: string
+  /** 'funnel' = tunnel multi-pages, 'page' = page individuelle. */
+  kind: 'funnel' | 'page'
   pages: FunnelTemplatePage[]
   thumbnail: string | null
+  comingSoon?: boolean
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -33,6 +36,15 @@ function block<T extends FunnelBlockConfig>(
   }
 }
 
+/** Footer par défaut ajouté à chaque page de template. */
+function footerBlock(): FunnelBlock {
+  return block('footer', {
+    brand: 'Ma marque',
+    year: new Date().getFullYear(),
+    copyrightText: 'Tous droits réservés.',
+  })
+}
+
 // ─── Templates ──────────────────────────────────────────────────────────────
 
 export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
@@ -43,6 +55,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
     description:
       'Page de vente vidéo avec témoignages et appel à l\'action. Idéal pour présenter une offre de coaching.',
     category: 'vsl',
+    kind: 'page' as const,
     thumbnail: null,
     pages: [
       {
@@ -102,6 +115,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
             size: 'lg',
             alignment: 'center',
           }),
+          footerBlock(),
         ],
       },
     ],
@@ -114,6 +128,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
     description:
       'Formulaire simple pour capturer des leads. Prénom, email et téléphone.',
     category: 'capture',
+    kind: 'page' as const,
     thumbnail: null,
     pages: [
       {
@@ -159,6 +174,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
             redirectUrl: null,
             successMessage: 'Merci ! Vérifiez votre boîte email.',
           }),
+          footerBlock(),
         ],
       },
     ],
@@ -171,6 +187,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
     description:
       'Tunnel de vente en 4 étapes : VSL, candidature, prise de rendez-vous et remerciement.',
     category: 'complet',
+    kind: 'funnel' as const,
     thumbnail: null,
     pages: [
       {
@@ -219,6 +236,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
             size: 'lg',
             alignment: 'center',
           }),
+          footerBlock(),
         ],
       },
       {
@@ -284,6 +302,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
             redirectUrl: '/booking',
             successMessage: 'Candidature envoyée !',
           }),
+          footerBlock(),
         ],
       },
       {
@@ -304,6 +323,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
             title: 'Choisissez votre créneau',
             subtitle: 'Appel stratégique gratuit de 30 minutes.',
           }),
+          footerBlock(),
         ],
       },
       {
@@ -324,6 +344,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
               '<p>En attendant votre appel, voici ce que vous pouvez faire :</p><ul><li>Préparez vos questions</li><li>Réfléchissez à vos objectifs pour les 90 prochains jours</li><li>Notez vos blocages actuels</li></ul>',
             alignment: 'center',
           }),
+          footerBlock(),
         ],
       },
     ],
@@ -336,6 +357,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
     description:
       'Page de remerciement simple après une inscription ou un achat.',
     category: 'merci',
+    kind: 'page' as const,
     thumbnail: null,
     pages: [
       {
@@ -363,8 +385,119 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = [
             size: 'md',
             alignment: 'center',
           }),
+          footerBlock(),
         ],
       },
     ],
+  },
+
+  // ─── T-028 Phase 12 — Templates "À venir" affichés dans la liste mais
+  // non-cliquables. Validés avec Rémy le 2026-04-07. Détails dans
+  // ameliorations.md → A-028b-01 (Quiz funnels) et A-028b-02 (Webinar funnels).
+  // 5. Page de réservation (1 page)
+  {
+    id: 'tpl-page-reservation',
+    name: 'Réservation',
+    description:
+      'Page de prise de rendez-vous avec calendrier intégré. Idéal pour les appels découverte.',
+    category: 'reservation',
+    kind: 'page' as const,
+    thumbnail: null,
+    pages: [
+      {
+        name: 'Réservation',
+        slug: 'reservation',
+        blocks: [
+          block('hero', {
+            title: 'Réservez votre appel découverte',
+            subtitle:
+              '30 minutes pour faire le point sur votre situation et voir comment on peut vous aider.',
+            ctaText: '',
+            ctaUrl: '',
+            backgroundImage: null,
+            alignment: 'center',
+            badgeText: 'Appel Offert',
+          }),
+          block('booking', {
+            calendarId: null,
+            title: 'Choisissez votre créneau',
+            subtitle: 'Appel stratégique gratuit de 30 minutes.',
+          }),
+          footerBlock(),
+        ],
+      },
+    ],
+  },
+
+  // 6. Page de candidature (1 page)
+  {
+    id: 'tpl-page-candidature',
+    name: 'Candidature',
+    description:
+      'Formulaire de candidature détaillé pour qualifier les prospects avant un appel.',
+    category: 'candidature',
+    kind: 'page' as const,
+    thumbnail: null,
+    pages: [
+      {
+        name: 'Candidature',
+        slug: 'candidature',
+        blocks: [
+          block('hero', {
+            title: 'Postulez pour rejoindre le programme',
+            subtitle:
+              'Répondez à quelques questions pour que nous puissions évaluer votre situation.',
+            ctaText: '',
+            ctaUrl: '',
+            backgroundImage: null,
+            alignment: 'center',
+          }),
+          block('form', {
+            title: '',
+            subtitle: '',
+            fields: [
+              { key: 'prenom', label: 'Prénom', type: 'text', placeholder: 'Ton prénom', required: true },
+              { key: 'email', label: 'Email', type: 'email', placeholder: 'votre@email.com', required: true },
+              { key: 'telephone', label: 'Téléphone', type: 'tel', placeholder: '06 12 34 56 78', required: true },
+              { key: 'situation', label: 'Décrivez votre situation actuelle', type: 'textarea', placeholder: 'Dites-nous en plus sur votre activité...', required: true },
+              {
+                key: 'revenue', label: 'Chiffre d\'affaires mensuel', type: 'select',
+                placeholder: 'Sélectionnez', required: true,
+                options: ['Moins de 3 000 €', '3 000 € - 10 000 €', '10 000 € - 30 000 €', 'Plus de 30 000 €'],
+              },
+            ],
+            submitText: 'Envoyer ma candidature',
+            redirectUrl: null,
+            successMessage: 'Merci ! Nous reviendrons vers vous sous 24h.',
+          }),
+          footerBlock(),
+        ],
+      },
+    ],
+  },
+
+  // ─── Funnels complets "À venir" ──────────────────────────────────────────
+
+  {
+    id: 'tpl-quiz-funnel',
+    name: 'Quiz funnel',
+    description:
+      'Funnel sous forme de quiz interactif : le visiteur répond à quelques questions et reçoit un résultat personnalisé + une offre adaptée.',
+    category: 'quiz',
+    kind: 'funnel' as const,
+    thumbnail: null,
+    comingSoon: true,
+    pages: [],
+  },
+  {
+    id: 'tpl-webinar-funnel',
+    name: 'Webinar funnel',
+    description:
+      'Funnel d\'inscription à un webinaire : inscription + remerciement + replay + vente post-webinar.',
+    category: 'webinar',
+    kind: 'funnel' as const,
+    thumbnail: null,
+    comingSoon: true,
+    pages: [],
   },
 ]

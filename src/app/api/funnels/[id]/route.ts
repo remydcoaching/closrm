@@ -53,13 +53,36 @@ export async function PUT(
     const supabase = await createClient()
 
     const body = await request.json()
-    const { name, slug, description, domain_id } = body
+    const {
+      name,
+      slug,
+      description,
+      domain_id,
+      // Design system T-028a (cf. migration 015_funnels_design_v2.sql)
+      preset_id,
+      preset_override,
+      effects_config,
+    } = body
 
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (name !== undefined) updates.name = name
     if (slug !== undefined) updates.slug = slug
     if (description !== undefined) updates.description = description
     if (domain_id !== undefined) updates.domain_id = domain_id
+    // Validation minimale : preset_id doit être une string non-vide si fourni.
+    // La validité de l'ID (présence dans le catalogue) est gérée côté front via
+    // getPresetByIdOrDefault qui retombe sur 'ocean' si l'ID est inconnu.
+    if (preset_id !== undefined && typeof preset_id === 'string' && preset_id.trim()) {
+      updates.preset_id = preset_id.trim()
+    }
+    // preset_override : on accepte null (reset) ou un objet { primary?, heroBg?, sectionBg?, footerBg? }
+    if (preset_override !== undefined) {
+      updates.preset_override = preset_override === null ? null : preset_override
+    }
+    // effects_config : map { effect-id: boolean }. Une map vide {} est valide.
+    if (effects_config !== undefined && typeof effects_config === 'object' && effects_config !== null) {
+      updates.effects_config = effects_config
+    }
 
     const { data, error } = await supabase
       .from('funnels')

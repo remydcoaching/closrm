@@ -29,20 +29,41 @@
 > car il maîtrise déjà le module Instagram et le moteur Workflows.
 > Coordination requise avec Rémy avant tout push sur le module Leads.
 
-### T-028 · Funnels v2 — refonte builder + analytics + templates ⭐ EN PARALLÈLE T-029 PIERRE
+### T-028 · Funnels v2 — refonte qualitative ⭐ EN PARALLÈLE T-029 PIERRE
 **Priorité :** Haute
-**Statut :** ⬜ Non démarré
-**Fiche détaillée :** `taches/tache-028-funnels-v2.md`
+**Statut :** ⬜ Non démarré (planification validée le 2026-04-07)
+**Fiche parente :** `taches/tache-028-funnels-v2.md`
 
-**Résumé :**
-- Phase 1 : audit du module Funnels v1 livré par Pierre (T-023)
-- Phase 2 : refonte builder UX (inspector latéral, undo/redo, preview multi-device, drag&drop amélioré)
-- Phase 3 : nouveaux blocs (Témoignages avancé, Garantie, Avant/Après, Quizz, Logo bar)
-- Phase 4 : galerie de templates par niche (coaching biz / sport / mindset / immo / formation / mastermind / bootcamp)
-- Phase 5 : analytics par funnel (vues, leads, taux conversion, A/B test simple)
-- Phase 6 : domaines custom + page de remerciement configurable
-- **Coordination Pierre :** valider le périmètre du refactor (Rémy refait blocs / Pierre garde le moteur ?)
-- ⚠️ Tâche volontairement large — découper en T-028a/b/c après audit Phase 1
+> **Découpée en 3 sous-tâches** validées avec Rémy le 2026-04-07.
+> Ordre d'exécution : **T-028a → T-028c → T-028b**
+> Référence visuelle : `mockups/t028a-preview.html` (mockup HTML statique avec 20 presets + 8 effets implémentés)
+
+#### T-028a · Direction artistique (presets + effets + design tokens)
+**Fiche :** `taches/tache-028a-direction-artistique.md`
+- 20 presets de couleurs (Ocean, Forêt, Luxe, Violet, Minimal, Énergie, Rose Gold, Impact, Zen, Bootcamp, Prestige, Naturel, Sunset, Midnight, Bordeaux, Terracotta, Sunshine, Anthracite, Tropical, Lavande)
+- 15 effets visuels E1→E15 (5 forcés + 10 toggleables, granularité globale au funnel)
+- Design tokens via CSS vars `--fnl-*` + helpers `lighten/darken/hexToRgb`
+- Page sandbox interne `/dev/funnels-sandbox` pour tester chaque preset/effet en live
+- Override de couleur principale post-preset
+
+#### T-028c · Migration des 12 blocs au design system v2
+**Fiche :** `taches/tache-028c-blocks-migration.md`
+- Porter les 12 blocs existants ([HeroBlock, VideoBlock, FormBlock, BookingBlock, PricingBlock, FaqBlock, CountdownBlock, CtaBlock, TextBlock, ImageBlock, SpacerBlock, TestimonialsBlock]) au nouveau design system
+- Migration SQL : ajouter `preset_id`, `preset_override`, `effects_config` à la table `funnels`
+- Refonte du rendu public + composant preview
+- Matrice de tests visuels 12 blocs × 20 presets
+
+#### T-028b · Refonte du Builder UX
+**Fiche :** `taches/tache-028b-builder-ux.md`
+- Layout 3 colonnes : sidebar gauche (presets + toggles effets + sections drag&drop) | preview centrale multi-device | inspector latéral
+- Undo/Redo + raccourcis clavier
+- Drag & drop amélioré (snap visuel, drop zones claires)
+- Autosave debounced
+- Suppression du legacy builder à la fin
+
+**Coordination Pierre :** valider qu'il accepte la refonte du module Funnels qu'il a livré en T-023. Au 2026-04-07, sa branche `feature/pierre-funnel-builder` ne touche plus aux fichiers funnels (il bosse Instagram + Booking) — pas de risque de conflit.
+
+⚠️ **Règle pendant T-028 :** ne pas fixer les bugs du builder existant — il sera remplacé en T-028b. Patcher l'ancien = perte de temps.
 
 ---
 
@@ -68,21 +89,25 @@
 
 | # | Tâche | Priorité | Statut |
 |---|-------|----------|--------|
-| **T-028** | **Funnels v2 (refonte builder + analytics + templates)** | **Haute** | **⬜** |
+| **T-028a** | **Funnels v2 — Direction artistique (presets + effets)** | **Haute** | **⬜** |
+| **T-028c** | **Funnels v2 — Migration des 12 blocs** | **Haute** | **⬜** (bloquée par T-028a) |
+| **T-028b** | **Funnels v2 — Refonte builder UX** | **Haute** | **⬜** (bloquée par T-028a + T-028c) |
 | **T-031** | **Import portefeuille leads (CSV + alternatives)** | **Moyenne** | **⬜** |
 
 ---
 
 ## Ordre de bataille suggéré
 
-1. **T-028 d'abord (en parallèle de T-029 Pierre)** — gros morceau,
-   à découper en sous-tâches après audit Phase 1.
-2. **T-031 ensuite** — bloque sur le trigger `lead_imported` que Pierre
-   doit exposer en T-029. Démarrable dès qu'il a poussé son côté du contrat.
+1. **T-028a en premier** — direction artistique, prérequis design system de tout T-028.
+2. **T-028c ensuite** — migration des 12 blocs au nouveau design system. Bloquée par T-028a.
+3. **T-028b en dernier** — refonte du builder UX. Bloquée par T-028a + T-028c (le builder doit afficher les nouveaux blocs).
+4. **T-031 en parallèle** dès que possible — bloque sur le trigger `lead_imported` que Pierre doit exposer en T-029. Démarrable indépendamment de T-028.
 
 **À surveiller côté T-027 (Pierre)** : il va toucher au module Leads (LeadForm,
 API leads, types, migration `leads.instagram_handle`). Te coordonner avec lui
 avant chaque push sur ces fichiers pour éviter les conflits.
+
+**À surveiller côté T-029 (Pierre)** : sa branche `feature/pierre-funnel-builder` est utilisée pour bosser Instagram + Booking, pas Funnels. Au 2026-04-07, aucun risque de conflit sur le module Funnels. À revérifier régulièrement pendant T-028.
 
 ---
 

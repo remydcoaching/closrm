@@ -1,6 +1,30 @@
 'use client'
 
+/**
+ * T-028c — HeroBlock migré vers le design system v2.
+ *
+ * C'est le bloc le plus visible d'une page funnel — l'objectif de la migration
+ * est de lui faire porter tous les effets premium du design system :
+ * - `.fnl-hero` pour que l'effet **E2 hero glow** puisse s'attacher via ::before/::after
+ * - `.fnl-hero-inner` pour le content centré max 800px (z-index au-dessus du glow)
+ * - `.fnl-headline` (Poppins 800, 26-42px) pour le titre principal
+ * - `.fnl-hook` (Poppins 600, 18-22px) pour le sous-titre
+ * - `.fnl-btn` pour le CTA (apporte gradient + ombre colorée E4 + shine E3 + hover)
+ *
+ * Avant : gradient `#1a1a2e → #16213e → #0f3460` codé en dur (assumait dark theme),
+ * couleur de bouton `var(--color-primary, #E53E3E)` (palette CRM, pas funnels), pas
+ * de Poppins, pas d'animation.
+ *
+ * Après : tout vient du preset choisi par le coach via `--fnl-*`. Quand le preset
+ * change, le hero s'adapte automatiquement (light/dark, couleur, gradient).
+ *
+ * Note : si une `backgroundImage` est configurée par le coach, on la superpose
+ * au fond `--fnl-hero-bg` du preset avec un overlay sombre — l'image gagne mais
+ * les couleurs du texte/bouton restent celles du preset pour la cohérence.
+ */
+
 import type { HeroBlockConfig } from '@/types'
+import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
 
 interface Props {
   config: HeroBlockConfig
@@ -9,61 +33,57 @@ interface Props {
 export default function HeroBlock({ config }: Props) {
   const hasImage = !!config.backgroundImage
 
-  const containerStyle: React.CSSProperties = {
-    position: 'relative',
-    padding: '80px 40px',
-    textAlign: config.alignment,
-    backgroundImage: hasImage
-      ? `url(${config.backgroundImage})`
-      : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    color: '#fff',
-    overflow: 'hidden',
-  }
+  // Si une image de fond custom est définie, on la superpose au fond du preset
+  // avec un overlay noir pour garantir la lisibilité du texte.
+  const sectionStyle: React.CSSProperties = hasImage
+    ? {
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${config.backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : {}
 
-  const overlayStyle: React.CSSProperties = {
-    position: 'absolute',
-    inset: 0,
-    background: hasImage ? 'rgba(0,0,0,0.55)' : 'transparent',
-    zIndex: 0,
-  }
-
-  const contentStyle: React.CSSProperties = {
-    position: 'relative',
-    zIndex: 1,
-    maxWidth: 800,
-    margin: config.alignment === 'center' ? '0 auto' : undefined,
+  // Alignement du contenu (left/center/right) — surcharge le text-align par défaut
+  // de `.fnl-hero` qui est `center`.
+  const innerStyle: React.CSSProperties = {
+    textAlign: config.alignment ?? 'center',
     marginLeft: config.alignment === 'right' ? 'auto' : undefined,
+    marginRight: config.alignment === 'left' ? 'auto' : undefined,
   }
+
+  // Quand on a une image de fond, le texte doit rester blanc lisible
+  // (override les CSS vars de couleur du preset uniquement sur ce hero)
+  const overrideTextStyle: React.CSSProperties = hasImage
+    ? ({
+        '--fnl-text': '#FFFFFF',
+        '--fnl-text-secondary': 'rgba(255,255,255,0.9)',
+      } as React.CSSProperties)
+    : {}
+
+  // T-028 Phase 9 — Badge pulsant (E5 forcé) affiché uniquement si `badgeText` non vide
+  const showBadge = config.badgeText && config.badgeText.trim().length > 0
 
   return (
-    <section style={containerStyle}>
-      <div style={overlayStyle} />
-      <div style={contentStyle}>
-        <h1 style={{ fontSize: 42, fontWeight: 800, lineHeight: 1.15, margin: '0 0 16px' }}>
-          {config.title || 'Titre principal'}
-        </h1>
-        {config.subtitle && (
-          <p style={{ fontSize: 20, lineHeight: 1.5, margin: '0 0 32px', opacity: 0.9 }}>
-            {config.subtitle}
-          </p>
+    <section className="fnl-hero" style={{ ...sectionStyle, ...overrideTextStyle }}>
+      <div className="fnl-hero-inner" style={innerStyle}>
+        {showBadge && (
+          <div className="fnl-badge">
+            <span className="fnl-badge-dot"></span>
+            <span className="fnl-badge-text">{config.badgeText}</span>
+          </div>
         )}
+        {/*
+          Le titre est wrappé dans une `<span className="fnl-shimmer">` pour que
+          l'effet E1 shimmer (activable dans l'inspector via config.effects.shimmer)
+          s'applique quand la classe `fx-e1-shimmer` est présente sur le wrapper
+          du bloc (ajoutée par FunnelPagePreview via getBlockEffectsClasses).
+        */}
+        <h1 className="fnl-headline">
+          <span className="fnl-shimmer">{config.title || 'Titre principal'}</span>
+        </h1>
+        {config.subtitle && <p className="fnl-hook">{config.subtitle}</p>}
         {config.ctaText && (
-          <a
-            href={config.ctaUrl || '#'}
-            style={{
-              display: 'inline-block',
-              padding: '14px 36px',
-              fontSize: 16,
-              fontWeight: 600,
-              color: '#fff',
-              background: 'var(--color-primary, #E53E3E)',
-              borderRadius: 8,
-              textDecoration: 'none',
-              transition: 'opacity 0.2s',
-            }}
-          >
+          <a href={resolveFunnelUrl(config.ctaUrl)} className="fnl-btn">
             {config.ctaText}
           </a>
         )}

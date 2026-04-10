@@ -19,8 +19,11 @@ export default function BookingConfig({ config, onChange }: Props) {
 
   useEffect(() => {
     fetch('/api/booking-calendars')
-      .then(res => res.ok ? res.json() : [])
-      .then(data => setCalendars(Array.isArray(data) ? data : []))
+      .then(res => res.ok ? res.json() : { data: [] })
+      .then(json => {
+        const list = Array.isArray(json?.data) ? json.data : []
+        setCalendars(list.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })))
+      })
       .catch(() => setCalendars([]))
       .finally(() => setLoading(false))
   }, [])
