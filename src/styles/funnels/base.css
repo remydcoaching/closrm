@@ -101,6 +101,11 @@
   flex-direction: column;
 }
 
+/* Dans le builder, pas de min-height 100vh (sinon espace blanc sous le footer) */
+.fnl-root.fnl-root--builder {
+  min-height: auto;
+}
+
 /* ─── Section hero (.fnl-hero) ─────────────────────────────── */
 /* Le glow E2 cible cette classe pour ajouter ses pseudos. */
 
