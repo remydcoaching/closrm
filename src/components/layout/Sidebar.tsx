@@ -24,7 +24,6 @@ const NAV = [
       { label: 'Closing', href: '/closing', icon: Phone },
       { label: 'Follow-ups', href: '/follow-ups', icon: Bell },
       { label: 'Chat équipe', href: '/equipe/messages', icon: MessagesSquare },
-      { label: 'Formation', href: '/equipe/formation', icon: GraduationCap },
       { label: 'Statistiques', href: '/statistiques', icon: BarChart2 },
       { label: 'Base de données', href: '/base-de-donnees', icon: Database },
     ],

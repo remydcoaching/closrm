@@ -6,7 +6,11 @@ import type { WorkspaceMemberWithUser, WorkspaceRole, MemberStatus } from '@/typ
 import InviteMemberModal from '@/components/team/InviteMemberModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 
-type PageTab = 'membres' | 'reporting' | 'objectifs'
+import dynamic from 'next/dynamic'
+
+const TrainingClient = dynamic(() => import('@/app/(dashboard)/equipe/formation/training-client'), { ssr: false })
+
+type PageTab = 'membres' | 'reporting' | 'objectifs' | 'formation'
 
 // ─── Reporting types ────────────────────────────────────────────────────────
 
@@ -476,6 +480,7 @@ export default function EquipeClient() {
           { key: 'membres' as PageTab, label: 'Membres', icon: <Shield size={14} /> },
           ...(isAdmin ? [{ key: 'reporting' as PageTab, label: 'Reporting', icon: <BarChart3 size={14} /> }] : []),
           ...(isAdmin ? [{ key: 'objectifs' as PageTab, label: 'Objectifs & Commissions', icon: <Settings2 size={14} /> }] : []),
+          { key: 'formation' as PageTab, label: 'Formation', icon: <Target size={14} /> },
         ]).map(t => {
           const active = pageTab === t.key
           return (
@@ -1192,6 +1197,11 @@ export default function EquipeClient() {
             </>
           )}
         </div>
+      )}
+
+      {/* Formation tab */}
+      {pageTab === 'formation' && (
+        <TrainingClient />
       )}
 
       {/* Invite modal */}
