@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
   Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
   CalendarDays, CalendarRange, Layers, Share2, MessageCircle, MessagesSquare, Sparkles, Users2,
+  GraduationCap,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isRouteVisible } from '@/lib/permissions'
@@ -23,6 +24,7 @@ const NAV = [
       { label: 'Closing', href: '/closing', icon: Phone },
       { label: 'Follow-ups', href: '/follow-ups', icon: Bell },
       { label: 'Chat équipe', href: '/equipe/messages', icon: MessagesSquare },
+      { label: 'Formation', href: '/equipe/formation', icon: GraduationCap },
       { label: 'Statistiques', href: '/statistiques', icon: BarChart2 },
       { label: 'Base de données', href: '/base-de-donnees', icon: Database },
     ],

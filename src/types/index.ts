@@ -108,7 +108,16 @@ export interface Call {
   duration_seconds: number | null
   closer_id: string | null
   assigned_to: string | null
+  handoff_brief: HandoffBrief | null
   created_at: string
+}
+
+export interface HandoffBrief {
+  objective?: string
+  budget?: string
+  objections?: string
+  availability?: string
+  notes?: string
 }
 
 // ─── Follow-up ───────────────────────────────────────────────────────────────
@@ -1074,4 +1083,51 @@ export interface AiConversationOutcome {
   outcome: 'won' | 'lost' | 'no_response'
   messages_snapshot: Record<string, unknown>[] | null
   created_at: string
+}
+
+// ─── Team Training / SOP ──────────────────────────────────────────────────
+
+export type TrainingRole = 'setter' | 'closer' | 'all'
+export type TrainingItemType = 'pdf' | 'video' | 'link' | 'text' | 'checklist'
+
+export interface TrainingModule {
+  id: string
+  workspace_id: string
+  title: string
+  description: string | null
+  role: TrainingRole
+  sort_order: number
+  created_at: string
+}
+
+export interface TrainingItem {
+  id: string
+  module_id: string
+  workspace_id: string
+  type: TrainingItemType
+  title: string
+  content: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface TrainingProgress {
+  id: string
+  workspace_id: string
+  user_id: string
+  item_id: string
+  completed: boolean
+  completed_at: string | null
+}
+
+export interface TrainingModuleWithItems extends TrainingModule {
+  items: TrainingItem[]
+  progress: TrainingProgress[]
+}
+
+export interface MemberProgress {
+  user_id: string
+  full_name: string
+  completed_count: number
+  total_count: number
 }

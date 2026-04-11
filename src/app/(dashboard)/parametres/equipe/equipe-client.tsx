@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, MoreVertical, Shield, PhoneOutgoing, Target, UserX, RefreshCw, Trash2, BarChart3, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Plus, MoreVertical, Shield, PhoneOutgoing, Target, UserX, RefreshCw, Trash2, BarChart3, AlertTriangle, CheckCircle, Settings2, Save } from 'lucide-react'
 import type { WorkspaceMemberWithUser, WorkspaceRole, MemberStatus } from '@/types'
 import InviteMemberModal from '@/components/team/InviteMemberModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 
-type PageTab = 'membres' | 'reporting'
+type PageTab = 'membres' | 'reporting' | 'objectifs'
 
 // ─── Reporting types ────────────────────────────────────────────────────────
 
@@ -29,6 +29,52 @@ interface MemberReport {
   role: string
   stats: MemberStats
 }
+
+// ─── Objectives & Commissions types ─────────────────────────────────────────
+
+interface TeamObjective {
+  id: string
+  workspace_id: string
+  user_id: string | null
+  role: string | null
+  metric: string
+  target_value: number
+  created_at: string
+  updated_at: string
+}
+
+interface TeamCommission {
+  id: string
+  workspace_id: string
+  user_id: string | null
+  role: string | null
+  type: 'percentage' | 'fixed'
+  value: number
+  bonus_threshold: number | null
+  bonus_amount: number | null
+  created_at: string
+}
+
+type ObjectiveMetric = 'calls_per_day' | 'rdv_per_week' | 'joignabilite' | 'closings_per_month' | 'ca_per_month' | 'taux_closing'
+
+interface ObjectiveConfig {
+  metric: ObjectiveMetric
+  label: string
+  suffix: string
+  defaultValue: number
+}
+
+const SETTER_OBJECTIVES: ObjectiveConfig[] = [
+  { metric: 'calls_per_day', label: 'Appels / jour', suffix: '', defaultValue: 15 },
+  { metric: 'rdv_per_week', label: 'RDV / semaine', suffix: '', defaultValue: 5 },
+  { metric: 'joignabilite', label: 'Joignabilite', suffix: '%', defaultValue: 40 },
+]
+
+const CLOSER_OBJECTIVES: ObjectiveConfig[] = [
+  { metric: 'closings_per_month', label: 'Closings / mois', suffix: '', defaultValue: 10 },
+  { metric: 'ca_per_month', label: 'CA / mois', suffix: '\u20AC', defaultValue: 20000 },
+  { metric: 'taux_closing', label: 'Taux closing', suffix: '%', defaultValue: 30 },
+]
 
 type PeriodPreset = '7' | '14' | '30' | 'custom'
 
@@ -96,6 +142,17 @@ export default function EquipeClient() {
   const [reportData, setReportData] = useState<MemberReport[]>([])
   const [reportLoading, setReportLoading] = useState(false)
 
+  // Objectives & Commissions state
+  const [objectives, setObjectives] = useState<TeamObjective[]>([])
+  const [objLoading, setObjLoading] = useState(false)
+  const [objDraft, setObjDraft] = useState<Record<string, number>>({})
+  const [objSaving, setObjSaving] = useState<string | null>(null)
+  const [commissions, setCommissions] = useState<TeamCommission[]>([])
+  const [commDraft, setCommDraft] = useState<{ type: 'percentage' | 'fixed'; value: number; bonus_threshold: number; bonus_amount: number }>({
+    type: 'percentage', value: 10, bonus_threshold: 10, bonus_amount: 200,
+  })
+  const [commSaving, setCommSaving] = useState(false)
+
   const fetchMembers = useCallback(async () => {
     try {
       const res = await fetch('/api/workspaces/members')
@@ -143,6 +200,129 @@ export default function EquipeClient() {
       fetchReporting()
     }
   }, [pageTab, fetchReporting])
+
+  // Fetch objectives & commissions when tab is objectifs
+  const fetchObjectives = useCallback(async () => {
+    setObjLoading(true)
+    try {
+      const [objRes, commRes] = await Promise.all([
+        fetch('/api/workspaces/objectives'),
+        fetch('/api/workspaces/commissions'),
+      ])
+      const objJson = await objRes.json()
+      const commJson = await commRes.json()
+      if (objRes.ok) {
+        const data = objJson.data as TeamObjective[]
+        setObjectives(data)
+        // Initialize draft values from saved objectives
+        const draft: Record<string, number> = {}
+        for (const obj of data) {
+          const key = `${obj.role || 'none'}_${obj.metric}`
+          draft[key] = obj.target_value
+        }
+        setObjDraft(draft)
+      }
+      if (commRes.ok && commJson.data?.length > 0) {
+        setCommissions(commJson.data)
+        const defaultComm = (commJson.data as TeamCommission[]).find(c => !c.user_id)
+        if (defaultComm) {
+          setCommDraft({
+            type: defaultComm.type,
+            value: defaultComm.value,
+            bonus_threshold: defaultComm.bonus_threshold ?? 10,
+            bonus_amount: defaultComm.bonus_amount ?? 200,
+          })
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur chargement objectifs')
+    } finally {
+      setObjLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (pageTab === 'objectifs') {
+      fetchObjectives()
+    }
+  }, [pageTab, fetchObjectives])
+
+  async function saveObjective(role: string, metric: string, value: number) {
+    const key = `${role}_${metric}`
+    setObjSaving(key)
+    try {
+      const res = await fetch('/api/workspaces/objectives', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, metric, target_value: value }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        throw new Error(json.error || 'Erreur sauvegarde')
+      }
+      // Update local state
+      const json = await res.json()
+      setObjectives(prev => {
+        const idx = prev.findIndex(o => o.role === role && o.metric === metric && !o.user_id)
+        if (idx >= 0) {
+          const updated = [...prev]
+          updated[idx] = json.data
+          return updated
+        }
+        return [...prev, json.data]
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setObjSaving(null)
+    }
+  }
+
+  async function saveCommission() {
+    setCommSaving(true)
+    try {
+      const res = await fetch('/api/workspaces/commissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: 'closer',
+          type: commDraft.type,
+          value: commDraft.value,
+          bonus_threshold: commDraft.bonus_threshold || null,
+          bonus_amount: commDraft.bonus_amount || null,
+        }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        throw new Error(json.error || 'Erreur sauvegarde')
+      }
+      const json = await res.json()
+      setCommissions(prev => {
+        const idx = prev.findIndex(c => !c.user_id && c.role === 'closer')
+        if (idx >= 0) {
+          const updated = [...prev]
+          updated[idx] = json.data
+          return updated
+        }
+        return [...prev, json.data]
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setCommSaving(false)
+    }
+  }
+
+  function getObjValue(role: string, metric: string, defaultValue: number): number {
+    const key = `${role}_${metric}`
+    if (objDraft[key] !== undefined) return objDraft[key]
+    return defaultValue
+  }
+
+  function setObjValue(role: string, metric: string, value: number) {
+    const key = `${role}_${metric}`
+    setObjDraft(prev => ({ ...prev, [key]: value }))
+  }
 
   // Close menu on outside click
   useEffect(() => {
@@ -295,6 +475,7 @@ export default function EquipeClient() {
         {([
           { key: 'membres' as PageTab, label: 'Membres', icon: <Shield size={14} /> },
           ...(isAdmin ? [{ key: 'reporting' as PageTab, label: 'Reporting', icon: <BarChart3 size={14} /> }] : []),
+          ...(isAdmin ? [{ key: 'objectifs' as PageTab, label: 'Objectifs & Commissions', icon: <Settings2 size={14} /> }] : []),
         ]).map(t => {
           const active = pageTab === t.key
           return (
@@ -733,6 +914,282 @@ export default function EquipeClient() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════ TAB: OBJECTIFS & COMMISSIONS ══════════════ */}
+      {pageTab === 'objectifs' && isAdmin && (
+        <div>
+          {objLoading ? (
+            <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)', fontSize: 13 }}>
+              Chargement...
+            </div>
+          ) : (
+            <>
+              {/* ── Objectifs Setters ── */}
+              <div style={{ marginBottom: 32 }}>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                  Objectifs Setter
+                </h2>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>
+                  Objectifs par defaut pour tous les setters
+                </p>
+                <div style={{
+                  background: 'var(--bg-elevated)', borderRadius: 12,
+                  border: '1px solid var(--border-primary)', padding: 20,
+                  display: 'flex', flexDirection: 'column', gap: 14,
+                }}>
+                  {SETTER_OBJECTIVES.map(obj => {
+                    const key = `setter_${obj.metric}`
+                    const val = getObjValue('setter', obj.metric, obj.defaultValue)
+                    const saving = objSaving === key
+                    return (
+                      <div key={obj.metric} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', minWidth: 140, fontWeight: 500 }}>
+                          {obj.label}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <input
+                            type="number"
+                            min={0}
+                            value={val}
+                            onChange={e => setObjValue('setter', obj.metric, parseFloat(e.target.value) || 0)}
+                            style={{
+                              width: 90, padding: '7px 10px', borderRadius: 8,
+                              background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                              color: 'var(--text-primary)', fontSize: 13, textAlign: 'right',
+                              outline: 'none',
+                            }}
+                          />
+                          {obj.suffix && (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{obj.suffix}</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => saveObjective('setter', obj.metric, val)}
+                          disabled={saving}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                            background: 'var(--color-primary)', color: '#000', border: 'none',
+                            cursor: saving ? 'not-allowed' : 'pointer',
+                            opacity: saving ? 0.6 : 1,
+                            transition: 'opacity 0.15s',
+                          }}
+                          onMouseEnter={e => { if (!saving) e.currentTarget.style.opacity = '0.85' }}
+                          onMouseLeave={e => { if (!saving) e.currentTarget.style.opacity = '1' }}
+                        >
+                          <Save size={12} />
+                          {saving ? 'En cours...' : 'Sauvegarder'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* ── Objectifs Closers ── */}
+              <div style={{ marginBottom: 32 }}>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                  Objectifs Closer
+                </h2>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>
+                  Objectifs par defaut pour tous les closers
+                </p>
+                <div style={{
+                  background: 'var(--bg-elevated)', borderRadius: 12,
+                  border: '1px solid var(--border-primary)', padding: 20,
+                  display: 'flex', flexDirection: 'column', gap: 14,
+                }}>
+                  {CLOSER_OBJECTIVES.map(obj => {
+                    const key = `closer_${obj.metric}`
+                    const val = getObjValue('closer', obj.metric, obj.defaultValue)
+                    const saving = objSaving === key
+                    return (
+                      <div key={obj.metric} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', minWidth: 140, fontWeight: 500 }}>
+                          {obj.label}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <input
+                            type="number"
+                            min={0}
+                            value={val}
+                            onChange={e => setObjValue('closer', obj.metric, parseFloat(e.target.value) || 0)}
+                            style={{
+                              width: 90, padding: '7px 10px', borderRadius: 8,
+                              background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                              color: 'var(--text-primary)', fontSize: 13, textAlign: 'right',
+                              outline: 'none',
+                            }}
+                          />
+                          {obj.suffix && (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{obj.suffix}</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => saveObjective('closer', obj.metric, val)}
+                          disabled={saving}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '6px 14px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                            background: 'var(--color-primary)', color: '#000', border: 'none',
+                            cursor: saving ? 'not-allowed' : 'pointer',
+                            opacity: saving ? 0.6 : 1,
+                            transition: 'opacity 0.15s',
+                          }}
+                          onMouseEnter={e => { if (!saving) e.currentTarget.style.opacity = '0.85' }}
+                          onMouseLeave={e => { if (!saving) e.currentTarget.style.opacity = '1' }}
+                        >
+                          <Save size={12} />
+                          {saving ? 'En cours...' : 'Sauvegarder'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* ── Commissions Closers ── */}
+              <div style={{ marginBottom: 32 }}>
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                  Commissions Closer
+                </h2>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 16px' }}>
+                  Configuration par defaut des commissions pour les closers
+                </p>
+                <div style={{
+                  background: 'var(--bg-elevated)', borderRadius: 12,
+                  border: '1px solid var(--border-primary)', padding: 20,
+                  display: 'flex', flexDirection: 'column', gap: 18,
+                }}>
+                  {/* Type selection */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)', minWidth: 140, fontWeight: 500 }}>
+                      Type
+                    </span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {([
+                        { value: 'percentage' as const, label: 'Pourcentage' },
+                        { value: 'fixed' as const, label: 'Montant fixe' },
+                      ]).map(opt => {
+                        const active = commDraft.type === opt.value
+                        return (
+                          <button
+                            key={opt.value}
+                            onClick={() => setCommDraft(prev => ({ ...prev, type: opt.value }))}
+                            style={{
+                              padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                              background: active ? 'var(--color-primary)' : 'var(--bg-primary)',
+                              color: active ? '#000' : 'var(--text-secondary)',
+                              border: active ? 'none' : '1px solid var(--border-primary)',
+                              cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Value */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)', minWidth: 140, fontWeight: 500 }}>
+                      Valeur
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={commDraft.value}
+                        onChange={e => setCommDraft(prev => ({ ...prev, value: parseFloat(e.target.value) || 0 }))}
+                        style={{
+                          width: 90, padding: '7px 10px', borderRadius: 8,
+                          background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                          color: 'var(--text-primary)', fontSize: 13, textAlign: 'right',
+                          outline: 'none',
+                        }}
+                      />
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {commDraft.type === 'percentage' ? '%' : '\u20AC'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Separator */}
+                  <div style={{ height: 1, background: 'var(--border-primary)', margin: '4px 0' }} />
+
+                  {/* Bonus section */}
+                  <div>
+                    <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, marginBottom: 12, display: 'block' }}>
+                      Bonus
+                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', minWidth: 140, fontWeight: 500 }}>
+                          Seuil (closings)
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={commDraft.bonus_threshold}
+                          onChange={e => setCommDraft(prev => ({ ...prev, bonus_threshold: parseInt(e.target.value) || 0 }))}
+                          style={{
+                            width: 90, padding: '7px 10px', borderRadius: 8,
+                            background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                            color: 'var(--text-primary)', fontSize: 13, textAlign: 'right',
+                            outline: 'none',
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', minWidth: 140, fontWeight: 500 }}>
+                          Montant bonus
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <input
+                            type="number"
+                            min={0}
+                            value={commDraft.bonus_amount}
+                            onChange={e => setCommDraft(prev => ({ ...prev, bonus_amount: parseFloat(e.target.value) || 0 }))}
+                            style={{
+                              width: 90, padding: '7px 10px', borderRadius: 8,
+                              background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+                              color: 'var(--text-primary)', fontSize: 13, textAlign: 'right',
+                              outline: 'none',
+                            }}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{'\u20AC'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save button */}
+                  <div style={{ marginTop: 4 }}>
+                    <button
+                      onClick={saveCommission}
+                      disabled={commSaving}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                        background: 'var(--color-primary)', color: '#000', border: 'none',
+                        cursor: commSaving ? 'not-allowed' : 'pointer',
+                        opacity: commSaving ? 0.6 : 1,
+                        transition: 'opacity 0.15s',
+                      }}
+                      onMouseEnter={e => { if (!commSaving) e.currentTarget.style.opacity = '0.85' }}
+                      onMouseLeave={e => { if (!commSaving) e.currentTarget.style.opacity = '1' }}
+                    >
+                      <Save size={13} />
+                      {commSaving ? 'En cours...' : 'Sauvegarder les commissions'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}

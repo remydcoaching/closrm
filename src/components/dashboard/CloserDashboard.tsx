@@ -238,7 +238,31 @@ export default function CloserDashboard({ firstName, userId }: CloserDashboardPr
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                         {format(new Date(call.scheduled_at), "HH'h'mm", { locale: fr })} — {leadName}
                       </div>
-                      {call.notes && (
+                      {call.handoff_brief && (
+                        <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: '2px 10px' }}>
+                          {call.handoff_brief.objective && (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              Objectif : {call.handoff_brief.objective}
+                            </span>
+                          )}
+                          {call.handoff_brief.budget && (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              Budget : {call.handoff_brief.budget}
+                            </span>
+                          )}
+                          {call.handoff_brief.objections && (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              Objections : {call.handoff_brief.objections}
+                            </span>
+                          )}
+                          {call.handoff_brief.availability && (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              Dispo : {call.handoff_brief.availability}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {!call.handoff_brief && call.notes && (
                         <div style={{
                           fontSize: 11, color: 'var(--text-muted)', marginTop: 3,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',

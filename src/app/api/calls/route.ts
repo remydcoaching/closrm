@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
         reached: false,
         notes: parsed.data.notes || null,
         closer_id: parsed.data.closer_id || null,
+        handoff_brief: parsed.data.handoff_brief ?? null,
       })
       .select('*, lead:leads(id, first_name, last_name, phone, email, status)')
       .single()

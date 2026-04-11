@@ -19,6 +19,12 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
   const [notes, setNotes] = useState('')
   const [closers, setClosers] = useState<WorkspaceMemberWithUser[]>([])
   const [nextCloser, setNextCloser] = useState<WorkspaceMemberWithUser | null>(null)
+  // Handoff brief fields (closing only)
+  const [briefObjective, setBriefObjective] = useState('')
+  const [briefBudget, setBriefBudget] = useState('')
+  const [briefObjections, setBriefObjections] = useState('')
+  const [briefAvailability, setBriefAvailability] = useState('')
+  const [briefNotes, setBriefNotes] = useState('')
 
   useEffect(() => {
     fetch('/api/workspaces/members')
@@ -45,7 +51,21 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
       const res = await fetch('/api/calls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_id: lead.id, type, scheduled_at, notes: notes || undefined }),
+        body: JSON.stringify({
+          lead_id: lead.id,
+          type,
+          scheduled_at,
+          notes: notes || undefined,
+          ...(type === 'closing' ? {
+            handoff_brief: {
+              objective: briefObjective || undefined,
+              budget: briefBudget || undefined,
+              objections: briefObjections || undefined,
+              availability: briefAvailability || undefined,
+              notes: briefNotes || undefined,
+            },
+          } : {}),
+        }),
       })
 
       if (!res.ok) {
@@ -141,6 +161,68 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
               fontSize: 12, color: '#f59e0b',
             }}>
               Aucun closer dans l'equipe — le lead ne sera pas assigne automatiquement
+            </div>
+          )}
+
+          {/* Handoff brief (closing only) */}
+          {type === 'closing' && (
+            <div style={{
+              marginBottom: 18, padding: '14px 16px', borderRadius: 10,
+              background: 'rgba(168,85,247,0.04)', border: '1px solid rgba(168,85,247,0.15)',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#a855f7', marginBottom: 12, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
+                Brief pour le closer
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 6, display: 'block' }}>Objectif du prospect</label>
+                  <input
+                    value={briefObjective}
+                    onChange={(e) => setBriefObjective(e.target.value)}
+                    placeholder="Perdre 10kg en 3 mois"
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 6, display: 'block' }}>Budget annonce</label>
+                  <input
+                    value={briefBudget}
+                    onChange={(e) => setBriefBudget(e.target.value)}
+                    placeholder="2000-3000€"
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none' }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 6, display: 'block' }}>Objections identifiees</label>
+                <textarea
+                  value={briefObjections}
+                  onChange={(e) => setBriefObjections(e.target.value)}
+                  rows={2}
+                  placeholder="Hesite sur le prix, veut en parler a sa femme..."
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none', resize: 'vertical' as const }}
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 6, display: 'block' }}>Disponibilites</label>
+                  <input
+                    value={briefAvailability}
+                    onChange={(e) => setBriefAvailability(e.target.value)}
+                    placeholder="Mardi et jeudi apres-midi"
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label)', marginBottom: 6, display: 'block' }}>Notes</label>
+                  <input
+                    value={briefNotes}
+                    onChange={(e) => setBriefNotes(e.target.value)}
+                    placeholder="Autres infos utiles..."
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none' }}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
