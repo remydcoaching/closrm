@@ -5,7 +5,7 @@ import { createFollowUpSchema, followUpFiltersSchema } from '@/lib/validations/f
 
 export async function GET(request: NextRequest) {
   try {
-    const { workspaceId } = await getWorkspaceId()
+    const { workspaceId, userId, role } = await getWorkspaceId()
     const supabase = await createClient()
     const params = Object.fromEntries(request.nextUrl.searchParams)
     const filters = followUpFiltersSchema.parse(params)
@@ -14,6 +14,32 @@ export async function GET(request: NextRequest) {
       .from('follow_ups')
       .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status, assigned_to)', { count: 'exact' })
       .eq('workspace_id', workspaceId)
+
+    // Filtrage par rôle : setter/closer ne voient que les follow-ups de leurs leads
+    if (role === 'setter') {
+      const { data: assignedLeads } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .or(`assigned_to.eq.${userId},assigned_to.is.null`)
+      if (assignedLeads && assignedLeads.length > 0) {
+        query = query.in('lead_id', assignedLeads.map((l) => l.id))
+      } else {
+        return NextResponse.json({ data: [], meta: { total: 0, page: filters.page, per_page: filters.per_page, total_pages: 0 } })
+      }
+    } else if (role === 'closer') {
+      const { data: assignedLeads } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('assigned_to', userId)
+        .in('status', ['closing_planifie', 'no_show_closing', 'clos'])
+      if (assignedLeads && assignedLeads.length > 0) {
+        query = query.in('lead_id', assignedLeads.map((l) => l.id))
+      } else {
+        return NextResponse.json({ data: [], meta: { total: 0, page: filters.page, per_page: filters.per_page, total_pages: 0 } })
+      }
+    }
 
     if (filters.status) {
       const statuses = filters.status.split(',').map((s) => s.trim())

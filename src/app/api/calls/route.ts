@@ -7,7 +7,7 @@ import { getNextCloser } from '@/lib/team/round-robin'
 
 export async function GET(request: NextRequest) {
   try {
-    const { workspaceId } = await getWorkspaceId()
+    const { userId, workspaceId, role } = await getWorkspaceId()
     const supabase = await createClient()
 
     const params = Object.fromEntries(request.nextUrl.searchParams)
@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
       .from('calls')
       .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status)', { count: 'exact' })
       .eq('workspace_id', workspaceId)
+
+    // Role-based filtering
+    if (role === 'setter') {
+      query = query.or(`assigned_to.eq.${userId},assigned_to.is.null`)
+    } else if (role === 'closer') {
+      query = query.eq('assigned_to', userId)
+    }
 
     if (filters.type) query = query.eq('type', filters.type)
 
