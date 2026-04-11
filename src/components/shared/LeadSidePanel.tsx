@@ -38,6 +38,10 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
   const [currentRole, setCurrentRole] = useState<WorkspaceRole>('admin')
 
+  // Auto-assign notification
+  const [autoAssignMsg, setAutoAssignMsg] = useState<string | null>(null)
+  const autoAssignTimer = useRef<NodeJS.Timeout>(null)
+
   // Tab state
   const [activeTab, setActiveTab] = useState<'infos' | 'messages'>('infos')
 
@@ -85,9 +89,11 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
     setLoading(false)
   }
 
-  async function patchLead(patch: Partial<Lead>) {
-    await fetch(`/api/leads/${leadId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
-    fetchLead()
+  async function patchLead(patch: Partial<Lead>): Promise<Lead | null> {
+    const res = await fetch(`/api/leads/${leadId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
+    const json = res.ok ? await res.json() : null
+    await fetchLead()
+    return json?.data ?? null
   }
 
   async function patchCall(callId: string, patch: Partial<Call>) {
@@ -262,9 +268,23 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   const active = lead.status === s
                   const cfg = STATUS_CONFIG[s]
                   return (
-                    <button key={s} onClick={() => {
+                    <button key={s} onClick={async () => {
                       if (s === 'clos') { setShowClosingModal(true); return }
-                      patchLead({ status: s })
+                      const previousAssignedTo = lead.assigned_to
+                      const updated = await patchLead({ status: s })
+                      // Show auto-assign notification for setters
+                      if (
+                        s === 'closing_planifie' &&
+                        currentRole === 'setter' &&
+                        updated?.assigned_to &&
+                        updated.assigned_to !== previousAssignedTo
+                      ) {
+                        const closer = members.find((m) => m.user_id === updated.assigned_to)
+                        const closerName = closer?.user?.full_name ?? 'un closer'
+                        if (autoAssignTimer.current) clearTimeout(autoAssignTimer.current)
+                        setAutoAssignMsg(`Lead assigné automatiquement à ${closerName}`)
+                        autoAssignTimer.current = setTimeout(() => setAutoAssignMsg(null), 3000)
+                      }
                     }} style={{
                       padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer',
                       border: active ? `2px solid ${cfg.color}` : '1px solid var(--border-primary)',
@@ -276,6 +296,22 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                 })}
               </div>
             </div>
+
+            {/* Auto-assign notification */}
+            {autoAssignMsg && (
+              <div style={{
+                padding: '10px 14px',
+                marginBottom: 14,
+                borderRadius: 10,
+                fontSize: 12,
+                fontWeight: 500,
+                background: 'rgba(56, 161, 105, 0.1)',
+                border: '1px solid rgba(56, 161, 105, 0.3)',
+                color: '#38A169',
+              }}>
+                {autoAssignMsg}
+              </div>
+            )}
 
             {/* Assigné à */}
             <div style={card}>
