@@ -6,7 +6,7 @@ import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 
 export async function GET(request: NextRequest) {
   try {
-    const { workspaceId } = await getWorkspaceId()
+    const { workspaceId, userId, role } = await getWorkspaceId()
     const supabase = await createClient()
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -14,9 +14,26 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('leads')
-      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, created_at, updated_at', { count: 'exact' })
+      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, assigned_to, created_at, updated_at', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .order(filters.sort, { ascending: filters.order === 'asc' })
+
+    // Filtrage par rôle (sécurité multi-tenant)
+    if (role === 'setter') {
+      // Setter voit ses leads assignés + les leads non assignés
+      query = query.or(`assigned_to.eq.${userId},assigned_to.is.null`)
+    } else if (role === 'closer') {
+      // Closer voit uniquement ses leads en phase closing
+      query = query
+        .eq('assigned_to', userId)
+        .in('status', ['closing_planifie', 'no_show_closing', 'clos'])
+    }
+    // admin: pas de filtre supplémentaire (voit tout)
+
+    // Filtre par assigned_to (query param explicite)
+    if (filters.assigned_to) {
+      query = query.eq('assigned_to', filters.assigned_to)
+    }
 
     // Filtre par statut (liste séparée par virgule)
     if (filters.status) {

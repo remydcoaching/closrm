@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
-import { LeadStatus, LeadSource } from '@/types'
+import { LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
 
 const STATUSES: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'nouveau', label: 'Nouveau', color: '#a0a0a0' },
@@ -23,17 +23,33 @@ const SOURCES: { value: LeadSource; label: string; color: string }[] = [
 ]
 
 interface LeadFiltersProps {
-  onFiltersChange: (filters: { search: string; statuses: LeadStatus[]; sources: LeadSource[] }) => void
+  onFiltersChange: (filters: { search: string; statuses: LeadStatus[]; sources: LeadSource[]; assigned_to?: string }) => void
 }
 
 export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
   const [search, setSearch] = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<LeadStatus[]>([])
   const [selectedSources, setSelectedSources] = useState<LeadSource[]>([])
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('')
+  const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
   const [panelOpen, setPanelOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const onChangeRef = useRef(onFiltersChange)
   onChangeRef.current = onFiltersChange
+
+  // Fetch workspace members for assignee filter
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/workspaces/members')
+        if (res.ok) {
+          const json = await res.json()
+          setMembers(json.data ?? [])
+        }
+      } catch { /* silently ignore */ }
+    }
+    fetchMembers()
+  }, [])
 
   // Fermer le panneau si clic en dehors
   useEffect(() => {
@@ -48,8 +64,8 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
 
   // Notifier le parent immédiatement à chaque changement (le parent gère le debounce)
   useEffect(() => {
-    onChangeRef.current({ search, statuses: selectedStatuses, sources: selectedSources })
-  }, [search, selectedStatuses, selectedSources])
+    onChangeRef.current({ search, statuses: selectedStatuses, sources: selectedSources, assigned_to: selectedAssignee || undefined })
+  }, [search, selectedStatuses, selectedSources, selectedAssignee])
 
   function toggleStatus(s: LeadStatus) {
     setSelectedStatuses(prev =>
@@ -66,9 +82,10 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
   function clearAll() {
     setSelectedStatuses([])
     setSelectedSources([])
+    setSelectedAssignee('')
   }
 
-  const activeCount = selectedStatuses.length + selectedSources.length
+  const activeCount = selectedStatuses.length + selectedSources.length + (selectedAssignee ? 1 : 0)
 
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -197,6 +214,36 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
               </div>
             </div>
 
+            {/* Section Assigné à */}
+            {members.length > 0 && (
+              <div style={{ marginTop: 18 }}>
+                <p style={{
+                  fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+                  textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
+                }}>
+                  Assigné à
+                </p>
+                <select
+                  value={selectedAssignee}
+                  onChange={e => setSelectedAssignee(e.target.value)}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '7px 10px',
+                    background: 'var(--bg-input)', border: '1px solid var(--border-primary)',
+                    borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="">Tous les membres</option>
+                  {members.filter(m => m.status === 'active').map(m => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.user.full_name || m.user.email} ({m.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Chips des filtres actifs */}
             {activeCount > 0 && (
               <div style={{
@@ -204,6 +251,26 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
                 borderTop: '1px solid var(--border-primary)',
                 display: 'flex', flexWrap: 'wrap', gap: 6,
               }}>
+                {selectedAssignee && (() => {
+                  const m = members.find(x => x.user_id === selectedAssignee)
+                  const label = m ? (m.user.full_name || m.user.email) : selectedAssignee
+                  return (
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+                      background: 'rgba(59,130,246,0.1)', color: '#3b82f6',
+                      border: '1px solid rgba(59,130,246,0.25)',
+                    }}>
+                      {label}
+                      <button onClick={() => setSelectedAssignee('')} style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: '#3b82f6', padding: 0, lineHeight: 1,
+                      }}>
+                        <X size={10} />
+                      </button>
+                    </span>
+                  )
+                })()}
                 {selectedStatuses.map(s => {
                   const cfg = STATUSES.find(x => x.value === s)!
                   return (
@@ -251,6 +318,25 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
       {/* Chips actifs visibles sous la barre (hors panneau) */}
       {activeCount > 0 && !panelOpen && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%' }}>
+          {selectedAssignee && (() => {
+            const m = members.find(x => x.user_id === selectedAssignee)
+            const label = m ? (m.user.full_name || m.user.email) : selectedAssignee
+            return (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+                background: 'rgba(59,130,246,0.08)', color: '#3b82f6',
+                border: '1px solid rgba(59,130,246,0.2)',
+              }}>
+                {label}
+                <button onClick={() => setSelectedAssignee('')} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', padding: 0,
+                }}>
+                  <X size={10} />
+                </button>
+              </span>
+            )
+          })()}
           {selectedStatuses.map(s => {
             const cfg = STATUSES.find(x => x.value === s)!
             return (

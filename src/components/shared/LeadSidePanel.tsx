@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check, Sparkles } from 'lucide-react'
-import { Lead, Call, FollowUp, LeadStatus, IgConversation, IgMessage } from '@/types'
+import { Lead, Call, FollowUp, LeadStatus, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import ClosingModal from '@/components/leads/ClosingModal'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
@@ -33,6 +33,10 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   const [showClosingModal, setShowClosingModal] = useState(false)
   const notesTimer = useRef<NodeJS.Timeout>(null)
 
+  // Team members state
+  const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
+  const [currentRole, setCurrentRole] = useState<WorkspaceRole>('admin')
+
   // Tab state
   const [activeTab, setActiveTab] = useState<'infos' | 'messages'>('infos')
 
@@ -45,6 +49,29 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   useEffect(() => {
     fetchLead()
   }, [leadId])
+
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/workspaces/members')
+        if (res.ok) {
+          const json = await res.json()
+          setMembers(json.data ?? [])
+        }
+      } catch { /* silently ignore */ }
+    }
+    async function fetchCurrentRole() {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const json = await res.json()
+          if (json.data?.role) setCurrentRole(json.data.role)
+        }
+      } catch { /* silently ignore */ }
+    }
+    fetchMembers()
+    fetchCurrentRole()
+  }, [])
 
   async function fetchLead() {
     setLoading(true)
@@ -247,6 +274,62 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   )
                 })}
               </div>
+            </div>
+
+            {/* Assigné à */}
+            <div style={card}>
+              <div style={sectionTitle}>Assigné à</div>
+              {currentRole === 'admin' ? (
+                <select
+                  value={lead.assigned_to || ''}
+                  onChange={(e) => patchLead({ assigned_to: e.target.value || null })}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '8px 10px',
+                    background: 'var(--bg-input)', border: '1px solid var(--border-primary)',
+                    borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="">Non assigné</option>
+                  {members.filter(m => m.status === 'active').map((m) => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.user.full_name || m.user.email} ({m.role})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {(() => {
+                    const assignedMember = members.find(m => m.user_id === lead.assigned_to)
+                    if (!assignedMember) return <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Non assigné</span>
+                    const name = assignedMember.user.full_name || assignedMember.user.email
+                    const initials = (assignedMember.user.full_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+                    const roleColors: Record<WorkspaceRole, string> = { admin: '#E53E3E', setter: '#3b82f6', closer: '#38A169' }
+                    return (
+                      <>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%',
+                          background: `${roleColors[assignedMember.role]}20`,
+                          color: roleColors[assignedMember.role],
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 10, fontWeight: 700, flexShrink: 0,
+                        }}>
+                          {initials}
+                        </div>
+                        <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{name}</span>
+                        <span style={{
+                          fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 99,
+                          background: `${roleColors[assignedMember.role]}18`,
+                          color: roleColors[assignedMember.role],
+                        }}>
+                          {assignedMember.role}
+                        </span>
+                      </>
+                    )
+                  })()}
+                </div>
+              )}
             </div>
 
             {/* Contact editable */}
