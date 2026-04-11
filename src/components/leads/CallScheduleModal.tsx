@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Loader2, Calendar, Clock } from 'lucide-react'
-import { Lead } from '@/types'
+import { useState, useEffect } from 'react'
+import { X, Loader2, Calendar, Clock, UserCheck } from 'lucide-react'
+import { Lead, WorkspaceMemberWithUser } from '@/types'
 
 interface CallScheduleModalProps {
   lead: Pick<Lead, 'id' | 'first_name' | 'last_name'>
@@ -17,6 +17,20 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
   const [date, setDate] = useState('')
   const [time, setTime] = useState('14:00')
   const [notes, setNotes] = useState('')
+  const [closers, setClosers] = useState<WorkspaceMemberWithUser[]>([])
+  const [nextCloser, setNextCloser] = useState<WorkspaceMemberWithUser | null>(null)
+
+  useEffect(() => {
+    fetch('/api/workspaces/members')
+      .then(r => r.json())
+      .then(json => {
+        const members: WorkspaceMemberWithUser[] = json.data || []
+        const closerMembers = members.filter(m => m.role === 'closer' && m.status === 'active')
+        setClosers(closerMembers)
+        if (closerMembers.length > 0) setNextCloser(closerMembers[0])
+      })
+      .catch(() => {})
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -101,6 +115,34 @@ export default function CallScheduleModal({ lead, onClose, onScheduled }: CallSc
               ))}
             </div>
           </div>
+
+          {/* Auto-assign info for closing */}
+          {type === 'closing' && nextCloser && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 14px', borderRadius: 10, marginBottom: 18,
+              background: 'rgba(56,161,105,0.08)', border: '1px solid rgba(56,161,105,0.2)',
+            }}>
+              <UserCheck size={16} color="#38A169" />
+              <div>
+                <span style={{ fontSize: 12, color: '#38A169', fontWeight: 600 }}>
+                  Sera assigne a {nextCloser.user.full_name}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>
+                  (closer le moins charge)
+                </span>
+              </div>
+            </div>
+          )}
+          {type === 'closing' && closers.length === 0 && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 10, marginBottom: 18,
+              background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+              fontSize: 12, color: '#f59e0b',
+            }}>
+              Aucun closer dans l'equipe — le lead ne sera pas assigne automatiquement
+            </div>
+          )}
 
           {/* Date + Time side by side */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 18 }}>
