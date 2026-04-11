@@ -120,23 +120,22 @@ export async function DELETE(
 
     const serviceClient = createServiceClient()
 
-    // Delete workspace_members row
-    const { error: deleteError } = await serviceClient
+    // 1. Delete workspace_members row
+    await serviceClient
       .from('workspace_members')
       .delete()
       .eq('workspace_id', workspaceId)
       .eq('user_id', targetUserId)
 
-    if (deleteError) {
-      console.error('[API /workspaces/members/[userId]] DELETE error:', deleteError.message)
-      return NextResponse.json({ error: deleteError.message }, { status: 500 })
-    }
+    // 2. Delete users row
+    await serviceClient
+      .from('users')
+      .delete()
+      .eq('id', targetUserId)
+      .eq('workspace_id', workspaceId)
 
-    // Ban the auth user (disable, not delete)
-    await serviceClient.auth.admin.updateUserById(targetUserId, {
-      ban_duration: 'none',
-      user_metadata: { banned: true },
-    })
+    // 3. Delete Supabase Auth account completely (so email can be reused)
+    await serviceClient.auth.admin.deleteUser(targetUserId)
 
     return NextResponse.json({ success: true })
   } catch (err) {
