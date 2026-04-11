@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createCallSchema, callFiltersSchema } from '@/lib/validations/calls'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { getNextCloser } from '@/lib/team/round-robin'
 
 export async function GET(request: NextRequest) {
   try {
@@ -115,6 +116,35 @@ export async function POST(request: NextRequest) {
       .update({ status: newStatus })
       .eq('id', parsed.data.lead_id)
       .eq('workspace_id', workspaceId)
+
+    // Auto-assign to closest available closer (round-robin) for closing calls
+    if (parsed.data.type === 'closing') {
+      // Check if lead already has an assigned_to
+      const { data: lead } = await supabase
+        .from('leads')
+        .select('assigned_to')
+        .eq('id', parsed.data.lead_id)
+        .eq('workspace_id', workspaceId)
+        .single()
+
+      if (lead && !lead.assigned_to) {
+        const nextCloser = await getNextCloser(workspaceId)
+        if (nextCloser) {
+          await supabase
+            .from('leads')
+            .update({ assigned_to: nextCloser })
+            .eq('id', parsed.data.lead_id)
+            .eq('workspace_id', workspaceId)
+
+          // Also assign the call itself to the closer
+          await supabase
+            .from('calls')
+            .update({ assigned_to: nextCloser })
+            .eq('id', data.id)
+            .eq('workspace_id', workspaceId)
+        }
+      }
+    }
 
     // Update last_activity_at on the lead (non-blocking)
     supabase
