@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar } from 'lucide-react'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
-import { Lead, LeadStatus, LeadSource, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
+import { Lead, LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
 import LeadFilters from '@/components/leads/LeadFilters'
 import LeadForm from '@/components/leads/LeadForm'
+import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import ClosingModal from '@/components/leads/ClosingModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
@@ -385,35 +386,13 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                   </td>
 
                   {/* Assigné à */}
-                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                    {(() => {
-                      const m = lead.assigned_to ? memberMap.current.get(lead.assigned_to) : null
-                      if (!m) return <span style={{ color: 'var(--text-label)', fontSize: 12 }}>—</span>
-                      const name = m.user.full_name || m.user.email
-                      const initials = (m.user.full_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                      const roleColors: Record<WorkspaceRole, string> = { admin: '#E53E3E', setter: '#3b82f6', closer: '#38A169' }
-                      return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{
-                            width: 24, height: 24, borderRadius: '50%',
-                            background: `${roleColors[m.role]}20`,
-                            color: roleColors[m.role],
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 9, fontWeight: 700, flexShrink: 0,
-                          }}>
-                            {initials}
-                          </div>
-                          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{name.split(' ')[0]}</span>
-                          <span style={{
-                            fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 99,
-                            background: `${roleColors[m.role]}18`,
-                            color: roleColors[m.role],
-                          }}>
-                            {m.role}
-                          </span>
-                        </div>
-                      )
-                    })()}
+                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                    <MemberAssignDropdown
+                      assignedTo={lead.assigned_to}
+                      members={members}
+                      onAssign={(userId) => patchLead(lead.id, { assigned_to: userId })}
+                      compact
+                    />
                   </td>
 
                   {/* Tags */}

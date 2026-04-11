@@ -15,6 +15,7 @@ export const updateCallSchema = z.object({
   duration_seconds: z.number().int().min(0).optional(),
   scheduled_at: z.string().optional(),
   closer_id: z.string().uuid().optional().nullable(),
+  assigned_to: z.string().uuid().optional().nullable(),
 })
 
 export const callFiltersSchema = z.object({

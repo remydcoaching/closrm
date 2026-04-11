@@ -3,9 +3,10 @@
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { CheckCircle, Calendar, Trash2 } from 'lucide-react'
-import { Call, Lead } from '@/types'
+import { Call, Lead, WorkspaceMemberWithUser } from '@/types'
 import CallOutcomeBadge from './CallOutcomeBadge'
 import CallTypeBadge from './CallTypeBadge'
+import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 
 type CallWithLead = Call & {
   lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'>
@@ -19,12 +20,14 @@ interface Props {
   onReschedule: (call: CallWithLead) => void
   onDelete: (call: CallWithLead) => void
   onLeadClick: (leadId: string) => void
+  members?: WorkspaceMemberWithUser[]
+  onAssignCall?: (callId: string, userId: string | null) => void
 }
 
 const th: React.CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: '0.15em', borderBottom: '1px solid var(--border-primary)' }
 const td: React.CSSProperties = { padding: '12px', fontSize: 13, borderBottom: '1px solid var(--bg-hover)', verticalAlign: 'middle' }
 
-export default function CallTable({ calls, loading, onOutcome, onReschedule, onDelete, onLeadClick }: Props) {
+export default function CallTable({ calls, loading, onOutcome, onReschedule, onDelete, onLeadClick, members = [], onAssignCall }: Props) {
   if (loading) return <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-label)' }}>Chargement...</div>
   if (calls.length === 0) return <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-label)', fontSize: 13 }}>Aucun appel dans cette catégorie</div>
 
@@ -40,6 +43,7 @@ export default function CallTable({ calls, loading, onOutcome, onReschedule, onD
             <th style={th}>Type</th>
             <th style={th}>#</th>
             <th style={th}>Statut</th>
+            <th style={th}>Assigné</th>
             <th style={{ ...th, textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
@@ -75,6 +79,15 @@ export default function CallTable({ calls, loading, onOutcome, onReschedule, onD
                 <td style={td}><CallTypeBadge type={call.type} /></td>
                 <td style={{ ...td, color: 'var(--text-muted)' }}>#{call.attempt_number}</td>
                 <td style={td}><CallOutcomeBadge outcome={call.outcome} /></td>
+                <td style={td} onClick={(e) => e.stopPropagation()}>
+                  <MemberAssignDropdown
+                    assignedTo={call.assigned_to}
+                    members={members}
+                    onAssign={(userId) => onAssignCall?.(call.id, userId)}
+                    canEdit={!!onAssignCall}
+                    compact
+                  />
+                </td>
                 <td style={{ ...td, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                   <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                     <button onClick={() => onOutcome(call)} title="Résultat" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

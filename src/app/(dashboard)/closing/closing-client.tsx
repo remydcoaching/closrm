@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { List, CalendarDays } from 'lucide-react'
-import { Call, Lead, CallType } from '@/types' // eslint-disable-line @typescript-eslint/no-unused-vars
+import { Call, Lead, CallType, WorkspaceMemberWithUser } from '@/types' // eslint-disable-line @typescript-eslint/no-unused-vars
 import CallFilters from '@/components/closing/CallFilters'
 import CallTable from '@/components/closing/CallTable'
 import CallCalendar from '@/components/closing/CallCalendar'
@@ -44,6 +44,32 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
   const [rescheduleTarget, setRescheduleTarget] = useState<CallWithLead | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CallWithLead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
+
+  // Team members for assignment column
+  const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
+
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/workspaces/members')
+        if (res.ok) {
+          const json = await res.json()
+          setMembers(json.data ?? [])
+        }
+      } catch { /* silently ignore */ }
+    }
+    fetchMembers()
+  }, [])
+
+  async function handleAssignCall(callId: string, userId: string | null) {
+    // Optimistic update
+    setCalls(prev => prev.map(c => c.id === callId ? { ...c, assigned_to: userId } : c))
+    await fetch(`/api/calls/${callId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assigned_to: userId }),
+    })
+  }
 
   // Track whether we've navigated away from the initial server-rendered tab/page
   const [hasNavigated, setHasNavigated] = useState(false)
@@ -155,7 +181,7 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
 
       <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 14, overflow: 'hidden' }}>
         {view === 'list' ? (
-          <CallTable calls={calls} loading={loading} onOutcome={setOutcomeTarget} onReschedule={setRescheduleTarget} onDelete={setDeleteTarget} onLeadClick={setSidePanelLeadId} />
+          <CallTable calls={calls} loading={loading} onOutcome={setOutcomeTarget} onReschedule={setRescheduleTarget} onDelete={setDeleteTarget} onLeadClick={setSidePanelLeadId} members={members} onAssignCall={handleAssignCall} />
         ) : (
           <div style={{ padding: 16 }}><CallCalendar calls={calls} loading={loading} onCallClick={setOutcomeTarget} /></div>
         )}
