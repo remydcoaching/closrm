@@ -6,6 +6,8 @@ import {
   fetchRecentActivity,
 } from '@/lib/dashboard/queries'
 import DashboardClient from '@/components/dashboard/dashboard-client'
+import SetterDashboard from '@/components/dashboard/SetterDashboard'
+import CloserDashboard from '@/components/dashboard/CloserDashboard'
 
 const VALID_PERIODS = [7, 30, 90] as const
 type Period = (typeof VALID_PERIODS)[number]
@@ -19,7 +21,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const periodParam = Number(params.period)
   const period: Period = (VALID_PERIODS.includes(periodParam as Period) ? periodParam : 30) as Period
 
-  const { workspaceId, userId } = await getWorkspaceId()
+  const { workspaceId, userId, role } = await getWorkspaceId()
 
   const { createClient } = await import('@/lib/supabase/server')
   const supabase = await createClient()
@@ -31,6 +33,16 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Coach'
 
+  // Route par role : setter et closer ont leur propre dashboard
+  if (role === 'setter') {
+    return <SetterDashboard firstName={firstName} userId={userId} />
+  }
+
+  if (role === 'closer') {
+    return <CloserDashboard firstName={firstName} userId={userId} />
+  }
+
+  // Admin : dashboard existant inchange
   const [kpis, upcomingCalls, overdueFollowUps, recentActivity] = await Promise.all([
     fetchKpis(workspaceId, period),
     fetchUpcomingCalls(workspaceId),
