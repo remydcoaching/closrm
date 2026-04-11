@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('follow_ups')
-      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status)', { count: 'exact' })
+      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status, assigned_to)', { count: 'exact' })
       .eq('workspace_id', workspaceId)
 
     if (filters.status) {
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('follow_ups')
       .insert({ workspace_id: workspaceId, ...parsed.data, status: 'en_attente', notes: parsed.data.notes || null })
-      .select('*, lead:leads(id, first_name, last_name, phone, email, status)')
+      .select('*, lead:leads(id, first_name, last_name, phone, email, status, assigned_to)')
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

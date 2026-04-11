@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Plus, Search, Zap, Trash2 } from 'lucide-react'
-import { FollowUp, Lead, FollowUpStatus, FollowUpChannel } from '@/types'
+import { FollowUp, Lead, FollowUpStatus, FollowUpChannel, WorkspaceMemberWithUser } from '@/types'
+import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import FollowUpStatusBadge from '@/components/follow-ups/FollowUpStatusBadge'
 import ChannelBadge from '@/components/follow-ups/ChannelBadge'
 import AddFollowUpModal from '@/components/follow-ups/AddFollowUpModal'
@@ -14,7 +15,7 @@ import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 
-type FUWithLead = FollowUp & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'> }
+type FUWithLead = FollowUp & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status' | 'assigned_to'> }
 type Tab = 'today' | 'overdue' | 'upcoming' | 'done' | 'all'
 
 const TAB_CONFIG: Record<Tab, { label: string; color: string }> = {
@@ -47,6 +48,34 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
   const [scheduleLeadId, setScheduleLeadId] = useState<FUWithLead | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FUWithLead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
+
+  // Team members for assignment column
+  const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
+
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/workspaces/members')
+        if (res.ok) {
+          const json = await res.json()
+          setMembers(json.data ?? [])
+        }
+      } catch { /* silently ignore */ }
+    }
+    fetchMembers()
+  }, [])
+
+  async function handleAssignLead(followUpId: string, leadId: string, userId: string | null) {
+    // Optimistic update
+    setFollowUps(prev => prev.map(fu =>
+      fu.id === followUpId ? { ...fu, lead: { ...fu.lead, assigned_to: userId } } : fu
+    ))
+    await fetch(`/api/leads/${leadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assigned_to: userId }),
+    })
+  }
 
   // Track whether we've navigated away from the initial server-rendered tab/page
   const [hasNavigated, setHasNavigated] = useState(false)
@@ -202,6 +231,7 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
                   <th style={th}>Raison</th>
                   <th style={th}>Canal</th>
                   <th style={th}>Statut</th>
+                  <th style={th}>Assigné</th>
                   <th style={{ ...th, textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -227,6 +257,14 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
                       <td style={{ ...td, color: 'var(--text-primary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fu.reason}</td>
                       <td style={td}><ChannelBadge channel={fu.channel} /></td>
                       <td style={td}><FollowUpStatusBadge status={fu.status} /></td>
+                      <td style={td} onClick={(e) => e.stopPropagation()}>
+                        <MemberAssignDropdown
+                          assignedTo={fu.lead.assigned_to ?? null}
+                          members={members}
+                          onAssign={(userId) => handleAssignLead(fu.id, fu.lead.id, userId)}
+                          compact
+                        />
+                      </td>
                       <td style={{ ...td, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           {fu.status === 'en_attente' && (
