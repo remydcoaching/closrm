@@ -174,12 +174,30 @@ export default function MemberAssignDropdown({
       {open && (
         <div
           style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            zIndex: 9999,
-            marginTop: 4,
+            position: 'fixed',
+            top: (() => {
+              const rect = ref.current?.getBoundingClientRect()
+              if (!rect) return 0
+              const spaceBelow = window.innerHeight - rect.bottom
+              // Open above if not enough space below
+              if (spaceBelow < 200) return rect.top - 4
+              return rect.bottom + 4
+            })(),
+            left: (() => {
+              const rect = ref.current?.getBoundingClientRect()
+              return rect ? Math.min(rect.left, window.innerWidth - 270) : 0
+            })(),
+            transform: (() => {
+              const rect = ref.current?.getBoundingClientRect()
+              if (!rect) return 'none'
+              const spaceBelow = window.innerHeight - rect.bottom
+              if (spaceBelow < 200) return 'translateY(-100%)'
+              return 'none'
+            })(),
+            zIndex: 99999,
             minWidth: 260,
+            maxHeight: 300,
+            overflowY: 'auto',
             background: '#1a1a1a',
             border: '1px solid var(--border-primary)',
             borderRadius: 10,
