@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import type { WorkspaceRole, MemberStatus } from '@/types'
@@ -57,14 +56,14 @@ export async function PATCH(
       )
     }
 
-    const supabase = await createClient()
+    const serviceClient = createServiceClient()
 
     // Build update object
     const memberUpdate: Record<string, string> = {}
     if (newRole) memberUpdate.role = newRole
     if (newStatus) memberUpdate.status = newStatus
 
-    const { data: member, error: memberError } = await supabase
+    const { data: member, error: memberError } = await serviceClient
       .from('workspace_members')
       .update(memberUpdate)
       .eq('workspace_id', workspaceId)
@@ -81,7 +80,7 @@ export async function PATCH(
 
     // Keep users table in sync
     if (newRole) {
-      await supabase
+      await serviceClient
         .from('users')
         .update({ role: newRole })
         .eq('id', targetUserId)
@@ -119,10 +118,10 @@ export async function DELETE(
       )
     }
 
-    const supabase = await createClient()
+    const serviceClient = createServiceClient()
 
     // Delete workspace_members row
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await serviceClient
       .from('workspace_members')
       .delete()
       .eq('workspace_id', workspaceId)
@@ -133,8 +132,7 @@ export async function DELETE(
       return NextResponse.json({ error: deleteError.message }, { status: 500 })
     }
 
-    // Ban the auth user (disable, not delete) using service client
-    const serviceClient = createServiceClient()
+    // Ban the auth user (disable, not delete)
     await serviceClient.auth.admin.updateUserById(targetUserId, {
       ban_duration: 'none',
       user_metadata: { banned: true },
