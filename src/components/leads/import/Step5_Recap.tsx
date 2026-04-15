@@ -88,7 +88,7 @@ export default function Step5_Recap({ state }: Props) {
         ) : (
           <AlertTriangle size={48} color="#D69E2E" />
         )}
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginTop: 12 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginTop: 12 }}>
           Import terminé
         </h2>
       </div>
@@ -110,7 +110,7 @@ export default function Step5_Recap({ state }: Props) {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600,
-            background: '#E53E3E', border: 'none', color: '#000', cursor: 'pointer',
+            background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
           }}
         >
           <ExternalLink size={14} />
@@ -121,7 +121,7 @@ export default function Step5_Recap({ state }: Props) {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '10px 20px', borderRadius: 8, fontSize: 14,
-            background: 'transparent', border: '1px solid #333', color: '#A0A0A0', cursor: 'pointer',
+            background: 'transparent', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', cursor: 'pointer',
           }}
         >
           Nouvel import
@@ -131,7 +131,7 @@ export default function Step5_Recap({ state }: Props) {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '10px 20px', borderRadius: 8, fontSize: 14,
-            background: 'transparent', border: '1px solid #333', color: '#A0A0A0', cursor: 'pointer',
+            background: 'transparent', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', cursor: 'pointer',
           }}
         >
           Historique des imports
@@ -140,26 +140,26 @@ export default function Step5_Recap({ state }: Props) {
 
       {editedErrors.length > 0 && (
         <div>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 12 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>
             Lignes en erreur ({editedErrors.length})
           </h3>
-          <div style={{ borderRadius: 8, border: '1px solid #262626', overflow: 'hidden' }}>
+          <div style={{ borderRadius: 8, border: '1px solid var(--border-primary)', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
-                  <th style={{ padding: '10px 12px', textAlign: 'left', color: '#A0A0A0', background: '#1a1a1a' }}>Ligne</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'left', color: '#A0A0A0', background: '#1a1a1a' }}>Champ</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'left', color: '#A0A0A0', background: '#1a1a1a' }}>Valeur originale</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'left', color: '#A0A0A0', background: '#1a1a1a' }}>Correction</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'left', color: '#A0A0A0', background: '#1a1a1a' }}>Raison</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Ligne</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Champ</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Valeur originale</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Correction</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Raison</th>
                 </tr>
               </thead>
               <tbody>
                 {editedErrors.map((e, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #1a1a1a' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
                     <td style={{ padding: '8px 12px', color: '#E53E3E' }}>{e.row}</td>
-                    <td style={{ padding: '8px 12px', color: '#fff' }}>{e.field}</td>
-                    <td style={{ padding: '8px 12px', color: '#666' }}>{e.value || '—'}</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-primary)' }}>{e.field}</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>{e.value || '—'}</td>
                     <td style={{ padding: '8px 12px' }}>
                       <input
                         type="text"
@@ -167,11 +167,11 @@ export default function Step5_Recap({ state }: Props) {
                         onChange={(ev) => handleEditErrorField(i, e.field, ev.target.value)}
                         style={{
                           width: '100%', padding: '6px 8px', borderRadius: 4, fontSize: 13,
-                          background: '#1a1a1a', border: '1px solid #333', color: '#fff',
+                          background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)',
                         }}
                       />
                     </td>
-                    <td style={{ padding: '8px 12px', color: '#A0A0A0' }}>{e.reason}</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{e.reason}</td>
                   </tr>
                 ))}
               </tbody>
@@ -184,7 +184,7 @@ export default function Step5_Recap({ state }: Props) {
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                background: '#E53E3E', border: 'none', color: '#000',
+                background: 'var(--color-primary)', border: 'none', color: '#000',
                 cursor: reimporting ? 'not-allowed' : 'pointer',
                 opacity: reimporting ? 0.6 : 1,
               }}
@@ -193,7 +193,7 @@ export default function Step5_Recap({ state }: Props) {
               {reimporting ? 'Réimport en cours...' : 'Réimporter les lignes corrigées'}
             </button>
             {reimportResult && (
-              <p style={{ fontSize: 13, color: '#A0A0A0', margin: 0 }}>{reimportResult}</p>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{reimportResult}</p>
             )}
           </div>
         </div>

@@ -53,12 +53,12 @@ const STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
 
 const selectStyle: React.CSSProperties = {
   width: '100%', padding: '8px 10px', borderRadius: 6, fontSize: 13,
-  background: '#1a1a1a', border: '1px solid #333', color: '#fff',
+  background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)',
   cursor: 'pointer',
 }
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: '#A0A0A0', marginBottom: 6, display: 'block',
+  fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block',
 }
 
 export default function Step2_MappingConfig({ state, updateState, onBack, onNext }: Props) {
@@ -98,33 +98,33 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 32 }}>
         {/* Left: Mapping */}
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>
             Mapping des colonnes
           </h2>
-          <div style={{ borderRadius: 8, border: '1px solid #262626', overflow: 'hidden' }}>
+          <div style={{ borderRadius: 8, border: '1px solid var(--border-primary)', overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
-                  <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: '#A0A0A0', background: '#1a1a1a' }}>
+                  <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>
                     Colonne CSV
                   </th>
-                  <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: '#A0A0A0', background: '#1a1a1a', width: 200 }}>
+                  <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', width: 200 }}>
                     Champ ClosRM
                   </th>
-                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, color: '#A0A0A0', background: '#1a1a1a', width: 40 }} />
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', width: 40 }} />
                 </tr>
               </thead>
               <tbody>
                 {columnMappings.map((m, i) => (
-                  <tr key={m.csvHeader} style={{ borderBottom: '1px solid #1a1a1a' }}>
-                    <td style={{ padding: '8px 14px', color: '#fff' }}>{m.csvHeader}</td>
+                  <tr key={m.csvHeader} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+                    <td style={{ padding: '8px 14px', color: 'var(--text-primary)' }}>{m.csvHeader}</td>
                     <td style={{ padding: '8px 14px' }}>
                       <select
                         value={m.targetField || ''}
                         onChange={(e) => updateMapping(i, e.target.value || null)}
                         style={{
                           ...selectStyle,
-                          color: m.targetField ? '#fff' : '#666',
+                          color: m.targetField ? 'var(--text-primary)' : 'var(--text-muted)',
                         }}
                       >
                         <option value="">— Ignorer —</option>
@@ -156,7 +156,7 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
 
         {/* Right: Config */}
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>
             Configuration
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -198,24 +198,24 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
                 })}
                 style={{ ...selectStyle, cursor: 'text' }}
               />
-              <p style={{ fontSize: 11, color: '#666', marginTop: 4 }}>Séparez les tags par des virgules</p>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Séparez les tags par des virgules</p>
             </div>
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, position: 'relative' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#A0A0A0' }}>Stratégie de déduplication</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Stratégie de déduplication</span>
                 <div
                   style={{ position: 'relative', display: 'inline-flex' }}
                   onMouseEnter={() => setShowDedupTooltip(true)}
                   onMouseLeave={() => setShowDedupTooltip(false)}
                 >
-                  <Info size={14} color="#666" style={{ cursor: 'help' }} />
+                  <Info size={14} color="var(--text-muted)" style={{ cursor: 'help' }} />
                   {showDedupTooltip && (
                     <div style={{
                       position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
                       marginBottom: 8, width: 260, padding: '10px 12px', borderRadius: 8,
-                      background: '#1a1a1a', border: '1px solid #333', zIndex: 10,
-                      fontSize: 12, lineHeight: 1.5, color: '#ccc',
+                      background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', zIndex: 10,
+                      fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)',
                     }}>
                       Permet d'éviter les doublons si certains leads de votre fichier existent déjà dans ClosRM. On compare l'email, le téléphone, ou les deux pour détecter les contacts déjà présents.
                     </div>
@@ -225,14 +225,14 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
               {(['email', 'phone', 'email_and_phone', 'none'] as ImportDedupStrategy[]).map((s) => (
                 <label key={s} style={{
                   display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
-                  fontSize: 13, color: '#fff', cursor: 'pointer',
+                  fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer',
                 }}>
                   <input
                     type="radio"
                     name="dedup_strategy"
                     checked={config.dedup_strategy === s}
                     onChange={() => updateConfig({ dedup_strategy: s })}
-                    style={{ accentColor: '#E53E3E' }}
+                    style={{ accentColor: 'var(--color-primary)' }}
                   />
                   {{ email: 'Par email', phone: 'Par téléphone', email_and_phone: 'Email + téléphone', none: 'Aucune' }[s]}
                 </label>
@@ -244,14 +244,14 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
               {(['skip', 'update', 'create'] as ImportDedupAction[]).map((a) => (
                 <label key={a} style={{
                   display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
-                  fontSize: 13, color: '#fff', cursor: 'pointer',
+                  fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer',
                 }}>
                   <input
                     type="radio"
                     name="dedup_action"
                     checked={config.dedup_action === a}
                     onChange={() => updateConfig({ dedup_action: a })}
-                    style={{ accentColor: '#E53E3E' }}
+                    style={{ accentColor: 'var(--color-primary)' }}
                   />
                   {{ skip: "Ignorer (garder l'existant)", update: 'Mettre à jour', create: 'Créer quand même' }[a]}
                 </label>
@@ -265,7 +265,7 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
         <button onClick={onBack} style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '10px 20px', borderRadius: 8, fontSize: 14,
-          background: 'transparent', border: '1px solid #333', color: '#A0A0A0', cursor: 'pointer',
+          background: 'transparent', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', cursor: 'pointer',
         }}>
           <ArrowLeft size={16} />
           Retour
@@ -276,8 +276,8 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600,
-            background: hasRequiredField ? '#E53E3E' : '#333', border: 'none',
-            color: hasRequiredField ? '#000' : '#666', cursor: hasRequiredField ? 'pointer' : 'not-allowed',
+            background: hasRequiredField ? 'var(--color-primary)' : 'var(--border-primary)', border: 'none',
+            color: hasRequiredField ? '#000' : 'var(--text-muted)', cursor: hasRequiredField ? 'pointer' : 'not-allowed',
           }}
         >
           Continuer

@@ -51,58 +51,58 @@ export default function ImportHistory() {
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: 32, height: 32, borderRadius: 6,
-            background: 'transparent', border: '1px solid #333', color: '#A0A0A0', cursor: 'pointer',
+            background: 'transparent', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', cursor: 'pointer',
           }}
         >
           <ArrowLeft size={16} />
         </button>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
           Historique des imports
         </h1>
       </div>
 
       {loading && (
         <div style={{ textAlign: 'center', padding: 40 }}>
-          <Loader2 size={24} color="#666" style={{ animation: 'spin 1s linear infinite' }} />
+          <Loader2 size={24} color="var(--text-muted)" style={{ animation: 'spin 1s linear infinite' }} />
           <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
         </div>
       )}
 
       {!loading && batches.length === 0 && (
-        <p style={{ fontSize: 14, color: '#666', textAlign: 'center', padding: 40 }}>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>
           Aucun import effectué.
         </p>
       )}
 
       {!loading && batches.length > 0 && (
-        <div style={{ borderRadius: 8, border: '1px solid #262626', overflow: 'hidden' }}>
+        <div style={{ borderRadius: 8, border: '1px solid var(--border-primary)', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr>
-                <th style={{ padding: '10px 14px', textAlign: 'left', color: '#A0A0A0', background: '#1a1a1a' }}>Date</th>
-                <th style={{ padding: '10px 14px', textAlign: 'left', color: '#A0A0A0', background: '#1a1a1a' }}>Fichier</th>
-                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#A0A0A0', background: '#1a1a1a' }}>Total</th>
-                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#38A169', background: '#1a1a1a' }}>Créés</th>
-                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#3B82F6', background: '#1a1a1a' }}>MAJ</th>
-                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#666', background: '#1a1a1a' }}>Ignorés</th>
-                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#E53E3E', background: '#1a1a1a' }}>Erreurs</th>
-                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#A0A0A0', background: '#1a1a1a' }}>Statut</th>
-                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#A0A0A0', background: '#1a1a1a' }}>Actions</th>
+                <th style={{ padding: '10px 14px', textAlign: 'left', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Date</th>
+                <th style={{ padding: '10px 14px', textAlign: 'left', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Fichier</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Total</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#38A169', background: 'var(--bg-elevated)' }}>Créés</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#3B82F6', background: 'var(--bg-elevated)' }}>MAJ</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-elevated)' }}>Ignorés</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', color: '#E53E3E', background: 'var(--bg-elevated)' }}>Erreurs</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Statut</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-elevated)' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {batches.map((b) => {
                 const badge = STATUS_BADGES[b.status] || STATUS_BADGES.pending
                 return (
-                  <tr key={b.id} style={{ borderBottom: '1px solid #1a1a1a' }}>
-                    <td style={{ padding: '10px 14px', color: '#fff' }}>
+                  <tr key={b.id} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+                    <td style={{ padding: '10px 14px', color: 'var(--text-primary)' }}>
                       {new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>
-                    <td style={{ padding: '10px 14px', color: '#A0A0A0' }}>{b.file_name}</td>
-                    <td style={{ padding: '10px 14px', color: '#fff', textAlign: 'center' }}>{b.total_rows}</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>{b.file_name}</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--text-primary)', textAlign: 'center' }}>{b.total_rows}</td>
                     <td style={{ padding: '10px 14px', color: '#38A169', textAlign: 'center' }}>{b.created_count}</td>
                     <td style={{ padding: '10px 14px', color: '#3B82F6', textAlign: 'center' }}>{b.updated_count}</td>
-                    <td style={{ padding: '10px 14px', color: '#666', textAlign: 'center' }}>{b.skipped_count}</td>
+                    <td style={{ padding: '10px 14px', color: 'var(--text-muted)', textAlign: 'center' }}>{b.skipped_count}</td>
                     <td style={{ padding: '10px 14px', color: '#E53E3E', textAlign: 'center' }}>{b.error_count}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                       <span style={{
@@ -121,7 +121,7 @@ export default function ImportHistory() {
                           style={{
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             width: 28, height: 28, borderRadius: 6,
-                            background: 'transparent', border: '1px solid #333', color: '#E53E3E',
+                            background: 'transparent', border: '1px solid var(--border-primary)', color: '#E53E3E',
                             cursor: cancelling === b.id ? 'not-allowed' : 'pointer',
                             opacity: cancelling === b.id ? 0.5 : 1,
                           }}

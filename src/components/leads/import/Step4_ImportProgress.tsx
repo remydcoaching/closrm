@@ -95,27 +95,27 @@ export default function Step4_ImportProgress({ state, updateState, onNext }: Pro
       {done ? (
         <CheckCircle2 size={48} color="#38A169" style={{ marginBottom: 16 }} />
       ) : (
-        <Loader2 size={48} color="#E53E3E" style={{ animation: 'spin 1s linear infinite', marginBottom: 16 }} />
+        <Loader2 size={48} color="var(--color-primary)" style={{ animation: 'spin 1s linear infinite', marginBottom: 16 }} />
       )}
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
 
-      <p style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
+      <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
         {statusText}
       </p>
 
       <div style={{
         width: 400, maxWidth: '100%', height: 8, borderRadius: 4,
-        background: '#262626', margin: '0 auto 12px',
+        background: 'var(--border-primary)', margin: '0 auto 12px',
         overflow: 'hidden',
       }}>
         <div style={{
           width: `${progress}%`, height: '100%', borderRadius: 4,
-          background: done ? '#38A169' : '#E53E3E',
+          background: done ? '#38A169' : 'var(--color-primary)',
           transition: 'width 0.5s ease',
         }} />
       </div>
 
-      <p style={{ fontSize: 13, color: '#A0A0A0' }}>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
         {progress}%
         {state.totalRows > 1000 && !done && (
           <span> — cela peut prendre quelques secondes</span>
@@ -125,7 +125,7 @@ export default function Step4_ImportProgress({ state, updateState, onNext }: Pro
       {done && (
         <button onClick={onNext} style={{
           marginTop: 24, padding: '10px 24px', borderRadius: 8, fontSize: 14, fontWeight: 600,
-          background: '#E53E3E', border: 'none', color: '#000', cursor: 'pointer',
+          background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
         }}>
           Voir le récapitulatif
         </button>
