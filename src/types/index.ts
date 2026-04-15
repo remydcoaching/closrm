@@ -87,8 +87,58 @@ export interface Lead {
   cash_collected: number
   closed_at: string | null
   assigned_to: string | null
+  import_batch_id: string | null
   created_at: string
   updated_at: string
+}
+
+export type ImportBatchStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+
+export type ImportDedupStrategy = 'email' | 'phone' | 'email_and_phone' | 'none'
+
+export type ImportDedupAction = 'skip' | 'update' | 'create'
+
+export interface ImportConfig {
+  mapping: Record<string, string>
+  default_source: LeadSource
+  default_status: LeadStatus
+  batch_tags: string[]
+  dedup_strategy: ImportDedupStrategy
+  dedup_action: ImportDedupAction
+}
+
+export interface LeadImportBatch {
+  id: string
+  workspace_id: string
+  file_name: string
+  status: ImportBatchStatus
+  total_rows: number
+  created_count: number
+  updated_count: number
+  skipped_count: number
+  error_count: number
+  errors: ImportError[]
+  config: ImportConfig
+  created_by: string | null
+  created_at: string
+  completed_at: string | null
+}
+
+export interface ImportError {
+  row: number
+  field: string
+  value: string
+  reason: string
+}
+
+export interface ImportPreviewResult {
+  to_create: number
+  to_update: number
+  to_skip: number
+  errors: number
+  error_details: ImportError[]
+  sample_creates: Record<string, string>[]
+  sample_updates: { before: Record<string, string>; after: Record<string, string> }[]
 }
 
 // ─── Call ────────────────────────────────────────────────────────────────────
