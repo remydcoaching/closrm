@@ -5,6 +5,7 @@ import type { EmailBroadcastFilters, LeadStatus, LeadSource } from '@/types'
 
 const STATUSES: { value: LeadStatus; label: string }[] = [
   { value: 'nouveau', label: 'Nouveau' },
+  { value: 'scripte', label: 'Scripté' },
   { value: 'setting_planifie', label: 'Setting planifié' },
   { value: 'no_show_setting', label: 'No-show setting' },
   { value: 'closing_planifie', label: 'Closing planifié' },

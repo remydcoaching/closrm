@@ -6,6 +6,7 @@ import { LeadStatus, LeadSource, ContactFilters, ContactGroupBy } from '@/types'
 
 const STATUSES: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'nouveau', label: 'Nouveau', color: '#a0a0a0' },
+  { value: 'scripte', label: 'Scripté', color: '#06b6d4' },
   { value: 'setting_planifie', label: 'Setting planifié', color: '#3b82f6' },
   { value: 'no_show_setting', label: 'No-show Setting', color: '#f59e0b' },
   { value: 'closing_planifie', label: 'Closing planifié', color: '#a855f7' },

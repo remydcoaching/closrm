@@ -10,6 +10,7 @@ interface Props {
 
 const LEAD_STATUSES = [
   { value: 'nouveau', label: 'Nouveau' },
+  { value: 'scripte', label: 'Scripté' },
   { value: 'setting_planifie', label: 'Setting planifié' },
   { value: 'no_show_setting', label: 'No-show setting' },
   { value: 'closing_planifie', label: 'Closing planifié' },

@@ -272,14 +272,28 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
       {/* Tableau */}
       <div style={card}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '88px' }} />    {/* Date */}
+              <col style={{ width: '14%' }} />      {/* Nom */}
+              <col style={{ width: '12%' }} />      {/* Téléphone */}
+              <col style={{ width: '14%' }} />      {/* Email */}
+              <col style={{ width: '8%' }} />       {/* Source */}
+              <col style={{ width: '10%' }} />      {/* Tentatives */}
+              <col style={{ width: '50px' }} />     {/* Joint */}
+              <col style={{ width: '12%' }} />      {/* Statut */}
+              <col style={{ width: '10%' }} />      {/* Assigné */}
+              <col style={{ width: '12%' }} />      {/* Tags */}
+              <col />                               {/* Actions */}
+            </colgroup>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
                 {['Date', 'Nom', 'Téléphone', 'Email', 'Source', 'Tentatives', 'Joint', 'Statut', 'Assigné à', 'Tags', 'Actions'].map(h => (
                   <th key={h} style={{
-                    padding: '12px 16px', textAlign: 'left',
+                    padding: '10px 8px', textAlign: 'left',
                     fontSize: 11, fontWeight: 600, color: 'var(--text-label)',
                     textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap',
+                    overflow: 'hidden',
                   }}>{h}</th>
                 ))}
               </tr>
@@ -308,32 +322,32 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                   onClick={() => setSidePanelLeadId(lead.id)}
                 >
                   {/* Date */}
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '10px 8px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {format(new Date(lead.created_at), 'dd MMM yyyy', { locale: fr })}
                   </td>
 
                   {/* Nom */}
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '10px 8px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {lead.first_name} {lead.last_name}
                   </td>
 
                   {/* Téléphone */}
-                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '10px 8px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {lead.phone || <span style={{ color: 'var(--text-label)' }}>—</span>}
                   </td>
 
                   {/* Email */}
-                  <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '10px 8px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {lead.email || <span style={{ color: 'var(--text-label)' }}>—</span>}
                   </td>
 
                   {/* Source */}
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={{ padding: '10px 8px', overflow: 'hidden' }}>
                     <SourceBadge source={lead.source} />
                   </td>
 
                   {/* Tentatives */}
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={{ padding: '10px 8px' }}>
                     <button
                       onClick={e => openDropdown(e, lead.id, 'attempts')}
                       style={{
@@ -353,7 +367,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                   </td>
 
                   {/* Joint (toggle) */}
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                  <td style={{ padding: '10px 8px', textAlign: 'center' }}>
                     <button
                       onClick={() => toggleReached(lead)}
                       style={{
@@ -372,7 +386,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                   </td>
 
                   {/* Statut */}
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={{ padding: '10px 8px' }}>
                     <button
                       onClick={e => openDropdown(e, lead.id, 'status')}
                       style={{
@@ -386,7 +400,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                   </td>
 
                   {/* Assigné à */}
-                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                  <td style={{ padding: '10px 8px', whiteSpace: 'nowrap', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
                     <MemberAssignDropdown
                       assignedTo={lead.assigned_to}
                       members={members}
@@ -396,18 +410,19 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                   </td>
 
                   {/* Tags */}
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                      {lead.tags.slice(0, 3).map(tag => (
+                  <td style={{ padding: '10px 8px', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap', alignItems: 'center', overflow: 'hidden' }}>
+                      {lead.tags.slice(0, 1).map(tag => (
                         <span key={tag} style={{
                           padding: '2px 7px', borderRadius: 99, fontSize: 10, fontWeight: 600,
                           background: 'var(--border-primary)', color: 'var(--text-tertiary)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 80,
                         }}>
                           {tag}
                         </span>
                       ))}
-                      {lead.tags.length > 3 && (
-                        <span style={{ fontSize: 10, color: 'var(--text-label)' }}>+{lead.tags.length - 3}</span>
+                      {lead.tags.length > 1 && (
+                        <span style={{ fontSize: 10, color: 'var(--text-label)', flexShrink: 0 }}>+{lead.tags.length - 1}</span>
                       )}
                       <button
                         onClick={e => openDropdown(e, lead.id, 'tags')}
@@ -427,7 +442,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                   </td>
 
                   {/* Actions */}
-                  <td style={{ padding: '12px 16px' }} onClick={e => e.stopPropagation()}>
+                  <td style={{ padding: '10px 8px' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                       <button onClick={() => callLead(lead)} title="Appeler" style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
