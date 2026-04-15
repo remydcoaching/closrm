@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Plus, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar, MessageCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, Upload, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar, MessageCircle } from 'lucide-react'
 
 function InstagramIcon({ size = 11 }: { size?: number }) {
   return (
@@ -66,6 +67,7 @@ interface LeadsClientProps {
 }
 
 export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientProps) {
+  const router = useRouter()
   const [leads, setLeads] = useState<Lead[]>(initialLeads)
   const [meta, setMeta] = useState<Meta>({ total: initialTotal, page: 1, per_page: 25, total_pages: Math.ceil(initialTotal / 25) || 1 })
   const [loading, setLoading] = useState(false)
@@ -264,14 +266,24 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
             {loading ? '...' : `${meta.total} lead${meta.total > 1 ? 's' : ''} au total`}
           </p>
         </div>
-        <button onClick={() => setShowForm(true)} style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-          background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
-        }}>
-          <Plus size={15} />
-          Ajouter un lead
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => router.push('/leads/import')} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            background: 'transparent', border: '1px solid #333', color: '#A0A0A0', cursor: 'pointer',
+          }}>
+            <Upload size={15} />
+            Importer
+          </button>
+          <button onClick={() => setShowForm(true)} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
+          }}>
+            <Plus size={15} />
+            Ajouter un lead
+          </button>
+        </div>
       </div>
 
       {/* Filtres */}
