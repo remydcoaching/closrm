@@ -16,7 +16,7 @@ export default async function FollowUpsPage() {
     // Today's pending follow-ups (default tab)
     supabase
       .from('follow_ups')
-      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status)', { count: 'exact' })
+      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status, assigned_to)', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .eq('status', 'en_attente')
       .gte('scheduled_at', todayStart.toISOString())

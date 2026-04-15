@@ -5,7 +5,8 @@ import { Mail, Send, FileText, Settings, AlertCircle } from 'lucide-react'
 import BroadcastsClient from './broadcasts/broadcasts-client'
 import SequencesClient from './sequences/sequences-client'
 import TemplatesClient from './templates/templates-client'
-import DomainSetup from '@/components/emails/DomainSetup'
+import DomainWizard from '@/components/emails/DomainWizard'
+import type { EmailDomain } from '@/types'
 
 type Tab = 'campagnes' | 'sequences' | 'templates' | 'parametres'
 
@@ -42,6 +43,7 @@ export default function EmailsPage() {
   const [counts, setCounts] = useState<Counts>({ broadcasts: 0, sequences: 0, templates: 0 })
   const [stats, setStats] = useState<EmailStats | null>(null)
   const [domainVerified, setDomainVerified] = useState<boolean | null>(null)
+  const [domains, setDomains] = useState<EmailDomain[]>([])
   const [loadingStats, setLoadingStats] = useState(false)
 
   const fetchCounts = useCallback(async () => {
@@ -71,8 +73,9 @@ export default function EmailsPage() {
       const res = await fetch('/api/emails/domains')
       if (res.ok) {
         const data = await res.json()
-        const domains = Array.isArray(data) ? data : []
-        setDomainVerified(domains.some((d: { status: string }) => d.status === 'verified'))
+        const list: EmailDomain[] = Array.isArray(data) ? data : (data.data ?? [])
+        setDomains(list)
+        setDomainVerified(list.some((d) => d.status === 'verified'))
       } else {
         setDomainVerified(false)
       }
@@ -179,7 +182,7 @@ export default function EmailsPage() {
       {activeTab === 'campagnes' && <CampagnesTab onCountChange={(n) => setCounts(c => ({ ...c, broadcasts: n }))} />}
       {activeTab === 'sequences' && <SequencesTab onCountChange={(n) => setCounts(c => ({ ...c, sequences: n }))} />}
       {activeTab === 'templates' && <TemplatesTab onCountChange={(n) => setCounts(c => ({ ...c, templates: n }))} />}
-      {activeTab === 'parametres' && <ParametresTab stats={stats} loadingStats={loadingStats} />}
+      {activeTab === 'parametres' && <ParametresTab stats={stats} loadingStats={loadingStats} domains={domains} onDomainChange={fetchDomainStatus} />}
     </div>
   )
 }
@@ -317,7 +320,7 @@ function TemplatesTab({ onCountChange }: { onCountChange: (n: number) => void })
 
 /* ─── Parametres Tab ─────────────────────────────────────────────────────── */
 
-function ParametresTab({ stats, loadingStats }: { stats: EmailStats | null; loadingStats: boolean }) {
+function ParametresTab({ stats, loadingStats, domains, onDomainChange }: { stats: EmailStats | null; loadingStats: boolean; domains: EmailDomain[]; onDomainChange: () => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {/* Section Domaine */}
@@ -328,7 +331,10 @@ function ParametresTab({ stats, loadingStats }: { stats: EmailStats | null; load
         <p style={{ fontSize: 12, color: '#666', marginBottom: 16 }}>
           Configure ton domaine pour envoyer des emails depuis ta propre adresse
         </p>
-        <DomainSetup />
+        <DomainWizard
+          existingDomain={domains[0] ?? null}
+          onDomainChange={onDomainChange}
+        />
       </div>
 
       {/* Section Stats */}

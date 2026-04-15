@@ -12,7 +12,7 @@ const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, purpo
 
 export async function GET(request: NextRequest) {
   try {
-    const { workspaceId } = await getWorkspaceId()
+    const { workspaceId, userId, role } = await getWorkspaceId()
     const supabase = await createClient()
 
     const filters = bookingFiltersSchema.parse(Object.fromEntries(request.nextUrl.searchParams))
@@ -21,6 +21,11 @@ export async function GET(request: NextRequest) {
       .from('bookings')
       .select(BOOKING_SELECT, { count: 'exact' })
       .eq('workspace_id', workspaceId)
+
+    // Filtrage par rôle : setter/closer ne voient que leurs bookings
+    if (role !== 'admin') {
+      query = query.or(`assigned_to.eq.${userId},assigned_to.is.null`)
+    }
 
     if (filters.date_start) query = query.gte('scheduled_at', filters.date_start)
     if (filters.date_end) query = query.lte('scheduled_at', filters.date_end)

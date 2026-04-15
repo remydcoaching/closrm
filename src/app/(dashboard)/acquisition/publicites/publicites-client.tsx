@@ -8,8 +8,10 @@ import AdsPeriodSelector, { type PeriodPreset } from './ads-period-selector'
 import AdsOverviewTab from './ads-overview-tab'
 import AdsTableTab from './ads-table-tab'
 import AdsCampaignTypeToggle, { type CampaignTypeFilter } from './ads-campaign-type-toggle'
+import AdsPerformanceTab from './ads-performance-tab'
+import AdCreativePanel from '@/components/ads/AdCreativePanel'
 
-type TabKey = 'overview' | 'campaigns' | 'adsets' | 'ads'
+type TabKey = 'overview' | 'performance' | 'campaigns' | 'adsets' | 'ads'
 
 interface PublicitesClientProps {
   connectionState: MetaConnectionState
@@ -25,6 +27,7 @@ interface DrillDown {
 
 const TAB_TO_LEVEL: Record<TabKey, string> = {
   overview: 'account',
+  performance: 'account',
   campaigns: 'campaign',
   adsets: 'adset',
   ads: 'ad',
@@ -53,6 +56,11 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
   const [error, setError] = useState<string | null>(null)
   const [closedCount, setClosedCount] = useState(0)
   const [closedRevenue] = useState(0)
+  const [selectedAd, setSelectedAd] = useState<{
+    id: string
+    name: string
+    kpis: { spend: number; impressions: number; clicks: number; ctr: number; leads: number; cpl: number | null }
+  } | null>(null)
 
   const fetchInsights = useCallback(async () => {
     if (connectionState !== 'connected') return
@@ -173,7 +181,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
   function getTabLabel(key: TabKey): string {
     if (key === 'adsets' && drillDown.campaignName) return `Ad Sets`
     if (key === 'ads' && drillDown.adsetName) return `Ads`
-    return { overview: "Vue d'ensemble", campaigns: 'Campagnes', adsets: 'Ad Sets', ads: 'Ads' }[key]
+    return { overview: "Vue d'ensemble", performance: 'Performance', campaigns: 'Campagnes', adsets: 'Ad Sets', ads: 'Ads' }[key]
   }
 
   // Banner states
@@ -197,7 +205,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     )
   }
 
-  const tabs: TabKey[] = ['overview', 'campaigns', 'adsets', 'ads']
+  const tabs: TabKey[] = ['overview', 'performance', 'campaigns', 'adsets', 'ads']
 
   return (
     <div style={{ padding: 32 }}>
@@ -322,19 +330,45 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
           dateTo={dateTo}
         />
       )}
-      {!error && tab !== 'overview' && (
+      {!error && tab === 'performance' && (
+        <AdsPerformanceTab
+          data={data}
+          loading={loading}
+          campaignType={campaignType}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          closedCount={closedCount}
+        />
+      )}
+      {!error && tab !== 'overview' && tab !== 'performance' && (
         <AdsTableTab
           data={data}
           loading={loading}
           tabKey={tab}
           campaignType={campaignType}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
           onRowClick={
             tab === 'campaigns'
               ? (id, name) => handleDrillIntoCampaign(id, name)
               : tab === 'adsets'
               ? (id, name) => handleDrillIntoAdset(id, name)
+              : tab === 'ads'
+              ? (id, name) => {
+                  const row = data?.breakdown.find(r => r.id === id)
+                  if (row) setSelectedAd({ id, name, kpis: row })
+                }
               : undefined
           }
+        />
+      )}
+
+      {selectedAd && (
+        <AdCreativePanel
+          adId={selectedAd.id}
+          adName={selectedAd.name}
+          adKpis={selectedAd.kpis}
+          onClose={() => setSelectedAd(null)}
         />
       )}
     </div>

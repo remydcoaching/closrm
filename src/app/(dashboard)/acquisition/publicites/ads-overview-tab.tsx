@@ -294,9 +294,10 @@ export default function AdsOverviewTab({
 
   // Mode 'all': stacked sections (Acquisition Prospects + Croissance & Notoriété)
   // Use per-type aggregates if available, otherwise fall back to total kpis
-  const leadformKpis = data.leadformKpis ?? { spend: 0, impressions: 0, clicks: 0, ctr: 0, leads: 0, cpl: null }
+  const emptyKpis = { spend: 0, impressions: 0, clicks: 0, ctr: 0, leads: 0, cpl: null, frequency: 0, video_plays: 0, video_p25: 0, video_p50: 0, video_p75: 0, hook_rate: 0, hold_rate_25: 0, hold_rate_50: 0, hold_rate_75: 0 }
+  const leadformKpis = data.leadformKpis ?? emptyKpis
   const leadformDaily = data.leadformDaily ?? []
-  const followAdsKpis = data.followAdsKpis ?? { spend: 0, impressions: 0, clicks: 0, ctr: 0, leads: 0, cpl: null }
+  const followAdsKpis = data.followAdsKpis ?? emptyKpis
   const followAdsDaily = data.followAdsDaily ?? []
 
   return (

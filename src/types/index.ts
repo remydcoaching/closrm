@@ -20,6 +20,28 @@ export interface User {
   created_at: string
 }
 
+// ─── Team / Workspace Members ───────────────────────────────────────────────
+
+export type WorkspaceRole = 'admin' | 'setter' | 'closer'
+export type MemberStatus = 'active' | 'invited' | 'suspended'
+
+export interface WorkspaceMember {
+  id: string
+  workspace_id: string
+  user_id: string
+  role: WorkspaceRole
+  status: MemberStatus
+  permissions: Record<string, boolean>
+  invited_by: string | null
+  invited_at: string
+  activated_at: string | null
+  created_at: string
+}
+
+export interface WorkspaceMemberWithUser extends WorkspaceMember {
+  user: Pick<User, 'id' | 'email' | 'full_name' | 'avatar_url'>
+}
+
 // ─── Lead ───────────────────────────────────────────────────────────────────
 
 export type LeadStatus =
@@ -59,6 +81,11 @@ export interface Lead {
   email_unsubscribed: boolean
   email_unsubscribed_at: string | null
   last_activity_at: string | null
+  deal_amount: number | null
+  deal_installments: number
+  cash_collected: number
+  closed_at: string | null
+  assigned_to: string | null
   created_at: string
   updated_at: string
 }
@@ -80,7 +107,17 @@ export interface Call {
   reached: boolean
   duration_seconds: number | null
   closer_id: string | null
+  assigned_to: string | null
+  handoff_brief: HandoffBrief | null
   created_at: string
+}
+
+export interface HandoffBrief {
+  objective?: string
+  budget?: string
+  objections?: string
+  availability?: string
+  notes?: string
 }
 
 // ─── Follow-up ───────────────────────────────────────────────────────────────
@@ -382,6 +419,30 @@ export interface PlanningTemplate {
 
 export type FunnelStatus = 'draft' | 'published'
 
+/**
+ * Override custom d'un preset de couleurs (T-028a, V1).
+ * Tous les champs sont optionnels — un champ absent retombe sur la valeur du preset.
+ *
+ * Note : la version structurelle (`FunnelPresetOverride`) vit dans
+ * `src/lib/funnels/design-types.ts`. Ce type ici est volontairement le même
+ * shape pour pouvoir être stocké/récupéré tel quel depuis Supabase. Si on
+ * importait `FunnelPresetOverride` ici, on créerait un cycle d'imports avec
+ * `lib/funnels` qui peut consommer `src/types`. On accepte la duplication.
+ */
+export interface FunnelPresetOverrideJSON {
+  primary?: string
+  heroBg?: string
+  sectionBg?: string
+  footerBg?: string
+}
+
+/**
+ * Map des effets visuels toggleables. Les effets forcés (E4/E5/E6) sont
+ * systématiquement appliqués côté rendu peu importe ce qui est stocké ici.
+ * Une map vide `{}` est valide → fallback sur DEFAULT_EFFECTS côté front.
+ */
+export type FunnelEffectsConfigJSON = Record<string, boolean>
+
 export interface Funnel {
   id: string
   workspace_id: string
@@ -390,6 +451,10 @@ export interface Funnel {
   description: string | null
   domain_id: string | null
   status: FunnelStatus
+  // Design system T-028a — voir migration 015_funnels_design_v2.sql
+  preset_id: string
+  preset_override: FunnelPresetOverrideJSON | null
+  effects_config: FunnelEffectsConfigJSON
   created_at: string
   updated_at: string
 }
@@ -407,6 +472,22 @@ export type FunnelBlockType =
   | 'text'
   | 'image'
   | 'spacer'
+  | 'footer'
+
+/**
+ * Config des effets visuels activables au niveau d'un bloc spécifique.
+ * Utilisée par les blocs Hero, CTA et Text (les seuls qui supportent des
+ * effets "locaux" en T-028 Phase 9). Les autres effets (glow hero, noise,
+ * parallax, etc.) restent globaux au funnel via `effects_config`.
+ *
+ * Un champ undefined/absent = effet désactivé (pas de fallback sur default).
+ */
+export interface BlockEffectsJSON {
+  /** E1 — Shimmer texte animé sur `.fnl-shimmer` dans ce bloc. */
+  shimmer?: boolean
+  /** E3 — Reflet lumineux animé sur `.fnl-btn` dans ce bloc. */
+  buttonShine?: boolean
+}
 
 export interface HeroBlockConfig {
   title: string
@@ -415,6 +496,10 @@ export interface HeroBlockConfig {
   ctaUrl: string
   backgroundImage: string | null
   alignment: 'left' | 'center' | 'right'
+  // T-028 Phase 9 — Badge pulsant au-dessus du titre. Vide = pas de badge.
+  badgeText?: string
+  // T-028 Phase 9 — Effets activables au niveau du bloc (shimmer / button shine)
+  effects?: BlockEffectsJSON
 }
 
 export interface VideoBlockConfig {
@@ -496,11 +581,15 @@ export interface CtaBlockConfig {
   style: 'primary' | 'secondary' | 'outline'
   size: 'sm' | 'md' | 'lg'
   alignment: 'left' | 'center' | 'right'
+  // T-028 Phase 9 — Effets activables au niveau du bloc (button shine)
+  effects?: BlockEffectsJSON
 }
 
 export interface FunnelTextBlockConfig {
   content: string
   alignment: 'left' | 'center' | 'right'
+  // T-028 Phase 9 — Effets activables au niveau du bloc (shimmer)
+  effects?: BlockEffectsJSON
 }
 
 export interface FunnelImageBlockConfig {
@@ -513,6 +602,17 @@ export interface FunnelImageBlockConfig {
 
 export interface SpacerBlockConfig {
   height: number
+}
+
+/**
+ * T-028 Phase 10 — Bloc Footer, créé pour que chaque page par défaut en ait un.
+ * Affiche le nom de la marque + année + mention copyright. Utilise le fond
+ * `--fnl-footer-bg` du preset.
+ */
+export interface FunnelFooterBlockConfig {
+  brand: string
+  year: number
+  copyrightText: string
 }
 
 export type FunnelBlockConfig =
@@ -528,6 +628,7 @@ export type FunnelBlockConfig =
   | FunnelTextBlockConfig
   | FunnelImageBlockConfig
   | SpacerBlockConfig
+  | FunnelFooterBlockConfig
 
 export interface FunnelBlock {
   id: string
@@ -982,4 +1083,51 @@ export interface AiConversationOutcome {
   outcome: 'won' | 'lost' | 'no_response'
   messages_snapshot: Record<string, unknown>[] | null
   created_at: string
+}
+
+// ─── Team Training / SOP ──────────────────────────────────────────────────
+
+export type TrainingRole = 'setter' | 'closer' | 'all'
+export type TrainingItemType = 'pdf' | 'video' | 'link' | 'text' | 'checklist'
+
+export interface TrainingModule {
+  id: string
+  workspace_id: string
+  title: string
+  description: string | null
+  role: TrainingRole
+  sort_order: number
+  created_at: string
+}
+
+export interface TrainingItem {
+  id: string
+  module_id: string
+  workspace_id: string
+  type: TrainingItemType
+  title: string
+  content: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface TrainingProgress {
+  id: string
+  workspace_id: string
+  user_id: string
+  item_id: string
+  completed: boolean
+  completed_at: string | null
+}
+
+export interface TrainingModuleWithItems extends TrainingModule {
+  items: TrainingItem[]
+  progress: TrainingProgress[]
+}
+
+export interface MemberProgress {
+  user_id: string
+  full_name: string
+  completed_count: number
+  total_count: number
 }

@@ -22,6 +22,11 @@ export const updateLeadSchema = z.object({
   notes: z.string().max(5000).optional(),
   reached: z.boolean().optional(),
   call_attempts: z.number().int().min(0).optional(),
+  deal_amount: z.number().min(0).nullable().optional(),
+  deal_installments: z.number().int().min(1).max(12).optional(),
+  cash_collected: z.number().min(0).optional(),
+  closed_at: z.string().datetime().nullable().optional(),
+  assigned_to: z.string().uuid().nullable().optional(),
 })
 
 export const leadFiltersSchema = z.object({
@@ -29,6 +34,7 @@ export const leadFiltersSchema = z.object({
   source: z.string().optional(),
   search: z.string().optional(),
   tags: z.string().optional(),
+  assigned_to: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(100).default(25),
   sort: z.enum(['created_at', 'updated_at', 'first_name', 'last_name', 'status']).default('created_at'),

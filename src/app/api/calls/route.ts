@@ -3,10 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createCallSchema, callFiltersSchema } from '@/lib/validations/calls'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { getNextCloser } from '@/lib/team/round-robin'
 
 export async function GET(request: NextRequest) {
   try {
-    const { workspaceId } = await getWorkspaceId()
+    const { userId, workspaceId, role } = await getWorkspaceId()
     const supabase = await createClient()
 
     const params = Object.fromEntries(request.nextUrl.searchParams)
@@ -16,6 +17,13 @@ export async function GET(request: NextRequest) {
       .from('calls')
       .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status)', { count: 'exact' })
       .eq('workspace_id', workspaceId)
+
+    // Role-based filtering
+    if (role === 'setter') {
+      query = query.or(`assigned_to.eq.${userId},assigned_to.is.null`)
+    } else if (role === 'closer') {
+      query = query.eq('assigned_to', userId)
+    }
 
     if (filters.type) query = query.eq('type', filters.type)
 
@@ -102,6 +110,7 @@ export async function POST(request: NextRequest) {
         reached: false,
         notes: parsed.data.notes || null,
         closer_id: parsed.data.closer_id || null,
+        handoff_brief: parsed.data.handoff_brief ?? null,
       })
       .select('*, lead:leads(id, first_name, last_name, phone, email, status)')
       .single()
@@ -115,6 +124,26 @@ export async function POST(request: NextRequest) {
       .update({ status: newStatus })
       .eq('id', parsed.data.lead_id)
       .eq('workspace_id', workspaceId)
+
+    // Auto-assign to closest available closer (round-robin) for closing calls
+    // Always reassign — the lead was with a setter, now it goes to a closer
+    if (parsed.data.type === 'closing') {
+      const nextCloser = await getNextCloser(workspaceId)
+      if (nextCloser) {
+        await supabase
+          .from('leads')
+          .update({ assigned_to: nextCloser })
+          .eq('id', parsed.data.lead_id)
+          .eq('workspace_id', workspaceId)
+
+        // Also assign the call itself to the closer
+        await supabase
+          .from('calls')
+          .update({ assigned_to: nextCloser })
+          .eq('id', data.id)
+          .eq('workspace_id', workspaceId)
+      }
+    }
 
     // Update last_activity_at on the lead (non-blocking)
     supabase

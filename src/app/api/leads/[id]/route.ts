@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateLeadSchema } from '@/lib/validations/leads'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { getNextCloser } from '@/lib/team/round-robin'
 
 export async function GET(
   _request: NextRequest,
@@ -61,7 +62,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const { workspaceId } = await getWorkspaceId()
+    const { workspaceId, role } = await getWorkspaceId()
     const supabase = await createClient()
 
     const body = await request.json()
@@ -89,6 +90,26 @@ export async function PATCH(
 
     if (error || !data) {
       return NextResponse.json({ error: 'Lead introuvable ou non autorisé' }, { status: 404 })
+    }
+
+    // Round-robin: auto-assign closer when status changes to closing_planifie
+    // Only if no assigned_to was specified AND the user is not an admin (admins assign manually)
+    if (
+      parsed.data.status === 'closing_planifie' &&
+      !parsed.data.assigned_to &&
+      !data.assigned_to &&
+      role !== 'admin'
+    ) {
+      const nextCloser = await getNextCloser(workspaceId)
+      if (nextCloser) {
+        await supabase
+          .from('leads')
+          .update({ assigned_to: nextCloser })
+          .eq('id', id)
+          .eq('workspace_id', workspaceId)
+        // Update returned data so the response reflects the assignment
+        data.assigned_to = nextCloser
+      }
     }
 
     // Fire workflow triggers (non-blocking)

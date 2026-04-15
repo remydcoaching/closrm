@@ -4,18 +4,26 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, Layers } from 'lucide-react'
 import FunnelCard from '@/components/funnels/FunnelCard'
+import { useWorkspaceSlugState } from '@/lib/funnels/use-workspace-slug'
 
 interface FunnelListItem {
   id: string
   name: string
+  slug: string
   status: 'draft' | 'published'
   page_count: number
+  first_page_slug: string | null
   created_at: string
 }
 
 export default function FunnelsPage() {
   const [funnels, setFunnels] = useState<FunnelListItem[]>([])
   const [loading, setLoading] = useState(true)
+  // T-028 Phase 14/16 — Slug du workspace fetché une seule fois, passé à chaque
+  // FunnelCard pour construire l'URL publique des funnels publiés. On expose
+  // aussi `fetched` pour que les cards puissent distinguer "en cours de chargement"
+  // de "definitivement null" (workspace sans slug configuré).
+  const { slug: workspaceSlug, fetched: workspaceSlugFetched } = useWorkspaceSlugState()
 
   const fetchFunnels = useCallback(async () => {
     try {
@@ -56,7 +64,7 @@ export default function FunnelsPage() {
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '9px 18px', fontSize: 13, fontWeight: 600,
-            background: '#E53E3E', color: '#fff', borderRadius: 8,
+            background: 'var(--color-primary, #00C853)', color: '#fff', borderRadius: 8,
             textDecoration: 'none', border: 'none', cursor: 'pointer',
           }}
         >
@@ -87,12 +95,12 @@ export default function FunnelsPage() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '9px 18px', fontSize: 13, fontWeight: 600,
-              background: '#E53E3E', color: '#fff', borderRadius: 8,
+              background: 'var(--color-primary, #00C853)', color: '#fff', borderRadius: 8,
               textDecoration: 'none',
             }}
           >
             <Plus size={14} />
-            Creer un funnel
+            Créer un funnel
           </Link>
         </div>
       ) : (
@@ -102,7 +110,13 @@ export default function FunnelsPage() {
           gap: 16,
         }}>
           {funnels.map(funnel => (
-            <FunnelCard key={funnel.id} funnel={funnel} onDelete={handleDelete} />
+            <FunnelCard
+              key={funnel.id}
+              funnel={funnel}
+              workspaceSlug={workspaceSlug}
+              workspaceSlugFetched={workspaceSlugFetched}
+              onDelete={handleDelete}
+            />
           ))}
         </div>
       )}

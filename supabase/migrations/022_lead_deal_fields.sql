@@ -1,0 +1,5 @@
+-- 022: Add deal/closing financial fields to leads
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS deal_amount NUMERIC;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS deal_installments INTEGER DEFAULT 1;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS cash_collected NUMERIC DEFAULT 0;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;

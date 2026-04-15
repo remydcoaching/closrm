@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar } from 'lucide-react'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
-import { Lead, LeadStatus, LeadSource } from '@/types'
+import { Lead, LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
 import SourceBadge from '@/components/leads/SourceBadge'
 import LeadFilters from '@/components/leads/LeadFilters'
 import LeadForm from '@/components/leads/LeadForm'
+import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
+import ClosingModal from '@/components/leads/ClosingModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import { format } from 'date-fns'
@@ -63,9 +65,31 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   const [tagInput, setTagInput] = useState('')
   const [confirm, setConfirm] = useState<{ title: string; message: string; danger?: boolean; onConfirm: () => void } | null>(null)
   const [scheduleTarget, setScheduleTarget] = useState<Lead | null>(null)
+  const [closingTarget, setClosingTarget] = useState<Lead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
   const dropdownPanelRef = useRef<HTMLDivElement>(null)
   const tagInputRef = useRef<HTMLInputElement>(null)
+
+  // Team members for "Assigné à" column
+  const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
+  const memberMap = useRef(new Map<string, WorkspaceMemberWithUser>())
+
+  useEffect(() => {
+    async function fetchMembers() {
+      try {
+        const res = await fetch('/api/workspaces/members')
+        if (res.ok) {
+          const json = await res.json()
+          const data: WorkspaceMemberWithUser[] = json.data ?? []
+          setMembers(data)
+          const map = new Map<string, WorkspaceMemberWithUser>()
+          data.forEach(m => map.set(m.user_id, m))
+          memberMap.current = map
+        }
+      } catch { /* silently ignore */ }
+    }
+    fetchMembers()
+  }, [])
 
   // Search & filters
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -77,9 +101,12 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   // Track whether we should skip the initial fetch (use server data instead)
   const isInitialMount = useRef(true)
 
-  const handleFiltersChange = useCallback((f: { search: string; statuses: LeadStatus[]; sources: LeadSource[] }) => {
+  const [assignedTo, setAssignedTo] = useState<string | undefined>(undefined)
+
+  const handleFiltersChange = useCallback((f: { search: string; statuses: LeadStatus[]; sources: LeadSource[]; assigned_to?: string }) => {
     setStatuses(f.statuses)
     setSources(f.sources)
+    setAssignedTo(f.assigned_to)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       setDebouncedSearch(f.search)
@@ -114,6 +141,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         if (debouncedSearch) params.set('search', debouncedSearch)
         if (statuses.length > 0) params.set('status', statuses.join(','))
         if (sources.length > 0) params.set('source', sources.join(','))
+        if (assignedTo) params.set('assigned_to', assignedTo)
 
         const res = await fetch(`/api/leads?${params.toString()}`)
         const json = await res.json()
@@ -127,10 +155,10 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
     }
     doFetch()
     return () => { cancelled = true }
-  }, [page, debouncedSearch, statuses, sources, refreshKey])
+  }, [page, debouncedSearch, statuses, sources, assignedTo, refreshKey])
 
   // Reset page quand les filtres changent
-  useEffect(() => { setPage(1) }, [debouncedSearch, statuses, sources])
+  useEffect(() => { setPage(1) }, [debouncedSearch, statuses, sources, assignedTo])
 
   function patchLead(id: string, patch: Partial<Lead>) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
@@ -165,6 +193,10 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
 
   function setStatus(lead: Lead, status: LeadStatus) {
     setDropdown(null)
+    if (status === 'clos') {
+      setClosingTarget(lead)
+      return
+    }
     patchLead(lead.id, { status })
   }
 
@@ -243,7 +275,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
-                {['Date', 'Nom', 'Téléphone', 'Email', 'Source', 'Tentatives', 'Joint', 'Statut', 'Tags', 'Actions'].map(h => (
+                {['Date', 'Nom', 'Téléphone', 'Email', 'Source', 'Tentatives', 'Joint', 'Statut', 'Assigné à', 'Tags', 'Actions'].map(h => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
                     fontSize: 11, fontWeight: 600, color: 'var(--text-label)',
@@ -255,13 +287,13 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={10} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-label)' }}>
+                  <td colSpan={11} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-label)' }}>
                     Chargement...
                   </td>
                 </tr>
               ) : leads.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-label)' }}>
+                  <td colSpan={11} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-label)' }}>
                     Aucun lead trouvé
                   </td>
                 </tr>
@@ -351,6 +383,16 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                       <StatusBadge status={lead.status} />
                       <ChevronDown size={10} color="var(--text-label)" />
                     </button>
+                  </td>
+
+                  {/* Assigné à */}
+                  <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                    <MemberAssignDropdown
+                      assignedTo={lead.assigned_to}
+                      members={members}
+                      onAssign={(userId) => patchLead(lead.id, { assigned_to: userId })}
+                      compact
+                    />
                   </td>
 
                   {/* Tags */}
@@ -568,6 +610,23 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
           confirmDanger={confirm.danger}
           onConfirm={confirm.onConfirm}
           onCancel={() => setConfirm(null)}
+        />
+      )}
+
+      {closingTarget && (
+        <ClosingModal
+          leadName={`${closingTarget.first_name} ${closingTarget.last_name}`}
+          onClose={() => setClosingTarget(null)}
+          onConfirm={(data) => {
+            patchLead(closingTarget.id, {
+              status: 'clos',
+              deal_amount: data.deal_amount,
+              deal_installments: data.deal_installments,
+              cash_collected: data.cash_collected,
+              closed_at: new Date().toISOString(),
+            } as Partial<Lead>)
+            setClosingTarget(null)
+          }}
         />
       )}
 

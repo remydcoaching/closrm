@@ -1,0 +1,163 @@
+/* ============================================================
+   T-028a — Funnels v2 base styles
+   ============================================================
+   - Import de la typo Poppins (utilisée par tout le funnel)
+   - Reset minimal sur `.fnl-root`
+   - Styles "forcés" toujours actifs : hover transitions sur boutons et images
+     (ce ne sont pas des effets numérotés mais des comportements UX standards)
+
+   ⚠️ Les classes ici sont scopées sous `.fnl-root` pour éviter de polluer
+   le reste de l'app ClosRM (sidebar admin, leads, etc. qui utilisent Geist/Inter).
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+/* ─── Reset / typo de base ─────────────────────────────────── */
+
+.fnl-root,
+.fnl-root * {
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
+}
+
+.fnl-root {
+  color: var(--fnl-text);
+  line-height: 1.6;
+}
+
+.fnl-root h1,
+.fnl-root h2,
+.fnl-root h3,
+.fnl-root h4 {
+  color: var(--fnl-text);
+  line-height: 1.3;
+  margin: 0;
+}
+
+.fnl-root p {
+  color: var(--fnl-text-secondary);
+  margin: 0;
+}
+
+/* ─── Bouton de base (.fnl-btn) ────────────────────────────── */
+/* Sa version "embellie" (ombre colorée + shine) vient via les effets E3 / E4. */
+
+.fnl-btn {
+  display: inline-block;
+  padding: 16px 40px;
+  background: linear-gradient(135deg, var(--fnl-primary) 0%, var(--fnl-primary-light) 100%);
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Hover transition forcée — fait partie de l'UX standard, non négociable */
+.fnl-btn:hover {
+  transform: translateY(-3px);
+}
+
+/* ─── Headline / hook de base ──────────────────────────────── */
+
+.fnl-headline {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--fnl-text);
+  line-height: 1.3;
+  margin-bottom: 18px;
+}
+
+@media (min-width: 768px) {
+  .fnl-headline {
+    font-size: 42px;
+  }
+}
+
+.fnl-hook {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fnl-text-secondary);
+  margin-bottom: 35px;
+}
+
+/* ─── Container racine d'une page funnel ───────────────────── */
+/* T-028 Phase 11 — Flex column + min-height pour que le footer puisse
+   être poussé en bas via `margin-top: auto`. Sans ça, le footer suit
+   simplement le dernier bloc dans le flux normal. */
+
+.fnl-root {
+  min-height: 100vh;
+  background: var(--fnl-section-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dans le builder, pas de min-height 100vh (sinon espace blanc sous le footer) */
+.fnl-root.fnl-root--builder {
+  min-height: 0 !important;
+}
+
+/* ─── Section hero (.fnl-hero) ─────────────────────────────── */
+/* Le glow E2 cible cette classe pour ajouter ses pseudos. */
+
+.fnl-root .fnl-hero {
+  background: var(--fnl-hero-bg);
+  padding: 60px 20px 70px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.fnl-root .fnl-hero-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 768px) {
+  .fnl-root .fnl-hero {
+    padding: 80px 40px 90px;
+  }
+}
+
+/* ─── Section générique (.fnl-section) ─────────────────────── */
+
+.fnl-root .fnl-section {
+  background: var(--fnl-section-bg);
+  padding: 60px 20px 70px;
+  text-align: center;
+}
+
+.fnl-root .fnl-section-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .fnl-root .fnl-section {
+    padding: 80px 40px 90px;
+  }
+}
+
+/* ─── Footer (.fnl-footer) ─────────────────────────────────── */
+/* T-028 Phase 11 — `margin-top: auto` pousse le footer en bas du container
+   flex parent (.fnl-root). Combiné avec `min-height: 100vh` sur le root,
+   ça garantit que le footer est toujours collé en bas même si le contenu
+   est court (pas de "footer qui flotte au milieu" visuellement). */
+
+.fnl-root .fnl-footer {
+  background: var(--fnl-footer-bg);
+  padding: 50px 20px;
+  text-align: center;
+  margin-top: auto;
+}

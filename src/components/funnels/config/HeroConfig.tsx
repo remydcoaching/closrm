@@ -1,15 +1,28 @@
 'use client'
 
-import type { HeroBlockConfig } from '@/types'
+import type { HeroBlockConfig, FunnelPage, FunnelBlock } from '@/types'
+import RedirectPicker from './RedirectPicker'
 
 interface Props {
   config: HeroBlockConfig
   onChange: (config: HeroBlockConfig) => void
+  pages?: FunnelPage[]
+  blocks?: FunnelBlock[]
 }
 
-export default function HeroConfig({ config, onChange }: Props) {
+export default function HeroConfig({ config, onChange, pages, blocks }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <label style={labelStyle}>Badge (au-dessus du titre)</label>
+        <input
+          type="text"
+          value={config.badgeText || ''}
+          onChange={e => onChange({ ...config, badgeText: e.target.value })}
+          placeholder="Atelier 100% Gratuit"
+          style={inputStyle}
+        />
+      </div>
       <div>
         <label style={labelStyle}>Titre</label>
         <input
@@ -30,28 +43,24 @@ export default function HeroConfig({ config, onChange }: Props) {
           style={inputStyle}
         />
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Texte du bouton</label>
-          <input
-            type="text"
-            value={config.ctaText}
-            onChange={e => onChange({ ...config, ctaText: e.target.value })}
-            placeholder="Réserver un appel"
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>URL du bouton</label>
-          <input
-            type="url"
-            value={config.ctaUrl}
-            onChange={e => onChange({ ...config, ctaUrl: e.target.value })}
-            placeholder="https://..."
-            style={inputStyle}
-          />
-        </div>
+      <div>
+        <label style={labelStyle}>Texte du bouton</label>
+        <input
+          type="text"
+          value={config.ctaText}
+          onChange={e => onChange({ ...config, ctaText: e.target.value })}
+          placeholder="Réserver un appel"
+          style={inputStyle}
+        />
       </div>
+      <RedirectPicker
+        value={config.ctaUrl || null}
+        onChange={val => onChange({ ...config, ctaUrl: val || '' })}
+        pages={pages}
+        blocks={blocks}
+        label="Lien du bouton"
+        required
+      />
       <div>
         <label style={labelStyle}>Image de fond (URL)</label>
         <input
