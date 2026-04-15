@@ -61,7 +61,7 @@ export default function ImportClient() {
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
           Importer des leads
         </h1>
         <button
@@ -69,8 +69,8 @@ export default function ImportClient() {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '8px 14px', borderRadius: 8, fontSize: 13,
-            background: 'transparent', border: '1px solid #333',
-            color: '#A0A0A0', cursor: 'pointer',
+            background: 'transparent', border: '1px solid var(--border-primary)',
+            color: 'var(--text-secondary)', cursor: 'pointer',
           }}
         >
           <X size={14} />

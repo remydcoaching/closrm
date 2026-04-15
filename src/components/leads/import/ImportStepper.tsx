@@ -28,15 +28,15 @@ export default function ImportStepper({ currentStep }: ImportStepperProps) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 32, height: 32, borderRadius: '50%',
               fontSize: 13, fontWeight: 600,
-              background: isDone ? '#38A169' : isActive ? '#E53E3E' : '#262626',
-              color: isFuture ? '#666' : '#fff',
+              background: isDone ? '#38A169' : isActive ? 'var(--color-primary)' : 'var(--border-primary)',
+              color: isFuture ? 'var(--text-muted)' : '#fff',
               flexShrink: 0,
             }}>
               {isDone ? <Check size={16} /> : index + 1}
             </div>
             <span style={{
               marginLeft: 8, fontSize: 13, fontWeight: isActive ? 600 : 400,
-              color: isFuture ? '#666' : isActive ? '#fff' : '#A0A0A0',
+              color: isFuture ? 'var(--text-muted)' : isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
               whiteSpace: 'nowrap',
             }}>
               {label}
@@ -44,7 +44,7 @@ export default function ImportStepper({ currentStep }: ImportStepperProps) {
             {index < STEPS.length - 1 && (
               <div style={{
                 flex: 1, height: 2, marginLeft: 12, marginRight: 12,
-                background: isDone ? '#38A169' : '#262626',
+                background: isDone ? '#38A169' : 'var(--border-primary)',
               }} />
             )}
           </div>
