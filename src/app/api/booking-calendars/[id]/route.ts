@@ -38,7 +38,13 @@ export async function PATCH(
 
     const body = await request.json()
     const parsed = updateBookingCalendarSchema.safeParse(body)
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    if (!parsed.success) {
+      const fieldErrors = parsed.error.flatten().fieldErrors
+      const messages = Object.entries(fieldErrors)
+        .map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`)
+        .join(' | ')
+      return NextResponse.json({ error: messages || 'Données invalides' }, { status: 400 })
+    }
 
     const { data: existing } = await supabase
       .from('booking_calendars')
