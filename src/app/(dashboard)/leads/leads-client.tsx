@@ -1,7 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Plus, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar, Instagram, MessageCircle } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar, MessageCircle } from 'lucide-react'
+
+function InstagramIcon({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 import { Lead, LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
@@ -475,7 +485,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                             }}
                             onClick={e => e.stopPropagation()}
                           >
-                            <Instagram size={11} />
+                            <InstagramIcon size={11} />
                           </a>
                           <a
                             href={`https://ig.me/m/${lead.instagram_handle}`}

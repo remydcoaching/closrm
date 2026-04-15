@@ -1,7 +1,17 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check, Sparkles, Instagram, MessageCircle } from 'lucide-react'
+import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check, Sparkles, MessageCircle } from 'lucide-react'
+
+function InstagramIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
 import { Lead, Call, FollowUp, LeadStatus, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import ClosingModal from '@/components/leads/ClosingModal'
@@ -363,7 +373,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                       color: '#E1306C', cursor: 'pointer', textDecoration: 'none',
                     }}
                   >
-                    <Instagram size={13} /> @{lead.instagram_handle}
+                    <InstagramIcon size={13} /> @{lead.instagram_handle}
                   </a>
                   <a
                     href={`https://ig.me/m/${lead.instagram_handle}`}
