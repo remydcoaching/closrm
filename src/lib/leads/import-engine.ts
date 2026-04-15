@@ -81,7 +81,7 @@ function validateRow(
     return { valid: false, errors }
   }
 
-  return { valid: true, data: parsed.data as Record<string, unknown>, errors: [] }
+  return { valid: true, data: { ...parsed.data, status: prepared.status } as Record<string, unknown>, errors: [] }
 }
 
 // ------------------------------------------------------------------
