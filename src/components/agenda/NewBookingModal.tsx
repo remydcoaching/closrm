@@ -138,7 +138,9 @@ export default function NewBookingModal({
     setLoading(true)
 
     try {
-      const scheduledAt = `${date}T${time}:00`
+      // Build a proper local Date and convert to ISO (UTC) so the server stores the correct time
+      const localDate = new Date(`${date}T${time}:00`)
+      const scheduledAt = localDate.toISOString()
 
       const body = activeTab === 'blocked'
         ? {
