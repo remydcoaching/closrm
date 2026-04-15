@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Plus, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar, Instagram, MessageCircle } from 'lucide-react'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 import { Lead, LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
@@ -460,6 +460,40 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                       }}>
                         <Calendar size={11} /> Planifier
                       </button>
+                      {lead.instagram_handle && (
+                        <>
+                          <a
+                            href={`https://instagram.com/${lead.instagram_handle}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`Profil @${lead.instagram_handle}`}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center',
+                              padding: '5px 7px', borderRadius: 6,
+                              background: 'rgba(225,48,108,0.10)', border: '1px solid rgba(225,48,108,0.20)',
+                              color: '#E1306C', cursor: 'pointer',
+                            }}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <Instagram size={11} />
+                          </a>
+                          <a
+                            href={`https://ig.me/m/${lead.instagram_handle}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`DM @${lead.instagram_handle}`}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center',
+                              padding: '5px 7px', borderRadius: 6,
+                              background: 'rgba(225,48,108,0.10)', border: '1px solid rgba(225,48,108,0.20)',
+                              color: '#E1306C', cursor: 'pointer',
+                            }}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <MessageCircle size={11} />
+                          </a>
+                        </>
+                      )}
                       <button onClick={() => archiveLead(lead)} title="Archiver" style={{
                         display: 'inline-flex', alignItems: 'center',
                         padding: '5px 7px', borderRadius: 6,

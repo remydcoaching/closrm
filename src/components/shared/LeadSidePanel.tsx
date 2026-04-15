@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check, Sparkles } from 'lucide-react'
+import { X, Phone, Mail, Tag, Calendar, ExternalLink, Save, Plus, Trash2, Edit3, Check, Sparkles, Instagram, MessageCircle } from 'lucide-react'
 import { Lead, Call, FollowUp, LeadStatus, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import ClosingModal from '@/components/leads/ClosingModal'
@@ -350,6 +350,36 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   </div>
                 )
               })}
+              {lead.instagram_handle && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <a
+                    href={`https://instagram.com/${lead.instagram_handle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      background: 'rgba(225,48,108,0.10)', border: '1px solid rgba(225,48,108,0.20)',
+                      color: '#E1306C', cursor: 'pointer', textDecoration: 'none',
+                    }}
+                  >
+                    <Instagram size={13} /> @{lead.instagram_handle}
+                  </a>
+                  <a
+                    href={`https://ig.me/m/${lead.instagram_handle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      background: 'rgba(225,48,108,0.10)', border: '1px solid rgba(225,48,108,0.20)',
+                      color: '#E1306C', cursor: 'pointer', textDecoration: 'none',
+                    }}
+                  >
+                    <MessageCircle size={13} /> DM
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Tags editable */}
