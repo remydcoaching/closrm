@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo } from 'react'
-import { ArrowLeft, ArrowRight, Circle } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowLeft, ArrowRight, Circle, Info } from 'lucide-react'
 import { TARGET_FIELDS, applyMapping } from '@/lib/leads/csv-parser'
 import type { ColumnMapping } from '@/lib/leads/csv-parser'
 import type { WizardState } from '@/app/(dashboard)/leads/import/import-client'
@@ -62,6 +63,7 @@ const labelStyle: React.CSSProperties = {
 
 export default function Step2_MappingConfig({ state, updateState, onBack, onNext }: Props) {
   const { columnMappings, config } = state
+  const [showDedupTooltip, setShowDedupTooltip] = useState(false)
 
   const hasRequiredField = useMemo(() => {
     return columnMappings.some(
@@ -199,7 +201,26 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
             </div>
 
             <div>
-              <label style={labelStyle}>Stratégie de déduplication</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, position: 'relative' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#A0A0A0' }}>Stratégie de déduplication</span>
+                <div
+                  style={{ position: 'relative', display: 'inline-flex' }}
+                  onMouseEnter={() => setShowDedupTooltip(true)}
+                  onMouseLeave={() => setShowDedupTooltip(false)}
+                >
+                  <Info size={14} color="#666" style={{ cursor: 'help' }} />
+                  {showDedupTooltip && (
+                    <div style={{
+                      position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+                      marginBottom: 8, width: 260, padding: '10px 12px', borderRadius: 8,
+                      background: '#1a1a1a', border: '1px solid #333', zIndex: 10,
+                      fontSize: 12, lineHeight: 1.5, color: '#ccc',
+                    }}>
+                      Permet d'éviter les doublons si certains leads de votre fichier existent déjà dans ClosRM. On compare l'email, le téléphone, ou les deux pour détecter les contacts déjà présents.
+                    </div>
+                  )}
+                </div>
+              </div>
               {(['email', 'phone', 'email_and_phone', 'none'] as ImportDedupStrategy[]).map((s) => (
                 <label key={s} style={{
                   display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
