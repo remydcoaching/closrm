@@ -10,6 +10,7 @@ interface Props {
 
 const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: string }> = {
   nouveau: { label: 'Nouveau', color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
+  scripte: { label: 'Scripté', color: '#06b6d4', bg: 'rgba(6,182,212,0.1)' },
   setting_planifie: { label: 'Setting planifié', color: '#D69E2E', bg: 'rgba(214,158,46,0.1)' },
   no_show_setting: { label: 'No-show setting', color: '#E53E3E', bg: 'rgba(229,62,62,0.1)' },
   closing_planifie: { label: 'Closing planifié', color: '#D69E2E', bg: 'rgba(214,158,46,0.1)' },

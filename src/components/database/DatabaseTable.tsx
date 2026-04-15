@@ -29,6 +29,7 @@ function getGroupValue(contact: ContactRow, groupBy: ContactGroupBy): string {
 
 const GROUP_LABELS: Record<LeadStatus | LeadSource | string, string> = {
   nouveau: 'Nouveau',
+  scripte: 'Scripté',
   setting_planifie: 'Setting planifié',
   no_show_setting: 'No-show Setting',
   closing_planifie: 'Closing planifié',

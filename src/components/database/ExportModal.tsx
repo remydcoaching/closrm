@@ -35,6 +35,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   nouveau: 'Nouveau',
+  scripte: 'Scripté',
   setting_planifie: 'Setting planifié',
   no_show_setting: 'No-show Setting',
   closing_planifie: 'Closing planifié',
