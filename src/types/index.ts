@@ -46,6 +46,7 @@ export interface WorkspaceMemberWithUser extends WorkspaceMember {
 
 export type LeadStatus =
   | 'nouveau'
+  | 'scripte'
   | 'setting_planifie'
   | 'no_show_setting'
   | 'closing_planifie'

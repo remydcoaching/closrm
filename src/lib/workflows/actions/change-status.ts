@@ -19,7 +19,7 @@ export async function execute(
   const newStatus = String(config.status) as LeadStatus
 
   const validStatuses: LeadStatus[] = [
-    'nouveau', 'setting_planifie', 'no_show_setting',
+    'nouveau', 'scripte', 'setting_planifie', 'no_show_setting',
     'closing_planifie', 'no_show_closing', 'clos', 'dead',
   ]
 

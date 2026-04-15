@@ -17,7 +17,7 @@ export const updateLeadSchema = z.object({
   phone: z.string().max(30).optional(),
   email: z.string().email().optional().or(z.literal('')),
   source: z.enum(['facebook_ads', 'instagram_ads', 'follow_ads', 'formulaire', 'manuel', 'funnel']).optional(),
-  status: z.enum(['nouveau', 'setting_planifie', 'no_show_setting', 'closing_planifie', 'no_show_closing', 'clos', 'dead']).optional(),
+  status: z.enum(['nouveau', 'scripte', 'setting_planifie', 'no_show_setting', 'closing_planifie', 'no_show_closing', 'clos', 'dead']).optional(),
   tags: z.array(z.string()).optional(),
   notes: z.string().max(5000).optional(),
   reached: z.boolean().optional(),

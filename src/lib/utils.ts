@@ -24,6 +24,7 @@ export function formatDateTime(date: string | Date): string {
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   nouveau: 'Nouveau lead',
+  scripte: 'Scripté',
   setting_planifie: 'Setting planifié',
   no_show_setting: 'No-show Setting',
   closing_planifie: 'Closing planifié',
@@ -34,6 +35,7 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
 
 export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   nouveau: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  scripte: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
   setting_planifie: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   no_show_setting: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
   closing_planifie: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
