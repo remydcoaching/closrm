@@ -163,10 +163,11 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
             <div>
               <label style={labelStyle}>Source par défaut</label>
               <select
-                value={config.default_source}
-                onChange={(e) => updateConfig({ default_source: e.target.value as LeadSource })}
+                value={config.default_source || ''}
+                onChange={(e) => updateConfig({ default_source: (e.target.value || null) as LeadSource | null })}
                 style={selectStyle}
               >
+                <option value="">— Aucune (erreur si source inconnue) —</option>
                 {SOURCE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}

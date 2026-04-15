@@ -100,7 +100,7 @@ export type ImportDedupAction = 'skip' | 'update' | 'create'
 
 export interface ImportConfig {
   mapping: Record<string, string>
-  default_source: LeadSource
+  default_source: LeadSource | null
   default_status: LeadStatus
   batch_tags: string[]
   dedup_strategy: ImportDedupStrategy

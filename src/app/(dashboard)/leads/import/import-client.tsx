@@ -31,7 +31,7 @@ export interface WizardState {
 
 const INITIAL_CONFIG: ImportConfig = {
   mapping: {},
-  default_source: 'manuel',
+  default_source: null,
   default_status: 'nouveau',
   batch_tags: [],
   dedup_strategy: 'email',

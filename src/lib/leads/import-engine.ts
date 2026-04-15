@@ -35,12 +35,13 @@ function validateRow(
   const errors: ImportError[] = []
 
   // Prepare data with defaults
+  const normalizedPhone = row.phone ? normalizePhone(row.phone) : ''
   const prepared: Record<string, unknown> = {
     first_name: row.first_name || '',
     last_name: row.last_name || '',
-    phone: row.phone ? normalizePhone(row.phone) : '',
+    phone: normalizedPhone,
     email: row.email ? normalizeEmail(row.email) : '',
-    source: row.source || config.default_source,
+    source: row.source || config.default_source || 'manuel',
     status: row.status || config.default_status,
     instagram_handle: row.instagram_handle
       ? row.instagram_handle.replace(/^@/, '')
@@ -56,10 +57,33 @@ function validateRow(
     prepared.tags = [...(prepared.tags as string[]), ...config.batch_tags]
   }
 
+  // Validate phone: must be 8-15 digits (international standard)
+  if (normalizedPhone && !/^\+?\d{8,15}$/.test(normalizedPhone)) {
+    errors.push({
+      row: rowIndex + 1,
+      field: 'phone',
+      value: row.phone || '',
+      reason: `Numéro de téléphone invalide (${normalizedPhone.length} chiffres, attendu 8-15)`,
+    })
+    return { valid: false, errors }
+  }
+
   // Validate source against enum
   const validSources: LeadSource[] = ['facebook_ads', 'instagram_ads', 'follow_ads', 'formulaire', 'manuel', 'funnel']
   if (!validSources.includes(prepared.source as LeadSource)) {
-    prepared.source = config.default_source
+    if (config.default_source) {
+      // Default source set → replace silently
+      prepared.source = config.default_source
+    } else {
+      // No default → flag as error
+      errors.push({
+        row: rowIndex + 1,
+        field: 'source',
+        value: row.source || '',
+        reason: `Source inconnue : « ${row.source} ». Sources valides : facebook_ads, instagram_ads, follow_ads, formulaire, manuel, funnel`,
+      })
+      return { valid: false, errors }
+    }
   }
 
   // Validate status against enum
@@ -294,6 +318,6 @@ export async function executeImport(
   fireTriggersForEvent(workspaceId, 'lead_imported', {
     batch_id: batchId,
     lead_count: createdCount + updatedCount,
-    source: config.default_source,
+    source: config.default_source || undefined,
   }).catch(() => {})
 }
