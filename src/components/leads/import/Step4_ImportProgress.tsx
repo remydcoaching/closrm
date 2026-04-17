@@ -17,6 +17,7 @@ export default function Step4_ImportProgress({ state, updateState, onNext }: Pro
   const [progress, setProgress] = useState(0)
   const [statusText, setStatusText] = useState("Préparation de l'import...")
   const [done, setDone] = useState(false)
+  const [hasError, setHasError] = useState(false)
   const startedRef = useRef(false)
 
   useEffect(() => {
@@ -25,65 +26,57 @@ export default function Step4_ImportProgress({ state, updateState, onNext }: Pro
 
     const runImport = async () => {
       const totalRows = state.mappedRows.length
+      const chunks: Record<string, string>[][] = []
+      for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
+        chunks.push(state.mappedRows.slice(i, i + CHUNK_SIZE))
+      }
 
-      if (totalRows <= CHUNK_SIZE) {
-        setStatusText('Import en cours...')
-        const res = await fetch('/api/leads/import', {
+      let batchId: string | null = null
+
+      for (let c = 0; c < chunks.length; c++) {
+        setStatusText(chunks.length > 1
+          ? `Import en cours... (lot ${c + 1}/${chunks.length})`
+          : 'Import en cours...'
+        )
+
+        const res: Response = await fetch('/api/leads/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            rows: state.mappedRows,
+            rows: chunks[c],
             config: state.config,
             fileName: state.fileName,
+            ...(batchId ? { batchId } : {}),
           }),
         })
+
+        const json: { data?: { id: string }; error?: string } = await res.json()
+        if (!res.ok) {
+          setStatusText(`Erreur au lot ${c + 1} : ${json.error}`)
+          setHasError(true)
+          return
+        }
+
+        // First chunk creates the batch, subsequent chunks reuse it
+        if (!batchId) {
+          batchId = json.data!.id
+        }
+
+        setProgress(Math.round(((c + 1) / chunks.length) * 100))
+      }
+
+      // Fetch final consolidated batch state
+      if (batchId) {
+        const res = await fetch(`/api/leads/import/${batchId}`)
         const json = await res.json()
         if (res.ok) {
           updateState({ batch: json.data as LeadImportBatch })
-          setProgress(100)
-          setStatusText('Import terminé !')
-          setDone(true)
-        } else {
-          setStatusText(`Erreur : ${json.error}`)
         }
-      } else {
-        let batchId: string | null = null
-        const chunks = []
-        for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
-          chunks.push(state.mappedRows.slice(i, i + CHUNK_SIZE))
-        }
-
-        for (let c = 0; c < chunks.length; c++) {
-          setStatusText(`Import en cours... (lot ${c + 1}/${chunks.length})`)
-
-          const res = await fetch('/api/leads/import', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              rows: chunks[c],
-              config: state.config,
-              fileName: state.fileName,
-            }),
-          })
-          const json = await res.json()
-          if (!res.ok) {
-            setStatusText(`Erreur au lot ${c + 1} : ${json.error}`)
-            return
-          }
-          batchId = json.data.id
-          setProgress(Math.round(((c + 1) / chunks.length) * 100))
-        }
-
-        if (batchId) {
-          const res = await fetch(`/api/leads/import/${batchId}`)
-          const json = await res.json()
-          updateState({ batch: json.data as LeadImportBatch })
-        }
-
-        setProgress(100)
-        setStatusText('Import terminé !')
-        setDone(true)
       }
+
+      setProgress(100)
+      setStatusText('Import terminé !')
+      setDone(true)
     }
 
     runImport()
@@ -99,7 +92,7 @@ export default function Step4_ImportProgress({ state, updateState, onNext }: Pro
       )}
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
 
-      <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+      <p style={{ fontSize: 16, fontWeight: 600, color: hasError ? '#E53E3E' : 'var(--text-primary)', marginBottom: 8 }}>
         {statusText}
       </p>
 
@@ -110,14 +103,14 @@ export default function Step4_ImportProgress({ state, updateState, onNext }: Pro
       }}>
         <div style={{
           width: `${progress}%`, height: '100%', borderRadius: 4,
-          background: done ? '#38A169' : 'var(--color-primary)',
+          background: hasError ? '#E53E3E' : done ? '#38A169' : 'var(--color-primary)',
           transition: 'width 0.5s ease',
         }} />
       </div>
 
       <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
         {progress}%
-        {state.totalRows > 1000 && !done && (
+        {state.totalRows > 1000 && !done && !hasError && (
           <span> — cela peut prendre quelques secondes</span>
         )}
       </p>

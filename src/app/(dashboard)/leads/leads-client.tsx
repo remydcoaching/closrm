@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Upload, Download, Clock, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar, MessageCircle } from 'lucide-react'
 
 function InstagramIcon({ size = 11 }: { size?: number }) {
@@ -68,6 +68,8 @@ interface LeadsClientProps {
 
 export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const importBatchId = searchParams.get('import_batch_id')
   const [leads, setLeads] = useState<Lead[]>(initialLeads)
   const [meta, setMeta] = useState<Meta>({ total: initialTotal, page: 1, per_page: 25, total_pages: Math.ceil(initialTotal / 25) || 1 })
   const [loading, setLoading] = useState(false)
@@ -159,6 +161,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         if (statuses.length > 0) params.set('status', statuses.join(','))
         if (sources.length > 0) params.set('source', sources.join(','))
         if (assignedTo) params.set('assigned_to', assignedTo)
+        if (importBatchId) params.set('import_batch_id', importBatchId)
 
         const res = await fetch(`/api/leads?${params.toString()}`)
         const json = await res.json()
@@ -172,7 +175,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
     }
     doFetch()
     return () => { cancelled = true }
-  }, [page, debouncedSearch, statuses, sources, assignedTo, refreshKey])
+  }, [page, debouncedSearch, statuses, sources, assignedTo, refreshKey, importBatchId])
 
   // Reset page quand les filtres changent
   useEffect(() => { setPage(1) }, [debouncedSearch, statuses, sources, assignedTo])
@@ -270,6 +273,22 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
             {loading ? '...' : `${meta.total} lead${meta.total > 1 ? 's' : ''} au total`}
           </p>
+          {importBatchId && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <span style={{
+                display: 'inline-block', padding: '3px 10px', borderRadius: 20,
+                fontSize: 11, fontWeight: 600, background: 'var(--bg-active)', color: 'var(--color-primary)',
+              }}>
+                Filtre : import en cours
+              </span>
+              <button
+                onClick={() => router.push('/leads')}
+                style={{ fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Voir tous les leads
+              </button>
+            </div>
+          )}
         </div>
         <div ref={actionsMenuRef} style={{ position: 'relative' }}>
           <button

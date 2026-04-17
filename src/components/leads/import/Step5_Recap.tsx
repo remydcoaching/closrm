@@ -46,10 +46,11 @@ export default function Step5_Recap({ state }: Props) {
 
     const correctedRows: Record<string, string>[] = editedErrors
       .filter((e) => e.edited && Object.keys(e.edited).length > 0)
-      .map((e) => ({
-        [e.field]: e.edited?.[e.field] || e.value,
-        ...e.edited,
-      }))
+      .map((e) => {
+        // Get the full original row and apply the correction
+        const originalRow = state.mappedRows[e.row - 1] || {}
+        return { ...originalRow, [e.field]: e.edited?.[e.field] || e.value }
+      })
 
     if (correctedRows.length === 0) {
       setReimportResult('Aucune correction à réimporter.')

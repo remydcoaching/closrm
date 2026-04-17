@@ -482,9 +482,6 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-<<<<<<< HEAD
----
-
 ## Module Instagram — Partie 2 : Browser Automation (post-validation API Meta)
 
 > **IMPORTANT : Ne pas implémenter avant que les permissions API officielles soient validées par Meta.**

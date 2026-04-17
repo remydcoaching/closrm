@@ -109,35 +109,68 @@ function validateRow(
 }
 
 // ------------------------------------------------------------------
-// Find duplicates based on dedup strategy
+// Load existing leads for dedup (single batch query)
 // ------------------------------------------------------------------
-async function findDuplicate(
+interface DedupIndex {
+  byEmail: Map<string, Record<string, unknown>>
+  byPhone: Map<string, Record<string, unknown>>
+}
+
+async function loadDedupIndex(
   supabase: SupabaseClient,
   workspaceId: string,
-  row: Record<string, unknown>,
   strategy: ImportDedupStrategy,
-): Promise<Record<string, unknown> | null> {
-  if (strategy === 'none') return null
+): Promise<DedupIndex> {
+  const index: DedupIndex = { byEmail: new Map(), byPhone: new Map() }
+  if (strategy === 'none') return index
 
-  let query = supabase
+  const { data } = await supabase
     .from('leads')
     .select('*')
     .eq('workspace_id', workspaceId)
 
-  if (strategy === 'email' || strategy === 'email_and_phone') {
-    const email = row.email as string
+  if (!data) return index
+
+  for (const lead of data) {
+    if (lead.email) index.byEmail.set(normalizeEmail(lead.email), lead)
+    if (lead.phone) index.byPhone.set(normalizePhone(lead.phone), lead)
+  }
+
+  return index
+}
+
+function findDuplicateInIndex(
+  index: DedupIndex,
+  row: Record<string, unknown>,
+  strategy: ImportDedupStrategy,
+): Record<string, unknown> | null {
+  if (strategy === 'none') return null
+
+  const email = row.email as string
+  const phone = row.phone as string
+
+  if (strategy === 'email') {
     if (!email) return null
-    query = query.eq('email', email)
+    return index.byEmail.get(email) || null
   }
 
-  if (strategy === 'phone' || strategy === 'email_and_phone') {
-    const phone = row.phone as string
+  if (strategy === 'phone') {
     if (!phone) return null
-    query = query.eq('phone', phone)
+    return index.byPhone.get(phone) || null
   }
 
-  const { data } = await query.limit(1).single()
-  return data
+  // email_and_phone: both must match the SAME lead
+  if (strategy === 'email_and_phone') {
+    if (!email || !phone) return null
+    const byEmail = index.byEmail.get(email)
+    const byPhone = index.byPhone.get(phone)
+    if (byEmail && byPhone && (byEmail as Record<string, string>).id === (byPhone as Record<string, string>).id) {
+      return byEmail
+    }
+    return null
+  }
+
+  return null
 }
 
 // ------------------------------------------------------------------
@@ -149,6 +182,8 @@ export async function previewImport(
   rows: Record<string, string>[],
   config: ImportConfig,
 ): Promise<ImportPreviewResult> {
+  const index = await loadDedupIndex(supabase, workspaceId, config.dedup_strategy)
+
   let toCreate = 0
   let toUpdate = 0
   let toSkip = 0
@@ -164,7 +199,7 @@ export async function previewImport(
       continue
     }
 
-    const existing = await findDuplicate(supabase, workspaceId, data!, config.dedup_strategy)
+    const existing = findDuplicateInIndex(index, data!, config.dedup_strategy)
 
     if (existing) {
       if (config.dedup_action === 'skip') {
@@ -178,7 +213,6 @@ export async function previewImport(
           })
         }
       } else {
-        // dedup_action === 'create'
         toCreate++
         if (sampleCreates.length < 5) {
           sampleCreates.push(data as Record<string, string>)
@@ -213,6 +247,8 @@ export async function executeImport(
   rows: Record<string, string>[],
   config: ImportConfig,
 ): Promise<void> {
+  const index = await loadDedupIndex(supabase, workspaceId, config.dedup_strategy)
+
   let createdCount = 0
   let updatedCount = 0
   let skippedCount = 0
@@ -233,7 +269,7 @@ export async function executeImport(
         continue
       }
 
-      const existing = await findDuplicate(supabase, workspaceId, data!, config.dedup_strategy)
+      const existing = findDuplicateInIndex(index, data!, config.dedup_strategy)
 
       if (existing) {
         if (config.dedup_action === 'skip') {

@@ -59,6 +59,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Filtre par batch d'import
+    if (filters.import_batch_id) {
+      query = query.eq('import_batch_id', filters.import_batch_id)
+    }
+
     // Filtre par tags (au moins un des tags listés)
     if (filters.tags) {
       const tags = filters.tags.split(',').filter(Boolean)
