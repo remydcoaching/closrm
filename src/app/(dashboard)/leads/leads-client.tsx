@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Upload, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar, MessageCircle } from 'lucide-react'
+import { Plus, Upload, Download, Clock, ChevronLeft, ChevronRight, ExternalLink, Archive, Phone, ChevronDown, X, Calendar, MessageCircle } from 'lucide-react'
 
 function InstagramIcon({ size = 11 }: { size?: number }) {
   return (
@@ -72,6 +72,8 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   const [meta, setMeta] = useState<Meta>({ total: initialTotal, page: 1, per_page: 25, total_pages: Math.ceil(initialTotal / 25) || 1 })
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [showActionsMenu, setShowActionsMenu] = useState(false)
+  const actionsMenuRef = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(1)
   const [dropdown, setDropdown] = useState<DropdownState | null>(null)
   const [tagInput, setTagInput] = useState('')
@@ -131,10 +133,13 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
       if (dropdownPanelRef.current && !dropdownPanelRef.current.contains(e.target as Node)) {
         setDropdown(null)
       }
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false)
+      }
     }
-    if (dropdown) document.addEventListener('mousedown', handleClick)
+    if (dropdown || showActionsMenu) document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [dropdown])
+  }, [dropdown, showActionsMenu])
 
   // Fetch leads — skip on initial mount (server data already present)
   useEffect(() => {
@@ -266,23 +271,48 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
             {loading ? '...' : `${meta.total} lead${meta.total > 1 ? 's' : ''} au total`}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => router.push('/leads/import')} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'transparent', border: '1px solid #333', color: '#A0A0A0', cursor: 'pointer',
-          }}>
-            <Upload size={15} />
-            Importer
+        <div ref={actionsMenuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowActionsMenu((v) => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 38, height: 38, borderRadius: 8,
+              background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
+            }}
+          >
+            <Plus size={18} strokeWidth={2.5} />
           </button>
-          <button onClick={() => setShowForm(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
-          }}>
-            <Plus size={15} />
-            Ajouter un lead
-          </button>
+          {showActionsMenu && (
+            <div style={{
+              position: 'absolute', top: '100%', right: 0, marginTop: 6,
+              width: 240, borderRadius: 10, overflow: 'hidden',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+              boxShadow: 'var(--shadow-dropdown)', zIndex: 50,
+            }}>
+              {[
+                { icon: <Plus size={15} />, label: 'Ajouter un lead', onClick: () => { setShowForm(true); setShowActionsMenu(false) } },
+                { icon: <Upload size={15} />, label: 'Importer des leads', onClick: () => { router.push('/leads/import'); setShowActionsMenu(false) } },
+                { icon: <Download size={15} />, label: 'Exporter des leads', onClick: () => { router.push('/base-de-donnees'); setShowActionsMenu(false) } },
+                { icon: <Clock size={15} />, label: 'Historique des imports', onClick: () => { router.push('/leads/import/history'); setShowActionsMenu(false) } },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  onClick={item.onClick}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                    padding: '11px 14px', fontSize: 13, color: 'var(--text-primary)',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    textAlign: 'left', transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <span style={{ color: 'var(--text-secondary)', display: 'flex' }}>{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
