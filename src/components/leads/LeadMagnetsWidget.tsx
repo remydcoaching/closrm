@@ -145,6 +145,62 @@ export default function LeadMagnetsWidget({ leadId }: Props) {
           {toast}
         </div>
       )}
+      {linkModal && (
+        <LinkModal url={linkModal} onClose={() => setLinkModal(null)} />
+      )}
+    </div>
+  )
+}
+
+function LinkModal({ url, onClose }: { url: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+  async function forceCopy() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url)
+        setCopied(true); setTimeout(() => setCopied(false), 1500)
+        return
+      }
+    } catch { /* try fallback */ }
+    const ta = document.createElement('textarea')
+    ta.value = url
+    ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0'; ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.focus(); ta.select()
+    try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* ignore */ }
+    document.body.removeChild(ta)
+  }
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: 'var(--color-surface)', padding: 20, borderRadius: 12, width: 460, border: '1px solid var(--color-border)' }}
+      >
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0, marginBottom: 12 }}>Lien trackable</h3>
+        <input
+          value={url}
+          readOnly
+          onFocus={e => e.currentTarget.select()}
+          style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', fontSize: 13, fontFamily: 'monospace' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+          <button
+            onClick={onClose}
+            style={{ padding: '6px 12px', borderRadius: 6, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', fontSize: 12, cursor: 'pointer' }}
+          >
+            Fermer
+          </button>
+          <button
+            onClick={forceCopy}
+            style={{ padding: '6px 12px', borderRadius: 6, background: copied ? '#38A169' : 'var(--color-primary)', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+          >
+            {copied ? '✓ Copié' : 'Copier'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
