@@ -487,21 +487,6 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                           >
                             <InstagramIcon size={11} />
                           </a>
-                          <a
-                            href={`https://ig.me/m/${lead.instagram_handle}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={`DM @${lead.instagram_handle}`}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center',
-                              padding: '5px 7px', borderRadius: 6,
-                              background: 'rgba(225,48,108,0.10)', border: '1px solid rgba(225,48,108,0.20)',
-                              color: '#E1306C', cursor: 'pointer',
-                            }}
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <MessageCircle size={11} />
-                          </a>
                         </>
                       )}
                       <button onClick={() => archiveLead(lead)} title="Archiver" style={{

@@ -482,4 +482,109 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-*Mis a jour le 2026-04-09 par Claude Code — ClosRM*
+---
+
+## Module Instagram — Partie 2 : Browser Automation (post-validation API Meta)
+
+> **IMPORTANT : Ne pas implémenter avant que les permissions API officielles soient validées par Meta.**
+> Une fois l'API officielle approuvée, cette partie peut être développée en parallèle.
+> Inspiration directe : Orsay.ai (app.orsay.ai) — SaaS français qui fait exactement ça.
+
+### A-INSTA-01 · Connexion Instagram par identifiants (login + mdp)
+**Priorité :** Haute (première brique)
+**Contexte :** Orsay demande le mdp Instagram + ville + validation 2FA via notification Instagram. C'est la base de toute l'automation non-API.
+**Description :** Permettre au coach de connecter son compte Instagram via login/mdp (en plus de l'OAuth API officielle). Les identifiants sont chiffrés et stockés en DB. La connexion simule un appareil mobile depuis une IP proche de la ville du coach.
+**Proposition :**
+1. UI dans Paramètres > Intégrations : formulaire login + mdp + ville
+2. Backend : chiffrement AES-256 des credentials, stockage dans `ig_accounts` (nouveau champ `encrypted_credentials`)
+3. Gestion du 2FA : attente de la validation par notification Instagram (comme Orsay)
+4. Session management : stocker les cookies de session pour réutiliser sans re-login
+
+### A-INSTA-02 · Système de warm-up / rodage progressif
+**Priorité :** Haute (obligatoire avant toute action)
+**Contexte :** Orsay fait ~40 sessions de rodage où les actions augmentent progressivement (follows, likes, messages, unfollows). Sans ça, Instagram détecte le bot et bloque le compte.
+**Description :** Système de montée en puissance progressive sur ~40 sessions. Les limites d'actions quotidiennes augmentent graduellement jusqu'à atteindre la capacité maximale (ex: 50 actions/jour).
+**Proposition :**
+1. Table `ig_warmup_progress` : account_id, sessions_completed, max_sessions, current_limits (JSON), started_at
+2. Chaque session augmente les limites : jour 1 = 5 actions, jour 10 = 20 actions, jour 40 = 50 actions
+3. UI : barre de progression "Rodage en cours X%" (comme Orsay)
+4. Détection automatique des flags Instagram (action blocked) → pause auto + notification coach
+
+### A-INSTA-03 · Lead Finder : scraping de followers concurrents
+**Priorité :** Haute
+**Contexte :** Orsay analyse les followers de comptes concurrents pour trouver des prospects qualifiés. C'est le cœur de la prospection outbound.
+**Description :** Le coach configure 5-10 comptes Instagram concurrents. ClosRM scrape leurs followers, les score (1-5) selon des critères (bio, nombre de followers, activité), et les propose comme leads potentiels.
+**Proposition :**
+1. UI : liste de comptes concurrents à monitorer (Paramètres ou page dédiée "Lead Finder")
+2. Backend : scraping des followers via browser automation (Puppeteer/Playwright headless)
+3. Scoring IA : analyser bio, nombre de posts, ratio followers/following, activité récente
+4. Table `ig_scraped_leads` : username, full_name, bio, score, source_account, scraped_at
+5. Limite : respecter les 50 actions/jour max, scraper en background
+
+### A-INSTA-04 · DM à froid automatisés
+**Priorité :** Haute
+**Contexte :** Orsay envoie des DM personnalisés aux prospects trouvés par le Lead Finder. C'est l'action qui convertit.
+**Description :** Envoyer des DM automatiques aux prospects qualifiés (score élevé). Messages personnalisés avec variables (prénom, bio). Respect des limites quotidiennes.
+**Proposition :**
+1. Templates de DM avec variables : {{prenom}}, {{bio_extract}}, etc.
+2. Séquences de DM : message initial → follow-up J+2 si pas de réponse → follow-up J+5
+3. Queue de messages avec respect des limites (50/jour) et horaires de travail configurables
+4. Détection de réponse : si le prospect répond, stopper la séquence et notifier le coach
+5. Le prospect qui répond est automatiquement créé comme lead dans le pipeline ClosRM
+
+### A-INSTA-05 · Auto-follow / Auto-like
+**Priorité :** Moyenne
+**Contexte :** Orsay fait des follows et likes automatiques pour augmenter la visibilité et déclencher la curiosité des prospects.
+**Description :** Actions automatiques de follow et like sur les posts des prospects ciblés. Inclus dans le quota de 50 actions/jour.
+**Proposition :**
+1. Auto-follow des prospects scorés 4-5 par le Lead Finder
+2. Auto-like du dernier post du prospect avant d'envoyer le DM (augmente le taux de réponse)
+3. Auto-unfollow après X jours si pas de follow-back (nettoyage du ratio)
+4. Tout passe par la queue d'actions avec limites quotidiennes
+
+### A-INSTA-06 · Déclencheurs de séquences (comme Orsay)
+**Priorité :** Moyenne
+**Contexte :** Orsay propose des déclencheurs entrants (illimités) et sortants (50/jour) pour lancer des séquences automatiques.
+**Description :** Système de triggers qui lance des séquences de messages automatiques.
+**Déclencheurs entrants (illimités, via API officielle) :**
+- Message reçu (votre compte)
+- Réponse à une story (votre compte)
+- Commentaire (vos publications)
+**Déclencheurs sortants (50/jour, via browser automation) :**
+- Nouvel abonné (votre compte) → DM de bienvenue
+- Abonnés (autre compte) → DM de prospection
+- Nouveaux likes (publication spécifique)
+- Commentaires (autre compte)
+**Proposition :**
+1. Builder de séquences visuel (trigger → action → délai → action)
+2. Intégration avec le moteur de workflows existant (T-021/T-029)
+3. Distinction claire inbound (API) vs outbound (automation) dans l'UI
+
+### A-INSTA-07 · Agent IA conversationnel pour qualification
+**Priorité :** Basse (V2+)
+**Contexte :** Orsay a un "Agent" IA qui qualifie les prospects par conversation automatique en DM.
+**Description :** Agent IA qui mène la conversation de qualification : pose des questions, évalue les réponses, score le prospect, et propose un RDV si qualifié. Configurable par le coach (ton, questions, objectifs).
+**Proposition :**
+1. Réutiliser le module Assistant IA existant (T-019) comme base
+2. Adapter pour les conversations DM Instagram (messages courts, ton informel)
+3. Le coach configure : questions de qualification, critères de scoring, message de prise de RDV
+4. L'agent gère la conversation jusqu'à la qualification ou le désengagement
+5. Si qualifié → créer le lead dans le pipeline + proposer un lien de booking (T-022)
+
+### Architecture technique recommandée
+**Stack browser automation :**
+- **Puppeteer ou Playwright** en headless sur un serveur dédié (pas sur Vercel — trop lourd pour serverless)
+- **Serveur worker** : un VPS (Hetzner, DigitalOcean) ou un service comme BrowserBase/Browserless qui gère les sessions browser
+- **Queue** : Redis + BullMQ pour gérer les actions en file d'attente avec rate limiting
+- **Proxy résidentiel** : pour éviter les détections IP (ex: Bright Data, Oxylabs)
+- Alternative : utiliser l'**API mobile Instagram** (non documentée mais plus stable que le browser scraping)
+
+**Risques à gérer :**
+- Instagram change son UI/détections régulièrement → maintenance continue
+- Proxies résidentiels = coût (~$10-20/mois par compte)
+- Si Instagram bloque un compte coach, c'est notre responsabilité
+- Stocker des mots de passe = responsabilité sécurité élevée (chiffrement AES-256 + audit)
+
+---
+
+*Mis à jour le 2026-04-17 par Claude Code — ClosRM*
