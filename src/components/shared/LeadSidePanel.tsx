@@ -375,19 +375,6 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   >
                     <InstagramIcon size={13} /> @{lead.instagram_handle}
                   </a>
-                  <a
-                    href={`https://ig.me/m/${lead.instagram_handle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      background: 'rgba(225,48,108,0.10)', border: '1px solid rgba(225,48,108,0.20)',
-                      color: '#E1306C', cursor: 'pointer', textDecoration: 'none',
-                    }}
-                  >
-                    <MessageCircle size={13} /> DM
-                  </a>
                 </div>
               )}
             </div>
