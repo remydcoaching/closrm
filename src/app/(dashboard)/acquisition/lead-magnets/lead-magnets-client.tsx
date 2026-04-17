@@ -1,0 +1,191 @@
+'use client'
+import { useState, useMemo } from 'react'
+import type { LeadMagnet, LeadMagnetPlatform } from '@/types'
+
+interface Stat { lead_magnet_id: string; clicks_count: number; lead_id: string }
+
+interface Props {
+  initialMagnets: LeadMagnet[]
+  initialStats: Stat[]
+}
+
+const PLATFORMS: Array<{ value: LeadMagnetPlatform; label: string; emoji: string }> = [
+  { value: 'youtube', label: 'YouTube', emoji: '🎥' },
+  { value: 'tiktok', label: 'TikTok', emoji: '🎵' },
+  { value: 'instagram', label: 'Instagram', emoji: '📷' },
+  { value: 'podcast', label: 'Podcast', emoji: '🎧' },
+  { value: 'blog', label: 'Blog', emoji: '📝' },
+  { value: 'pdf', label: 'PDF', emoji: '📘' },
+  { value: 'other', label: 'Autre', emoji: '🔗' },
+]
+
+export default function LeadMagnetsClient({ initialMagnets, initialStats }: Props) {
+  const [magnets, setMagnets] = useState(initialMagnets)
+  const [stats] = useState(initialStats)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<LeadMagnet | null>(null)
+
+  const statsByMagnet = useMemo(() => {
+    const map = new Map<string, { clicks: number; leads: Set<string> }>()
+    stats.forEach(s => {
+      if (!map.has(s.lead_magnet_id)) map.set(s.lead_magnet_id, { clicks: 0, leads: new Set() })
+      const entry = map.get(s.lead_magnet_id)!
+      entry.clicks += s.clicks_count
+      if (s.clicks_count > 0) entry.leads.add(s.lead_id)
+    })
+    return map
+  }, [stats])
+
+  async function handleSave(input: { title: string; url: string; platform: LeadMagnetPlatform }) {
+    if (editing) {
+      const res = await fetch(`/api/lead-magnets/${editing.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      const { lead_magnet } = await res.json()
+      setMagnets(magnets.map(m => m.id === editing.id ? lead_magnet : m))
+    } else {
+      const res = await fetch('/api/lead-magnets', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+      const { lead_magnet } = await res.json()
+      setMagnets([lead_magnet, ...magnets])
+    }
+    setModalOpen(false); setEditing(null)
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Supprimer ce lead magnet ? Tous les liens trackables associés seront supprimés.')) return
+    await fetch(`/api/lead-magnets/${id}`, { method: 'DELETE' })
+    setMagnets(magnets.filter(m => m.id !== id))
+  }
+
+  return (
+    <div style={{ padding: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ color: 'var(--color-text-primary)', fontSize: 24, fontWeight: 700, margin: 0 }}>Lead Magnets</h1>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginTop: 4 }}>
+            Contenus partagés avec les leads via des liens courts trackables.
+          </p>
+        </div>
+        <button
+          onClick={() => { setEditing(null); setModalOpen(true) }}
+          style={{
+            padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+            background: 'var(--color-primary)', color: '#fff', border: 'none', cursor: 'pointer',
+          }}
+        >
+          + Nouveau contenu
+        </button>
+      </div>
+
+      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+              <th style={th}>Titre</th>
+              <th style={th}>Plateforme</th>
+              <th style={th}>Clics totaux</th>
+              <th style={th}>Leads uniques</th>
+              <th style={th}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {magnets.length === 0 && (
+              <tr>
+                <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                  Aucun lead magnet. Cliquez sur « + Nouveau contenu » pour commencer.
+                </td>
+              </tr>
+            )}
+            {magnets.map(m => {
+              const s = statsByMagnet.get(m.id)
+              const platform = PLATFORMS.find(p => p.value === m.platform)
+              return (
+                <tr key={m.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <td style={td}>
+                    <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{m.title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 400 }}>
+                      {m.url}
+                    </div>
+                  </td>
+                  <td style={td}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span>{platform?.emoji}</span>
+                      <span>{platform?.label}</span>
+                    </span>
+                  </td>
+                  <td style={td}>{s?.clicks ?? 0}</td>
+                  <td style={td}>{s?.leads.size ?? 0}</td>
+                  <td style={td}>
+                    <button onClick={() => { setEditing(m); setModalOpen(true) }} style={btnSecondary}>Éditer</button>
+                    <button onClick={() => handleDelete(m.id)} style={{ ...btnSecondary, marginLeft: 8, color: '#E53E3E' }}>Supprimer</button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {modalOpen && (
+        <LeadMagnetModal
+          initial={editing}
+          onClose={() => { setModalOpen(false); setEditing(null) }}
+          onSave={handleSave}
+        />
+      )}
+    </div>
+  )
+}
+
+const th: React.CSSProperties = { padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }
+const td: React.CSSProperties = { padding: '14px 16px', fontSize: 13, color: 'var(--color-text-primary)' }
+const btnSecondary: React.CSSProperties = { padding: '4px 10px', borderRadius: 6, fontSize: 12, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', cursor: 'pointer' }
+
+function LeadMagnetModal({ initial, onClose, onSave }: {
+  initial: LeadMagnet | null
+  onClose: () => void
+  onSave: (input: { title: string; url: string; platform: LeadMagnetPlatform }) => void
+}) {
+  const [title, setTitle] = useState(initial?.title ?? '')
+  const [url, setUrl] = useState(initial?.url ?? '')
+  const [platform, setPlatform] = useState<LeadMagnetPlatform>(initial?.platform ?? 'other')
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--color-surface)', padding: 24, borderRadius: 12, width: 480, border: '1px solid var(--color-border)' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: 'var(--color-text-primary)' }}>
+          {initial ? 'Éditer' : 'Nouveau'} lead magnet
+        </h2>
+        <label style={labelStyle}>Titre</label>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Masterclass gratuite" style={inputStyle} />
+        <label style={labelStyle}>URL</label>
+        <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." style={inputStyle} />
+        <label style={labelStyle}>Plateforme</label>
+        <select
+          value={platform}
+          onChange={e => setPlatform(e.target.value as LeadMagnetPlatform)}
+          style={inputStyle}
+        >
+          {PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.emoji} {p.label}</option>)}
+        </select>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+          <button onClick={onClose} style={btnSecondary}>Annuler</button>
+          <button
+            onClick={() => title && url && onSave({ title, url, platform })}
+            disabled={!title || !url}
+            style={{ padding: '8px 16px', borderRadius: 6, background: 'var(--color-primary)', color: '#fff', border: 'none', fontWeight: 600, cursor: (title && url) ? 'pointer' : 'not-allowed', opacity: (title && url) ? 1 : 0.5 }}
+          >
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginTop: 12, marginBottom: 4 }
+const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 6, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', fontSize: 13, outline: 'none' }
