@@ -22,6 +22,7 @@ import CallTypeBadge from '@/components/closing/CallTypeBadge'
 import ConversationThread from '@/components/messages/ConversationThread'
 import MessageInput from '@/components/messages/MessageInput'
 import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
+import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
@@ -413,6 +414,9 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                 instagramHandle={lead.instagram_handle}
               />
             </div>
+
+            {/* Lead Magnets */}
+            <LeadMagnetsWidget leadId={leadId} />
 
             {/* Calls — editable dates */}
             <div style={card}>
