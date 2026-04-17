@@ -55,7 +55,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (user && isPublicRoute(pathname) && pathname !== '/' && !pathname.startsWith('/reset-password')) {
+  // Routes "utilitaires" publiques qui doivent marcher même pour un user logué
+  // (short links trackables, unsubscribe) — sinon le user est redirigé vers
+  // /dashboard au lieu d'atteindre la vraie destination.
+  const isUtilityPublicRoute =
+    pathname.startsWith('/c/') || pathname.startsWith('/unsubscribe')
+
+  if (
+    user &&
+    isPublicRoute(pathname) &&
+    pathname !== '/' &&
+    !pathname.startsWith('/reset-password') &&
+    !isUtilityPublicRoute
+  ) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
