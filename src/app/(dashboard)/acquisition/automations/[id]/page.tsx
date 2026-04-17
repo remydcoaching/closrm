@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Play, Pause, Loader2, FlaskConical, ChevronLeft } from 'lucide-react'
-import { Workflow, WorkflowStep, WorkflowStepType } from '@/types'
+import { Workflow, WorkflowStep, WorkflowStepType, WorkflowActionType } from '@/types'
 import WorkflowBuilder from '@/components/automations/WorkflowBuilder'
 import WorkflowStatusBadge from '@/components/automations/WorkflowStatusBadge'
 import TriggerConfigPanel from '@/components/automations/TriggerConfigPanel'
@@ -120,7 +120,14 @@ export default function WorkflowEditorPage() {
     }
   }
 
-  const handleAddStep = async (stepType: WorkflowStepType, afterOrder: number, parentStepId?: string, branch?: string) => {
+  const handleAddStep = async (
+    stepType: WorkflowStepType,
+    afterOrder: number,
+    parentStepId?: string,
+    branch?: string,
+    actionType?: WorkflowActionType,
+    actionConfig?: Record<string, unknown>,
+  ) => {
     const newStep: Record<string, unknown> = {
       step_type: stepType,
       insert_after: afterOrder,
@@ -130,8 +137,8 @@ export default function WorkflowEditorPage() {
     if (branch) newStep.branch = branch
 
     if (stepType === 'action') {
-      newStep.action_type = 'send_email'
-      newStep.action_config = {}
+      newStep.action_type = actionType ?? 'send_email'
+      newStep.action_config = actionConfig ?? {}
     } else if (stepType === 'delay') {
       newStep.delay_value = 1
       newStep.delay_unit = 'hours'
@@ -140,7 +147,7 @@ export default function WorkflowEditorPage() {
       newStep.condition_operator = 'equals'
       newStep.condition_value = ''
     } else if (stepType === 'wait_for_event') {
-      newStep.action_config = { event_type: 'before_call', hours_before: 24 }
+      newStep.action_config = actionConfig ?? { event_type: 'before_call', hours_before: 24 }
     }
 
     try {
@@ -150,7 +157,14 @@ export default function WorkflowEditorPage() {
         body: JSON.stringify(newStep),
       })
       if (res.ok) {
-        await fetchWorkflow()
+        const json = await res.json()
+        const created = json.data as WorkflowStep
+        setSteps((prev) => {
+          const shifted = prev.map((s) =>
+            s.step_order > afterOrder ? { ...s, step_order: s.step_order + 1 } : s
+          )
+          return [...shifted, created].sort((a, b) => a.step_order - b.step_order)
+        })
         setHasUnsavedChanges(true)
       }
     } catch (err) {

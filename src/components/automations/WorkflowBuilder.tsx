@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Workflow, WorkflowStep, WorkflowStepType } from '@/types'
+import { Workflow, WorkflowStep, WorkflowStepType, WorkflowActionType } from '@/types'
 import TriggerBlock from './TriggerBlock'
 import StepBlock from './StepBlock'
 import StepConnector from './StepConnector'
@@ -27,7 +27,14 @@ interface Props {
   selectedBlockId: string | null
   onSelectTrigger: () => void
   onSelectStep: (stepId: string) => void
-  onAddStep: (stepType: WorkflowStepType, afterOrder: number, parentStepId?: string, branch?: string) => void
+  onAddStep: (
+    stepType: WorkflowStepType,
+    afterOrder: number,
+    parentStepId?: string,
+    branch?: string,
+    actionType?: WorkflowActionType,
+    actionConfig?: Record<string, unknown>,
+  ) => void
   onDeleteStep: (stepId: string) => void
   onReorderSteps?: (reordered: WorkflowStep[]) => void
 }
@@ -87,7 +94,14 @@ function BranchColumn({
   selectedBlockId: string | null
   onSelectStep: (id: string) => void
   onDeleteStep: (id: string) => void
-  onAddStep: (stepType: WorkflowStepType, afterOrder: number, parentStepId?: string, branch?: string) => void
+  onAddStep: (
+    stepType: WorkflowStepType,
+    afterOrder: number,
+    parentStepId?: string,
+    branch?: string,
+    actionType?: WorkflowActionType,
+    actionConfig?: Record<string, unknown>,
+  ) => void
 }) {
   const sorted = [...branchSteps].sort((a, b) => a.step_order - b.step_order)
   const lastOrder = sorted.length > 0 ? sorted[sorted.length - 1].step_order : 0
@@ -121,7 +135,7 @@ function BranchColumn({
         </div>
       ))}
 
-      <AddStepButton onAdd={(stepType) => onAddStep(stepType, lastOrder, conditionStepId, branch)} />
+      <AddStepButton onAdd={(p) => onAddStep(p.stepType, lastOrder, conditionStepId, branch, p.actionType, p.actionConfig)} />
     </div>
   )
 }
@@ -188,7 +202,7 @@ export default function WorkflowBuilder({
       <StepConnector />
 
       {/* Add before first step */}
-      <AddStepButton onAdd={(stepType) => onAddStep(stepType, 0)} />
+      <AddStepButton onAdd={(p) => onAddStep(p.stepType, 0, undefined, undefined, p.actionType, p.actionConfig)} />
 
       {/* Main steps with drag & drop */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -256,7 +270,7 @@ export default function WorkflowBuilder({
 
               {/* Add after this step */}
               <AddStepButton
-                onAdd={(stepType) => onAddStep(stepType, step.step_order)}
+                onAdd={(p) => onAddStep(p.stepType, step.step_order, undefined, undefined, p.actionType, p.actionConfig)}
               />
             </div>
           ))}
