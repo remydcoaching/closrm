@@ -3,6 +3,7 @@ import { AiSuggestion, Lead, IgMessage } from '@/types'
 import { callClaude } from './client'
 import { buildSuggestionPrompt } from './prompts'
 import { getBrief, getApiKey, getWinningConversations, getLeadMagnetsForWorkspace } from './brief'
+import { replaceLeadMagnetUrls } from './replace-lead-magnet-urls'
 
 export async function generateSuggestion(
   workspaceId: string,
@@ -77,6 +78,18 @@ export async function generateSuggestion(
       guidance: 'Impossible de generer une suggestion. Redigez votre message manuellement.',
       message: '',
     }
+  }
+
+  // 8bis. Post-process : remplacer URLs des lead_magnets par short links trackables pour ce lead
+  if (parsed.message && leadMagnets.length > 0) {
+    parsed.message = await replaceLeadMagnetUrls({
+      message: parsed.message,
+      leadId,
+      workspaceId,
+      leadMagnets,
+      supabase,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    })
   }
 
   // 9. Determine window status
