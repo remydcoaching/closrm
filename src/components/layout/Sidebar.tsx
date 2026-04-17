@@ -23,7 +23,6 @@ const NAV = [
       { label: 'Leads', href: '/leads', icon: Users },
       { label: 'Closing', href: '/closing', icon: Phone },
       { label: 'Follow-ups', href: '/follow-ups', icon: Bell },
-      { label: 'Chat équipe', href: '/equipe/messages', icon: MessagesSquare },
       { label: 'Statistiques', href: '/statistiques', icon: BarChart2 },
       { label: 'Base de données', href: '/base-de-donnees', icon: Database },
     ],
@@ -31,13 +30,21 @@ const NAV = [
   {
     title: 'ACQUISITION',
     items: [
+      { label: 'Publicités', href: '/acquisition/publicites', icon: Megaphone },
       { label: 'Funnels', href: '/acquisition/funnels', icon: Layers },
-      { label: 'Automations', href: '/acquisition/automations', icon: Zap },
       { label: 'Lead Magnets', href: '/acquisition/lead-magnets', icon: Link2 },
-      { label: 'Emails', href: '/acquisition/emails', icon: Mail },
       { label: 'Réseaux sociaux', href: '/acquisition/reseaux-sociaux', icon: Share2 },
       { label: 'Messages', href: '/acquisition/messages', icon: MessageCircle },
-      { label: 'Publicités', href: '/acquisition/publicites', icon: Megaphone },
+      { label: 'Emails', href: '/acquisition/emails', icon: Mail },
+      { label: 'Automations', href: '/acquisition/automations', icon: Zap },
+      { label: 'Assistant IA', href: '/parametres/assistant-ia', icon: Sparkles },
+    ],
+  },
+  {
+    title: 'ÉQUIPE',
+    items: [
+      { label: 'Équipe', href: '/parametres/equipe', icon: Users2 },
+      { label: 'Chat équipe', href: '/equipe/messages', icon: MessagesSquare },
     ],
   },
   {
@@ -46,8 +53,6 @@ const NAV = [
       { label: 'Paramètres', href: '/parametres/reglages', icon: Settings },
       { label: 'Intégrations', href: '/parametres/integrations', icon: Plug },
       { label: 'Calendriers', href: '/parametres/calendriers', icon: CalendarRange },
-      { label: 'Assistant IA', href: '/parametres/assistant-ia', icon: Sparkles },
-      { label: 'Equipe', href: '/parametres/equipe', icon: Users2 },
     ],
   },
 ]
