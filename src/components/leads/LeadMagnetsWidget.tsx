@@ -41,15 +41,49 @@ export default function LeadMagnetsWidget({ leadId }: Props) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lead_id: leadId }),
       })
-      const { full_url, short_code } = await res.json()
-      if (full_url) {
-        await navigator.clipboard.writeText(full_url)
-        setToast('Lien copié !')
-        setTimeout(() => setToast(null), 2000)
-        setTracks(prev => prev.some(t => t.lead_magnet_id === magnetId)
-          ? prev
-          : [...prev, { short_code, clicks_count: 0, last_clicked_at: null, lead_magnet_id: magnetId }])
+      if (!res.ok) {
+        setToast('Erreur API')
+        setTimeout(() => setToast(null), 2500)
+        return
       }
+      const { full_url, short_code } = await res.json()
+      if (!full_url) {
+        setToast('Lien manquant')
+        setTimeout(() => setToast(null), 2500)
+        return
+      }
+
+      let copied = false
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(full_url)
+          copied = true
+        }
+      } catch { /* clipboard denied */ }
+
+      if (!copied) {
+        // Fallback execCommand (Safari localhost ou perms denied)
+        const ta = document.createElement('textarea')
+        ta.value = full_url
+        ta.style.position = 'fixed'; ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.select()
+        try { document.execCommand('copy'); copied = true } catch { /* ignore */ }
+        document.body.removeChild(ta)
+      }
+
+      if (copied) {
+        setToast('Lien copié !')
+      } else {
+        // Dernier recours : prompt pour copie manuelle
+        window.prompt('Copie ce lien manuellement (Cmd+C) :', full_url)
+        setToast('Lien affiché')
+      }
+      setTimeout(() => setToast(null), 2500)
+
+      setTracks(prev => prev.some(t => t.lead_magnet_id === magnetId)
+        ? prev
+        : [...prev, { short_code, clicks_count: 0, last_clicked_at: null, lead_magnet_id: magnetId }])
     } finally {
       setPendingId(null)
     }
