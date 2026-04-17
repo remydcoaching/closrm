@@ -1132,3 +1132,36 @@ export interface MemberProgress {
   completed_count: number
   total_count: number
 }
+
+// ─── Lead Magnets / Linktree interne ────────────────────────────────────────
+
+export type LeadMagnetPlatform =
+  | 'youtube' | 'tiktok' | 'instagram'
+  | 'podcast' | 'blog' | 'pdf' | 'other'
+
+export interface LeadMagnet {
+  id: string
+  workspace_id: string
+  title: string
+  url: string
+  platform: LeadMagnetPlatform
+  created_at: string
+  updated_at: string
+}
+
+export interface TrackedLink {
+  id: string
+  workspace_id: string
+  lead_magnet_id: string
+  lead_id: string
+  short_code: string
+  clicks_count: number
+  first_clicked_at: string | null
+  last_clicked_at: string | null
+  created_at: string
+}
+
+export interface LeadMagnetWithStats extends LeadMagnet {
+  total_clicks: number
+  unique_leads: number
+}
