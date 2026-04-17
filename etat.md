@@ -1,6 +1,6 @@
 # Etat du projet — ClosRM
 
-> Derniere mise a jour : 2026-04-11
+> Derniere mise a jour : 2026-04-17
 
 ---
 
@@ -36,6 +36,7 @@
 | Modale Closing (montant + echeances) | Pierre | ✅ |
 | Lead++ (pseudo IG, relances) | Pierre | ✅ |
 | Ad Creative Side Panel | Pierre | ✅ |
+| Linktree interne (A-010) — liens trackables par lead | Pierre | ✅ |
 
 ## Module Equipe (V2)
 

@@ -42,7 +42,7 @@
 
 ## Backlog / polish
 
-- [ ] **A-010** — Linktree interne : liens trackables par lead
+- [x] **A-010** — Linktree interne : liens trackables par lead (livré 2026-04-17)
 - [ ] **A-011** — ~~Champ contenus en 2 colonnes~~ ✅ FAIT (titre + lien)
 - [ ] **A-012** — Trigger comment_keyword / dm_keyword (= T-021)
 - [ ] **T-014 polish** — connecteurs visuels entre branches du builder Workflows
