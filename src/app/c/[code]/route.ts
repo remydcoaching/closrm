@@ -33,7 +33,8 @@ export async function GET(
         status: 200,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Cache-Control': 'public, max-age=3600',
+          // Pas de cache agressif : si le contenu change, on veut une re-fetch rapide
+          'Cache-Control': 'public, max-age=300, must-revalidate',
         },
       })
     }
@@ -50,7 +51,14 @@ export async function GET(
       .eq('id', data.id)
       .then(() => {})
 
-    return NextResponse.redirect(targetUrl, 302)
+    // no-store sur le redirect pour éviter les caches in-app (IG WebKit)
+    return new NextResponse(null, {
+      status: 302,
+      headers: {
+        Location: targetUrl,
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    })
   } catch {
     return NextResponse.redirect(homepage, 302)
   }
@@ -81,10 +89,12 @@ function buildPreviewHtml({ title, url, platform }: { title: string; url: string
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${safeTitle}" />
   ${ogImageTag}
+  <meta http-equiv="refresh" content="0; url=${safeUrl}" />
   <title>${safeTitle}</title>
 </head>
 <body>
-  <p><a href="${safeUrl}">${safeTitle}</a></p>
+  <script>window.location.replace(${JSON.stringify(safeUrl)});</script>
+  <noscript><p><a href="${safeUrl}">${safeTitle}</a></p></noscript>
 </body>
 </html>`
 }
