@@ -7,6 +7,7 @@ interface TrackedLinkInfo {
   clicks_count: number
   last_clicked_at: string | null
   lead_magnet_id: string
+  full_url?: string
 }
 
 interface Props { leadId: string }
@@ -21,61 +22,85 @@ export default function LeadMagnetsWidget({ leadId }: Props) {
   const [tracks, setTracks] = useState<TrackedLinkInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
-  const [pendingId, setPendingId] = useState<string | null>(null)
-  const [linkModal, setLinkModal] = useState<string | null>(null)
+  const [pendingId] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/lead-magnets').then(r => r.json()),
-      fetch(`/api/leads/${leadId}/clicks`).then(r => r.json()),
-    ]).then(([{ lead_magnets }, { tracked_links }]) => {
-      setMagnets(lead_magnets ?? [])
-      setTracks(tracked_links ?? [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    let cancelled = false
+    async function load() {
+      try {
+        const [magnetsRes, clicksRes] = await Promise.all([
+          fetch('/api/lead-magnets').then(r => r.json()),
+          fetch(`/api/leads/${leadId}/clicks`).then(r => r.json()),
+        ])
+        const lm: LeadMagnet[] = magnetsRes.lead_magnets ?? []
+        const existing: TrackedLinkInfo[] = clicksRes.tracked_links ?? []
+        if (cancelled) return
+        setMagnets(lm)
+
+        // Pré-générer les tracked_links manquants pour que "Copier" soit synchrone
+        const existingIds = new Set(existing.map(t => t.lead_magnet_id))
+        const missing = lm.filter(m => !existingIds.has(m.id))
+        const generated: TrackedLinkInfo[] = []
+        for (const m of missing) {
+          try {
+            const res = await fetch(`/api/lead-magnets/${m.id}/track-for-lead`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lead_id: leadId }),
+            })
+            if (res.ok) {
+              const { short_code, full_url } = await res.json()
+              generated.push({ short_code, full_url, clicks_count: 0, last_clicked_at: null, lead_magnet_id: m.id })
+            }
+          } catch { /* skip */ }
+        }
+
+        // Pour les existants, on a pas de full_url dans /clicks — on dérive via l'origin actuel
+        const origin = typeof window !== 'undefined' ? window.location.origin : ''
+        const enriched = existing.map(t => ({ ...t, full_url: t.full_url || `${origin}/c/${t.short_code}` }))
+
+        if (!cancelled) {
+          setTracks([...enriched, ...generated])
+          setLoading(false)
+        }
+      } catch {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
   }, [leadId])
 
-  async function handleCopy(magnetId: string) {
-    setPendingId(magnetId)
-    try {
-      const res = await fetch(`/api/lead-magnets/${magnetId}/track-for-lead`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_id: leadId }),
-      })
-      if (!res.ok) {
-        setToast('Erreur API')
-        setTimeout(() => setToast(null), 2500)
-        return
-      }
-      const { full_url, short_code } = await res.json()
-      if (!full_url) {
-        setToast('Lien manquant')
-        setTimeout(() => setToast(null), 2500)
-        return
-      }
-
-      // Tentative silencieuse
-      let copied = false
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(full_url)
-          copied = true
-        }
-      } catch { /* denied */ }
-
-      // Ouvre modale avec le lien — utilisateur voit ce qui a été copié (ou copie manuellement)
-      setLinkModal(full_url)
-      if (copied) {
-        setToast('Lien copié !')
-        setTimeout(() => setToast(null), 2500)
-      }
-
-      setTracks(prev => prev.some(t => t.lead_magnet_id === magnetId)
-        ? prev
-        : [...prev, { short_code, clicks_count: 0, last_clicked_at: null, lead_magnet_id: magnetId }])
-    } finally {
-      setPendingId(null)
+  function handleCopy(magnetId: string) {
+    const track = tracks.find(t => t.lead_magnet_id === magnetId)
+    const url = track?.full_url
+    if (!url) {
+      setToast('Lien non prêt, patiente…')
+      setTimeout(() => setToast(null), 2000)
+      return
     }
+
+    // Copie synchrone (user gesture préservée → Safari autorise)
+    let copied = false
+    try {
+      if (navigator.clipboard?.writeText) {
+        // Fire and forget — l'appel sync lance la copie
+        navigator.clipboard.writeText(url).catch(() => {})
+        copied = true
+      }
+    } catch { /* ignore */ }
+
+    if (!copied) {
+      const ta = document.createElement('textarea')
+      ta.value = url
+      ta.style.position = 'fixed'; ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.focus(); ta.select()
+      try { document.execCommand('copy'); copied = true } catch { /* ignore */ }
+      document.body.removeChild(ta)
+    }
+
+    setToast(copied ? 'Lien copié !' : 'Échec copie')
+    setTimeout(() => setToast(null), 2000)
   }
 
   if (loading) {
@@ -145,62 +170,6 @@ export default function LeadMagnetsWidget({ leadId }: Props) {
           {toast}
         </div>
       )}
-      {linkModal && (
-        <LinkModal url={linkModal} onClose={() => setLinkModal(null)} />
-      )}
-    </div>
-  )
-}
-
-function LinkModal({ url, onClose }: { url: string; onClose: () => void }) {
-  const [copied, setCopied] = useState(false)
-  async function forceCopy() {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url)
-        setCopied(true); setTimeout(() => setCopied(false), 1500)
-        return
-      }
-    } catch { /* try fallback */ }
-    const ta = document.createElement('textarea')
-    ta.value = url
-    ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0'; ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.focus(); ta.select()
-    try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* ignore */ }
-    document.body.removeChild(ta)
-  }
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--color-surface)', padding: 20, borderRadius: 12, width: 460, border: '1px solid var(--color-border)' }}
-      >
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)', margin: 0, marginBottom: 12 }}>Lien trackable</h3>
-        <input
-          value={url}
-          readOnly
-          onFocus={e => e.currentTarget.select()}
-          style={{ width: '100%', padding: '8px 10px', borderRadius: 6, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', fontSize: 13, fontFamily: 'monospace' }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
-          <button
-            onClick={onClose}
-            style={{ padding: '6px 12px', borderRadius: 6, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', fontSize: 12, cursor: 'pointer' }}
-          >
-            Fermer
-          </button>
-          <button
-            onClick={forceCopy}
-            style={{ padding: '6px 12px', borderRadius: 6, background: copied ? '#38A169' : 'var(--color-primary)', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-          >
-            {copied ? '✓ Copié' : 'Copier'}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

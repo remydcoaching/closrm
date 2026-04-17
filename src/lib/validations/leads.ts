@@ -35,6 +35,7 @@ export const leadFiltersSchema = z.object({
   search: z.string().optional(),
   tags: z.string().optional(),
   assigned_to: z.string().uuid().optional(),
+  import_batch_id: z.string().uuid().optional(),
   date_from: z.string().datetime().optional(),
   date_to: z.string().datetime().optional(),
   date_field: z.enum(['created_at', 'updated_at', 'closed_at']).default('created_at'),
