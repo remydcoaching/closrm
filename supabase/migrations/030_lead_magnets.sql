@@ -71,16 +71,25 @@ CREATE POLICY "tracked_links_delete" ON tracked_links FOR DELETE
     SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
   ));
 
--- 4. Migration des données JSON existantes
+-- 4. Migration des données JSON existantes (skip si colonne déjà droppée)
 DO $$
 DECLARE
   brief_row RECORD;
   item jsonb;
+  col_exists boolean;
 BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'ai_coach_briefs' AND column_name = 'lead_magnets'
+  ) INTO col_exists;
+
+  IF NOT col_exists THEN
+    RAISE NOTICE 'ai_coach_briefs.lead_magnets does not exist, skipping data migration';
+    RETURN;
+  END IF;
+
   FOR brief_row IN
-    SELECT workspace_id, lead_magnets
-    FROM ai_coach_briefs
-    WHERE lead_magnets IS NOT NULL AND lead_magnets != ''
+    EXECUTE 'SELECT workspace_id, lead_magnets FROM ai_coach_briefs WHERE lead_magnets IS NOT NULL AND lead_magnets != '''''
   LOOP
     BEGIN
       FOR item IN SELECT * FROM jsonb_array_elements(brief_row.lead_magnets::jsonb)
