@@ -47,6 +47,14 @@ export async function GET(request: NextRequest) {
       query = query.in('source', sources)
     }
 
+    // Filtre par plage de dates (sur le champ choisi)
+    if (filters.date_from) {
+      query = query.gte(filters.date_field, filters.date_from)
+    }
+    if (filters.date_to) {
+      query = query.lte(filters.date_field, filters.date_to)
+    }
+
     // Recherche texte (prénom, nom, email, téléphone)
     if (filters.search) {
       const s = filters.search.trim()
@@ -57,6 +65,11 @@ export async function GET(request: NextRequest) {
           `first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%`
         )
       }
+    }
+
+    // Filtre par batch d'import
+    if (filters.import_batch_id) {
+      query = query.eq('import_batch_id', filters.import_batch_id)
     }
 
     // Filtre par tags (au moins un des tags listés)

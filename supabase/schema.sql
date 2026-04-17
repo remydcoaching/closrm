@@ -61,6 +61,7 @@ create table leads (
   last_activity_at timestamptz default now(),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
+  -- import_batch_id uuid added by migration 023_lead_import_batches.sql
 );
 
 alter table leads enable row level security;
@@ -200,3 +201,51 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
+
+-- ─── Lead Import Batches ──────────────────────────────────────────────────────
+-- Tracks each CSV import batch (status, counts, errors, config).
+-- Column import_batch_id on leads links imported leads to their batch.
+-- Added by migration 023_lead_import_batches.sql
+create table lead_import_batches (
+  id            uuid primary key default gen_random_uuid(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  file_name     text not null,
+  status        text not null default 'pending'
+                check (status in ('pending', 'processing', 'completed', 'failed', 'cancelled')),
+  total_rows    int not null default 0,
+  created_count int not null default 0,
+  updated_count int not null default 0,
+  skipped_count int not null default 0,
+  error_count   int not null default 0,
+  errors        jsonb default '[]'::jsonb,
+  config        jsonb not null default '{}'::jsonb,
+  created_by    uuid references auth.users(id),
+  created_at    timestamptz default now(),
+  completed_at  timestamptz
+);
+
+alter table lead_import_batches enable row level security;
+
+create policy "Users can view their workspace import batches"
+  on lead_import_batches for select
+  using (workspace_id in (
+    select workspace_id from users where id = auth.uid()
+  ));
+
+create policy "Users can insert import batches in their workspace"
+  on lead_import_batches for insert
+  with check (workspace_id in (
+    select workspace_id from users where id = auth.uid()
+  ));
+
+create policy "Users can update their workspace import batches"
+  on lead_import_batches for update
+  using (workspace_id in (
+    select workspace_id from users where id = auth.uid()
+  ));
+
+create policy "Users can delete their workspace import batches"
+  on lead_import_batches for delete
+  using (workspace_id in (
+    select workspace_id from users where id = auth.uid()
+  ));

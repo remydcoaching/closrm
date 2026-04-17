@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Phone, Mail, Tag, FileText, CheckCircle, XCircle, Clock, X, Plus } from 'lucide-react'
 import { Lead, Call, FollowUp, LeadStatus } from '@/types'
 import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
+import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -223,6 +224,9 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
           style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
         <p style={{ fontSize: 10, color: 'var(--text-label)', marginTop: 6 }}>Sauvegarde automatique</p>
       </div>
+
+      {/* Lead Magnets */}
+      <LeadMagnetsWidget leadId={lead.id} />
 
       {/* Timeline */}
       <div style={card}>

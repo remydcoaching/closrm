@@ -42,13 +42,14 @@
 
 ## Backlog / polish
 
-- [ ] **A-010** — Linktree interne : liens trackables par lead
+- [x] **A-010** — Linktree interne : liens trackables par lead (livré 2026-04-17)
 - [ ] **A-011** — ~~Champ contenus en 2 colonnes~~ ✅ FAIT (titre + lien)
 - [ ] **A-012** — Trigger comment_keyword / dm_keyword (= T-021)
 - [ ] **T-014 polish** — connecteurs visuels entre branches du builder Workflows
 - [ ] **T-020 polish** — TipTap rich text dans le builder templates emails
 - [ ] **T-020 polish** — configurer le webhook Resend en production
 - [ ] **T-022 polish** — tests E2E booking public + sync Google Calendar
+- [ ] **T-033** — Module Social Analytics (YouTube + TikTok + Instagram) : OAuth YouTube Data API, sync stats vidéos, poster depuis calendrier ClosRM, métriques VA (vues, watch time, CTR), extension TikTok Business API. Effort ~1-2 semaines. Note : la table `lead_magnets` d'A-010 prévoit une colonne `platform` pour être enrichie par ce module sans refactor.
 
 ---
 
