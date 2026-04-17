@@ -9,6 +9,11 @@ export async function GET(
   const { code } = await params
   const homepage = new URL('/', request.url).toString()
   const userAgent = request.headers.get('user-agent')
+  const referer = request.headers.get('referer') || 'none'
+  const accept = request.headers.get('accept') || 'none'
+  const isBot = isLinkPreviewBot(userAgent)
+
+  console.log(`[/c/${code}] UA="${userAgent}" ref="${referer}" accept="${accept}" isBot=${isBot}`)
 
   try {
     const supabase = createServiceClient()
@@ -19,15 +24,19 @@ export async function GET(
       .maybeSingle()
 
     if (error || !data || !data.lead_magnets) {
+      console.log(`[/c/${code}] NOT FOUND — redirect homepage`)
       return NextResponse.redirect(homepage, 302)
     }
 
     const lm = data.lead_magnets as unknown as { title: string; url: string; platform: string }
     const targetUrl = lm.url
 
+    console.log(`[/c/${code}] target="${targetUrl}" platform="${lm.platform}"`)
+
     // Bot link-preview (IG, WhatsApp, FB, Twitter…) → HTML avec OG tags
     // PAS d'incrément clics (c'est un scraper, pas un humain).
-    if (isLinkPreviewBot(userAgent)) {
+    if (isBot) {
+      console.log(`[/c/${code}] SERVE HTML preview (bot)`)
       const html = buildPreviewHtml({ title: lm.title, url: targetUrl, platform: lm.platform })
       return new NextResponse(html, {
         status: 200,
@@ -53,6 +62,8 @@ export async function GET(
       })
       .eq('id', data.id)
       .then(() => {})
+
+    console.log(`[/c/${code}] REDIRECT 302 → ${targetUrl}`)
 
     // no-store sur le redirect pour éviter les caches in-app (IG WebKit)
     return new NextResponse(null, {
