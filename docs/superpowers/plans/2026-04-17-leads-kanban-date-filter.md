@@ -18,7 +18,7 @@
 
 ```
 supabase/migrations/
-  029_leads_grouped_by_status.sql          # CREATE
+  030_leads_grouped_by_status.sql          # CREATE (029 pris par Linktree)
 
 src/lib/validations/
   leads.ts                                 # MODIFY (ajout date_from, date_to, date_field)
@@ -54,11 +54,11 @@ Le projet n'a pas de framework de tests automatisés configuré. La "vérificati
 ## Task 1: Migration SQL — RPC `leads_grouped_by_status` + index
 
 **Files:**
-- Create: `supabase/migrations/029_leads_grouped_by_status.sql`
+- Create: `supabase/migrations/030_leads_grouped_by_status.sql`
 
 - [ ] **Step 1: Écrire la migration**
 
-Créer le fichier `supabase/migrations/029_leads_grouped_by_status.sql` :
+Créer le fichier `supabase/migrations/030_leads_grouped_by_status.sql` :
 
 ```sql
 -- Index composites pour accélérer le tri/filtrage par statut + date
@@ -173,7 +173,7 @@ Expected : JSON `{ "nouveau": { "total": N, "leads": [...] }, ... }` non vide si
 - [ ] **Step 4: Commit**
 
 ```bash
-git add supabase/migrations/029_leads_grouped_by_status.sql
+git add supabase/migrations/030_leads_grouped_by_status.sql
 git commit -m "feat(db): add leads_grouped_by_status RPC + kanban indexes"
 ```
 
