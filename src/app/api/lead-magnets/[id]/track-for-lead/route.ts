@@ -6,8 +6,11 @@ import { generateShortCode } from '@/lib/lead-magnets/shortcode'
 
 const MAX_RETRIES = 3
 
-function getAppUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+function getAppUrl(request: NextRequest): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL
+  // Fallback : dérive du host de la requête (utile en local, preview, etc.)
+  const origin = request.nextUrl.origin
+  return origin || 'http://localhost:3000'
 }
 
 export async function POST(
@@ -20,6 +23,7 @@ export async function POST(
     const body = await request.json()
     const { lead_id } = trackForLeadSchema.parse(body)
     const supabase = await createClient()
+    const appUrl = getAppUrl(request)
 
     const [{ data: lm }, { data: lead }] = await Promise.all([
       supabase.from('lead_magnets').select('id').eq('id', leadMagnetId).eq('workspace_id', workspaceId).single(),
@@ -39,7 +43,7 @@ export async function POST(
     if (existing) {
       return NextResponse.json({
         short_code: existing.short_code,
-        full_url: `${getAppUrl()}/c/${existing.short_code}`,
+        full_url: `${appUrl}/c/${existing.short_code}`,
       })
     }
 
@@ -59,7 +63,7 @@ export async function POST(
       if (!error && data) {
         return NextResponse.json({
           short_code: data.short_code,
-          full_url: `${getAppUrl()}/c/${data.short_code}`,
+          full_url: `${appUrl}/c/${data.short_code}`,
         }, { status: 201 })
       }
       if (error && error.code === '23505') {
