@@ -47,6 +47,14 @@ export async function GET(request: NextRequest) {
       query = query.in('source', sources)
     }
 
+    // Filtre par plage de dates (sur le champ choisi)
+    if (filters.date_from) {
+      query = query.gte(filters.date_field, filters.date_from)
+    }
+    if (filters.date_to) {
+      query = query.lte(filters.date_field, filters.date_to)
+    }
+
     // Recherche texte (prénom, nom, email, téléphone)
     if (filters.search) {
       const s = filters.search.trim()
