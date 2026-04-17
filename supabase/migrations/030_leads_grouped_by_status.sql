@@ -35,8 +35,7 @@ BEGIN
 
   WITH filtered AS (
     SELECT l.*,
-           ROW_NUMBER() OVER (PARTITION BY l.status ORDER BY l.created_at DESC) AS rn,
-           COUNT(*)     OVER (PARTITION BY l.status)                            AS status_total
+           ROW_NUMBER() OVER (PARTITION BY l.status ORDER BY l.created_at DESC) AS rn
     FROM leads l
     WHERE l.workspace_id = p_workspace_id
       AND (p_sources     IS NULL OR l.source      = ANY(p_sources))
@@ -66,21 +65,24 @@ BEGIN
         (p_role = 'closer' AND l.assigned_to = p_user_id
          AND l.status IN ('closing_planifie','no_show_closing','clos'))
       )
+  ),
+  per_status AS (
+    SELECT status,
+           COUNT(*) AS status_total,
+           COALESCE(
+             jsonb_agg(to_jsonb(filtered) - 'rn' ORDER BY created_at DESC)
+               FILTER (WHERE rn <= p_limit),
+             '[]'::jsonb
+           ) AS leads
+    FROM filtered
+    GROUP BY status
   )
   SELECT jsonb_object_agg(
     status,
-    jsonb_build_object(
-      'total', MAX(status_total),
-      'leads', COALESCE(
-        jsonb_agg(to_jsonb(filtered) - 'rn' - 'status_total' ORDER BY created_at DESC)
-          FILTER (WHERE rn <= p_limit),
-        '[]'::jsonb
-      )
-    )
+    jsonb_build_object('total', status_total, 'leads', leads)
   )
   INTO result
-  FROM filtered
-  GROUP BY status;
+  FROM per_status;
 
   RETURN COALESCE(result, '{}'::jsonb);
 END;
