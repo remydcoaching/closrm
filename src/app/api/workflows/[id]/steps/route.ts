@@ -65,12 +65,14 @@ export async function POST(
         .order('step_order', { ascending: false })
 
       if (stepsToShift?.length) {
-        for (const s of stepsToShift) {
-          await supabase
-            .from('workflow_steps')
-            .update({ step_order: s.step_order + 1 })
-            .eq('id', s.id)
-        }
+        await Promise.all(
+          stepsToShift.map((s) =>
+            supabase
+              .from('workflow_steps')
+              .update({ step_order: s.step_order + 1 })
+              .eq('id', s.id)
+          )
+        )
       }
     }
 
