@@ -1,23 +1,11 @@
 import { AiCoachBrief, Lead, IgMessage } from '@/types'
 
-function formatLeadMagnets(raw: string): string {
-  try {
-    const items = JSON.parse(raw) as { title: string; url: string }[]
-    if (Array.isArray(items)) {
-      return items
-        .filter(i => i.title || i.url)
-        .map(i => i.url ? `- ${i.title} → ${i.url}` : `- ${i.title}`)
-        .join('\n')
-    }
-  } catch { /* not JSON */ }
-  return raw
-}
-
 interface PromptContext {
   brief: AiCoachBrief | null
   lead: Lead
   messages: IgMessage[]
   goldenExamples: { messages: string }[]
+  leadMagnets?: { title: string; url: string }[]
 }
 
 export function buildSuggestionPrompt(ctx: PromptContext): string {
@@ -32,6 +20,13 @@ export function buildSuggestionPrompt(ctx: PromptContext): string {
     ? ctx.goldenExamples.map((ex, i) => `### Exemple ${i + 1}\n${ex.messages}`).join('\n\n')
     : 'Aucun exemple disponible pour le moment.'
 
+  const leadMagnetsText = ctx.leadMagnets && ctx.leadMagnets.length > 0
+    ? ctx.leadMagnets
+        .filter(m => m.title || m.url)
+        .map(m => m.url ? `- ${m.title} → ${m.url}` : `- ${m.title}`)
+        .join('\n')
+    : null
+
   return `Tu es l'assistant IA de relance d'un coach. Ton role est d'analyser une conversation Instagram et de suggerer le prochain message a envoyer.
 
 ## BRIEF DU COACH
@@ -41,7 +36,7 @@ Ton : ${toneLabel}
 Offre : ${ctx.brief?.offer_description || 'Non renseigne'}
 Cible : ${ctx.brief?.target_audience || 'Non renseigne'}
 Objectif : ${goalLabel}
-${ctx.brief?.lead_magnets ? `\n## CONTENUS DISPONIBLES (lead magnets, videos, ressources)\n${formatLeadMagnets(ctx.brief.lead_magnets)}\n\nIMPORTANT : quand tu suggeres d'envoyer du contenu, utilise UNIQUEMENT les contenus listes ci-dessus. Cite le titre exact et inclus le lien si disponible. Ne les invente pas.\n` : ''}
+${leadMagnetsText ? `\n## CONTENUS DISPONIBLES (lead magnets, videos, ressources)\n${leadMagnetsText}\n\nIMPORTANT : quand tu suggeres d'envoyer du contenu, utilise UNIQUEMENT les contenus listes ci-dessus. Cite le titre exact et inclus le lien si disponible. Ne les invente pas.\n` : ''}
 ## INFOS DU PROSPECT
 Prenom : ${ctx.lead.first_name}
 Statut actuel : ${ctx.lead.status}

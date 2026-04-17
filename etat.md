@@ -59,7 +59,7 @@
 | **Module Automations (v1+v2)** | **Pierre** | **⚠️ Code OK, APIs manquantes** | **T-014, T-029** |
 | Instagram Automations (trigger comment_keyword) | Pierre | ⬜ Non demarre | T-021 |
 | **Import portefeuille leads (CSV wizard 5 etapes + historique)** | **Remy** | **✅ Termine** | **T-031** |
-| Linktree interne (liens trackables par lead) | — | ⬜ Non demarre | A-010 |
+| Linktree interne (liens trackables par lead) | Pierre | ✅ Termine (2026-04-17) | A-010 |
 | Followers-as-prospects (V2) | Remy | ❌ Abandonne (API IG) | T-026 |
 
 ---

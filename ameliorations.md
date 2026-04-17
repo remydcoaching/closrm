@@ -446,7 +446,7 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-### [A-010] Linktree interne — liens trackables par lead
+### [A-010] ✅ Linktree interne — liens trackables par lead (livré 2026-04-17)
 - **Contexte :** Session IA assistant — le coach envoie des lead magnets via DM
 - **Description :** Systeme de liens trackables integre dans ClosRM (style Linktree). Chaque contenu a un titre + lien + redirect. On sait quel lead a clique, combien de fois, quel contenu convertit le mieux. Redirect intelligent qui ouvre YouTube/Spotify directement au lieu du browser IG.
 - **Priorite estimee :** Moyenne

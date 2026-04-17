@@ -149,6 +149,7 @@ export const ROUTE_VISIBILITY: Record<string, WorkspaceRole[]> = {
   '/base-de-donnees': ['admin'],
   '/acquisition/funnels': ['admin'],
   '/acquisition/automations': ['admin'],
+  '/acquisition/lead-magnets': ['admin', 'setter', 'closer'],
   '/acquisition/emails': ['admin'],
   '/acquisition/reseaux-sociaux': ['admin'],
   '/acquisition/messages': ['admin', 'setter', 'closer'],

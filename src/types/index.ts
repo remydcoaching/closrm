@@ -1106,7 +1106,6 @@ export interface AiCoachBrief {
   approach: string | null
   example_messages: string | null
   goal: 'book_call' | 'sell_dm' | 'both'
-  lead_magnets: string | null
   generated_brief: string | null
   api_key: string | null
   wins_analyzed: number
@@ -1181,4 +1180,37 @@ export interface MemberProgress {
   full_name: string
   completed_count: number
   total_count: number
+}
+
+// ─── Lead Magnets / Linktree interne ────────────────────────────────────────
+
+export type LeadMagnetPlatform =
+  | 'youtube' | 'tiktok' | 'instagram'
+  | 'podcast' | 'blog' | 'pdf' | 'other'
+
+export interface LeadMagnet {
+  id: string
+  workspace_id: string
+  title: string
+  url: string
+  platform: LeadMagnetPlatform
+  created_at: string
+  updated_at: string
+}
+
+export interface TrackedLink {
+  id: string
+  workspace_id: string
+  lead_magnet_id: string
+  lead_id: string
+  short_code: string
+  clicks_count: number
+  first_clicked_at: string | null
+  last_clicked_at: string | null
+  created_at: string
+}
+
+export interface LeadMagnetWithStats extends LeadMagnet {
+  total_clicks: number
+  unique_leads: number
 }
