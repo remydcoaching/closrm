@@ -33,8 +33,11 @@ export async function GET(
         status: 200,
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          // Pas de cache agressif : si le contenu change, on veut une re-fetch rapide
-          'Cache-Control': 'public, max-age=300, must-revalidate',
+          // CRITIQUE : ne PAS cacher côté CDN. Sinon Vercel sert la HTML aux
+          // humains qui devraient avoir le 302. Le scraper IG/FB gère son
+          // propre cache de preview de son côté.
+          'Cache-Control': 'private, no-store',
+          'Vary': 'User-Agent',
         },
       })
     }
