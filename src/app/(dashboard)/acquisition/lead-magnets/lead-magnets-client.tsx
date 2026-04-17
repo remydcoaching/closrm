@@ -19,11 +19,27 @@ const PLATFORMS: Array<{ value: LeadMagnetPlatform; label: string; emoji: string
   { value: 'other', label: 'Autre', emoji: '🔗' },
 ]
 
+interface TopLead { lead_id: string; name: string; clicks: number; last_clicked_at: string | null }
+interface MagnetStats { total_clicks: number; unique_leads: number; top_leads: TopLead[] }
+
 export default function LeadMagnetsClient({ initialMagnets, initialStats }: Props) {
   const [magnets, setMagnets] = useState(initialMagnets)
   const [stats] = useState(initialStats)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<LeadMagnet | null>(null)
+  const [statsFor, setStatsFor] = useState<LeadMagnet | null>(null)
+  const [statsData, setStatsData] = useState<MagnetStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(false)
+
+  async function openStats(m: LeadMagnet) {
+    setStatsFor(m); setStatsData(null); setStatsLoading(true)
+    try {
+      const res = await fetch(`/api/lead-magnets/${m.id}/stats`)
+      if (res.ok) setStatsData(await res.json())
+    } finally {
+      setStatsLoading(false)
+    }
+  }
 
   const statsByMagnet = useMemo(() => {
     const map = new Map<string, { clicks: number; leads: Set<string> }>()
@@ -120,7 +136,8 @@ export default function LeadMagnetsClient({ initialMagnets, initialStats }: Prop
                   <td style={td}>{s?.clicks ?? 0}</td>
                   <td style={td}>{s?.leads.size ?? 0}</td>
                   <td style={td}>
-                    <button onClick={() => { setEditing(m); setModalOpen(true) }} style={btnSecondary}>Éditer</button>
+                    <button onClick={() => openStats(m)} style={{ ...btnSecondary, color: 'var(--color-primary)' }}>Voir stats</button>
+                    <button onClick={() => { setEditing(m); setModalOpen(true) }} style={{ ...btnSecondary, marginLeft: 8 }}>Éditer</button>
                     <button onClick={() => handleDelete(m.id)} style={{ ...btnSecondary, marginLeft: 8, color: '#E53E3E' }}>Supprimer</button>
                   </td>
                 </tr>
@@ -137,6 +154,112 @@ export default function LeadMagnetsClient({ initialMagnets, initialStats }: Prop
           onSave={handleSave}
         />
       )}
+
+      {statsFor && (
+        <StatsDrawer
+          magnet={statsFor}
+          loading={statsLoading}
+          stats={statsData}
+          onClose={() => { setStatsFor(null); setStatsData(null) }}
+        />
+      )}
+    </div>
+  )
+}
+
+function StatsDrawer({ magnet, loading, stats, onClose }: {
+  magnet: LeadMagnet
+  loading: boolean
+  stats: MagnetStats | null
+  onClose: () => void
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', justifyContent: 'flex-end' }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: 480, background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)',
+          padding: 24, overflowY: 'auto',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Stats du lead magnet
+            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)', margin: '4px 0 0 0' }}>
+              {magnet.title}
+            </h2>
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 4, wordBreak: 'break-all' }}>
+              {magnet.url}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', fontSize: 20, cursor: 'pointer', padding: 4 }}
+          >
+            ×
+          </button>
+        </div>
+
+        {loading && <div style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Chargement…</div>}
+
+        {!loading && stats && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+              <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Clics totaux</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-primary)', marginTop: 4 }}>{stats.total_clicks}</div>
+              </div>
+              <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Leads uniques</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-primary)', marginTop: 4 }}>{stats.unique_leads}</div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+              Top leads ({stats.top_leads.length})
+            </div>
+
+            {stats.top_leads.length === 0 ? (
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: 13, padding: 16, textAlign: 'center' }}>
+                Personne n&apos;a encore cliqué.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {stats.top_leads.map(l => (
+                  <a
+                    key={l.lead_id}
+                    href={`/leads/${l.lead_id}`}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '10px 12px', background: 'var(--color-bg)',
+                      border: '1px solid var(--color-border)', borderRadius: 8,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{l.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                        {l.last_clicked_at ? `dernier clic : ${new Date(l.last_clicked_at).toLocaleString('fr-FR')}` : '—'}
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: 13, fontWeight: 700, color: 'var(--color-primary)',
+                      padding: '4px 10px', background: 'rgba(229,62,62,0.1)', borderRadius: 6,
+                    }}>
+                      {l.clicks} clic{l.clicks > 1 ? 's' : ''}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
