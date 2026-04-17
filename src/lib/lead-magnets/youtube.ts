@@ -45,19 +45,26 @@ export function youtubeThumbnail(videoId: string): string {
 export function isLinkPreviewBot(userAgent: string | null): boolean {
   if (!userAgent) return false
   const ua = userAgent.toLowerCase()
+
+  // ATTENTION : ne PAS matcher "instagram" seul — le navigateur in-app IG
+  // contient "Instagram" dans son UA et c'est un vrai utilisateur humain qui
+  // doit être redirigé, pas servir la preview.
+  // On ne match que les scrapers qui n'ont pas de "mozilla" dans leur UA.
+  const isFullBrowser = ua.includes('mozilla') || ua.includes('chrome') || ua.includes('safari')
+
+  if (isFullBrowser) return false
+
   return (
     ua.includes('facebookexternalhit') ||
     ua.includes('facebot') ||
-    ua.includes('instagram') ||
     ua.includes('twitterbot') ||
     ua.includes('whatsapp') ||
     ua.includes('telegrambot') ||
     ua.includes('slackbot') ||
     ua.includes('discordbot') ||
     ua.includes('linkedinbot') ||
-    ua.includes('pinterest') ||
+    ua.includes('pinterestbot') ||
     ua.includes('skypeuripreview') ||
-    ua.includes('applebot') ||
     ua.includes('embedly')
   )
 }
