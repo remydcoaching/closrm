@@ -33,7 +33,9 @@ function isValidId(id: string): boolean {
 }
 
 export function youtubeThumbnail(videoId: string): string {
-  return `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
+  // hqdefault est toujours disponible (480x360). maxresdefault peut ne pas exister
+  // pour les vidéos en basse résolution.
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 }
 
 /**
