@@ -82,8 +82,8 @@ export default function LeadMagnetsClient({ initialMagnets, initialStats }: Prop
     <div style={{ padding: 32 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 style={{ color: 'var(--color-text-primary)', fontSize: 24, fontWeight: 700, margin: 0 }}>Lead Magnets</h1>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginTop: 4 }}>
+          <h1 style={{ color: 'var(--text-primary)', fontSize: 24, fontWeight: 700, margin: 0 }}>Lead Magnets</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
             Contenus partagés avec les leads via des liens courts trackables.
           </p>
         </div>
@@ -98,10 +98,10 @@ export default function LeadMagnetsClient({ initialMagnets, initialStats }: Prop
         </button>
       </div>
 
-      <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 12, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+            <tr style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-primary)' }}>
               <th style={th}>Titre</th>
               <th style={th}>Plateforme</th>
               <th style={th}>Clics totaux</th>
@@ -112,7 +112,7 @@ export default function LeadMagnetsClient({ initialMagnets, initialStats }: Prop
           <tbody>
             {magnets.length === 0 && (
               <tr>
-                <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
                   Aucun lead magnet. Cliquez sur « + Nouveau contenu » pour commencer.
                 </td>
               </tr>
@@ -121,10 +121,10 @@ export default function LeadMagnetsClient({ initialMagnets, initialStats }: Prop
               const s = statsByMagnet.get(m.id)
               const platform = PLATFORMS.find(p => p.value === m.platform)
               return (
-                <tr key={m.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <tr key={m.id} style={{ borderBottom: '1px solid var(--border-primary)' }}>
                   <td style={td}>
-                    <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{m.title}</div>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 400 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{m.title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 400 }}>
                       {m.url}
                     </div>
                   </td>
@@ -186,51 +186,51 @@ function StatsDrawer({ magnet, loading, stats, onClose }: {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          width: 480, background: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)',
+          width: 480, background: 'var(--bg-elevated)', borderLeft: '1px solid var(--border-primary)',
           padding: 24, overflowY: 'auto',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Stats du lead magnet
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)', margin: '4px 0 0 0' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0 0 0' }}>
               {magnet.title}
             </h2>
-            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 4, wordBreak: 'break-all' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, wordBreak: 'break-all' }}>
               {magnet.url}
             </div>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', fontSize: 20, cursor: 'pointer', padding: 4 }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: 20, cursor: 'pointer', padding: 4 }}
           >
             ×
           </button>
         </div>
 
-        {loading && <div style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Chargement…</div>}
+        {loading && <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Chargement…</div>}
 
         {!loading && stats && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-              <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Clics totaux</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-primary)', marginTop: 4 }}>{stats.total_clicks}</div>
+              <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Clics totaux</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{stats.total_clicks}</div>
               </div>
-              <div style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Leads uniques</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-primary)', marginTop: 4 }}>{stats.unique_leads}</div>
+              <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: 12 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Leads uniques</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{stats.unique_leads}</div>
               </div>
             </div>
 
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
               Top leads ({stats.top_leads.length})
             </div>
 
             {stats.top_leads.length === 0 ? (
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: 13, padding: 16, textAlign: 'center' }}>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 13, padding: 16, textAlign: 'center' }}>
                 Personne n&apos;a encore cliqué.
               </div>
             ) : (
@@ -241,14 +241,14 @@ function StatsDrawer({ magnet, loading, stats, onClose }: {
                     href={`/leads/${l.lead_id}`}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '10px 12px', background: 'var(--color-bg)',
-                      border: '1px solid var(--color-border)', borderRadius: 8,
+                      padding: '10px 12px', background: 'var(--bg-primary)',
+                      border: '1px solid var(--border-primary)', borderRadius: 8,
                       textDecoration: 'none',
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)' }}>{l.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{l.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
                         {l.last_clicked_at ? `dernier clic : ${new Date(l.last_clicked_at).toLocaleString('fr-FR')}` : '—'}
                       </div>
                     </div>
@@ -270,9 +270,9 @@ function StatsDrawer({ magnet, loading, stats, onClose }: {
   return createPortal(content, document.body)
 }
 
-const th: React.CSSProperties = { padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }
-const td: React.CSSProperties = { padding: '14px 16px', fontSize: 13, color: 'var(--color-text-primary)' }
-const btnSecondary: React.CSSProperties = { padding: '4px 10px', borderRadius: 6, fontSize: 12, background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', cursor: 'pointer' }
+const th: React.CSSProperties = { padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }
+const td: React.CSSProperties = { padding: '14px 16px', fontSize: 13, color: 'var(--text-primary)' }
+const btnSecondary: React.CSSProperties = { padding: '4px 10px', borderRadius: 6, fontSize: 12, background: 'transparent', border: '1px solid var(--border-primary)', color: 'var(--text-primary)', cursor: 'pointer' }
 
 function LeadMagnetModal({ initial, onClose, onSave }: {
   initial: LeadMagnet | null
@@ -285,8 +285,8 @@ function LeadMagnetModal({ initial, onClose, onSave }: {
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--color-surface)', padding: 24, borderRadius: 12, width: 480, border: '1px solid var(--color-border)' }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: 'var(--color-text-primary)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-elevated)', padding: 24, borderRadius: 12, width: 480, border: '1px solid var(--border-primary)' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: 'var(--text-primary)' }}>
           {initial ? 'Éditer' : 'Nouveau'} lead magnet
         </h2>
         <label style={labelStyle}>Titre</label>
@@ -316,5 +316,5 @@ function LeadMagnetModal({ initial, onClose, onSave }: {
   )
 }
 
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginTop: 12, marginBottom: 4 }
-const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 6, background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)', fontSize: 13, outline: 'none' }
+const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 12, marginBottom: 4 }
+const inputStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-primary)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)', fontSize: 13, outline: 'none' }

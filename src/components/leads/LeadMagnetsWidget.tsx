@@ -104,15 +104,15 @@ export default function LeadMagnetsWidget({ leadId }: Props) {
   }
 
   if (loading) {
-    return <div style={{ padding: 12, color: 'var(--color-text-secondary)', fontSize: 12 }}>Chargement…</div>
+    return <div style={{ padding: 12, color: 'var(--text-secondary)', fontSize: 12 }}>Chargement…</div>
   }
   if (magnets.length === 0) {
     return (
-      <div style={{ padding: 12, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+      <div style={{ padding: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Lead Magnets
         </div>
-        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
           Aucun lead magnet.{' '}
           <a href="/acquisition/lead-magnets" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>En créer un →</a>
         </div>
@@ -123,8 +123,8 @@ export default function LeadMagnetsWidget({ leadId }: Props) {
   const trackByMagnet = new Map(tracks.map(t => [t.lead_magnet_id, t]))
 
   return (
-    <div style={{ padding: 12, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+    <div style={{ padding: 12, background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
         Lead Magnets
       </div>
       {magnets.map((m, idx) => {
@@ -138,14 +138,14 @@ export default function LeadMagnetsWidget({ leadId }: Props) {
             key={m.id}
             style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '8px 0', borderBottom: idx === magnets.length - 1 ? 'none' : '1px solid var(--color-border)',
+              padding: '8px 0', borderBottom: idx === magnets.length - 1 ? 'none' : '1px solid var(--border-primary)',
             }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, marginRight: 8 }}>
-              <div style={{ fontSize: 13, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <span style={{ marginRight: 6 }}>{PLATFORM_EMOJI[m.platform]}</span>{m.title}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{lastLabel}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{lastLabel}</div>
             </div>
             <button
               onClick={() => handleCopy(m.id)}
