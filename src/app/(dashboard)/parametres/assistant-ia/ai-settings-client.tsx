@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Sparkles, ChevronLeft, ChevronRight, Loader2, RefreshCw, Brain, Check, ChevronDown } from 'lucide-react'
 import { AiCoachBrief } from '@/types'
-import LeadMagnetEditor from '@/components/ai/LeadMagnetEditor'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -16,7 +15,6 @@ interface WizardAnswers {
   tone: Tone
   approach: string
   example_messages: string
-  lead_magnets: string
   goal: Goal
   api_key: string
 }
@@ -153,7 +151,6 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
     tone: existingBrief?.tone || 'tu',
     approach: existingBrief?.approach || '',
     example_messages: existingBrief?.example_messages || '',
-    lead_magnets: existingBrief?.lead_magnets || '',
     goal: existingBrief?.goal || 'book_call',
     api_key: existingBrief?.api_key || '',
   })
@@ -372,12 +369,20 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
           />
         )}
 
-        {/* Step 5 — Lead Magnets */}
+        {/* Step 5 — Lead Magnets (gestion déportée vers la page dédiée) */}
         {step === 5 && (
-          <LeadMagnetEditor
-            value={answers.lead_magnets}
-            onChange={(val) => updateAnswer('lead_magnets', val)}
-          />
+          <div style={{ padding: 24, textAlign: 'center' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--color-text-primary)' }}>Lead Magnets</h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 16 }}>
+              Les lead magnets sont désormais gérés dans une page dédiée avec tracking des clics.
+            </p>
+            <a
+              href="/acquisition/lead-magnets"
+              style={{ color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+            >
+              Aller à Acquisition › Lead Magnets →
+            </a>
+          </div>
         )}
 
         {/* Step 6 — Goal */}
@@ -520,7 +525,6 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
   const [tone, setTone] = useState<Tone>(brief.tone)
   const [approach, setApproach] = useState(brief.approach || '')
   const [examples, setExamples] = useState(brief.example_messages || '')
-  const [leadMagnets, setLeadMagnets] = useState(brief.lead_magnets || '')
   const [goal, setGoal] = useState<Goal>(brief.goal)
   const [editApiKey, setEditApiKey] = useState(brief.api_key || '')
 
@@ -536,7 +540,6 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
           tone,
           approach,
           example_messages: examples,
-          lead_magnets: brief.lead_magnets || '',
           goal,
           api_key: editApiKey || brief.api_key,
         }),
@@ -699,10 +702,12 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
       id: 'lead_magnets',
       label: 'Mes contenus / lead magnets',
       content: (
-        <LeadMagnetEditor
-          value={leadMagnets}
-          onChange={setLeadMagnets}
-        />
+        <div style={{ padding: 12, color: 'var(--color-text-secondary)', fontSize: 13 }}>
+          Gérés dans la page dédiée avec tracking des clics.{' '}
+          <a href="/acquisition/lead-magnets" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+            Aller à Acquisition › Lead Magnets →
+          </a>
+        </div>
       ),
     },
     {

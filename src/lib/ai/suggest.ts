@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { AiSuggestion, Lead, IgMessage } from '@/types'
 import { callClaude } from './client'
 import { buildSuggestionPrompt } from './prompts'
-import { getBrief, getApiKey, getWinningConversations } from './brief'
+import { getBrief, getApiKey, getWinningConversations, getLeadMagnetsForWorkspace } from './brief'
 
 export async function generateSuggestion(
   workspaceId: string,
@@ -55,8 +55,11 @@ export async function generateSuggestion(
   // 5. Fetch golden scripts
   const goldenExamples = await getWinningConversations(workspaceId, lead.source, 3)
 
-  // 6. Build prompt
-  const prompt = buildSuggestionPrompt({ brief, lead: lead as Lead, messages, goldenExamples })
+  // 6. Fetch lead magnets (table structurée, remplace l'ancien JSON blob)
+  const leadMagnets = await getLeadMagnetsForWorkspace(supabase, workspaceId)
+
+  // 7. Build prompt
+  const prompt = buildSuggestionPrompt({ brief, lead: lead as Lead, messages, goldenExamples, leadMagnets })
 
   // 7. Call Claude — Haiku pour conversations courtes, Sonnet pour longues
   const model = messages.length > 10 ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001'
