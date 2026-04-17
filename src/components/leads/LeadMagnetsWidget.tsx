@@ -22,6 +22,7 @@ export default function LeadMagnetsWidget({ leadId }: Props) {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [linkModal, setLinkModal] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -53,33 +54,21 @@ export default function LeadMagnetsWidget({ leadId }: Props) {
         return
       }
 
+      // Tentative silencieuse
       let copied = false
       try {
         if (navigator.clipboard?.writeText) {
           await navigator.clipboard.writeText(full_url)
           copied = true
         }
-      } catch { /* clipboard denied */ }
+      } catch { /* denied */ }
 
-      if (!copied) {
-        // Fallback execCommand (Safari localhost ou perms denied)
-        const ta = document.createElement('textarea')
-        ta.value = full_url
-        ta.style.position = 'fixed'; ta.style.opacity = '0'
-        document.body.appendChild(ta)
-        ta.select()
-        try { document.execCommand('copy'); copied = true } catch { /* ignore */ }
-        document.body.removeChild(ta)
-      }
-
+      // Ouvre modale avec le lien — utilisateur voit ce qui a été copié (ou copie manuellement)
+      setLinkModal(full_url)
       if (copied) {
         setToast('Lien copié !')
-      } else {
-        // Dernier recours : prompt pour copie manuelle
-        window.prompt('Copie ce lien manuellement (Cmd+C) :', full_url)
-        setToast('Lien affiché')
+        setTimeout(() => setToast(null), 2500)
       }
-      setTimeout(() => setToast(null), 2500)
 
       setTracks(prev => prev.some(t => t.lead_magnet_id === magnetId)
         ? prev

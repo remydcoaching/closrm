@@ -7,10 +7,9 @@ import { generateShortCode } from '@/lib/lead-magnets/shortcode'
 const MAX_RETRIES = 3
 
 function getAppUrl(request: NextRequest): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL
-  // Fallback : dérive du host de la requête (utile en local, preview, etc.)
-  const origin = request.nextUrl.origin
-  return origin || 'http://localhost:3000'
+  // Toujours utiliser l'origin de la requête — gère localhost (n'importe quel port),
+  // preview Vercel, et prod custom domain sans config.
+  return request.nextUrl.origin
 }
 
 export async function POST(
