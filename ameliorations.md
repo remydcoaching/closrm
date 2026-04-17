@@ -482,8 +482,6 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
----
-
 ## Module Instagram — Partie 2 : Browser Automation (post-validation API Meta)
 
 > **IMPORTANT : Ne pas implémenter avant que les permissions API officielles soient validées par Meta.**
@@ -587,4 +585,34 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-*Mis à jour le 2026-04-17 par Claude Code — ClosRM*
+### [A-015] Import Excel (.xlsx) en plus du CSV
+- **Contexte :** T-031 — beaucoup de coachs utilisent Excel, évite l'étape "Enregistrer sous CSV"
+- **Description :** Ajouter le support .xlsx via SheetJS (lib `xlsx`). Même wizard, juste un parser additionnel côté client.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### [A-016] Import Google Contacts via People API
+- **Contexte :** T-031 — alternative au CSV pour les coachs peu techniques
+- **Description :** OAuth Google → import direct via People API. Le coach connecte une fois et synchronise.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Élevé (OAuth + People API)
+- **Statut :** En attente de validation
+
+### [A-017] Normalisation phone avancée (libphonenumber-js)
+- **Contexte :** T-031 — la dédup par téléphone ne gère que le nettoyage basique (chiffres + +)
+- **Description :** Installer libphonenumber-js pour normaliser les numéros internationaux avant comparaison. Utile si les coachs importent des leads de différents pays.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### [A-018] Background job pour imports > 5000 leads
+- **Contexte :** T-031 — la V1 limite à 5000 leads avec processing inline
+- **Description :** Utiliser Vercel Queue ou QStash pour traiter les gros imports en arrière-plan. Permettrait de monter à 50k+ leads.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+---
+
+*Mis a jour le 2026-04-17 par Claude Code — ClosRM*

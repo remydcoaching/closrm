@@ -35,6 +35,7 @@ export const leadFiltersSchema = z.object({
   search: z.string().optional(),
   tags: z.string().optional(),
   assigned_to: z.string().uuid().optional(),
+  import_batch_id: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(100).default(25),
   sort: z.enum(['created_at', 'updated_at', 'first_name', 'last_name', 'status']).default('created_at'),

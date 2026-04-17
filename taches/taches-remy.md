@@ -1,7 +1,7 @@
 # Tâches Rémy — ClosRM
 
 > Toutes les tâches de Rémy, dans l'ordre. Chaque module = API + Frontend, autonome.
-> Dernière mise à jour : 2026-04-07
+> Dernière mise à jour : 2026-04-15
 
 ---
 
@@ -71,7 +71,7 @@
 
 ### T-031 · Import portefeuille de leads (CSV + alternatives)
 **Priorité :** Moyenne
-**Statut :** ⬜ Non démarré
+**Statut :** ✅ Terminé (2026-04-15)
 **Fiche détaillée :** `taches/tache-031-import-leads.md`
 
 **Résumé :**
@@ -96,7 +96,7 @@
 | **T-028b** | **Funnels v2 — Refonte builder UX** | **Haute** | **✅** |
 | **A-028a-01** | **BookingBlock fonctionnel (calendrier intégré)** | **Haute** | **✅** |
 | **A-028a-02** | **FormBlock fonctionnel (lead + workflows + RedirectPicker)** | **Haute** | **✅** |
-| **T-031** | **Import portefeuille leads (CSV + alternatives)** | **Moyenne** | **⬜** |
+| **T-031** | **Import portefeuille leads (CSV wizard 5 étapes)** | **Moyenne** | **✅** |
 
 ---
 
@@ -115,4 +115,4 @@ avant chaque push sur ces fichiers pour éviter les conflits.
 
 ---
 
-*Mis à jour le 2026-04-10 — ClosRM*
+*Mis à jour le 2026-04-15 — ClosRM*
