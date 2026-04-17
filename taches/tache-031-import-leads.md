@@ -1,6 +1,6 @@
 # Tâche 031 — Import portefeuille de leads (CSV + alternatives)
 
-> **Statut :** ⬜ Non démarré
+> **Statut :** ✅ Terminé (2026-04-15)
 > **Développeur :** Rémy
 > **Date de création :** 2026-04-07
 > **Branche Git prévue :** `feature/remy-leads-import`
@@ -139,12 +139,70 @@ utilisateurs : très probablement Excel + Google Contacts ensuite.
 
 ---
 
+## Spec
+
+`docs/superpowers/specs/2026-04-15-import-leads-csv-design.md` — Approche hybride (parsing client PapaParse, import serveur), wizard 5 étapes, auto-mapping FR/EN, dédup configurable, correction inline des erreurs, historique + annulation.
+
+---
+
 ## Résultat final
 
-_À remplir à la fin de la tâche._
+### Périmètre livré (Phase 1 + 2 + 3)
+
+- Wizard 5 étapes sur page dédiée `/leads/import`
+- Auto-mapping colonnes CSV → champs ClosRM (synonymes FR/EN, confiance vert/orange/rouge)
+- Config : source par défaut, statut par défaut, tags batch, stratégie de dédup, action doublon
+- Preview diff serveur (compteurs + exemples) avant import
+- Import par chunks de 100, max 5000 leads / 5 Mo
+- Barre de progression, chunking client si > 2000 lignes
+- Récap avec correction inline + réimport des lignes corrigées
+- Historique des imports + annulation de batch (soft-delete si pas de calls/follow-ups)
+- Trigger `lead_imported` fired à la fin (compatible T-029 Pierre)
+- Bouton "Importer" ajouté dans le header de la liste leads
+
+### Migration
+
+`supabase/migrations/023_lead_import_batches.sql` — table `lead_import_batches` + colonne `leads.import_batch_id` + RLS
+
+### Dépendance installée
+
+`papaparse` + `@types/papaparse`
+
+### Fichiers créés (17)
+
+| Fichier | Description |
+|---------|-------------|
+| `supabase/migrations/023_lead_import_batches.sql` | Migration DB |
+| `src/lib/leads/csv-parser.ts` | Parser CSV + auto-mapping |
+| `src/lib/leads/import-engine.ts` | Dédup + validation + insert + trigger |
+| `src/app/api/leads/import/preview/route.ts` | API preview diff |
+| `src/app/api/leads/import/route.ts` | API import |
+| `src/app/api/leads/import/[batchId]/route.ts` | API status + annulation |
+| `src/app/api/leads/import/history/route.ts` | API historique |
+| `src/app/(dashboard)/leads/import/page.tsx` | Page wizard |
+| `src/app/(dashboard)/leads/import/import-client.tsx` | Client wizard state machine |
+| `src/components/leads/import/ImportStepper.tsx` | Stepper 5 étapes |
+| `src/components/leads/import/Step1_UploadPreview.tsx` | Upload + preview |
+| `src/components/leads/import/Step2_MappingConfig.tsx` | Mapping + config |
+| `src/components/leads/import/Step3_PreviewDiff.tsx` | Preview diff |
+| `src/components/leads/import/Step4_ImportProgress.tsx` | Progression |
+| `src/components/leads/import/Step5_Recap.tsx` | Récap + correction |
+| `src/components/leads/import/ImportHistory.tsx` | Historique |
+| `src/app/(dashboard)/leads/import/history/page.tsx` | Page historique |
+
+### Fichiers modifiés (3)
+
+| Fichier | Modification |
+|---------|-------------|
+| `src/types/index.ts` | `import_batch_id` sur Lead, types import (7 exports) |
+| `src/app/(dashboard)/leads/leads-client.tsx` | Bouton "Importer" dans header |
+| `supabase/schema.sql` | Reflet migration 023 |
 
 ---
 
 ## Améliorations identifiées pendant cette tâche
 
-_À remplir au fil de l'eau._
+- A-015 : Import Excel (.xlsx) via SheetJS
+- A-016 : Import Google Contacts via People API
+- A-017 : Normalisation phone avancée (libphonenumber-js)
+- A-018 : Background job pour imports > 5000 leads
