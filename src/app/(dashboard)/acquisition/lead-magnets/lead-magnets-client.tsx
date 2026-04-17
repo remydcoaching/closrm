@@ -1,5 +1,6 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { LeadMagnet, LeadMagnetPlatform } from '@/types'
 
 interface Stat { lead_magnet_id: string; clicks_count: number; lead_id: string }
@@ -173,10 +174,14 @@ function StatsDrawer({ magnet, loading, stats, onClose }: {
   stats: MagnetStats | null
   onClose: () => void
 }) {
-  return (
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return null
+
+  const content = (
     <div
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', justifyContent: 'flex-end' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', justifyContent: 'flex-end' }}
     >
       <div
         onClick={e => e.stopPropagation()}
@@ -262,6 +267,7 @@ function StatsDrawer({ magnet, loading, stats, onClose }: {
       </div>
     </div>
   )
+  return createPortal(content, document.body)
 }
 
 const th: React.CSSProperties = { padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5 }
