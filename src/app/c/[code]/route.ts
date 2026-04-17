@@ -72,29 +72,33 @@ function buildPreviewHtml({ title, url, platform }: { title: string; url: string
   }
 
   const safeTitle = escapeHtml(title)
-  const safeUrl = escapeHtml(url)
+  const safeUrlAttr = escapeHtml(url) // pour attributs HTML
 
   const ogImageTag = ogImage
     ? `<meta property="og:image" content="${escapeHtml(ogImage)}" />
        <meta name="twitter:image" content="${escapeHtml(ogImage)}" />`
     : ''
 
+  // Pour le JS : JSON.stringify sur l'URL BRUTE (pas HTML-escaped).
+  // Puis on échappe `<` pour éviter un `</script>` malicieux dans le title/url.
+  const jsUrl = JSON.stringify(url).replace(/</g, '\\u003c')
+
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
   <meta property="og:title" content="${safeTitle}" />
-  <meta property="og:url" content="${safeUrl}" />
+  <meta property="og:url" content="${safeUrlAttr}" />
   <meta property="og:type" content="video.other" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${safeTitle}" />
   ${ogImageTag}
-  <meta http-equiv="refresh" content="0; url=${safeUrl}" />
+  <meta http-equiv="refresh" content="0; url=${safeUrlAttr}" />
   <title>${safeTitle}</title>
 </head>
 <body>
-  <script>window.location.replace(${JSON.stringify(safeUrl)});</script>
-  <noscript><p><a href="${safeUrl}">${safeTitle}</a></p></noscript>
+  <script>window.location.replace(${jsUrl});</script>
+  <noscript><p><a href="${safeUrlAttr}">${safeTitle}</a></p></noscript>
 </body>
 </html>`
 }
