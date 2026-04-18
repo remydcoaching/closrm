@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Paperclip, Link2, Mic, FileText, X } from 'lucide-react'
-import type { WorkflowStep, WorkflowAsset } from '@/types'
+import type { WorkflowStep, WorkflowActionType, WorkflowAsset } from '@/types'
 import TemplateVariableHelper from './TemplateVariableHelper'
 import AssetLibrary from './AssetLibrary'
 
@@ -84,35 +84,51 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
               />
               <TemplateVariableHelper />
             </div>
+            <AssetField
+              assetId={(config.asset_id as string) || null}
+              onChange={(id) => updateConfig('asset_id', id)}
+            />
           </>
         )
 
       case 'send_whatsapp':
         return (
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Message</label>
-            <textarea
-              style={textareaStyle}
-              placeholder="Message WhatsApp..."
-              value={(config.message as string) || ''}
-              onChange={(e) => updateConfig('message', e.target.value)}
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Message</label>
+              <textarea
+                style={textareaStyle}
+                placeholder="Message WhatsApp..."
+                value={(config.message as string) || ''}
+                onChange={(e) => updateConfig('message', e.target.value)}
+              />
+              <TemplateVariableHelper />
+            </div>
+            <AssetField
+              assetId={(config.asset_id as string) || null}
+              onChange={(id) => updateConfig('asset_id', id)}
             />
-            <TemplateVariableHelper />
-          </div>
+          </>
         )
 
       case 'send_dm_instagram':
         return (
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Message</label>
-            <textarea
-              style={textareaStyle}
-              placeholder="Message Instagram DM..."
-              value={(config.message as string) || ''}
-              onChange={(e) => updateConfig('message', e.target.value)}
+          <>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Message</label>
+              <textarea
+                style={textareaStyle}
+                placeholder="Message Instagram DM..."
+                value={(config.message as string) || ''}
+                onChange={(e) => updateConfig('message', e.target.value)}
+              />
+              <TemplateVariableHelper />
+            </div>
+            <AssetField
+              assetId={(config.asset_id as string) || null}
+              onChange={(id) => updateConfig('asset_id', id)}
             />
-            <TemplateVariableHelper />
-          </div>
+          </>
         )
 
       case 'create_followup':
@@ -529,6 +545,114 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
       </div>
 
       {renderConfigFields()}
+    </div>
+  )
+}
+
+const ASSET_TYPE_META = {
+  link:  { icon: Link2,    color: '#5b9bf5', bg: 'rgba(91,155,245,0.15)',  label: 'Lien' },
+  audio: { icon: Mic,      color: '#EC4899', bg: 'rgba(236,72,153,0.15)', label: 'Vocal' },
+  file:  { icon: FileText, color: '#D69E2E', bg: 'rgba(214,158,46,0.15)', label: 'Fichier' },
+} as const
+
+function AssetField({ assetId, onChange }: {
+  assetId: string | null
+  onChange: (id: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [asset, setAsset] = useState<WorkflowAsset | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!assetId) {
+      setAsset(null)
+      return
+    }
+    setLoading(true)
+    fetch('/api/workflow-assets')
+      .then((r) => r.json())
+      .then((json) => {
+        const found = (json.data ?? []).find((a: WorkflowAsset) => a.id === assetId) ?? null
+        setAsset(found)
+      })
+      .finally(() => setLoading(false))
+  }, [assetId])
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={labelStyle}>
+        <Paperclip size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+        Asset à joindre (optionnel)
+      </label>
+
+      {asset ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 12px', borderRadius: 8,
+          background: ASSET_TYPE_META[asset.type].bg,
+          border: `1px solid ${ASSET_TYPE_META[asset.type].color}`,
+        }}>
+          {(() => {
+            const Icon = ASSET_TYPE_META[asset.type].icon
+            return <Icon size={14} style={{ color: ASSET_TYPE_META[asset.type].color, flexShrink: 0 }} />
+          })()}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{asset.name}</div>
+            <div style={{
+              fontSize: 10, color: 'var(--text-muted)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {ASSET_TYPE_META[asset.type].label}
+            </div>
+          </div>
+          <button
+            onClick={() => setOpen(true)}
+            style={{
+              background: 'transparent', border: '1px solid var(--border-primary)',
+              borderRadius: 6, padding: '4px 8px', fontSize: 11,
+              color: 'var(--text-secondary)', cursor: 'pointer',
+            }}
+          >
+            Changer
+          </button>
+          <button
+            onClick={() => onChange(null)}
+            title="Retirer"
+            style={{
+              background: 'transparent', border: 'none',
+              padding: 4, cursor: 'pointer', color: 'var(--text-muted)',
+              display: 'flex', alignItems: 'center',
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          disabled={loading}
+          style={{
+            width: '100%', padding: 10, borderRadius: 8,
+            background: 'var(--bg-input)', border: '1px dashed var(--border-primary)',
+            color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+        >
+          <Paperclip size={13} />
+          <span>{loading ? 'Chargement…' : 'Choisir un asset (lien, vocal, fichier)'}</span>
+        </button>
+      )}
+
+      <AssetLibrary
+        open={open}
+        mode="pick"
+        selectedAssetId={assetId ?? undefined}
+        onClose={() => setOpen(false)}
+        onPick={(picked) => {
+          onChange(picked.id)
+          setOpen(false)
+        }}
+      />
     </div>
   )
 }
