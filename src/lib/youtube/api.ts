@@ -233,7 +233,7 @@ export function isoDurationToSeconds(iso: string): number {
   return h * 3600 + min * 60 + s
 }
 
-/** Un Short = vidéo ≤ 60s avec ratio vertical (heuristique V1 : durée seule). */
+/** YouTube Shorts accepte jusqu'à 3 min (180s) depuis fin 2024. Heuristique par durée seule. */
 export function isShort(durationSeconds: number): boolean {
-  return durationSeconds > 0 && durationSeconds <= 60
+  return durationSeconds > 0 && durationSeconds <= 180
 }
