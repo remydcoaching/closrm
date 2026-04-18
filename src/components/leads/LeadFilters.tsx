@@ -25,9 +25,10 @@ const SOURCES: { value: LeadSource; label: string; color: string }[] = [
 
 interface LeadFiltersProps {
   onFiltersChange: (filters: { search: string; statuses: LeadStatus[]; sources: LeadSource[]; assigned_to?: string }) => void
+  showSearch?: boolean
 }
 
-export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
+export default function LeadFilters({ onFiltersChange, showSearch = true }: LeadFiltersProps) {
   const [search, setSearch] = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<LeadStatus[]>([])
   const [selectedSources, setSelectedSources] = useState<LeadSource[]>([])
@@ -91,25 +92,27 @@ export default function LeadFilters({ onFiltersChange }: LeadFiltersProps) {
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
 
-      {/* Barre de recherche */}
-      <div style={{ position: 'relative', width: 280 }}>
-        <Search size={14} style={{
-          position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-          color: 'var(--text-muted)', pointerEvents: 'none',
-        }} />
-        <input
-          type="text"
-          placeholder="Rechercher un lead..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            width: '100%', boxSizing: 'border-box',
-            padding: '7px 10px 7px 32px',
-            background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-            borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none',
-          }}
-        />
-      </div>
+      {/* Barre de recherche (optionnelle) */}
+      {showSearch && (
+        <div style={{ position: 'relative', width: 280 }}>
+          <Search size={14} style={{
+            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+            color: 'var(--text-muted)', pointerEvents: 'none',
+          }} />
+          <input
+            type="text"
+            placeholder="Rechercher un lead..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '7px 10px 7px 32px',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+              borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none',
+            }}
+          />
+        </div>
+      )}
 
       {/* Bouton filtres */}
       <div style={{ position: 'relative' }} ref={panelRef}>
