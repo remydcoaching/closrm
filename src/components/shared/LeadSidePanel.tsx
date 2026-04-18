@@ -23,6 +23,7 @@ import ConversationThread from '@/components/messages/ConversationThread'
 import MessageInput from '@/components/messages/MessageInput'
 import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
+import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
@@ -41,9 +42,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [newTag, setNewTag] = useState('')
-  const [notes, setNotes] = useState('')
   const [showClosingModal, setShowClosingModal] = useState(false)
-  const notesTimer = useRef<NodeJS.Timeout>(null)
 
   // Team members state
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -89,32 +88,36 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
     fetchCurrentRole()
   }, [])
 
-  async function fetchLead() {
-    setLoading(true)
+  async function fetchLead(opts?: { silent?: boolean }) {
+    if (!opts?.silent) setLoading(true)
     const res = await fetch(`/api/leads/${leadId}`)
     if (res.ok) {
       const json = await res.json()
       setLead(json.data)
-      setNotes(json.data.notes || '')
     }
-    setLoading(false)
+    if (!opts?.silent) setLoading(false)
   }
 
   async function patchLead(patch: Partial<Lead>): Promise<Lead | null> {
     const res = await fetch(`/api/leads/${leadId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
     const json = res.ok ? await res.json() : null
-    await fetchLead()
+    // Merge updated fields optimistically without triggering the loading state
+    if (json?.data) {
+      setLead(prev => prev ? { ...prev, ...json.data } : prev)
+    } else {
+      await fetchLead({ silent: true })
+    }
     return json?.data ?? null
   }
 
   async function patchCall(callId: string, patch: Partial<Call>) {
     await fetch(`/api/calls/${callId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
-    fetchLead()
+    fetchLead({ silent: true })
   }
 
   async function patchFollowUp(fuId: string, patch: Partial<FollowUp>) {
     await fetch(`/api/follow-ups/${fuId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
-    fetchLead()
+    fetchLead({ silent: true })
   }
 
   function startEdit(field: string, value: string) {
@@ -124,12 +127,6 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   function saveEdit(field: string) {
     patchLead({ [field]: editValue })
     setEditingField(null)
-  }
-
-  function handleNotesChange(val: string) {
-    setNotes(val)
-    if (notesTimer.current) clearTimeout(notesTimer.current)
-    notesTimer.current = setTimeout(() => patchLead({ notes: val }), 800)
   }
 
   function addTag() {
@@ -397,10 +394,10 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             </div>
 
-            {/* Notes editable */}
+            {/* Notes multiples */}
             <div style={card}>
               <div style={sectionTitle}>Notes</div>
-              <textarea value={notes} onChange={(e) => handleNotesChange(e.target.value)} rows={3} placeholder="Notes sur ce lead..." style={{ ...inputS, resize: 'vertical' as const, fontSize: 12, lineHeight: 1.5 }} />
+              <LeadNotesWidget leadId={leadId} />
             </div>
 
             {/* AI Assistant */}
