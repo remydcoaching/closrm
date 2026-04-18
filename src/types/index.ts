@@ -1214,3 +1214,20 @@ export interface LeadMagnetWithStats extends LeadMagnet {
   total_clicks: number
   unique_leads: number
 }
+
+// ─── Workflow Assets ────────────────────────────────────────────────────────
+export type WorkflowAssetType = 'link' | 'audio' | 'file'
+
+export interface WorkflowAsset {
+  id: string
+  workspace_id: string
+  type: WorkflowAssetType
+  name: string
+  url: string
+  mime_type: string | null
+  file_size: number | null
+  storage_path: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
