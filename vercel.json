@@ -3,6 +3,6 @@
     { "path": "/api/cron/workflow-scheduler", "schedule": "0 8 * * *" },
     { "path": "/api/cron/purge-tracked-links", "schedule": "0 3 * * *" },
     { "path": "/api/cron/youtube-sync", "schedule": "30 3 * * *" },
-    { "path": "/api/cron/social-posts", "schedule": "* * * * *" }
+    { "path": "/api/cron/social-posts", "schedule": "0 9 * * *" }
   ]
 }
