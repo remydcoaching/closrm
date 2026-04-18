@@ -107,9 +107,18 @@ export default function AgendaPage() {
     fetchCalendars()
   }, [fetchCalendars])
 
-  // Trigger Google Calendar sync in background (fire-and-forget, once on mount)
+  // Trigger Google Calendar sync on mount, then refetch bookings when done
+  const [syncDone, setSyncDone] = useState(false)
   useEffect(() => {
-    fetch('/api/integrations/google/sync', { method: 'POST' }).catch(() => {})
+    let cancelled = false
+    fetch('/api/integrations/google/sync', { method: 'POST' })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setSyncDone(true)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Fetch bookings + calls when viewMode or currentDate changes
@@ -180,6 +189,13 @@ export default function AgendaPage() {
   useEffect(() => {
     fetchBookings()
   }, [fetchBookings])
+
+  // Refetch bookings once Google sync completes (first mount only)
+  useEffect(() => {
+    if (syncDone) {
+      fetchBookings()
+    }
+  }, [syncDone, fetchBookings])
 
   // Keyboard shortcut: Backspace/Delete to remove selected booking
   useEffect(() => {
