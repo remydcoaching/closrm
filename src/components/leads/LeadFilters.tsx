@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, X, ChevronDown } from 'lucide-react'
 import { LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
 
 const STATUSES: { value: LeadStatus; label: string; color: string }[] = [
@@ -28,18 +28,19 @@ interface LeadFiltersProps {
   showSearch?: boolean
 }
 
+type OpenPanel = 'status' | 'source' | 'assignee' | null
+
 export default function LeadFilters({ onFiltersChange, showSearch = true }: LeadFiltersProps) {
   const [search, setSearch] = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<LeadStatus[]>([])
   const [selectedSources, setSelectedSources] = useState<LeadSource[]>([])
   const [selectedAssignee, setSelectedAssignee] = useState<string>('')
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
-  const [panelOpen, setPanelOpen] = useState(false)
-  const panelRef = useRef<HTMLDivElement>(null)
+  const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const onChangeRef = useRef(onFiltersChange)
   onChangeRef.current = onFiltersChange
 
-  // Fetch workspace members for assignee filter
   useEffect(() => {
     async function fetchMembers() {
       try {
@@ -53,46 +54,85 @@ export default function LeadFilters({ onFiltersChange, showSearch = true }: Lead
     fetchMembers()
   }, [])
 
-  // Fermer le panneau si clic en dehors
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setPanelOpen(false)
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpenPanel(null)
       }
     }
-    if (panelOpen) document.addEventListener('mousedown', handleClickOutside)
+    if (openPanel) document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [panelOpen])
+  }, [openPanel])
 
-  // Notifier le parent immédiatement à chaque changement (le parent gère le debounce)
   useEffect(() => {
     onChangeRef.current({ search, statuses: selectedStatuses, sources: selectedSources, assigned_to: selectedAssignee || undefined })
   }, [search, selectedStatuses, selectedSources, selectedAssignee])
 
   function toggleStatus(s: LeadStatus) {
-    setSelectedStatuses(prev =>
-      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
-    )
+    setSelectedStatuses(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
   }
 
   function toggleSource(s: LeadSource) {
-    setSelectedSources(prev =>
-      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+    setSelectedSources(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
+  }
+
+  const activeMember = members.find(m => m.user_id === selectedAssignee)
+  const assigneeLabel = activeMember ? (activeMember.user.full_name || activeMember.user.email) : ''
+
+  function renderTriggerButton(
+    key: OpenPanel,
+    label: string,
+    count: number,
+  ) {
+    const isOpen = openPanel === key
+    const active = count > 0
+    return (
+      <button
+        onClick={() => setOpenPanel(isOpen ? null : key)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 7,
+          padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+          border: isOpen || active
+            ? '1px solid rgba(0,200,83,0.4)'
+            : '1px solid var(--border-primary)',
+          background: isOpen || active
+            ? 'rgba(0,200,83,0.08)'
+            : 'var(--bg-elevated)',
+          color: active ? 'var(--color-primary)' : 'var(--text-tertiary)',
+          cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+        {count > 0 && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            minWidth: 18, height: 18, padding: '0 5px', borderRadius: 99,
+            fontSize: 10, fontWeight: 700,
+            background: 'var(--color-primary)', color: '#000',
+          }}>
+            {count}
+          </span>
+        )}
+        <ChevronDown size={13} style={{
+          transition: 'transform 0.15s ease',
+          transform: isOpen ? 'rotate(180deg)' : 'none',
+        }} />
+      </button>
     )
   }
 
-  function clearAll() {
-    setSelectedStatuses([])
-    setSelectedSources([])
-    setSelectedAssignee('')
+  const panelStyle: React.CSSProperties = {
+    position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 50,
+    background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+    borderRadius: 12, padding: 16, minWidth: 260,
+    boxShadow: '0 12px 40px rgba(0,0,0,0.7)',
   }
 
   const activeCount = selectedStatuses.length + selectedSources.length + (selectedAssignee ? 1 : 0)
 
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+    <div ref={containerRef} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 
-      {/* Barre de recherche (optionnelle) */}
       {showSearch && (
         <div style={{ position: 'relative', width: 280 }}>
           <Search size={14} style={{
@@ -114,203 +154,133 @@ export default function LeadFilters({ onFiltersChange, showSearch = true }: Lead
         </div>
       )}
 
-      {/* Bouton filtres */}
-      <div style={{ position: 'relative' }} ref={panelRef}>
-        <button
-          onClick={() => setPanelOpen(o => !o)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            border: panelOpen || activeCount > 0
-              ? '1px solid rgba(0,200,83,0.4)'
-              : '1px solid var(--border-primary)',
-            background: panelOpen || activeCount > 0
-              ? 'rgba(0,200,83,0.08)'
-              : 'var(--bg-elevated)',
-            color: activeCount > 0 ? 'var(--color-primary)' : 'var(--text-tertiary)',
-            cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap',
-          }}
-        >
-          <SlidersHorizontal size={14} />
-          Filtres
-          {activeCount > 0 && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 18, height: 18, borderRadius: '50%', fontSize: 10, fontWeight: 700,
-              background: 'var(--color-primary)', color: '#000',
-            }}>
-              {activeCount}
-            </span>
-          )}
-        </button>
-
-        {/* Panneau déroulant */}
-        {panelOpen && (
-          <div style={{
-            position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50,
-            background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-            borderRadius: 12, padding: 20, minWidth: 320,
-            boxShadow: '0 12px 40px rgba(0,0,0,0.7)',
-          }}>
-            {/* Header panneau */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Filtres</span>
-              {activeCount > 0 && (
-                <button onClick={clearAll} style={{
+      {/* Bouton Statut */}
+      <div style={{ position: 'relative' }}>
+        {renderTriggerButton('status', 'Statut', selectedStatuses.length)}
+        {openPanel === 'status' && (
+          <div style={panelStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Statut</span>
+              {selectedStatuses.length > 0 && (
+                <button onClick={() => setSelectedStatuses([])} style={{
                   display: 'flex', alignItems: 'center', gap: 4,
                   fontSize: 11, color: '#ef4444', background: 'none', border: 'none',
                   cursor: 'pointer', padding: 0,
                 }}>
-                  <X size={11} /> Tout effacer
+                  <X size={11} /> Effacer
                 </button>
               )}
             </div>
-
-            {/* Section Statuts */}
-            <div style={{ marginBottom: 18 }}>
-              <p style={{
-                fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
-                textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
-              }}>
-                Statut
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {STATUSES.map(s => {
-                  const active = selectedStatuses.includes(s.value)
-                  return (
-                    <button key={s.value} onClick={() => toggleStatus(s.value)} style={{
-                      padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                      border: active ? `1px solid ${s.color}40` : '1px solid var(--border-primary)',
-                      background: active ? `${s.color}18` : 'transparent',
-                      color: active ? s.color : '#777',
-                      cursor: 'pointer', transition: 'all 0.15s ease',
-                    }}>
-                      {s.label}
-                    </button>
-                  )
-                })}
-              </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {STATUSES.map(s => {
+                const active = selectedStatuses.includes(s.value)
+                return (
+                  <button key={s.value} onClick={() => toggleStatus(s.value)} style={{
+                    padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+                    border: active ? `1px solid ${s.color}40` : '1px solid var(--border-primary)',
+                    background: active ? `${s.color}18` : 'transparent',
+                    color: active ? s.color : '#777',
+                    cursor: 'pointer', transition: 'all 0.15s ease',
+                  }}>
+                    {s.label}
+                  </button>
+                )
+              })}
             </div>
+          </div>
+        )}
+      </div>
 
-            {/* Section Sources */}
-            <div>
-              <p style={{
-                fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
-                textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
-              }}>
-                Source
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {SOURCES.map(s => {
-                  const active = selectedSources.includes(s.value)
-                  return (
-                    <button key={s.value} onClick={() => toggleSource(s.value)} style={{
-                      padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                      border: active ? `1px solid ${s.color}40` : '1px solid var(--border-primary)',
-                      background: active ? `${s.color}18` : 'transparent',
-                      color: active ? s.color : '#777',
-                      cursor: 'pointer', transition: 'all 0.15s ease',
-                    }}>
-                      {s.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Section Assigné à */}
-            {members.length > 0 && (
-              <div style={{ marginTop: 18 }}>
-                <p style={{
-                  fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
-                  textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
+      {/* Bouton Source */}
+      <div style={{ position: 'relative' }}>
+        {renderTriggerButton('source', 'Source', selectedSources.length)}
+        {openPanel === 'source' && (
+          <div style={panelStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Source</span>
+              {selectedSources.length > 0 && (
+                <button onClick={() => setSelectedSources([])} style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, color: '#ef4444', background: 'none', border: 'none',
+                  cursor: 'pointer', padding: 0,
                 }}>
-                  Assigné à
-                </p>
-                <select
-                  value={selectedAssignee}
-                  onChange={e => setSelectedAssignee(e.target.value)}
+                  <X size={11} /> Effacer
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {SOURCES.map(s => {
+                const active = selectedSources.includes(s.value)
+                return (
+                  <button key={s.value} onClick={() => toggleSource(s.value)} style={{
+                    padding: '5px 11px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+                    border: active ? `1px solid ${s.color}40` : '1px solid var(--border-primary)',
+                    background: active ? `${s.color}18` : 'transparent',
+                    color: active ? s.color : '#777',
+                    cursor: 'pointer', transition: 'all 0.15s ease',
+                  }}>
+                    {s.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bouton Assigné à */}
+      <div style={{ position: 'relative' }}>
+        {renderTriggerButton('assignee', 'Assigné à', selectedAssignee ? 1 : 0)}
+        {openPanel === 'assignee' && (
+          <div style={panelStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>Assigné à</span>
+              {selectedAssignee && (
+                <button onClick={() => setSelectedAssignee('')} style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, color: '#ef4444', background: 'none', border: 'none',
+                  cursor: 'pointer', padding: 0,
+                }}>
+                  <X size={11} /> Effacer
+                </button>
+              )}
+            </div>
+            {members.length === 0 ? (
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                Aucun membre disponible
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <button
+                  onClick={() => { setSelectedAssignee(''); setOpenPanel(null) }}
                   style={{
-                    width: '100%', boxSizing: 'border-box',
-                    padding: '7px 10px',
-                    background: 'var(--bg-input)', border: '1px solid var(--border-primary)',
-                    borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none',
-                    cursor: 'pointer',
+                    textAlign: 'left', padding: '7px 10px', borderRadius: 6,
+                    fontSize: 12, fontWeight: 500,
+                    border: '1px solid transparent',
+                    background: !selectedAssignee ? 'rgba(59,130,246,0.12)' : 'transparent',
+                    color: !selectedAssignee ? '#3b82f6' : 'var(--text-secondary)',
+                    cursor: 'pointer', transition: 'all 0.15s ease',
                   }}
                 >
-                  <option value="">Tous les membres</option>
-                  {members.filter(m => m.status === 'active').map(m => (
-                    <option key={m.user_id} value={m.user_id}>
-                      {m.user.full_name || m.user.email} ({m.role})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Chips des filtres actifs */}
-            {activeCount > 0 && (
-              <div style={{
-                marginTop: 16, paddingTop: 14,
-                borderTop: '1px solid var(--border-primary)',
-                display: 'flex', flexWrap: 'wrap', gap: 6,
-              }}>
-                {selectedAssignee && (() => {
-                  const m = members.find(x => x.user_id === selectedAssignee)
-                  const label = m ? (m.user.full_name || m.user.email) : selectedAssignee
+                  Tous les membres
+                </button>
+                {members.filter(m => m.status === 'active').map(m => {
+                  const active = selectedAssignee === m.user_id
                   return (
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                      background: 'rgba(59,130,246,0.1)', color: '#3b82f6',
-                      border: '1px solid rgba(59,130,246,0.25)',
-                    }}>
-                      {label}
-                      <button onClick={() => setSelectedAssignee('')} style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: '#3b82f6', padding: 0, lineHeight: 1,
-                      }}>
-                        <X size={10} />
-                      </button>
-                    </span>
-                  )
-                })()}
-                {selectedStatuses.map(s => {
-                  const cfg = STATUSES.find(x => x.value === s)!
-                  return (
-                    <span key={s} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                      background: `${cfg.color}15`, color: cfg.color,
-                      border: `1px solid ${cfg.color}30`,
-                    }}>
-                      {cfg.label}
-                      <button onClick={() => toggleStatus(s)} style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: cfg.color, padding: 0, lineHeight: 1,
-                      }}>
-                        <X size={10} />
-                      </button>
-                    </span>
-                  )
-                })}
-                {selectedSources.map(s => {
-                  const cfg = SOURCES.find(x => x.value === s)!
-                  return (
-                    <span key={s} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                      background: `${cfg.color}15`, color: cfg.color,
-                      border: `1px solid ${cfg.color}30`,
-                    }}>
-                      {cfg.label}
-                      <button onClick={() => toggleSource(s)} style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: cfg.color, padding: 0, lineHeight: 1,
-                      }}>
-                        <X size={10} />
-                      </button>
-                    </span>
+                    <button
+                      key={m.user_id}
+                      onClick={() => { setSelectedAssignee(m.user_id); setOpenPanel(null) }}
+                      style={{
+                        textAlign: 'left', padding: '7px 10px', borderRadius: 6,
+                        fontSize: 12, fontWeight: 500,
+                        border: '1px solid transparent',
+                        background: active ? 'rgba(59,130,246,0.12)' : 'transparent',
+                        color: active ? '#3b82f6' : 'var(--text-secondary)',
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {m.user.full_name || m.user.email} <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>({m.role})</span>
+                    </button>
                   )
                 })}
               </div>
@@ -319,28 +289,24 @@ export default function LeadFilters({ onFiltersChange, showSearch = true }: Lead
         )}
       </div>
 
-      {/* Chips actifs visibles sous la barre (hors panneau) */}
-      {activeCount > 0 && !panelOpen && (
+      {/* Chips actifs sous la barre */}
+      {activeCount > 0 && !openPanel && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%' }}>
-          {selectedAssignee && (() => {
-            const m = members.find(x => x.user_id === selectedAssignee)
-            const label = m ? (m.user.full_name || m.user.email) : selectedAssignee
-            return (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                background: 'rgba(59,130,246,0.08)', color: '#3b82f6',
-                border: '1px solid rgba(59,130,246,0.2)',
+          {selectedAssignee && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+              background: 'rgba(59,130,246,0.08)', color: '#3b82f6',
+              border: '1px solid rgba(59,130,246,0.2)',
+            }}>
+              {assigneeLabel || selectedAssignee}
+              <button onClick={() => setSelectedAssignee('')} style={{
+                background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', padding: 0,
               }}>
-                {label}
-                <button onClick={() => setSelectedAssignee('')} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6', padding: 0,
-                }}>
-                  <X size={10} />
-                </button>
-              </span>
-            )
-          })()}
+                <X size={10} />
+              </button>
+            </span>
+          )}
           {selectedStatuses.map(s => {
             const cfg = STATUSES.find(x => x.value === s)!
             return (

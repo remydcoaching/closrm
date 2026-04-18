@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Plus, ChevronLeft, ChevronRight, Archive, Phone, ChevronDown, X, Calendar } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Archive, Phone, ChevronDown, X, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { Lead, LeadStatus, WorkspaceMemberWithUser } from '@/types'
@@ -58,7 +58,7 @@ export interface LeadsListViewProps {
   onLeadClick: (leadId: string) => void
   onPatch: (leadId: string, patch: Partial<Lead>) => void
   onCall: (lead: Lead) => void
-  onSchedule: (lead: Lead) => void
+  onTreat: (lead: Lead) => void
   onArchive: (lead: Lead) => void
   onRequestClose: (lead: Lead) => void
 }
@@ -66,7 +66,7 @@ export interface LeadsListViewProps {
 export default function LeadsListView(props: LeadsListViewProps) {
   const {
     leads, loading, members, page, totalPages, total,
-    onPageChange, onLeadClick, onPatch, onCall, onSchedule, onArchive, onRequestClose,
+    onPageChange, onLeadClick, onPatch, onCall, onTreat, onArchive, onRequestClose,
   } = props
 
   const [dropdown, setDropdown] = useState<DropdownState | null>(null)
@@ -135,16 +135,16 @@ export default function LeadsListView(props: LeadsListViewProps) {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '88px' }} />
-              <col style={{ width: '14%' }} />
+              <col style={{ width: '76px' }} />
               <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
               <col style={{ width: '14%' }} />
               <col style={{ width: '8%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '50px' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '12%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '46px' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '9%' }} />
               <col />
             </colgroup>
             <thead>
@@ -285,20 +285,20 @@ export default function LeadsListView(props: LeadsListViewProps) {
                   <td style={{ padding: '10px 8px' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                       <button onClick={() => onCall(lead)} title="Appeler" style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        padding: '5px 9px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                        display: 'inline-flex', alignItems: 'center',
+                        padding: '5px 7px', borderRadius: 6,
                         background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.20)',
-                        color: '#3b82f6', cursor: 'pointer', whiteSpace: 'nowrap',
+                        color: '#3b82f6', cursor: 'pointer',
                       }}>
-                        <Phone size={11} /> Appeler
+                        <Phone size={11} />
                       </button>
-                      <button onClick={() => onSchedule(lead)} title="Planifier" style={{
+                      <button onClick={() => onTreat(lead)} title="Traiter" style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '5px 9px', borderRadius: 6, fontSize: 11, fontWeight: 600,
                         background: 'rgba(0,200,83,0.10)', border: '1px solid rgba(0,200,83,0.20)',
                         color: 'var(--color-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
                       }}>
-                        <Calendar size={11} /> Planifier
+                        <Sparkles size={11} /> Traiter
                       </button>
                       {lead.instagram_handle && (
                         <a
