@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Plus, Settings2 } from 'lucide-react'
+import { Plus, Settings2, Search } from 'lucide-react'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 import { Lead, LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
 import LeadFilters from '@/components/leads/LeadFilters'
@@ -83,6 +83,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
     fetchMembers()
   }, [])
 
+  const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statuses, setStatuses] = useState<LeadStatus[]>([])
   const [sources, setSources] = useState<LeadSource[]>([])
@@ -90,12 +91,17 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isInitialMount = useRef(true)
 
+  // Debounce recherche
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedSearch(searchInput), 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [searchInput])
+
   const handleFiltersChange = useCallback((f: { search: string; statuses: LeadStatus[]; sources: LeadSource[]; assigned_to?: string }) => {
     setStatuses(f.statuses)
     setSources(f.sources)
     setAssignedTo(f.assigned_to)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setDebouncedSearch(f.search), 300)
   }, [])
 
   useEffect(() => {
@@ -210,8 +216,33 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
       </div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        {/* Gauche : recherche */}
+        <div style={{ position: 'relative', width: 280 }}>
+          <Search size={14} style={{
+            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+            color: 'var(--text-muted)', pointerEvents: 'none',
+          }} />
+          <input
+            type="text"
+            placeholder="Rechercher un lead..."
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '7px 10px 7px 32px',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+              borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none',
+            }}
+          />
+        </div>
+
+        {/* Milieu : dates */}
         <DateRangePicker value={dateFilter} onChange={setDateFilter} />
-        <LeadFilters onFiltersChange={handleFiltersChange} />
+
+        {/* Droite : filtres */}
+        <div style={{ marginLeft: 'auto' }}>
+          <LeadFilters onFiltersChange={handleFiltersChange} showSearch={false} />
+        </div>
       </div>
 
       {view === 'list' ? (
