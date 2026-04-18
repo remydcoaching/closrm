@@ -31,9 +31,9 @@ interface DateRangePickerProps {
 const pillBase: React.CSSProperties = {
   padding: '5px 11px',
   borderRadius: 6,
-  border: '1px solid var(--border-primary)',
+  border: '1px solid transparent',
   background: 'transparent',
-  color: 'var(--text-secondary)',
+  color: 'var(--text-muted)',
   fontSize: 12,
   fontWeight: 500,
   cursor: 'pointer',
@@ -152,7 +152,8 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
             padding: '5px 10px',
             color: 'var(--text-muted)',
             fontSize: 11,
-            borderStyle: 'dashed',
+            border: '1px dashed var(--border-primary)',
+            marginLeft: 4,
           }}
         >
           {fieldLabel}
