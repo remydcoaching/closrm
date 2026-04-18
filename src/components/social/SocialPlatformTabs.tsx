@@ -1,10 +1,11 @@
 'use client'
 
-import { Camera, Video } from 'lucide-react'
+import { Camera, Video, Calendar } from 'lucide-react'
 
-const PLATFORMS = [
-  { key: 'instagram', label: 'Instagram', icon: Camera, color: '#EC4899', active: true },
-  { key: 'youtube',   label: 'YouTube',   icon: Video,  color: '#FF0000', active: true },
+const TABS = [
+  { key: 'instagram', label: 'Instagram', icon: Camera,   color: '#EC4899', active: true },
+  { key: 'youtube',   label: 'YouTube',   icon: Video,    color: '#FF0000', active: true },
+  { key: 'calendar',  label: 'Calendrier', icon: Calendar, color: '#5b9bf5', active: true },
 ] as const
 
 interface Props {
@@ -15,26 +16,26 @@ interface Props {
 export default function SocialPlatformTabs({ selected, onChange }: Props) {
   return (
     <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-      {PLATFORMS.map(p => {
-        const isActive = selected === p.key
-        const Icon = p.icon
+      {TABS.map(t => {
+        const isActive = selected === t.key
+        const Icon = t.icon
         return (
           <button
-            key={p.key}
-            onClick={() => p.active && onChange(p.key)}
+            key={t.key}
+            onClick={() => t.active && onChange(t.key)}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '8px 16px', fontSize: 13, fontWeight: 600,
               color: isActive ? '#fff' : 'var(--text-tertiary)',
-              background: isActive ? p.color : 'transparent',
-              border: `1px solid ${isActive ? p.color : 'var(--border-primary)'}`,
-              borderRadius: 8, cursor: p.active ? 'pointer' : 'default',
-              opacity: p.active ? 1 : 0.4,
+              background: isActive ? t.color : 'transparent',
+              border: `1px solid ${isActive ? t.color : 'var(--border-primary)'}`,
+              borderRadius: 8, cursor: t.active ? 'pointer' : 'default',
+              opacity: t.active ? 1 : 0.4,
               transition: 'all 0.15s',
             }}
           >
             <Icon size={16} />
-            {p.label}
+            {t.label}
           </button>
         )
       })}
