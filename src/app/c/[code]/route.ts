@@ -63,6 +63,24 @@ export async function GET(
       .eq('id', data.id)
       .then(() => {})
 
+    // Pour YouTube sur mobile : tenter d'ouvrir l'app native via custom scheme
+    // (youtube://). Si l'app n'est pas installée, fallback sur youtube.com web.
+    const ua = userAgent || ''
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(ua)
+    const ytId = lm.platform === 'youtube' ? extractYoutubeId(targetUrl) : null
+
+    if (ytId && isMobile) {
+      console.log(`[/c/${code}] YOUTUBE MOBILE → app scheme + fallback`)
+      const html = buildYoutubeAppOpenHtml(ytId, targetUrl)
+      return new NextResponse(html, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'private, no-store',
+        },
+      })
+    }
+
     console.log(`[/c/${code}] REDIRECT 302 → ${targetUrl}`)
 
     // no-store sur le redirect pour éviter les caches in-app (IG WebKit)
@@ -113,6 +131,68 @@ function buildPreviewHtml({ title, url, platform }: { title: string; url: string
 <body>
   <script>window.location.replace(${jsUrl});</script>
   <noscript><p><a href="${safeUrlAttr}">${safeTitle}</a></p></noscript>
+</body>
+</html>`
+}
+
+function buildYoutubeAppOpenHtml(videoId: string, webUrl: string): string {
+  // Essaie d'ouvrir l'app YouTube via custom scheme, fallback web après 1.5s
+  // si l'app n'a pas intercepté. Sur Android, intent:// force ouverture app.
+  const jsWebUrl = JSON.stringify(webUrl).replace(/</g, '\\u003c')
+  const jsAppUrl = JSON.stringify(`youtube://watch?v=${videoId}`).replace(/</g, '\\u003c')
+  const jsAndroidIntent = JSON.stringify(
+    `intent://www.youtube.com/watch?v=${videoId}#Intent;package=com.google.android.youtube;scheme=https;end`
+  ).replace(/</g, '\\u003c')
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ouverture…</title>
+  <style>
+    body { background: #000; color: #fff; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .box { text-align: center; }
+    a { color: #0af; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <p>Ouverture de YouTube…</p>
+    <p><a id="fallback" href="${escapeHtml(webUrl)}">Ouvrir dans le navigateur</a></p>
+  </div>
+  <script>
+    (function() {
+      var webUrl = ${jsWebUrl};
+      var appUrl = ${jsAppUrl};
+      var androidIntent = ${jsAndroidIntent};
+      var isAndroid = /Android/i.test(navigator.userAgent);
+      var opened = false;
+
+      // Fallback après 1500ms : si on est toujours là, on charge le web.
+      var fallback = setTimeout(function() {
+        if (!document.hidden) {
+          window.location.replace(webUrl);
+        }
+      }, 1500);
+
+      // Si la page est cachée (app a pris le relais), on annule le fallback.
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+          opened = true;
+          clearTimeout(fallback);
+        }
+      });
+
+      // Lance l'ouverture
+      if (isAndroid) {
+        window.location.href = androidIntent;
+      } else {
+        // iOS : custom scheme → Universal Link de YouTube app
+        window.location.href = appUrl;
+      }
+    })();
+  </script>
 </body>
 </html>`
 }
