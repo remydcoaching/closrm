@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Upload, Camera, Video, Loader2, Trash2, Calendar, Clock } from 'lucide-react'
+import { X, Upload, Camera, Video, Loader2, Trash2, Calendar, Clock, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { SocialPost, SocialPostPublication, SocialPlatform } from '@/types'
 
@@ -28,6 +28,9 @@ export default function PostComposer({ defaultDate, editingPost, onClose, onSave
   const [mediaUrls, setMediaUrls] = useState<string[]>(editingPost?.media_urls ?? [])
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [generatingCaption, setGeneratingCaption] = useState(false)
+  const [aiHint, setAiHint] = useState('')
+  const [aiHintOpen, setAiHintOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [enabledPlatforms, setEnabledPlatforms] = useState<Record<SocialPlatform, boolean>>({
     instagram: editingPost?.publications.some((p) => p.platform === 'instagram') ?? true,
@@ -53,10 +56,24 @@ export default function PostComposer({ defaultDate, editingPost, onClose, onSave
       | 'private') ?? 'public',
   )
 
-  // Schedule
-  const initDate = editingPost?.scheduled_at ? new Date(editingPost.scheduled_at) : defaultDate ?? new Date()
-  const [scheduleDate, setScheduleDate] = useState(initDate.toISOString().slice(0, 10))
-  const [scheduleTime, setScheduleTime] = useState(initDate.toTimeString().slice(0, 5))
+  // Schedule — par défaut : maintenant + 5 min (heure locale)
+  const initDate = editingPost?.scheduled_at
+    ? new Date(editingPost.scheduled_at)
+    : defaultDate
+      ? (() => {
+          const d = new Date(defaultDate)
+          const now = new Date()
+          // Si defaultDate est aujourd'hui, ajoute +5min depuis maintenant; sinon garde 12:00
+          if (d.toDateString() === now.toDateString()) return new Date(now.getTime() + 5 * 60_000)
+          d.setHours(12, 0, 0, 0)
+          return d
+        })()
+      : new Date(Date.now() + 5 * 60_000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const [scheduleDate, setScheduleDate] = useState(
+    `${initDate.getFullYear()}-${pad(initDate.getMonth() + 1)}-${pad(initDate.getDate())}`,
+  )
+  const [scheduleTime, setScheduleTime] = useState(`${pad(initDate.getHours())}:${pad(initDate.getMinutes())}`)
 
   // Auto-detect format based on first media
   const [mediaIsVideo, setMediaIsVideo] = useState(false)
@@ -109,6 +126,48 @@ export default function PostComposer({ defaultDate, editingPost, onClose, onSave
 
   function removeMedia(idx: number) {
     setMediaUrls((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  async function generateCaption() {
+    setError(null)
+    setGeneratingCaption(true)
+    try {
+      const mediaType =
+        mediaUrls.length === 0
+          ? null
+          : mediaIsVideo
+            ? mediaDurationSec != null && mediaDurationSec <= 60
+              ? 'SHORT'
+              : 'VIDEO'
+            : mediaUrls.length > 1
+              ? 'CAROUSEL'
+              : 'IMAGE'
+      const platform: 'instagram' | 'youtube' | 'both' =
+        enabledPlatforms.instagram && enabledPlatforms.youtube
+          ? 'both'
+          : enabledPlatforms.youtube
+            ? 'youtube'
+            : 'instagram'
+
+      const res = await fetch('/api/social/generate-caption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform,
+          mediaType,
+          hint: aiHint || undefined,
+          currentCaption: caption || undefined,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? `Erreur ${res.status}`)
+      if (json.caption) setCaption(json.caption)
+      if (json.hashtags) setHashtags(json.hashtags)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setGeneratingCaption(false)
+    }
   }
 
   async function submit(mode: 'schedule' | 'now' = 'schedule') {
@@ -301,27 +360,48 @@ export default function PostComposer({ defaultDate, editingPost, onClose, onSave
 
             <div style={sectionLabel}>Médias</div>
             {mediaUrls.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                {mediaUrls.map((url, i) => (
-                  <div key={url} style={{ position: 'relative' }}>
-                    {mediaIsVideo ? (
-                      <video src={url} style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-primary)' }} />
-                    ) : (
-                      <img src={url} alt="" style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-primary)' }} />
-                    )}
-                    <button
-                      onClick={() => removeMedia(i)}
-                      style={{
-                        position: 'absolute', top: 4, right: 4,
-                        width: 22, height: 22, borderRadius: '50%',
-                        background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+                {mediaUrls.map((url, i) => {
+                  const isShort = mediaIsVideo && mediaDurationSec != null && mediaDurationSec <= 60
+                  const mediaStyle: React.CSSProperties = {
+                    width: isShort ? 280 : '100%',
+                    maxWidth: 480,
+                    aspectRatio: isShort ? '9 / 16' : mediaIsVideo ? '16 / 9' : undefined,
+                    objectFit: 'cover',
+                    borderRadius: 12,
+                    border: '1px solid var(--border-primary)',
+                    background: '#000',
+                  }
+                  return (
+                    <div key={url} style={{ position: 'relative' }}>
+                      {mediaIsVideo ? (
+                        <video
+                          src={url}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          controls
+                          style={mediaStyle}
+                        />
+                      ) : (
+                        <img src={url} alt="" style={mediaStyle} />
+                      )}
+                      <button
+                        onClick={() => removeMedia(i)}
+                        style={{
+                          position: 'absolute', top: 8, right: 8,
+                          width: 28, height: 28, borderRadius: '50%',
+                          background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          zIndex: 2,
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             )}
             <input
@@ -404,7 +484,49 @@ export default function PostComposer({ defaultDate, editingPost, onClose, onSave
 
             {activeTab === 'instagram' && enabledPlatforms.instagram && (
               <>
-                <label style={fieldLabel}>Légende</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <label style={fieldLabel}>Légende</label>
+                  <button
+                    type="button"
+                    onClick={() => setAiHintOpen((v) => !v)}
+                    disabled={generatingCaption}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '4px 10px', fontSize: 11, fontWeight: 600,
+                      color: '#a855f7', background: 'rgba(168,85,247,0.1)',
+                      border: '1px solid rgba(168,85,247,0.3)', borderRadius: 6,
+                      cursor: generatingCaption ? 'wait' : 'pointer', opacity: generatingCaption ? 0.7 : 1,
+                    }}
+                  >
+                    {generatingCaption ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                    Claude
+                  </button>
+                </div>
+                {aiHintOpen && (
+                  <div style={{ marginBottom: 10, padding: 10, background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.2)', borderRadius: 8 }}>
+                    <input
+                      type="text"
+                      value={aiHint}
+                      onChange={(e) => setAiHint(e.target.value)}
+                      placeholder="De quoi parle ton post ? (optionnel — ex: mon nouveau programme minceur)"
+                      style={{ ...inputStyle, marginBottom: 8 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={generateCaption}
+                      disabled={generatingCaption}
+                      style={{
+                        padding: '8px 14px', fontSize: 12, fontWeight: 600,
+                        color: '#fff', background: '#a855f7', border: 'none', borderRadius: 6,
+                        cursor: generatingCaption ? 'wait' : 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      {generatingCaption && <Loader2 size={12} className="animate-spin" />}
+                      {caption ? 'Améliorer la légende' : 'Générer une légende'}
+                    </button>
+                  </div>
+                )}
                 <textarea
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
