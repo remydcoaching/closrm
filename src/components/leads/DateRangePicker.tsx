@@ -39,6 +39,8 @@ const pillBase: React.CSSProperties = {
   cursor: 'pointer',
   transition: 'all 0.15s',
   whiteSpace: 'nowrap',
+  outline: 'none',
+  WebkitAppearance: 'none',
 }
 
 const pillActive: React.CSSProperties = {
@@ -115,7 +117,8 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
           <div key={p.value} style={{ position: 'relative' }} ref={p.value === 'custom' ? popRef : undefined}>
             <button
               type="button"
-              onClick={() => applyPreset(p.value)}
+              onClick={(e) => { applyPreset(p.value); e.currentTarget.blur() }}
+              onMouseDown={(e) => e.preventDefault()}
               style={active ? pillActive : pillBase}
             >
               {label}
