@@ -121,8 +121,7 @@ async function publishToInstagram(supabase: Supabase, pub: Pub, post: Post) {
   })
 
   if (isVideo) {
-    const status = await pollContainerStatus(token, containerId)
-    if (status === 'ERROR') throw new Error('Video processing failed')
+    await pollContainerStatus(token, containerId)
   }
 
   const igMediaId = await publishContainer({

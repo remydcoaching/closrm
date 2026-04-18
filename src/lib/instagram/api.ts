@@ -160,21 +160,30 @@ export async function createMediaContainer(
 export async function pollContainerStatus(
   token: string,
   containerId: string,
-  maxAttempts = 30,
-  intervalMs = 2000
-): Promise<'FINISHED' | 'ERROR'> {
+  maxAttempts = 60,
+  intervalMs = 3000
+): Promise<'FINISHED'> {
+  let lastStatus: string | undefined
+  let lastDetail: string | undefined
   for (let i = 0; i < maxAttempts; i++) {
     const res = await fetch(
-      `${FB_BASE}/${containerId}?fields=status_code&access_token=${token}`
+      `${FB_BASE}/${containerId}?fields=status_code,status&access_token=${token}`
     )
     if (res.ok) {
       const json = await res.json()
+      lastStatus = json.status_code
+      lastDetail = json.status
       if (json.status_code === 'FINISHED') return 'FINISHED'
-      if (json.status_code === 'ERROR') return 'ERROR'
+      if (json.status_code === 'ERROR' || json.status_code === 'EXPIRED') {
+        throw new Error(`Instagram a rejeté la vidéo (${json.status_code}) : ${json.status ?? 'pas de détail'}`)
+      }
+    } else {
+      const errText = await res.text().catch(() => '')
+      lastDetail = errText.slice(0, 200)
     }
     await new Promise(r => setTimeout(r, intervalMs))
   }
-  throw new Error('Container processing timeout (60s)')
+  throw new Error(`Timeout traitement Instagram après ${maxAttempts * intervalMs / 1000}s (dernier statut: ${lastStatus ?? 'inconnu'} — ${lastDetail ?? ''})`)
 }
 
 export async function publishContainer(
