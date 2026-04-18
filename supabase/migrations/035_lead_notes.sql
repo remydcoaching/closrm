@@ -55,11 +55,11 @@ CREATE TRIGGER trg_lead_notes_touch BEFORE UPDATE ON lead_notes
 DO $$
 DECLARE r RECORD;
 BEGIN
-  FOR r IN SELECT id, workspace_id, notes, created_by, created_at FROM leads
+  FOR r IN SELECT id, workspace_id, notes, created_at FROM leads
            WHERE notes IS NOT NULL AND length(trim(notes)) > 0
   LOOP
-    INSERT INTO lead_notes (workspace_id, lead_id, content, created_by, created_at, updated_at)
-    VALUES (r.workspace_id, r.id, r.notes, r.created_by, COALESCE(r.created_at, NOW()), NOW())
+    INSERT INTO lead_notes (workspace_id, lead_id, content, created_at, updated_at)
+    VALUES (r.workspace_id, r.id, r.notes, COALESCE(r.created_at, NOW()), NOW())
     ON CONFLICT DO NOTHING;
   END LOOP;
 END $$;
