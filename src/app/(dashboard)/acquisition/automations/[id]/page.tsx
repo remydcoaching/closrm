@@ -65,7 +65,7 @@ export default function WorkflowEditorPage() {
     if (!workflow) return
     setSaving(true)
     try {
-      await fetch(`/api/workflows/${workflowId}`, {
+      const wfRes = await fetch(`/api/workflows/${workflowId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -76,30 +76,42 @@ export default function WorkflowEditorPage() {
           failure_notification_channel: workflow.failure_notification_channel,
         }),
       })
+      if (!wfRes.ok) {
+        const err = await wfRes.json().catch(() => ({}))
+        throw new Error(`Workflow PATCH ${wfRes.status}: ${JSON.stringify(err)}`)
+      }
 
-      for (const step of steps) {
-        await fetch(`/api/workflows/${workflowId}/steps/${step.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            step_type: step.step_type,
-            action_type: step.action_type,
-            action_config: step.action_config,
-            delay_value: step.delay_value,
-            delay_unit: step.delay_unit,
-            condition_field: step.condition_field,
-            condition_operator: step.condition_operator,
-            condition_value: step.condition_value,
-            on_true_step: step.on_true_step,
-            on_false_step: step.on_false_step,
-          }),
-        })
+      const stepResults = await Promise.all(
+        steps.map((step) =>
+          fetch(`/api/workflows/${workflowId}/steps/${step.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              step_type: step.step_type,
+              action_type: step.action_type ?? null,
+              action_config: step.action_config ?? {},
+              delay_value: step.delay_value ?? null,
+              delay_unit: step.delay_unit ?? null,
+              condition_field: step.condition_field ?? null,
+              condition_operator: step.condition_operator ?? null,
+              condition_value: step.condition_value ?? null,
+              on_true_step: step.on_true_step ?? null,
+              on_false_step: step.on_false_step ?? null,
+            }),
+          }).then(async (res) => ({ res, body: await res.json().catch(() => ({})), step }))
+        )
+      )
+      const failures = stepResults.filter((r) => !r.res.ok)
+      if (failures.length > 0) {
+        const detail = failures.map((f) => `step ${f.step.id} (${f.step.action_type ?? f.step.step_type}): ${f.res.status} ${JSON.stringify(f.body)}`).join('\n')
+        throw new Error(`${failures.length} étape(s) en échec\n${detail}`)
       }
 
       setHasUnsavedChanges(false)
       setWorkflow((prev) => prev ? { ...prev, name: nameValue } : prev)
-    } catch {
-      console.error('Erreur sauvegarde')
+    } catch (e) {
+      console.error('Erreur sauvegarde:', e)
+      alert(`Erreur lors de la sauvegarde:\n${(e as Error).message}`)
     } finally {
       setSaving(false)
     }
