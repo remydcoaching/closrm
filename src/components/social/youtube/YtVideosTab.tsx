@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Search, Video, Eye, ThumbsUp, MessageCircle, Clock, DollarSign, ExternalLink } from 'lucide-react'
 import type { YtVideo } from '@/types'
-import YtVideoDetail from './YtVideoDetail'
+import YtVideoSidePanel from './YtVideoSidePanel'
 
 export default function YtVideosTab() {
   const [videos, setVideos] = useState<YtVideo[]>([])
@@ -24,12 +24,9 @@ export default function YtVideosTab() {
       .finally(() => setLoading(false))
   }, [format, search])
 
-  if (selectedId) {
-    return <YtVideoDetail videoId={selectedId} onBack={() => setSelectedId(null)} />
-  }
-
   return (
     <div>
+      <YtVideoSidePanel videoId={selectedId} onClose={() => setSelectedId(null)} />
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 18, alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1, maxWidth: 320 }}>
