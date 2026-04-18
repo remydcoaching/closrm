@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Paperclip, Link2, Mic, FileText, X } from 'lucide-react'
-import type { WorkflowStep, WorkflowActionType, WorkflowAsset } from '@/types'
+import { Paperclip, Link2, Mic, FileText, X, Sparkles, Video, Music2, Camera, BookOpen, Link as LinkIcon, ExternalLink } from 'lucide-react'
+import type { WorkflowStep, WorkflowActionType, WorkflowAsset, LeadMagnet, LeadMagnetPlatform } from '@/types'
 import TemplateVariableHelper from './TemplateVariableHelper'
 import AssetLibrary from './AssetLibrary'
+import LeadMagnetPicker from './LeadMagnetPicker'
 
 interface Props {
   step: WorkflowStep
@@ -88,6 +89,10 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
               assetId={(config.asset_id as string) || null}
               onChange={(id) => updateConfig('asset_id', id)}
             />
+            <LeadMagnetField
+              leadMagnetId={(config.lead_magnet_id as string) || null}
+              onChange={(id) => updateConfig('lead_magnet_id', id)}
+            />
           </>
         )
 
@@ -108,6 +113,10 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
               assetId={(config.asset_id as string) || null}
               onChange={(id) => updateConfig('asset_id', id)}
             />
+            <LeadMagnetField
+              leadMagnetId={(config.lead_magnet_id as string) || null}
+              onChange={(id) => updateConfig('lead_magnet_id', id)}
+            />
           </>
         )
 
@@ -127,6 +136,10 @@ export default function ActionConfigPanel({ step, onChange }: Props) {
             <AssetField
               assetId={(config.asset_id as string) || null}
               onChange={(id) => updateConfig('asset_id', id)}
+            />
+            <LeadMagnetField
+              leadMagnetId={(config.lead_magnet_id as string) || null}
+              onChange={(id) => updateConfig('lead_magnet_id', id)}
             />
           </>
         )
@@ -598,11 +611,11 @@ function AssetField({ assetId, onChange }: {
 
       {asset ? (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
           padding: '12px 14px', borderRadius: 8,
           background: ASSET_TYPE_META[asset.type].bg,
           border: `1px solid ${ASSET_TYPE_META[asset.type].color}`,
         }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {(() => {
             const Icon = ASSET_TYPE_META[asset.type].icon
             return (
@@ -649,6 +662,41 @@ function AssetField({ assetId, onChange }: {
             <X size={16} />
           </button>
         </div>
+        {asset.type === 'audio' && (
+          <audio
+            controls
+            src={asset.url}
+            style={{ width: '100%', height: 36, marginTop: 10 }}
+          />
+        )}
+        {asset.type === 'link' && (
+          <a
+            href={asset.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block', marginTop: 8, fontSize: 11,
+              color: ASSET_TYPE_META.link.color, textDecoration: 'none',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}
+          >
+            {asset.url} ↗
+          </a>
+        )}
+        {asset.type === 'file' && (
+          <a
+            href={asset.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-block', marginTop: 8, fontSize: 11,
+              color: ASSET_TYPE_META.file.color, textDecoration: 'none',
+            }}
+          >
+            Ouvrir le fichier ↗
+          </a>
+        )}
+        </div>
       ) : (
         <button
           onClick={() => setOpen(true)}
@@ -669,6 +717,150 @@ function AssetField({ assetId, onChange }: {
         open={open}
         mode="pick"
         selectedAssetId={assetId ?? undefined}
+        onClose={() => setOpen(false)}
+        onPick={(picked) => {
+          onChange(picked.id)
+          setOpen(false)
+        }}
+      />
+    </div>
+  )
+}
+
+
+const LM_PLATFORM_META: Record<LeadMagnetPlatform, { icon: typeof Video; color: string; label: string }> = {
+  youtube:   { icon: Video,  color: '#FF0000', label: 'YouTube' },
+  tiktok:    { icon: Music2,   color: '#69C9D0', label: 'TikTok' },
+  instagram: { icon: Camera,   color: '#EC4899', label: 'Instagram' },
+  podcast:   { icon: Mic,      color: '#8B5CF6', label: 'Podcast' },
+  blog:      { icon: BookOpen, color: '#5b9bf5', label: 'Blog' },
+  pdf:       { icon: FileText, color: '#D69E2E', label: 'PDF' },
+  other:     { icon: LinkIcon, color: '#9CA3AF', label: 'Autre' },
+}
+
+function LeadMagnetField({ leadMagnetId, onChange }: {
+  leadMagnetId: string | null
+  onChange: (id: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [magnet, setMagnet] = useState<LeadMagnet | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!leadMagnetId) {
+      setMagnet(null)
+      return
+    }
+    setLoading(true)
+    fetch('/api/lead-magnets')
+      .then((r) => r.json())
+      .then((json) => {
+        const found = (json.lead_magnets ?? []).find((m: LeadMagnet) => m.id === leadMagnetId) ?? null
+        setMagnet(found)
+      })
+      .finally(() => setLoading(false))
+  }, [leadMagnetId])
+
+  const meta = magnet ? (LM_PLATFORM_META[magnet.platform] ?? LM_PLATFORM_META.other) : null
+
+  return (
+    <div style={{
+      marginTop: 14, padding: 14, borderRadius: 10,
+      background: 'var(--bg-surface)', border: '1px solid var(--border-primary)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        fontSize: 13, fontWeight: 700, color: 'var(--text-primary)',
+        marginBottom: 4,
+      }}>
+        <Sparkles size={14} />
+        Lead magnet
+        <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)' }}>· optionnel</span>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+        Le lien envoyé sera personnalisé pour chaque lead (tracking des clics)
+      </div>
+
+      {magnet && meta ? (
+        <div style={{
+          padding: '12px 14px', borderRadius: 8,
+          background: `${meta.color}1A`,
+          border: `1px solid ${meta.color}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: 'rgba(0,0,0,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <meta.icon size={16} style={{ color: meta.color }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{magnet.title}</div>
+              <div style={{
+                fontSize: 11, color: meta.color, marginTop: 2, fontWeight: 600,
+              }}>
+                {meta.label}
+              </div>
+            </div>
+            <button
+              onClick={() => setOpen(true)}
+              style={{
+                background: 'transparent', border: '1px solid var(--border-primary)',
+                borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              Changer
+            </button>
+            <button
+              onClick={() => onChange(null)}
+              title="Retirer"
+              style={{
+                background: 'transparent', border: 'none',
+                padding: 6, cursor: 'pointer', color: 'var(--text-muted)',
+                display: 'flex', alignItems: 'center', flexShrink: 0,
+              }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <a
+            href={magnet.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              marginTop: 8, fontSize: 11, color: 'var(--text-muted)', textDecoration: 'none',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{magnet.url}</span>
+            <ExternalLink size={11} style={{ flexShrink: 0 }} />
+          </a>
+        </div>
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          disabled={loading}
+          style={{
+            width: '100%', padding: '14px', borderRadius: 8,
+            background: 'var(--bg-input)', border: '1px dashed var(--border-primary)',
+            color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          }}
+        >
+          <Sparkles size={15} />
+          <span>{loading ? 'Chargement…' : 'Choisir un lead magnet'}</span>
+        </button>
+      )}
+
+      <LeadMagnetPicker
+        open={open}
+        selectedId={leadMagnetId ?? undefined}
         onClose={() => setOpen(false)}
         onPick={(picked) => {
           onChange(picked.id)
