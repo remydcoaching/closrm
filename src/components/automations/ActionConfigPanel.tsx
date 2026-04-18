@@ -598,56 +598,91 @@ function AssetField({ assetId, onChange }: {
 
       {asset ? (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
           padding: '12px 14px', borderRadius: 8,
           background: ASSET_TYPE_META[asset.type].bg,
           border: `1px solid ${ASSET_TYPE_META[asset.type].color}`,
         }}>
-          {(() => {
-            const Icon = ASSET_TYPE_META[asset.type].icon
-            return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {(() => {
+              const Icon = ASSET_TYPE_META[asset.type].icon
+              return (
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8,
+                  background: 'rgba(0,0,0,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <Icon size={16} style={{ color: ASSET_TYPE_META[asset.type].color }} />
+                </div>
+              )
+            })()}
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                width: 36, height: 36, borderRadius: 8,
-                background: 'rgba(0,0,0,0.2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{asset.name}</div>
+              <div style={{
+                fontSize: 11, color: 'var(--text-muted)', marginTop: 2,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
-                <Icon size={16} style={{ color: ASSET_TYPE_META[asset.type].color }} />
+                {ASSET_TYPE_META[asset.type].label}
               </div>
-            )
-          })()}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>{asset.name}</div>
-            <div style={{
-              fontSize: 11, color: 'var(--text-muted)', marginTop: 2,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {ASSET_TYPE_META[asset.type].label}
             </div>
+            <button
+              onClick={() => setOpen(true)}
+              style={{
+                background: 'transparent', border: '1px solid var(--border-primary)',
+                borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              Changer
+            </button>
+            <button
+              onClick={() => onChange(null)}
+              title="Retirer"
+              style={{
+                background: 'transparent', border: 'none',
+                padding: 6, cursor: 'pointer', color: 'var(--text-muted)',
+                display: 'flex', alignItems: 'center', flexShrink: 0,
+              }}
+            >
+              <X size={16} />
+            </button>
           </div>
-          <button
-            onClick={() => setOpen(true)}
-            style={{
-              background: 'transparent', border: '1px solid var(--border-primary)',
-              borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 600,
-              color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0,
-            }}
-          >
-            Changer
-          </button>
-          <button
-            onClick={() => onChange(null)}
-            title="Retirer"
-            style={{
-              background: 'transparent', border: 'none',
-              padding: 6, cursor: 'pointer', color: 'var(--text-muted)',
-              display: 'flex', alignItems: 'center', flexShrink: 0,
-            }}
-          >
-            <X size={16} />
-          </button>
+          {asset.type === 'audio' && (
+            <audio
+              controls
+              src={asset.url}
+              style={{ width: '100%', height: 36, marginTop: 10 }}
+            />
+          )}
+          {asset.type === 'link' && (
+            <a
+              href={asset.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'block', marginTop: 8, fontSize: 11,
+                color: ASSET_TYPE_META.link.color, textDecoration: 'none',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}
+            >
+              {asset.url} ↗
+            </a>
+          )}
+          {asset.type === 'file' && (
+            <a
+              href={asset.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-block', marginTop: 8, fontSize: 11,
+                color: ASSET_TYPE_META.file.color, textDecoration: 'none',
+              }}
+            >
+              Ouvrir le fichier ↗
+            </a>
+          )}
         </div>
       ) : (
         <button
