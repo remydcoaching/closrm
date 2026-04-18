@@ -70,8 +70,7 @@ export async function POST(
 
         // 6. Poll for video processing
         if (isVideo) {
-          const status = await pollContainerStatus(publishToken, containerId)
-          if (status === 'ERROR') throw new Error('Video processing failed')
+          await pollContainerStatus(publishToken, containerId)
         }
 
         // 7. Publish
