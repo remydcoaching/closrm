@@ -1,9 +1,10 @@
 'use client'
 
-import { Camera } from 'lucide-react'
+import { Camera, Video } from 'lucide-react'
 
 const PLATFORMS = [
-  { key: 'instagram', label: 'Instagram', icon: Camera, active: true },
+  { key: 'instagram', label: 'Instagram', icon: Camera, color: '#EC4899', active: true },
+  { key: 'youtube',   label: 'YouTube',   icon: Video,  color: '#FF0000', active: true },
 ] as const
 
 interface Props {
@@ -25,10 +26,11 @@ export default function SocialPlatformTabs({ selected, onChange }: Props) {
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '8px 16px', fontSize: 13, fontWeight: 600,
               color: isActive ? '#fff' : 'var(--text-tertiary)',
-              background: isActive ? 'var(--color-primary)' : 'transparent',
-              border: isActive ? '1px solid var(--color-primary)' : '1px solid transparent',
+              background: isActive ? p.color : 'transparent',
+              border: `1px solid ${isActive ? p.color : 'var(--border-primary)'}`,
               borderRadius: 8, cursor: p.active ? 'pointer' : 'default',
               opacity: p.active ? 1 : 0.4,
+              transition: 'all 0.15s',
             }}
           >
             <Icon size={16} />

@@ -1231,3 +1231,183 @@ export interface WorkflowAsset {
   created_at: string
   updated_at: string
 }
+
+// ─── Social Multi-Platform Posts ────────────────────────────────────────────
+export type SocialPlatform = 'instagram' | 'youtube' | 'tiktok'
+
+export type SocialPostStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'publishing'
+  | 'published'
+  | 'partial'
+  | 'failed'
+
+export type SocialPostMediaType = 'IMAGE' | 'VIDEO' | 'CAROUSEL' | 'SHORT' | 'LONG_VIDEO'
+
+export interface SocialPost {
+  id: string
+  workspace_id: string
+  title: string | null
+  caption: string | null
+  hashtags: string[]
+  media_urls: string[]
+  media_type: SocialPostMediaType | null
+  thumbnail_url: string | null
+  status: SocialPostStatus
+  scheduled_at: string | null
+  published_at: string | null
+  pillar_id: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SocialPublicationStatus =
+  | 'pending'
+  | 'publishing'
+  | 'published'
+  | 'failed'
+  | 'skipped'
+
+export interface SocialPostPublication {
+  id: string
+  social_post_id: string
+  workspace_id: string
+  platform: SocialPlatform
+  config: Record<string, unknown>
+  scheduled_at: string | null
+  status: SocialPublicationStatus
+  provider_post_id: string | null
+  public_url: string | null
+  published_at: string | null
+  error_message: string | null
+  retry_count: number
+  last_attempt_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SocialPostWithPublications extends SocialPost {
+  publications: SocialPostPublication[]
+}
+
+// ─── YouTube Module ─────────────────────────────────────────────────────────
+export type YtFormat = 'short' | 'long'
+export type YtPrivacy = 'public' | 'unlisted' | 'private'
+
+export interface YtAccount {
+  id: string
+  workspace_id: string
+  channel_id: string
+  channel_title: string | null
+  channel_handle: string | null
+  channel_description: string | null
+  thumbnail_url: string | null
+  country: string | null
+  subscribers_baseline: number | null
+  total_views_baseline: number | null
+  videos_count_baseline: number | null
+  last_synced_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface YtVideo {
+  id: string
+  workspace_id: string
+  yt_account_id: string
+  yt_video_id: string
+  title: string | null
+  description: string | null
+  tags: string[]
+  category_id: string | null
+  published_at: string | null
+  duration_seconds: number | null
+  format: YtFormat | null
+  thumbnail_url: string | null
+  video_url: string | null
+  privacy_status: YtPrivacy | null
+  views: number
+  likes: number
+  comments: number
+  shares: number
+  watch_time_minutes: number
+  average_view_duration_sec: number
+  average_view_percentage: number
+  estimated_revenue: number | null
+  cpm: number | null
+  monetized_playbacks: number | null
+  last_synced_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface YtVideoDailyStats {
+  yt_video_id: string
+  date: string
+  views: number
+  watch_time_minutes: number
+  likes: number
+  comments: number
+  shares: number
+  subscribers_gained: number
+  subscribers_lost: number
+  estimated_revenue: number | null
+  created_at: string
+}
+
+export interface YtTrafficSource {
+  yt_video_id: string
+  date: string
+  source_type: string
+  views: number
+  watch_time_minutes: number
+}
+
+export interface YtDemographics {
+  yt_video_id: string
+  age_group: string
+  gender: string
+  viewer_percentage: number
+  updated_at: string
+}
+
+export interface YtSnapshot {
+  id: string
+  workspace_id: string
+  yt_account_id: string
+  date: string
+  subscribers: number
+  total_views: number
+  total_watch_time_minutes: number
+  videos_count: number
+  subscribers_gained_30d: number | null
+  views_30d: number | null
+  watch_time_minutes_30d: number | null
+  estimated_revenue_30d: number | null
+  created_at: string
+}
+
+export interface YtComment {
+  id: string
+  workspace_id: string
+  yt_video_id: string
+  yt_comment_id: string
+  parent_id: string | null
+  author_name: string | null
+  author_channel_id: string | null
+  author_avatar_url: string | null
+  text: string | null
+  like_count: number
+  is_hidden: boolean
+  published_at: string | null
+  updated_at: string | null
+  created_at: string
+}
+
+export interface YtVideoWithStats extends YtVideo {
+  daily_stats: YtVideoDailyStats[]
+  traffic_sources: YtTrafficSource[]
+  demographics: YtDemographics[]
+}
