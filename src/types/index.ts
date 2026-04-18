@@ -1231,3 +1231,63 @@ export interface WorkflowAsset {
   created_at: string
   updated_at: string
 }
+
+// ─── Social Multi-Platform Posts ────────────────────────────────────────────
+export type SocialPlatform = 'instagram' | 'youtube' | 'tiktok'
+
+export type SocialPostStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'publishing'
+  | 'published'
+  | 'partial'
+  | 'failed'
+
+export type SocialPostMediaType = 'IMAGE' | 'VIDEO' | 'CAROUSEL' | 'SHORT' | 'LONG_VIDEO'
+
+export interface SocialPost {
+  id: string
+  workspace_id: string
+  title: string | null
+  caption: string | null
+  hashtags: string[]
+  media_urls: string[]
+  media_type: SocialPostMediaType | null
+  thumbnail_url: string | null
+  status: SocialPostStatus
+  scheduled_at: string | null
+  published_at: string | null
+  pillar_id: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SocialPublicationStatus =
+  | 'pending'
+  | 'publishing'
+  | 'published'
+  | 'failed'
+  | 'skipped'
+
+export interface SocialPostPublication {
+  id: string
+  social_post_id: string
+  workspace_id: string
+  platform: SocialPlatform
+  config: Record<string, unknown>
+  scheduled_at: string | null
+  status: SocialPublicationStatus
+  provider_post_id: string | null
+  public_url: string | null
+  published_at: string | null
+  error_message: string | null
+  retry_count: number
+  last_attempt_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SocialPostWithPublications extends SocialPost {
+  publications: SocialPostPublication[]
+}
