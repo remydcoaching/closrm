@@ -28,15 +28,15 @@ export default function KanbanColumn({
       ref={setNodeRef}
       style={{
         minWidth: 280, maxWidth: 280, flexShrink: 0,
-        background: isOver ? 'var(--bg-hover)' : 'var(--bg-subtle)',
-        border: '1px solid var(--border-primary)',
-        borderRadius: 12, padding: 10,
-        display: 'flex', flexDirection: 'column', gap: 8,
+        background: isOver ? 'var(--bg-hover)' : 'transparent',
+        border: 'none',
+        borderRadius: 0, padding: 0,
+        display: 'flex', flexDirection: 'column', gap: 10,
         maxHeight: 'calc(100vh - 220px)',
         transition: 'background 0.1s',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 4px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px' }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.color as string, flexShrink: 0 }} />
         <span style={{
           fontSize: 12, fontWeight: 700, color: 'var(--text-primary)',
