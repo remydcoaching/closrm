@@ -579,27 +579,49 @@ function AssetField({ assetId, onChange }: {
   }, [assetId])
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={labelStyle}>
-        <Paperclip size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-        Asset à joindre (optionnel)
-      </label>
+    <div style={{
+      marginTop: 18, padding: 14, borderRadius: 10,
+      background: 'var(--bg-surface)', border: '1px solid var(--border-primary)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        fontSize: 13, fontWeight: 700, color: 'var(--text-primary)',
+        marginBottom: 4,
+      }}>
+        <Paperclip size={14} />
+        Asset à joindre
+        <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)' }}>· optionnel</span>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+        Lien, vocal pré-enregistré ou fichier — réutilisable entre workflows
+      </div>
 
       {asset ? (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 12px', borderRadius: 8,
+          padding: '12px 14px', borderRadius: 8,
           background: ASSET_TYPE_META[asset.type].bg,
           border: `1px solid ${ASSET_TYPE_META[asset.type].color}`,
         }}>
           {(() => {
             const Icon = ASSET_TYPE_META[asset.type].icon
-            return <Icon size={14} style={{ color: ASSET_TYPE_META[asset.type].color, flexShrink: 0 }} />
+            return (
+              <div style={{
+                width: 36, height: 36, borderRadius: 8,
+                background: 'rgba(0,0,0,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <Icon size={16} style={{ color: ASSET_TYPE_META[asset.type].color }} />
+              </div>
+            )
           })()}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{asset.name}</div>
             <div style={{
-              fontSize: 10, color: 'var(--text-muted)',
+              fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{asset.name}</div>
+            <div style={{
+              fontSize: 11, color: 'var(--text-muted)', marginTop: 2,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {ASSET_TYPE_META[asset.type].label}
@@ -609,8 +631,8 @@ function AssetField({ assetId, onChange }: {
             onClick={() => setOpen(true)}
             style={{
               background: 'transparent', border: '1px solid var(--border-primary)',
-              borderRadius: 6, padding: '4px 8px', fontSize: 11,
-              color: 'var(--text-secondary)', cursor: 'pointer',
+              borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 600,
+              color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0,
             }}
           >
             Changer
@@ -620,11 +642,11 @@ function AssetField({ assetId, onChange }: {
             title="Retirer"
             style={{
               background: 'transparent', border: 'none',
-              padding: 4, cursor: 'pointer', color: 'var(--text-muted)',
-              display: 'flex', alignItems: 'center',
+              padding: 6, cursor: 'pointer', color: 'var(--text-muted)',
+              display: 'flex', alignItems: 'center', flexShrink: 0,
             }}
           >
-            <X size={14} />
+            <X size={16} />
           </button>
         </div>
       ) : (
@@ -632,14 +654,14 @@ function AssetField({ assetId, onChange }: {
           onClick={() => setOpen(true)}
           disabled={loading}
           style={{
-            width: '100%', padding: 10, borderRadius: 8,
+            width: '100%', padding: '14px', borderRadius: 8,
             background: 'var(--bg-input)', border: '1px dashed var(--border-primary)',
-            color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
           }}
         >
-          <Paperclip size={13} />
-          <span>{loading ? 'Chargement…' : 'Choisir un asset (lien, vocal, fichier)'}</span>
+          <Paperclip size={15} />
+          <span>{loading ? 'Chargement…' : 'Choisir un asset'}</span>
         </button>
       )}
 

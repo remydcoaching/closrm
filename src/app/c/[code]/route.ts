@@ -167,7 +167,6 @@ function buildYoutubeAppOpenHtml(videoId: string, webUrl: string): string {
       var appUrl = ${jsAppUrl};
       var androidIntent = ${jsAndroidIntent};
       var isAndroid = /Android/i.test(navigator.userAgent);
-      var opened = false;
 
       // Fallback après 1500ms : si on est toujours là, on charge le web.
       var fallback = setTimeout(function() {
@@ -179,7 +178,6 @@ function buildYoutubeAppOpenHtml(videoId: string, webUrl: string): string {
       // Si la page est cachée (app a pris le relais), on annule le fallback.
       document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
-          opened = true;
           clearTimeout(fallback);
         }
       });
