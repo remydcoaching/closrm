@@ -10,6 +10,7 @@ import LeadDetail from '@/components/leads/LeadDetail'
 import LeadMessagesTab from '@/components/leads/LeadMessagesTab'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
+import LeadAttributionBlock from '@/components/leads/LeadAttributionBlock'
 
 interface LeadWithRelations extends Lead {
   calls: Call[]
@@ -212,15 +213,17 @@ export default function LeadDetailPage() {
               </p>
             </div>
             <div style={{ paddingTop: 8, borderTop: '1px solid var(--border-primary)' }}>
-              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Source publicitaire</p>
-              {lead.meta_campaign_id ? (
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  <p>Campagne : {lead.meta_campaign_id}</p>
-                  {lead.meta_adset_id && <p>Ad Set : {lead.meta_adset_id}</p>}
-                  {lead.meta_ad_id && <p>Ad : {lead.meta_ad_id}</p>}
-                </div>
+              {lead.meta_campaign_id || lead.meta_adset_id || lead.meta_ad_id ? (
+                <LeadAttributionBlock
+                  meta_campaign_id={lead.meta_campaign_id}
+                  meta_adset_id={lead.meta_adset_id}
+                  meta_ad_id={lead.meta_ad_id}
+                />
               ) : (
-                <p style={{ fontSize: 12, color: 'var(--text-label)' }}>Non disponible</p>
+                <>
+                  <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Origine publicitaire</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-label)' }}>Non disponible</p>
+                </>
               )}
             </div>
           </div>

@@ -24,6 +24,7 @@ import MessageInput from '@/components/messages/MessageInput'
 import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
+import LeadAttributionBlock from '@/components/leads/LeadAttributionBlock'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
@@ -267,6 +268,17 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                 </div>
               </div>
             </div>
+
+            {/* Origine publicitaire (si Lead Ads) */}
+            {(lead.meta_campaign_id || lead.meta_adset_id || lead.meta_ad_id) && (
+              <div style={{ marginBottom: 14 }}>
+                <LeadAttributionBlock
+                  meta_campaign_id={lead.meta_campaign_id}
+                  meta_adset_id={lead.meta_adset_id}
+                  meta_ad_id={lead.meta_ad_id}
+                />
+              </div>
+            )}
 
             {/* Status */}
             <div style={card}>

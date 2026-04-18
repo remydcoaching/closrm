@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('leads')
-      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, assigned_to, instagram_handle, created_at, updated_at', { count: 'exact' })
+      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, assigned_to, instagram_handle, meta_campaign_id, meta_adset_id, meta_ad_id, created_at, updated_at', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .order(filters.sort, { ascending: filters.order === 'asc' })
 
@@ -71,6 +71,11 @@ export async function GET(request: NextRequest) {
     if (filters.import_batch_id) {
       query = query.eq('import_batch_id', filters.import_batch_id)
     }
+
+    // Filtre par publicité Meta
+    if (filters.meta_campaign_id) query = query.eq('meta_campaign_id', filters.meta_campaign_id)
+    if (filters.meta_adset_id) query = query.eq('meta_adset_id', filters.meta_adset_id)
+    if (filters.meta_ad_id) query = query.eq('meta_ad_id', filters.meta_ad_id)
 
     // Filtre par tags (au moins un des tags listés)
     if (filters.tags) {
