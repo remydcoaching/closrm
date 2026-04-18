@@ -10,7 +10,7 @@ import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import FollowUpStatusBadge from '@/components/follow-ups/FollowUpStatusBadge'
 import ChannelBadge from '@/components/follow-ups/ChannelBadge'
 import AddFollowUpModal from '@/components/follow-ups/AddFollowUpModal'
-import FollowUpActionModal, { type FollowUpAction } from '@/components/follow-ups/FollowUpActionModal'
+import LeadActionModal, { type LeadAction } from '@/components/leads/LeadActionModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
@@ -148,16 +148,28 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
     fetchCounts()
   }
 
-  async function handleAction(fu: FUWithLead, action: FollowUpAction) {
+  async function handleAction(fu: FUWithLead, action: LeadAction) {
     if (action.type === 'schedule_call') {
       await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'fait' }) })
       setScheduleLeadId(fu)
       return
-    } else if (action.type === 'reschedule') {
+    } else if (action.type === 'follow_up') {
       await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'fait' }) })
       await fetch('/api/follow-ups', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lead_id: fu.lead.id, reason: action.reason, scheduled_at: action.date, channel: action.channel }),
+      })
+    } else if (action.type === 'won') {
+      await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'fait' }) })
+      await fetch(`/api/leads/${fu.lead.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'clos',
+          deal_amount: action.deal_amount,
+          deal_installments: action.deal_installments,
+          cash_collected: action.cash_collected,
+          closed_at: new Date().toISOString(),
+        }),
       })
     } else if (action.type === 'dead') {
       await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'annule' }) })
@@ -302,7 +314,7 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
 
       {/* Modals */}
       {showAdd && <AddFollowUpModal onClose={() => setShowAdd(false)} onCreated={refresh} />}
-      {actionTarget && <FollowUpActionModal followUp={actionTarget} onClose={() => setActionTarget(null)} onAction={(action) => handleAction(actionTarget, action)} />}
+      {actionTarget && <LeadActionModal lead={actionTarget.lead} onClose={() => setActionTarget(null)} onAction={(action) => handleAction(actionTarget, action)} />}
       {scheduleLeadId && <CallScheduleModal lead={scheduleLeadId.lead} onClose={() => { setScheduleLeadId(null); refresh() }} onScheduled={() => { setScheduleLeadId(null); refresh() }} />}
       {deleteTarget && <ConfirmModal title="Supprimer la relance" message={`Supprimer la relance pour ${deleteTarget.lead.first_name} ${deleteTarget.lead.last_name} ?`} confirmLabel="Supprimer" confirmDanger onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />}
       {sidePanelLeadId && <LeadSidePanel leadId={sidePanelLeadId} onClose={() => setSidePanelLeadId(null)} />}

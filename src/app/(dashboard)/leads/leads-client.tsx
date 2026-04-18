@@ -186,6 +186,14 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         body: JSON.stringify({ lead_id: lead.id, reason: action.reason, scheduled_at: action.date, channel: action.channel }),
       })
       // pas de refresh liste : la relance est créée, le lead lui-même n'a pas changé
+    } else if (action.type === 'won') {
+      patchLead(lead.id, {
+        status: 'clos',
+        deal_amount: action.deal_amount,
+        deal_installments: action.deal_installments,
+        cash_collected: action.cash_collected,
+        closed_at: new Date().toISOString(),
+      } as Partial<Lead>)
     } else if (action.type === 'dead') {
       patchLead(lead.id, { status: 'dead' })
     }
