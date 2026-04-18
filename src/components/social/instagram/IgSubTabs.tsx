@@ -4,7 +4,6 @@ const TABS = [
   { key: 'general', label: 'Général' },
   { key: 'stories', label: 'Stories' },
   { key: 'reels', label: 'Reels' },
-  { key: 'calendar', label: 'Calendrier' },
   { key: 'comments', label: 'Commentaires' },
 ] as const
 

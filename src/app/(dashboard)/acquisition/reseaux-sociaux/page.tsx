@@ -7,8 +7,8 @@ import IgNotConnected from '@/components/social/instagram/IgNotConnected'
 import IgGeneralTab from '@/components/social/instagram/IgGeneralTab'
 import IgStoriesTab from '@/components/social/instagram/IgStoriesTab'
 import IgReelsTab from '@/components/social/instagram/IgReelsTab'
-import IgCalendarTab from '@/components/social/instagram/IgCalendarTab'
 import IgCommentsTab from '@/components/social/instagram/IgCommentsTab'
+import SocialCalendarView from '@/components/social/calendar/SocialCalendarView'
 import YtNotConnected from '@/components/social/youtube/YtNotConnected'
 import YtSubTabs from '@/components/social/youtube/YtSubTabs'
 import YtOverviewTab from '@/components/social/youtube/YtOverviewTab'
@@ -146,6 +146,8 @@ export default function ReseauxSociauxPage() {
           {error}
           <button onClick={fetchAccounts} style={{ display: 'block', margin: '12px auto 0', padding: '8px 20px', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: 'pointer' }}>Réessayer</button>
         </div>
+      ) : platform === 'calendar' ? (
+        <SocialCalendarView />
       ) : platform === 'instagram' ? (
         !igAccount ? (
           <IgNotConnected />
@@ -155,7 +157,6 @@ export default function ReseauxSociauxPage() {
             {igTab === 'general' && <IgGeneralTab onLinkAccount={handleLinkAccount} />}
             {igTab === 'stories' && <IgStoriesTab />}
             {igTab === 'reels' && <IgReelsTab />}
-            {igTab === 'calendar' && <IgCalendarTab />}
             {igTab === 'comments' && <IgCommentsTab />}
           </>
         )
