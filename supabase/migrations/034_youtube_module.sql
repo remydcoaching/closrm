@@ -11,7 +11,7 @@ ALTER TABLE integrations ADD CONSTRAINT integrations_type_check
 -- ═════════════════════════════════════════════════════════
 -- 2. yt_accounts (1 channel YouTube par workspace en V1)
 -- ═════════════════════════════════════════════════════════
-CREATE TABLE yt_accounts (
+CREATE TABLE IF NOT EXISTS yt_accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   channel_id TEXT NOT NULL,
@@ -30,12 +30,12 @@ CREATE TABLE yt_accounts (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (workspace_id)                  -- V1: 1 channel / workspace
 );
-CREATE INDEX idx_yt_accounts_workspace ON yt_accounts(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_yt_accounts_workspace ON yt_accounts(workspace_id);
 
 -- ═════════════════════════════════════════════════════════
 -- 3. yt_videos (vidéos publiées, shorts + long)
 -- ═════════════════════════════════════════════════════════
-CREATE TABLE yt_videos (
+CREATE TABLE IF NOT EXISTS yt_videos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   yt_account_id UUID NOT NULL REFERENCES yt_accounts(id) ON DELETE CASCADE,
@@ -71,14 +71,14 @@ CREATE TABLE yt_videos (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (workspace_id, yt_video_id)
 );
-CREATE INDEX idx_yt_videos_workspace ON yt_videos(workspace_id, published_at DESC);
-CREATE INDEX idx_yt_videos_account ON yt_videos(yt_account_id);
-CREATE INDEX idx_yt_videos_format ON yt_videos(workspace_id, format);
+CREATE INDEX IF NOT EXISTS idx_yt_videos_workspace ON yt_videos(workspace_id, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_yt_videos_account ON yt_videos(yt_account_id);
+CREATE INDEX IF NOT EXISTS idx_yt_videos_format ON yt_videos(workspace_id, format);
 
 -- ═════════════════════════════════════════════════════════
 -- 4. yt_video_daily_stats (historique jour/jour par vidéo)
 -- ═════════════════════════════════════════════════════════
-CREATE TABLE yt_video_daily_stats (
+CREATE TABLE IF NOT EXISTS yt_video_daily_stats (
   yt_video_id UUID NOT NULL REFERENCES yt_videos(id) ON DELETE CASCADE,
   date DATE NOT NULL,
   views BIGINT DEFAULT 0,
@@ -96,7 +96,7 @@ CREATE TABLE yt_video_daily_stats (
 -- ═════════════════════════════════════════════════════════
 -- 5. yt_traffic_sources (d'où viennent les vues)
 -- ═════════════════════════════════════════════════════════
-CREATE TABLE yt_traffic_sources (
+CREATE TABLE IF NOT EXISTS yt_traffic_sources (
   yt_video_id UUID NOT NULL REFERENCES yt_videos(id) ON DELETE CASCADE,
   date DATE NOT NULL,
   source_type TEXT NOT NULL,             -- BROWSE, SEARCH, SUGGESTED, EXTERNAL, PLAYLIST, NOTIFICATION, CHANNEL, etc.
@@ -108,7 +108,7 @@ CREATE TABLE yt_traffic_sources (
 -- ═════════════════════════════════════════════════════════
 -- 6. yt_demographics (démographie viewers par vidéo)
 -- ═════════════════════════════════════════════════════════
-CREATE TABLE yt_demographics (
+CREATE TABLE IF NOT EXISTS yt_demographics (
   yt_video_id UUID NOT NULL REFERENCES yt_videos(id) ON DELETE CASCADE,
   age_group TEXT NOT NULL,               -- age13-17, age18-24, ...
   gender TEXT NOT NULL,                  -- male, female, user_specified, unknown
@@ -120,7 +120,7 @@ CREATE TABLE yt_demographics (
 -- ═════════════════════════════════════════════════════════
 -- 7. yt_snapshots (KPIs quotidiens au niveau channel)
 -- ═════════════════════════════════════════════════════════
-CREATE TABLE yt_snapshots (
+CREATE TABLE IF NOT EXISTS yt_snapshots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   yt_account_id UUID NOT NULL REFERENCES yt_accounts(id) ON DELETE CASCADE,
@@ -136,12 +136,12 @@ CREATE TABLE yt_snapshots (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (workspace_id, date)
 );
-CREATE INDEX idx_yt_snapshots_workspace ON yt_snapshots(workspace_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_yt_snapshots_workspace ON yt_snapshots(workspace_id, date DESC);
 
 -- ═════════════════════════════════════════════════════════
 -- 8. yt_comments (commentaires vidéos + réponses)
 -- ═════════════════════════════════════════════════════════
-CREATE TABLE yt_comments (
+CREATE TABLE IF NOT EXISTS yt_comments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   yt_video_id UUID NOT NULL REFERENCES yt_videos(id) ON DELETE CASCADE,
@@ -158,8 +158,8 @@ CREATE TABLE yt_comments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (workspace_id, yt_comment_id)
 );
-CREATE INDEX idx_yt_comments_video ON yt_comments(yt_video_id, published_at DESC);
-CREATE INDEX idx_yt_comments_parent ON yt_comments(parent_id) WHERE parent_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_yt_comments_video ON yt_comments(yt_video_id, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_yt_comments_parent ON yt_comments(parent_id) WHERE parent_id IS NOT NULL;
 
 -- ═════════════════════════════════════════════════════════
 -- 9. RLS (workspace_members)
@@ -171,6 +171,14 @@ ALTER TABLE yt_traffic_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE yt_demographics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE yt_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE yt_comments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "yt_accounts_workspace" ON yt_accounts;
+DROP POLICY IF EXISTS "yt_videos_workspace" ON yt_videos;
+DROP POLICY IF EXISTS "yt_video_daily_stats_workspace" ON yt_video_daily_stats;
+DROP POLICY IF EXISTS "yt_traffic_sources_workspace" ON yt_traffic_sources;
+DROP POLICY IF EXISTS "yt_demographics_workspace" ON yt_demographics;
+DROP POLICY IF EXISTS "yt_snapshots_workspace" ON yt_snapshots;
+DROP POLICY IF EXISTS "yt_comments_workspace" ON yt_comments;
 
 CREATE POLICY "yt_accounts_workspace" ON yt_accounts FOR ALL
   USING (workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()));
@@ -197,12 +205,14 @@ CREATE POLICY "yt_comments_workspace" ON yt_comments FOR ALL
   USING (workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()));
 
 -- ═════════════════════════════════════════════════════════
--- 10. Triggers updated_at
+-- 10. Triggers updated_at (réutilise update_updated_at() de schema.sql)
 -- ═════════════════════════════════════════════════════════
+DROP TRIGGER IF EXISTS yt_accounts_updated_at ON yt_accounts;
 CREATE TRIGGER yt_accounts_updated_at
   BEFORE UPDATE ON yt_accounts
-  FOR EACH ROW EXECUTE FUNCTION trg_social_posts_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS yt_videos_updated_at ON yt_videos;
 CREATE TRIGGER yt_videos_updated_at
   BEFORE UPDATE ON yt_videos
-  FOR EACH ROW EXECUTE FUNCTION trg_social_posts_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();

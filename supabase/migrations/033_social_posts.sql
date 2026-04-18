@@ -105,25 +105,17 @@ CREATE POLICY "spp_delete" ON social_post_publications FOR DELETE
   USING (workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()));
 
 -- ═════════════════════════════════════════════════════════
--- 4. Trigger updated_at
+-- 4. Trigger updated_at (fonction update_updated_at() déjà définie dans schema.sql)
 -- ═════════════════════════════════════════════════════════
-CREATE OR REPLACE FUNCTION trg_social_posts_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
 DROP TRIGGER IF EXISTS social_posts_updated_at ON social_posts;
 CREATE TRIGGER social_posts_updated_at
   BEFORE UPDATE ON social_posts
-  FOR EACH ROW EXECUTE FUNCTION trg_social_posts_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 DROP TRIGGER IF EXISTS social_post_publications_updated_at ON social_post_publications;
 CREATE TRIGGER social_post_publications_updated_at
   BEFORE UPDATE ON social_post_publications
-  FOR EACH ROW EXECUTE FUNCTION trg_social_posts_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ═════════════════════════════════════════════════════════
 -- 5. Backfill depuis ig_drafts
