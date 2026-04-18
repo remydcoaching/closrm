@@ -1,7 +1,10 @@
 'use client'
 
-import type { WorkflowStep, WorkflowActionType } from '@/types'
+import { useState, useEffect } from 'react'
+import { Paperclip, Link2, Mic, FileText, X } from 'lucide-react'
+import type { WorkflowStep, WorkflowAsset } from '@/types'
 import TemplateVariableHelper from './TemplateVariableHelper'
+import AssetLibrary from './AssetLibrary'
 
 interface Props {
   step: WorkflowStep

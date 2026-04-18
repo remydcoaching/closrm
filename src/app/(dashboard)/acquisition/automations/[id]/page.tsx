@@ -454,7 +454,7 @@ export default function WorkflowEditorPage() {
         {/* Right: config panel with tabs */}
         <div
           style={{
-            width: 380,
+            width: 460,
             borderLeft: '1px solid var(--border-primary)',
             background: 'var(--bg-elevated)',
             overflowY: 'auto',
