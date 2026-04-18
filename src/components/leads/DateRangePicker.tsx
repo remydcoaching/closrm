@@ -28,28 +28,8 @@ interface DateRangePickerProps {
   onChange: (v: DateFilterPref) => void
 }
 
-const pillBase: React.CSSProperties = {
-  padding: '5px 11px',
-  borderRadius: 6,
-  border: '1px solid transparent',
-  background: 'transparent',
-  color: 'var(--text-muted)',
-  fontSize: 12,
-  fontWeight: 500,
-  cursor: 'pointer',
-  transition: 'all 0.15s',
-  whiteSpace: 'nowrap',
-  outline: 'none',
-  WebkitAppearance: 'none',
-}
-
-const pillActive: React.CSSProperties = {
-  ...pillBase,
-  background: 'rgba(0,200,83,0.12)',
-  borderColor: 'rgba(0,200,83,0.4)',
-  color: 'var(--color-primary)',
-  fontWeight: 600,
-}
+// Styles gérés par la classe .period-pill dans globals.css
+// pour garantir l'absence de focus ring résiduel.
 
 export default function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   const [customOpen, setCustomOpen] = useState(false)
@@ -117,9 +97,9 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
           <div key={p.value} style={{ position: 'relative' }} ref={p.value === 'custom' ? popRef : undefined}>
             <button
               type="button"
+              className={`period-pill${active ? ' is-active' : ''}`}
               onClick={(e) => { applyPreset(p.value); e.currentTarget.blur() }}
               onMouseDown={(e) => e.preventDefault()}
-              style={active ? pillActive : pillBase}
             >
               {label}
             </button>
@@ -148,12 +128,12 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
       <div style={{ position: 'relative' }} ref={fieldRef}>
         <button
           type="button"
-          onClick={() => setFieldOpen(o => !o)}
+          className="period-pill"
+          onClick={(e) => { setFieldOpen(o => !o); e.currentTarget.blur() }}
+          onMouseDown={(e) => e.preventDefault()}
           title="Champ de date"
           style={{
-            ...pillBase,
             padding: '5px 10px',
-            color: 'var(--text-muted)',
             fontSize: 11,
             border: '1px dashed var(--border-primary)',
             marginLeft: 4,
