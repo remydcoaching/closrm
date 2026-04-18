@@ -256,6 +256,52 @@ export async function GET() {
     steps.push({ step: 'run_sync', ok: false, detail: String(err) })
   }
 
+  // Step 5c: inspect bookings in DB
+  try {
+    const weekStart = new Date()
+    weekStart.setDate(weekStart.getDate() - 7)
+    const weekEnd = new Date()
+    weekEnd.setDate(weekEnd.getDate() + 30)
+
+    const { data: allBookings, count: totalCount } = await supabase
+      .from('bookings')
+      .select('id, title, scheduled_at, is_personal, source, status, calendar_id, google_event_id', { count: 'exact' })
+      .eq('workspace_id', workspaceId)
+      .gte('scheduled_at', weekStart.toISOString())
+      .lte('scheduled_at', weekEnd.toISOString())
+      .order('scheduled_at', { ascending: true })
+
+    const googleSynced = (allBookings ?? []).filter((b) => b.source === 'google_sync')
+    const byStatus = (allBookings ?? []).reduce((acc: Record<string, number>, b) => {
+      acc[b.status || 'null'] = (acc[b.status || 'null'] || 0) + 1
+      return acc
+    }, {})
+    const bySource = (allBookings ?? []).reduce((acc: Record<string, number>, b) => {
+      acc[b.source || 'null'] = (acc[b.source || 'null'] || 0) + 1
+      return acc
+    }, {})
+
+    steps.push({
+      step: 'inspect_db_bookings',
+      ok: true,
+      detail: {
+        total_in_range: totalCount,
+        by_status: byStatus,
+        by_source: bySource,
+        google_sync_count: googleSynced.length,
+        sample_google_synced: googleSynced.slice(0, 5).map((b) => ({
+          id: b.id,
+          title: b.title,
+          scheduled_at: b.scheduled_at,
+          is_personal: b.is_personal,
+          status: b.status,
+        })),
+      },
+    })
+  } catch (err) {
+    steps.push({ step: 'inspect_db_bookings', ok: false, detail: String(err) })
+  }
+
   // Step 6: try to create a throwaway test event
   const testStart = new Date(Date.now() + 365 * 86400000) // 1 year in future
   const testEnd = new Date(testStart.getTime() + 15 * 60000)

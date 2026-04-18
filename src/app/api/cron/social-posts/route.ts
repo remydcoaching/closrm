@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { createMediaContainer, pollContainerStatus, publishContainer } from '@/lib/instagram/api'
+import { getValidYoutubeAccessToken } from '@/lib/youtube/api'
+import { uploadYoutubeVideo } from '@/lib/youtube/upload'
 
-export const maxDuration = 120
+export const maxDuration = 300
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
