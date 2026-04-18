@@ -185,7 +185,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lead_id: lead.id, reason: action.reason, scheduled_at: action.date, channel: action.channel }),
       })
-      setRefreshKey(k => k + 1)
+      // pas de refresh liste : la relance est créée, le lead lui-même n'a pas changé
     } else if (action.type === 'dead') {
       patchLead(lead.id, { status: 'dead' })
     }

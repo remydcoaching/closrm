@@ -431,9 +431,9 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
 
             {/* Follow-ups — editable dates */}
             <div style={card}>
-              <div style={sectionTitle}>Follow-ups ({lead.follow_ups.length})</div>
+              <div style={sectionTitle}>Relances ({lead.follow_ups.length})</div>
               {lead.follow_ups.length === 0 ? (
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun follow-up</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucune relance</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {lead.follow_ups.map((fu) => (

@@ -22,7 +22,7 @@ const NAV = [
       { label: 'Agenda', href: '/agenda', icon: CalendarDays },
       { label: 'Leads', href: '/leads', icon: Users },
       { label: 'Closing', href: '/closing', icon: Phone },
-      { label: 'Follow-ups', href: '/follow-ups', icon: Bell },
+      { label: 'Relances', href: '/follow-ups', icon: Bell },
       { label: 'Statistiques', href: '/statistiques', icon: BarChart2 },
       { label: 'Base de données', href: '/base-de-donnees', icon: Database },
     ],

@@ -121,7 +121,7 @@ export default function LeadActionModal({ lead, onClose, onAction }: Props) {
                 <option value="manuel">Manuel</option>
                 <option value="whatsapp">WhatsApp</option>
                 <option value="email">Email</option>
-                <option value="instagram">Instagram</option>
+                <option value="instagram_dm">Instagram DM</option>
               </select>
             </div>
 
