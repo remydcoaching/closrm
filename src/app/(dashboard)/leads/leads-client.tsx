@@ -9,6 +9,7 @@ import LeadForm from '@/components/leads/LeadForm'
 import ClosingModal from '@/components/leads/ClosingModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
+import LeadActionModal, { type LeadAction } from '@/components/leads/LeadActionModal'
 import DateRangePicker from '@/components/leads/DateRangePicker'
 import ViewToggle from '@/components/leads/ViewToggle'
 import LeadsListView from './views/LeadsListView'
@@ -62,6 +63,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   const [showForm, setShowForm] = useState(false)
   const [confirm, setConfirm] = useState<{ title: string; message: string; danger?: boolean; onConfirm: () => void } | null>(null)
   const [scheduleTarget, setScheduleTarget] = useState<Lead | null>(null)
+  const [treatTarget, setTreatTarget] = useState<Lead | null>(null)
   const [closingTarget, setClosingTarget] = useState<Lead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -174,6 +176,21 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
     })
   }
 
+  async function handleLeadAction(lead: Lead, action: LeadAction) {
+    if (action.type === 'schedule_call') {
+      setScheduleTarget(lead)
+    } else if (action.type === 'follow_up') {
+      await fetch('/api/follow-ups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: lead.id, reason: action.reason, scheduled_at: action.date, channel: action.channel }),
+      })
+      setRefreshKey(k => k + 1)
+    } else if (action.type === 'dead') {
+      patchLead(lead.id, { status: 'dead' })
+    }
+  }
+
   function onLeadCreated(lead: Lead) {
     setLeads(prev => [lead, ...prev])
     setMeta(prev => ({ ...prev, total: prev.total + 1 }))
@@ -257,7 +274,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
           onLeadClick={(id) => setSidePanelLeadId(id)}
           onPatch={(id, patch) => patchLead(id, patch)}
           onCall={callLead}
-          onSchedule={setScheduleTarget}
+          onTreat={setTreatTarget}
           onArchive={archiveLead}
           onRequestClose={setClosingTarget}
         />
@@ -276,6 +293,13 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         />
       )}
 
+      {treatTarget && (
+        <LeadActionModal
+          lead={treatTarget}
+          onClose={() => setTreatTarget(null)}
+          onAction={(action) => handleLeadAction(treatTarget, action)}
+        />
+      )}
       {showForm && <LeadForm onClose={() => setShowForm(false)} onCreated={onLeadCreated} />}
       {scheduleTarget && (
         <CallScheduleModal
