@@ -97,8 +97,7 @@ export async function GET(request: NextRequest) {
 
       // Poll for video
       if (isVideo) {
-        const status = await pollContainerStatus(publishToken, containerId)
-        if (status === 'ERROR') throw new Error('Video processing failed')
+        await pollContainerStatus(publishToken, containerId)
       }
 
       // Publish
