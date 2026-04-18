@@ -21,6 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { Layers, Save, X, Plus } from 'lucide-react'
 import type { MetaInsightsResponse } from '@/app/api/meta/insights/route'
+import type { AdPerformanceRow } from '@/app/api/meta/ad-performance/route'
 
 interface AdsTableTabProps {
   data: MetaInsightsResponse | null
@@ -29,10 +30,12 @@ interface AdsTableTabProps {
   campaignType?: string
   dateFrom?: string
   dateTo?: string
+  crmMap?: Map<string, AdPerformanceRow>
   onRowClick?: (id: string, name: string) => void
 }
 
 type ColumnKey = 'name' | 'status' | 'spend' | 'impressions' | 'clicks' | 'ctr' | 'leads' | 'cpl'
+  | 'crm_leads' | 'qualified' | 'calls' | 'closed' | 'revenue' | 'cpl_qualified' | 'roas'
 type SortKey = Exclude<ColumnKey, 'status'>
 type SortState = { key: SortKey; dir: 'asc' | 'desc' } | null
 
@@ -52,12 +55,16 @@ interface SavedView {
   columns: ColumnKey[]
 }
 
-const ALL_COLUMN_KEYS: ColumnKey[] = ['name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl']
+const ALL_COLUMN_KEYS: ColumnKey[] = [
+  'name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl',
+  'crm_leads', 'qualified', 'calls', 'closed', 'revenue', 'cpl_qualified', 'roas',
+]
 
 const DEFAULT_VIEWS: SavedView[] = [
-  { id: 'essential', name: 'Essentiel', columns: ['name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl'] },
+  { id: 'essential', name: 'Essentiel', columns: ['name', 'status', 'spend', 'crm_leads', 'qualified', 'closed', 'revenue', 'roas'] },
   { id: 'video', name: 'Performance vidéo', columns: ['name', 'status', 'spend', 'impressions', 'clicks', 'ctr'] },
-  { id: 'funnel', name: 'Funnel complet', columns: ['name', 'status', 'spend', 'leads', 'cpl', 'clicks', 'ctr'] },
+  { id: 'funnel', name: 'Funnel complet', columns: ['name', 'status', 'spend', 'crm_leads', 'qualified', 'calls', 'closed', 'revenue', 'roas', 'cpl_qualified'] },
+  { id: 'meta', name: 'Données Meta', columns: ['name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl'] },
 ]
 
 function loadCustomViews(tabKey: string): SavedView[] {
@@ -81,11 +88,18 @@ const ALL_COLUMNS: ColumnDef[] = [
   { key: 'name', label: 'Nom', sortable: true, align: 'left', defaultVisible: true },
   { key: 'status', label: 'Statut', sortable: false, align: 'left', defaultVisible: true },
   { key: 'spend', label: 'Dépensé', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'impressions', label: 'Impressions', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'clicks', label: 'Clics', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'ctr', label: 'CTR', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'leads', label: 'Leads', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'cpl', label: 'CPL', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'crm_leads', label: 'Leads CRM', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'qualified', label: 'Qualifiés', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'calls', label: 'Appels', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'closed', label: 'Closés', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'revenue', label: 'CA', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'roas', label: 'ROAS', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'cpl_qualified', label: 'CPL qualifié', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'impressions', label: 'Impressions', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'clicks', label: 'Clics', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'ctr', label: 'CTR', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'leads', label: 'Leads Meta', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cpl', label: 'CPL Meta', sortable: true, align: 'right', defaultVisible: false },
 ]
 
 const COLUMN_MAP = new Map(ALL_COLUMNS.map(c => [c.key, c]))
@@ -250,7 +264,7 @@ function SortableHeaderCell({
 
 /* ── Main component ──────────────────────────────────────────── */
 
-export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTableTabProps) {
+export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick }: AdsTableTabProps) {
   const [sort, setSort] = useState<SortState>(null)
   const [search, setSearch] = useState('')
 
@@ -413,15 +427,36 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
     return data.breakdown.filter(row => row.name.toLowerCase().includes(q))
   }, [data, search])
 
+  // CRM value extractor
+  const crmValue = useCallback((id: string, key: SortKey): number | null | string => {
+    const crm = crmMap?.get(id)
+    if (!crm) return 0
+    switch (key) {
+      case 'crm_leads': return crm.lead_count
+      case 'qualified': return crm.qualified_count
+      case 'calls': return crm.calls_count
+      case 'closed': return crm.closed_count
+      case 'revenue': return crm.revenue
+      case 'cpl_qualified': return crm.cpl_qualified ?? 0
+      case 'roas': return crm.roas ?? 0
+      default: return 0
+    }
+  }, [crmMap])
+
   // Sort
   const sorted = useMemo(() => {
     const rows = [...filtered]
     const sortKey = sort?.key ?? 'spend'
     const sortDir = sort?.dir ?? 'desc'
+    const crmKeys: SortKey[] = ['crm_leads', 'qualified', 'calls', 'closed', 'revenue', 'cpl_qualified', 'roas']
 
     return rows.sort((a, b) => {
-      const valA = a[sortKey] ?? 0
-      const valB = b[sortKey] ?? 0
+      const valA = crmKeys.includes(sortKey)
+        ? (crmValue(a.id, sortKey) as number)
+        : (a[sortKey as Exclude<SortKey, 'crm_leads' | 'qualified' | 'calls' | 'closed' | 'revenue' | 'cpl_qualified' | 'roas'>] ?? 0)
+      const valB = crmKeys.includes(sortKey)
+        ? (crmValue(b.id, sortKey) as number)
+        : (b[sortKey as Exclude<SortKey, 'crm_leads' | 'qualified' | 'calls' | 'closed' | 'revenue' | 'cpl_qualified' | 'roas'>] ?? 0)
       if (typeof valA === 'string' && typeof valB === 'string') {
         return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
       }
@@ -429,7 +464,7 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
         ? (valA as number) - (valB as number)
         : (valB as number) - (valA as number)
     })
-  }, [filtered, sort])
+  }, [filtered, sort, crmValue])
 
   if (loading || !data) {
     return <TableSkeleton />
@@ -451,6 +486,7 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
   }
 
   function renderCell(row: (typeof sorted)[0], col: ColumnDef) {
+    const crm = crmMap?.get(row.id)
     switch (col.key) {
       case 'name':
         return (
@@ -485,6 +521,24 @@ export default function AdsTableTab({ data, loading, tabKey, onRowClick }: AdsTa
         return <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{row.leads}</span>
       case 'cpl':
         return row.cpl !== null ? formatEuro(row.cpl) : '—'
+      case 'crm_leads':
+        return <span style={{ fontWeight: 600 }}>{crm?.lead_count ?? 0}</span>
+      case 'qualified':
+        return <span style={{ color: '#38A169', fontWeight: 500 }}>{crm?.qualified_count ?? 0}</span>
+      case 'calls':
+        return crm?.calls_count ?? 0
+      case 'closed':
+        return <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{crm?.closed_count ?? 0}</span>
+      case 'revenue':
+        return <span style={{ fontWeight: 600 }}>{crm?.revenue ? formatEuro(crm.revenue) : '—'}</span>
+      case 'cpl_qualified':
+        return crm?.cpl_qualified != null ? formatEuro(crm.cpl_qualified) : '—'
+      case 'roas': {
+        const v = crm?.roas
+        if (v == null) return '—'
+        const color = v >= 1 ? '#38A169' : v < 1 ? '#f59e0b' : 'var(--text-muted)'
+        return <span style={{ color, fontWeight: 600 }}>{Math.round(v * 100)}%</span>
+      }
     }
   }
 
