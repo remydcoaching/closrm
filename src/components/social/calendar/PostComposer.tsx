@@ -111,7 +111,7 @@ export default function PostComposer({ defaultDate, editingPost, onClose, onSave
     setMediaUrls((prev) => prev.filter((_, i) => i !== idx))
   }
 
-  async function submit() {
+  async function submit(mode: 'schedule' | 'now' = 'schedule') {
     setError(null)
     if (!enabledPlatforms.instagram && !enabledPlatforms.youtube) {
       return setError('Sélectionne au moins une plateforme')
@@ -120,7 +120,10 @@ export default function PostComposer({ defaultDate, editingPost, onClose, onSave
       return setError('Le titre YouTube est requis')
     }
 
-    const iso = new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
+    const iso =
+      mode === 'now'
+        ? new Date(Date.now() - 1000).toISOString()
+        : new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
     const mediaType =
       mediaUrls.length === 0
         ? null
@@ -485,8 +488,23 @@ export default function PostComposer({ defaultDate, editingPost, onClose, onSave
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={onClose} style={btnSecondary}>Annuler</button>
+            {!editingPost && (
+              <button
+                onClick={() => submit('now')}
+                disabled={submitting}
+                style={{
+                  padding: '9px 20px', fontSize: 12, fontWeight: 600, borderRadius: 7,
+                  background: 'transparent', color: '#22c55e',
+                  border: '1px solid #22c55e',
+                  cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1,
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                }}
+              >
+                Publier maintenant
+              </button>
+            )}
             <button
-              onClick={submit}
+              onClick={() => submit('schedule')}
               disabled={submitting}
               style={{
                 padding: '9px 20px', fontSize: 12, fontWeight: 600, borderRadius: 7,
