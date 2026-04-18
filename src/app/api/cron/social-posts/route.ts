@@ -41,11 +41,15 @@ export async function GET(request: NextRequest) {
       await supabase.from('social_post_publications').update({ status: 'publishing' }).eq('id', pub.id)
 
       if (pub.platform === 'instagram') {
-        await publishToInstagram(supabase, pub, post)
+        await publishToInstagram(supabase, { id: pub.id, workspace_id: pub.workspace_id }, post)
         published++
       } else if (pub.platform === 'youtube') {
-        await markFailed(supabase, pub.id, 'Publication YouTube automatique non supportée — upload manuel requis')
-        errors++
+        await publishToYoutube(
+          supabase,
+          { id: pub.id, workspace_id: pub.workspace_id, config: pub.config ?? {}, scheduled_at: pub.scheduled_at },
+          post,
+        )
+        published++
       } else {
         await markFailed(supabase, pub.id, `Plateforme non supportée : ${pub.platform}`)
         errors++
@@ -121,6 +125,59 @@ async function publishToInstagram(
     status: 'published',
     published_at: new Date().toISOString(),
     provider_post_id: igMediaId,
+    error_message: null,
+    last_attempt_at: new Date().toISOString(),
+  }).eq('id', pub.id)
+}
+
+async function publishToYoutube(
+  supabase: ReturnType<typeof createServiceClient>,
+  pub: { id: string; workspace_id: string; config: Record<string, unknown>; scheduled_at: string | null },
+  post: { title: string | null; caption: string | null; hashtags: string[] | null; media_urls: string[] | null; media_type: string | null },
+) {
+  if (!post.media_urls?.length) throw new Error('Aucun média')
+
+  const mt = (post.media_type ?? '').toUpperCase()
+  const isVideo = mt === 'VIDEO' || mt === 'REEL' || mt === 'REELS' || mt === 'SHORT' || mt === 'LONG_VIDEO'
+  if (!isVideo) throw new Error('YouTube accepte uniquement des vidéos')
+
+  const token = await getValidYoutubeAccessToken(pub.workspace_id)
+  if (!token) throw new Error('YouTube non connecté ou token invalide')
+
+  let mediaUrl = post.media_urls[0]
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  if (mediaUrl.includes(supabaseUrl) && mediaUrl.includes('/content-drafts/')) {
+    const filePath = mediaUrl.split('/content-drafts/').pop()
+    if (filePath) {
+      const { data: signed } = await supabase.storage.from('content-drafts').createSignedUrl(filePath, 1800)
+      if (signed?.signedUrl) mediaUrl = signed.signedUrl
+    }
+  }
+
+  const cfg = pub.config as {
+    title?: string
+    description?: string
+    privacy_status?: 'public' | 'unlisted' | 'private'
+    tags?: string[]
+  }
+
+  const title = cfg.title || post.title || (post.caption ?? '').slice(0, 90) || 'Untitled'
+  const description = cfg.description ?? post.caption ?? ''
+  const privacy = cfg.privacy_status ?? 'private'
+  const tags = cfg.tags ?? post.hashtags ?? undefined
+
+  const result = await uploadYoutubeVideo(token, mediaUrl, {
+    title,
+    description,
+    tags,
+    privacyStatus: privacy,
+  })
+
+  await supabase.from('social_post_publications').update({
+    status: 'published',
+    published_at: new Date().toISOString(),
+    provider_post_id: result.id,
+    public_url: result.url,
     error_message: null,
     last_attempt_at: new Date().toISOString(),
   }).eq('id', pub.id)
