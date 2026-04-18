@@ -31,14 +31,16 @@ interface DateRangePickerProps {
 const pillBase: React.CSSProperties = {
   padding: '5px 11px',
   borderRadius: 6,
-  border: '1px solid var(--border-primary)',
+  border: '1px solid transparent',
   background: 'transparent',
-  color: 'var(--text-secondary)',
+  color: 'var(--text-muted)',
   fontSize: 12,
   fontWeight: 500,
   cursor: 'pointer',
   transition: 'all 0.15s',
   whiteSpace: 'nowrap',
+  outline: 'none',
+  WebkitAppearance: 'none',
 }
 
 const pillActive: React.CSSProperties = {
@@ -115,7 +117,8 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
           <div key={p.value} style={{ position: 'relative' }} ref={p.value === 'custom' ? popRef : undefined}>
             <button
               type="button"
-              onClick={() => applyPreset(p.value)}
+              onClick={(e) => { applyPreset(p.value); e.currentTarget.blur() }}
+              onMouseDown={(e) => e.preventDefault()}
               style={active ? pillActive : pillBase}
             >
               {label}
@@ -152,7 +155,8 @@ export default function DateRangePicker({ value, onChange }: DateRangePickerProp
             padding: '5px 10px',
             color: 'var(--text-muted)',
             fontSize: 11,
-            borderStyle: 'dashed',
+            border: '1px dashed var(--border-primary)',
+            marginLeft: 4,
           }}
         >
           {fieldLabel}
