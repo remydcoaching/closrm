@@ -185,6 +185,21 @@ export default function PostComposer({ defaultDate, editingPost, onClose, onSave
         const err = await res.json().catch(() => ({}))
         throw new Error(typeof err.error === 'string' ? err.error : `Erreur ${res.status}`)
       }
+
+      if (mode === 'now') {
+        const created = await res.json().catch(() => ({}))
+        const postId = created?.data?.id
+        if (postId) {
+          const pubRes = await fetch(`/api/social/posts/${postId}/publish`, { method: 'POST' })
+          const pubJson = await pubRes.json().catch(() => ({}))
+          if (!pubRes.ok) {
+            throw new Error(typeof pubJson.error === 'string' ? pubJson.error : `Erreur publication ${pubRes.status}`)
+          }
+          if ((pubJson.errors ?? 0) > 0 && (pubJson.published ?? 0) === 0) {
+            throw new Error('La publication a échoué. Vérifie la fiche du post pour plus de détails.')
+          }
+        }
+      }
       onSaved()
     } catch (e) {
       setError((e as Error).message)
