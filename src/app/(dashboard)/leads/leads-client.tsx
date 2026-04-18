@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Plus, Settings2, Search } from 'lucide-react'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 import { Lead, LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
@@ -33,6 +34,14 @@ const DEFAULT_COLUMNS: LeadStatus[] = [
 ]
 
 export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientProps) {
+  const urlParams = useSearchParams()
+  const metaAdId = urlParams?.get('meta_ad_id') ?? undefined
+  const metaAdsetId = urlParams?.get('meta_adset_id') ?? undefined
+  const metaCampaignId = urlParams?.get('meta_campaign_id') ?? undefined
+  const metaFilter = useMemo(
+    () => ({ ad_id: metaAdId, adset_id: metaAdsetId, campaign_id: metaCampaignId }),
+    [metaAdId, metaAdsetId, metaCampaignId],
+  )
   const [view, setView] = useState<LeadsView>('list')
   const [columnsPref, setColumnsPref] = useState<KanbanColumnsPref>({
     visible: [...DEFAULT_COLUMNS],
@@ -108,7 +117,9 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
 
   useEffect(() => {
     if (view !== 'list') return
-    if (isInitialMount.current) { isInitialMount.current = false; return }
+    const hasUrlFilter = !!(metaFilter.ad_id || metaFilter.adset_id || metaFilter.campaign_id)
+    if (isInitialMount.current && !hasUrlFilter) { isInitialMount.current = false; return }
+    if (isInitialMount.current) isInitialMount.current = false
     let cancelled = false
     async function doFetch() {
       setLoading(true)
@@ -123,6 +134,9 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         if (dateFilter.from) params.set('date_from', dateFilter.from)
         if (dateFilter.to)   params.set('date_to', dateFilter.to)
         params.set('date_field', dateFilter.field)
+        if (metaFilter.ad_id) params.set('meta_ad_id', metaFilter.ad_id)
+        if (metaFilter.adset_id) params.set('meta_adset_id', metaFilter.adset_id)
+        if (metaFilter.campaign_id) params.set('meta_campaign_id', metaFilter.campaign_id)
 
         const res = await fetch(`/api/leads?${params.toString()}`)
         const json = await res.json()
@@ -131,9 +145,9 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
     }
     doFetch()
     return () => { cancelled = true }
-  }, [view, page, debouncedSearch, statuses, sources, assignedTo, dateFilter, refreshKey])
+  }, [view, page, debouncedSearch, statuses, sources, assignedTo, dateFilter, metaFilter, refreshKey])
 
-  useEffect(() => { setPage(1) }, [debouncedSearch, statuses, sources, assignedTo, dateFilter])
+  useEffect(() => { setPage(1) }, [debouncedSearch, statuses, sources, assignedTo, dateFilter, metaFilter])
 
   function patchLead(id: string, patch: Partial<Lead>) {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))

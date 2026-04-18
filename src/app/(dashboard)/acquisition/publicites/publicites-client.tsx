@@ -9,9 +9,10 @@ import AdsOverviewTab from './ads-overview-tab'
 import AdsTableTab from './ads-table-tab'
 import AdsCampaignTypeToggle, { type CampaignTypeFilter } from './ads-campaign-type-toggle'
 import AdsPerformanceTab from './ads-performance-tab'
+import AttributionTab from './attribution-tab'
 import AdCreativePanel from '@/components/ads/AdCreativePanel'
 
-type TabKey = 'overview' | 'performance' | 'campaigns' | 'adsets' | 'ads'
+type TabKey = 'overview' | 'performance' | 'campaigns' | 'adsets' | 'ads' | 'attribution'
 
 interface PublicitesClientProps {
   connectionState: MetaConnectionState
@@ -31,6 +32,7 @@ const TAB_TO_LEVEL: Record<TabKey, string> = {
   campaigns: 'campaign',
   adsets: 'adset',
   ads: 'ad',
+  attribution: 'account', // not used — tab fetches its own endpoint
 }
 
 function formatDate(d: Date): string {
@@ -64,6 +66,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
 
   const fetchInsights = useCallback(async () => {
     if (connectionState !== 'connected') return
+    if (tab === 'attribution') return // attribution tab fetches its own endpoint
 
     setLoading(true)
     setError(null)
@@ -181,7 +184,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
   function getTabLabel(key: TabKey): string {
     if (key === 'adsets' && drillDown.campaignName) return `Ad Sets`
     if (key === 'ads' && drillDown.adsetName) return `Ads`
-    return { overview: "Vue d'ensemble", performance: 'Performance', campaigns: 'Campagnes', adsets: 'Ad Sets', ads: 'Ads' }[key]
+    return { overview: "Vue d'ensemble", performance: 'Performance', campaigns: 'Campagnes', adsets: 'Ad Sets', ads: 'Ads', attribution: 'Attribution' }[key]
   }
 
   // Banner states
@@ -205,7 +208,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     )
   }
 
-  const tabs: TabKey[] = ['overview', 'performance', 'campaigns', 'adsets', 'ads']
+  const tabs: TabKey[] = ['overview', 'performance', 'campaigns', 'adsets', 'ads', 'attribution']
 
   return (
     <div style={{ padding: 32 }}>
@@ -340,7 +343,10 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
           closedCount={closedCount}
         />
       )}
-      {!error && tab !== 'overview' && tab !== 'performance' && (
+      {!error && tab === 'attribution' && (
+        <AttributionTab dateFrom={dateFrom} dateTo={dateTo} />
+      )}
+      {!error && tab !== 'overview' && tab !== 'performance' && tab !== 'attribution' && (
         <AdsTableTab
           data={data}
           loading={loading}
