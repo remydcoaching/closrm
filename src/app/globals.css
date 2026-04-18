@@ -102,6 +102,45 @@ html, body {
 *:hover { scrollbar-color: var(--scrollbar-thumb) transparent; }
 *:hover::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
+/* Pills de période — pas de focus ring résiduel, pas de border par défaut */
+.period-pill {
+  padding: 5px 11px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: none !important;
+}
+.period-pill:hover { color: var(--text-secondary); }
+.period-pill:focus,
+.period-pill:focus-visible,
+.period-pill:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent;
+}
+.period-pill.is-active {
+  background: rgba(0,200,83,0.12);
+  border-color: rgba(0,200,83,0.4);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.period-pill.is-active:focus,
+.period-pill.is-active:focus-visible,
+.period-pill.is-active:active {
+  border-color: rgba(0,200,83,0.4);
+}
+.period-pill::-moz-focus-inner { border: 0; padding: 0; }
+
 @keyframes float {
   0%, 100% { transform: translate(0, 0); }
   33% { transform: translate(20px, -20px); }
