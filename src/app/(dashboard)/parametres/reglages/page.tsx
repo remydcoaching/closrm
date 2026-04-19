@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserCircle2, Building2, Palette, Link2, ShieldAlert } from 'lucide-react'
+import { UserCircle2, Building2, Palette, Link2, ShieldAlert, CreditCard } from 'lucide-react'
 import ProfileForm from '@/components/settings/ProfileForm'
 import WorkspaceForm from '@/components/settings/WorkspaceForm'
 import BrandingForm from '@/components/settings/BrandingForm'
 import DeleteAccount from '@/components/settings/DeleteAccount'
+import PlanOverview from '@/components/settings/PlanOverview'
 
 interface UserData {
   id: string
@@ -208,6 +209,16 @@ export default function ReglagesPage() {
         </header>
 
         <div style={{ borderTop: '1px solid var(--border-primary)', marginTop: 24 }}>
+          <Section
+            icon={<CreditCard size={18} />}
+            title="Plan & Consommation"
+            description="Votre plan actuel, quotas inclus et consommation de la période."
+          >
+            <PlanOverview />
+          </Section>
+
+          <div style={{ borderTop: '1px solid var(--border-primary)' }} />
+
           <Section
             icon={<UserCircle2 size={18} />}
             title="Profil"
