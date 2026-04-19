@@ -156,8 +156,6 @@ export const ROUTE_VISIBILITY: Record<string, WorkspaceRole[]> = {
   '/acquisition/messages': ['admin', 'setter', 'closer'],
   '/acquisition/publicites': ['admin'],
   '/parametres/reglages': ['admin'],
-  '/parametres/plan': ['admin'],
-  '/parametres/domaines-email': ['admin'],
   '/parametres/integrations': ['admin'],
   '/parametres/calendriers': ['admin'],
   '/parametres/equipe': ['admin'],
