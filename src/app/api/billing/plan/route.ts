@@ -32,7 +32,9 @@ export async function GET() {
       .single<BillingPlan>()
 
     const usage = await getCurrentUsage(workspaceId)
-    const resources: ResourceType[] = ['email', 'ai_tokens', 'whatsapp']
+    // V1 : on ne facture que les emails. IA = chacun sa clé Anthropic perso,
+    // WhatsApp = pas encore implémenté. Réactiver quand Stripe sera en place.
+    const resources: ResourceType[] = ['email']
     const quotas = await Promise.all(resources.map((r) => getQuotaInfo(workspaceId, r)))
 
     return NextResponse.json({

@@ -1,5 +1,5 @@
 import { sendEmail } from '@/lib/email/client'
-import { getWorkspaceSenderConfig } from '@/lib/email/sender-config'
+import { getWorkspaceSenderConfig, SENDER_FALLBACK_EMAIL, SENDER_FALLBACK_NAME } from '@/lib/email/sender-config'
 import { consumeResource } from '@/lib/billing/service'
 
 interface BookingConfirmationParams {
@@ -128,13 +128,12 @@ function buildBookingConfirmationHtml(params: BookingConfirmationParams): string
 }
 
 /**
- * Send a booking confirmation email via Resend.
+ * Send a booking confirmation email via AWS SES.
  */
 export async function sendBookingConfirmationEmail(
   params: BookingConfirmationParams
 ): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return
+  if (!process.env.AWS_ACCESS_KEY_ID) return
 
   // Quota check si workspaceId fourni (on skip pour les envois hors workspace,
   // ex. email test sans contexte, pour ne pas casser les anciens appels)
@@ -157,10 +156,10 @@ export async function sendBookingConfirmationEmail(
 
   const senderConfig = params.workspaceId
     ? await getWorkspaceSenderConfig(params.workspaceId, { fromName: params.coachName })
-    : { fromEmail: 'noreply@closrm.fr', fromName: params.coachName || 'ClosRM' }
+    : { fromEmail: SENDER_FALLBACK_EMAIL, fromName: params.coachName || SENDER_FALLBACK_NAME }
 
   await sendEmail(
-    { apiKey, fromEmail: senderConfig.fromEmail, fromName: senderConfig.fromName },
+    { fromEmail: senderConfig.fromEmail, fromName: senderConfig.fromName },
     params.to,
     subject,
     html,

@@ -7,8 +7,9 @@ export async function execute(
   config: Record<string, unknown>,
   context: ExecutionContext
 ): Promise<{ success: boolean; result?: Record<string, unknown>; error?: string }> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return { success: true, result: { skipped: true, reason: 'RESEND_API_KEY not configured' } }
+  if (!process.env.AWS_ACCESS_KEY_ID) {
+    return { success: true, result: { skipped: true, reason: 'AWS_ACCESS_KEY_ID not configured' } }
+  }
 
   const to = context.lead?.email as string
   if (!to) return { success: false, error: 'Lead has no email address' }
@@ -46,7 +47,7 @@ export async function execute(
   })
 
   const result = await sendEmail(
-    { apiKey, fromEmail: senderConfig.fromEmail, fromName: senderConfig.fromName },
+    { fromEmail: senderConfig.fromEmail, fromName: senderConfig.fromName },
     to,
     subject,
     htmlBody

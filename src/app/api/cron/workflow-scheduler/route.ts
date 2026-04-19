@@ -354,9 +354,8 @@ export async function GET(request: NextRequest) {
               if (!lead.email) {
                 sendError = "Pas d'adresse email"
               } else {
-                const apiKey = process.env.RESEND_API_KEY
-                if (!apiKey) {
-                  sendError = 'RESEND_API_KEY non configurée'
+                if (!process.env.AWS_ACCESS_KEY_ID) {
+                  sendError = 'AWS SES non configuré'
                 } else {
                   const quotaResult = await consumeResource({
                     workspaceId: reminder.workspace_id,
@@ -369,7 +368,7 @@ export async function GET(request: NextRequest) {
                     sendError = quotaResult.error_message || 'Quota email dépassé'
                   } else {
                     const result = await sendEmail(
-                      { apiKey },
+                      {},
                       lead.email,
                       'Rappel de votre rendez-vous',
                       `<p>${reminder.message.replace(/\n/g, '<br>')}</p>`

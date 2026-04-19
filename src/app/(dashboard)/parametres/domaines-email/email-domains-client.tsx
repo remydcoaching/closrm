@@ -414,6 +414,14 @@ function AddDomainModal({ onClose, onCreated }: { onClose: () => void; onCreated
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)

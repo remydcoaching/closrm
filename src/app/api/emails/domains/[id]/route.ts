@@ -49,19 +49,31 @@ export async function PATCH(request: Request, context: RouteContext) {
     )
   }
 
-  const updates: Record<string, string> = {}
+  const updates: Record<string, string | null> = {}
   if (body.default_from_email !== undefined) {
     const email = String(body.default_from_email).trim().toLowerCase()
-    if (email && !email.endsWith(`@${existing.domain}`)) {
-      return NextResponse.json(
-        { error: `L'email expéditeur doit utiliser le domaine @${existing.domain}.` },
-        { status: 400 },
-      )
+    if (!email) {
+      updates.default_from_email = null
+    } else {
+      if (!email.endsWith(`@${existing.domain}`)) {
+        return NextResponse.json(
+          { error: `L'email expéditeur doit utiliser le domaine @${existing.domain}.` },
+          { status: 400 },
+        )
+      }
+      const localPart = email.slice(0, -(existing.domain.length + 1))
+      if (!localPart || !/^[a-z0-9._-]+$/i.test(localPart)) {
+        return NextResponse.json(
+          { error: `Email invalide : la partie avant @ doit être renseignée et ne contenir que lettres, chiffres, ., _ ou -.` },
+          { status: 400 },
+        )
+      }
+      updates.default_from_email = email
     }
-    updates.default_from_email = email
   }
   if (body.default_from_name !== undefined) {
-    updates.default_from_name = String(body.default_from_name).trim()
+    const name = String(body.default_from_name).trim()
+    updates.default_from_name = name || null
   }
 
   const { data, error } = await supabase

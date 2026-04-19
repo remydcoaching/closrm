@@ -136,11 +136,11 @@ export default function PlanPage() {
             marginTop: 20,
           }}
         >
-          <MetricCard label="Sièges actifs" value={`${workspace.seats_count}${plan.max_seats ? ` / ${plan.max_seats}` : ''}`} />
+          <MetricCard label="Sièges actifs" value={`${workspace.seats_count ?? 1}${plan.max_seats ? ` / ${plan.max_seats}` : ''}`} />
           <MetricCard
             label="Wallet"
-            value={`${(workspace.wallet_balance_cents / 100).toFixed(2)}€`}
-            subtle={workspace.wallet_auto_recharge_enabled ? `Auto-recharge : ${(workspace.wallet_auto_recharge_amount_cents / 100).toFixed(0)}€` : 'Auto-recharge désactivée'}
+            value={`${((workspace.wallet_balance_cents ?? 0) / 100).toFixed(2)}€`}
+            subtle={workspace.wallet_auto_recharge_enabled ? `Auto-recharge : ${((workspace.wallet_auto_recharge_amount_cents ?? 0) / 100).toFixed(0)}€` : 'Auto-recharge désactivée'}
           />
           <MetricCard
             label="Période"
@@ -174,9 +174,8 @@ export default function PlanPage() {
 
         {!isInternal && (
           <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 16, lineHeight: 1.6 }}>
-            Au-delà du quota inclus, l&apos;usage est facturé sur votre wallet : {(plan.overage_email_price_cents_per_1k / 100).toFixed(2)}€ / 1 000 emails,
-            {' '}{(plan.overage_ai_tokens_price_cents_per_1k / 100).toFixed(2)}€ / 1 000 tokens IA,
-            {' '}{(plan.overage_whatsapp_price_cents_per_1k / 100).toFixed(2)}€ / 100 WhatsApp.
+            Au-delà du quota inclus, l&apos;usage est facturé sur votre wallet :{' '}
+            {(plan.overage_email_price_cents_per_1k / 100).toFixed(2)}€ / 1 000 emails.
           </p>
         )}
       </section>

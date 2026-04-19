@@ -127,15 +127,14 @@ export async function POST(_request: Request, context: RouteContext) {
     }
   })
 
-  // Send batch
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) {
+  // Send batch via AWS SES
+  if (!process.env.AWS_ACCESS_KEY_ID) {
     await supabase.from('email_broadcasts').update({ status: 'failed' }).eq('id', id)
-    return NextResponse.json({ error: 'RESEND_API_KEY non configuré' }, { status: 500 })
+    return NextResponse.json({ error: 'AWS SES non configuré' }, { status: 500 })
   }
 
   const result = await sendBatch(
-    { apiKey, fromEmail, fromName },
+    { fromEmail, fromName },
     recipients,
   )
 

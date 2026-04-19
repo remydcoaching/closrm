@@ -44,10 +44,13 @@ export async function getWorkspaceSenderConfig(
     .not('default_from_email', 'is', null)
     .order('updated_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   return {
     fromEmail: overrides?.fromEmail || data?.default_from_email || DEFAULT_FROM_EMAIL,
     fromName: overrides?.fromName || data?.default_from_name || DEFAULT_FROM_NAME,
   }
 }
+
+export const SENDER_FALLBACK_EMAIL = DEFAULT_FROM_EMAIL
+export const SENDER_FALLBACK_NAME = DEFAULT_FROM_NAME
