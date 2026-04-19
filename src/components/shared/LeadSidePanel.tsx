@@ -25,6 +25,7 @@ import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
 import LeadAttributionBlock from '@/components/leads/LeadAttributionBlock'
+import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
@@ -404,6 +405,12 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                 <input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTag()} placeholder="Ajouter un tag" style={{ ...inputS, flex: 1 }} />
                 <button onClick={addTag} style={{ ...smallBtn, width: 32 }}><Plus size={12} color="var(--color-primary)" /></button>
               </div>
+            </div>
+
+            {/* Paiements / Deals */}
+            <div style={card}>
+              <div style={sectionTitle}>Paiements</div>
+              <LeadDealsWidget leadId={leadId} />
             </div>
 
             {/* Notes multiples */}

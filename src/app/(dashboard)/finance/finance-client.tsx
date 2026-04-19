@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { TrendingUp, TrendingDown, Wallet, Repeat, Users, ExternalLink } from 'lucide-react'
+import { Wallet, Repeat, Users, ExternalLink, Trash2, TrendingUp } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { FinanceOverviewResponse } from '@/app/api/finance/overview/route'
@@ -36,9 +36,13 @@ export default function FinanceClient() {
   const [team, setTeam] = useState<MemberPerformance[]>([])
   const [deals, setDeals] = useState<DealWithLead[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
+    load()
+    return () => { cancelled = true }
+
     async function load() {
       setLoading(true)
       const [ovRes, teamRes, dealsRes] = await Promise.all([
@@ -53,9 +57,14 @@ export default function FinanceClient() {
         setLoading(false)
       }
     }
-    load()
-    return () => { cancelled = true }
-  }, [])
+  }, [refreshKey])
+
+  async function deleteDeal(deal: DealWithLead) {
+    const name = deal.lead ? `${deal.lead.first_name} ${deal.lead.last_name}` : 'ce client'
+    if (!confirm(`Supprimer le deal de ${formatEuro(Number(deal.amount))} pour ${name} ? Cette action est irréversible.`)) return
+    const res = await fetch(`/api/deals/${deal.id}`, { method: 'DELETE' })
+    if (res.ok) setRefreshKey(k => k + 1)
+  }
 
   const maxMrr = overview ? Math.max(1, ...overview.mrr_by_month.map(m => m.mrr)) : 1
 
@@ -181,11 +190,34 @@ export default function FinanceClient() {
                           {d.ends_at ? format(new Date(d.ends_at), 'dd MMM yy', { locale: fr }) : '—'}
                         </td>
                         <td style={{ ...td, textAlign: 'right' }}>
-                          {d.lead && (
-                            <Link href={`/leads/${d.lead.id}`} style={{ display: 'inline-flex', color: 'var(--text-tertiary)' }}>
-                              <ExternalLink size={12} />
-                            </Link>
-                          )}
+                          <div style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                            {d.lead && (
+                              <Link
+                                href={`/leads/${d.lead.id}`}
+                                title="Voir le lead"
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  width: 24, height: 24, borderRadius: 6,
+                                  border: '1px solid var(--border-primary)',
+                                  background: 'transparent', color: 'var(--text-tertiary)',
+                                }}
+                              >
+                                <ExternalLink size={11} />
+                              </Link>
+                            )}
+                            <button
+                              onClick={() => deleteDeal(d)}
+                              title="Supprimer le deal"
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                width: 24, height: 24, borderRadius: 6,
+                                border: '1px solid var(--border-primary)',
+                                background: 'transparent', cursor: 'pointer',
+                              }}
+                            >
+                              <Trash2 size={11} color="#ef4444" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
