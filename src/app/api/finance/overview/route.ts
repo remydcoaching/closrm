@@ -14,19 +14,32 @@ export interface FinanceOverviewResponse {
   mrr_by_month: { month: string; mrr: number }[]
 }
 
-// Compute MRR contribution of a deal at a given ISO date.
-// MRR = amount / duration_months if the deal is active at that date, else 0.
+// MRR contribution of a deal for a month starting at monthStart.
+// A deal contributes if its active period [started_at, ends_at] overlaps
+// the month window [monthStart, monthEnd]. Status must be 'active'.
+function dealMrrForMonth(
+  deal: { amount: number; duration_months: number | null; started_at: string; ends_at: string | null; status: string },
+  monthStart: Date,
+): number {
+  if (!deal.duration_months || deal.duration_months <= 0) return 0
+  if (deal.status !== 'active') return 0
+  const monthStartMs = monthStart.getTime()
+  const monthEndMs = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1).getTime() - 1
+  const start = new Date(deal.started_at).getTime()
+  const end = deal.ends_at ? new Date(deal.ends_at).getTime() : Infinity
+  // Overlap check
+  if (end < monthStartMs || start > monthEndMs) return 0
+  return deal.amount / deal.duration_months
+}
+
+// Backward-compat helper for point-in-time MRR (current month)
 function dealMrrAt(
   deal: { amount: number; duration_months: number | null; started_at: string; ends_at: string | null; status: string },
   atIso: string,
 ): number {
-  if (!deal.duration_months || deal.duration_months <= 0) return 0
-  if (deal.status !== 'active') return 0
-  const at = new Date(atIso).getTime()
-  const start = new Date(deal.started_at).getTime()
-  const end = deal.ends_at ? new Date(deal.ends_at).getTime() : Infinity
-  if (at < start || at > end) return 0
-  return deal.amount / deal.duration_months
+  const at = new Date(atIso)
+  const monthStart = new Date(at.getFullYear(), at.getMonth(), 1)
+  return dealMrrForMonth(deal, monthStart)
 }
 
 export async function GET(_request: NextRequest) {
@@ -81,9 +94,8 @@ export async function GET(_request: NextRequest) {
     const mrr_by_month: { month: string; mrr: number }[] = []
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const iso = d.toISOString()
       let sum = 0
-      for (const deal of all) sum += dealMrrAt(deal, iso)
+      for (const deal of all) sum += dealMrrForMonth(deal, d)
       mrr_by_month.push({
         month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
         mrr: Math.round(sum * 100) / 100,
