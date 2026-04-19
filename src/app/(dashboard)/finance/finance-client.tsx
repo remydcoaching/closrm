@@ -66,8 +66,6 @@ export default function FinanceClient() {
     if (res.ok) setRefreshKey(k => k + 1)
   }
 
-  const maxMrr = overview ? Math.max(1, ...overview.mrr_by_month.map(m => m.mrr)) : 1
-
   return (
     <div style={{ padding: 32 }}>
       <div style={{ marginBottom: 24 }}>
@@ -111,34 +109,8 @@ export default function FinanceClient() {
           </div>
 
           {/* MRR chart */}
-          <div style={{ ...card, marginBottom: 24 }}>
-            <div style={sectionTitle}>MRR sur 12 mois</div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 140 }}>
-              {overview.mrr_by_month.map((m) => {
-                const h = (m.mrr / maxMrr) * 100
-                return (
-                  <div key={m.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end' }}>
-                      <div
-                        title={`${m.month} : ${formatEuro(m.mrr)}`}
-                        style={{
-                          width: '100%',
-                          height: `${h}%`,
-                          minHeight: m.mrr > 0 ? 2 : 0,
-                          background: 'linear-gradient(180deg, var(--color-primary), rgba(0,200,83,0.4))',
-                          borderRadius: '4px 4px 0 0',
-                          transition: 'height 0.3s',
-                        }}
-                      />
-                    </div>
-                    <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>
-                      {m.month.slice(5)}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          <MrrChart data={overview.mrr_by_month} />
+
 
           {/* Deals actifs */}
           <div style={{ ...card, marginBottom: 24, padding: 0 }}>
@@ -279,3 +251,117 @@ export default function FinanceClient() {
     </div>
   )
 }
+
+function niceMax(value: number): number {
+  if (value <= 0) return 100
+  const exp = Math.floor(Math.log10(value))
+  const base = Math.pow(10, exp)
+  const mantissa = value / base
+  const rounded = mantissa <= 1 ? 1 : mantissa <= 2 ? 2 : mantissa <= 5 ? 5 : 10
+  return rounded * base
+}
+
+function MrrChart({ data }: { data: { month: string; mrr: number }[] }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const rawMax = Math.max(0, ...data.map(m => m.mrr))
+  const niceTop = niceMax(rawMax)
+  const CHART_HEIGHT = 160
+  const GRID_STEPS = 4
+  const gridValues = Array.from({ length: GRID_STEPS + 1 }, (_, i) => (niceTop / GRID_STEPS) * i)
+
+  return (
+    <div style={{ ...card, marginBottom: 24 }}>
+      <div style={sectionTitle}>MRR sur 12 mois</div>
+      <div style={{ display: 'flex', gap: 10 }}>
+        {/* Y axis */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          height: CHART_HEIGHT, fontSize: 10, color: 'var(--text-muted)', fontWeight: 500,
+          textAlign: 'right', minWidth: 44,
+        }}>
+          {[...gridValues].reverse().map((v) => (
+            <div key={v}>{formatEuro(v)}</div>
+          ))}
+        </div>
+
+        {/* Chart area */}
+        <div style={{ flex: 1, position: 'relative', height: CHART_HEIGHT + 24 }}>
+          {/* Gridlines */}
+          <div style={{ position: 'absolute', inset: `0 0 24px 0`, pointerEvents: 'none' }}>
+            {gridValues.map((_, i) => {
+              const yPct = (i / GRID_STEPS) * 100
+              return (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: 0, right: 0,
+                    bottom: `${yPct}%`,
+                    height: 1,
+                    background: i === 0 ? 'var(--border-primary)' : 'rgba(255,255,255,0.04)',
+                  }}
+                />
+              )
+            })}
+          </div>
+
+          {/* Bars */}
+          <div style={{ position: 'absolute', inset: `0 0 24px 0`, display: 'flex', alignItems: 'flex-end', gap: 4 }}>
+            {data.map((m, i) => {
+              const h = niceTop > 0 ? (m.mrr / niceTop) * 100 : 0
+              const active = hoverIdx === i
+              return (
+                <div
+                  key={m.month}
+                  onMouseEnter={() => setHoverIdx(i)}
+                  onMouseLeave={() => setHoverIdx(null)}
+                  style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'flex-end', position: 'relative', cursor: 'pointer' }}
+                >
+                  <div
+                    style={{
+                      width: '100%',
+                      height: `${h}%`,
+                      minHeight: m.mrr > 0 ? 2 : 0,
+                      background: active
+                        ? 'linear-gradient(180deg, #4ade80, var(--color-primary))'
+                        : 'linear-gradient(180deg, var(--color-primary), rgba(0,200,83,0.4))',
+                      borderRadius: '4px 4px 0 0',
+                      transition: 'all 0.15s',
+                    }}
+                  />
+                  {active && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: 8, padding: '6px 10px',
+                      fontSize: 11, fontWeight: 600, color: 'var(--text-primary)',
+                      boxShadow: '0 6px 18px rgba(0,0,0,0.5)',
+                      whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 10,
+                    }}>
+                      <div style={{ fontSize: 9, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        {m.month}
+                      </div>
+                      <div style={{ color: 'var(--color-primary)', fontSize: 13 }}>{formatEuro(m.mrr)}</div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* X axis labels */}
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, display: 'flex', gap: 4, height: 20 }}>
+            {data.map(m => (
+              <div key={m.month} style={{ flex: 1, textAlign: 'center', fontSize: 9.5, color: 'var(--text-muted)' }}>
+                {m.month.slice(5)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
