@@ -79,14 +79,31 @@ const ALL_COLUMN_KEYS: ColumnKey[] = [
 ]
 
 const DEFAULT_VIEWS: SavedView[] = [
-  { id: 'essential', name: 'Essentiel', columns: ['name', 'status', 'spend', 'crm_leads', 'qualified', 'closed', 'revenue', 'roas'] },
-  { id: 'meta', name: 'Données Meta', columns: ['name', 'status', 'spend', 'impressions', 'cpm', 'clicks', 'cpc', 'ctr', 'leads', 'cpl', 'frequency'] },
-  { id: 'video', name: 'Performance vidéo', columns: ['name', 'status', 'spend', 'impressions', 'hook_rate', 'hold_rate_25', 'hold_rate_50', 'hold_rate_75'] },
-  { id: 'appels', name: 'Funnel appels', columns: ['name', 'status', 'spend', 'crm_leads', 'calls_total', 'calls_reached', 'joignabilite', 'cpar', 'cr1'] },
-  { id: 'bookings', name: 'Funnel bookings', columns: ['name', 'status', 'spend', 'calls_reached', 'bookings_total', 'bookings_show_up', 'no_show_rate', 'cpsb', 'cpsp', 'cr2'] },
-  { id: 'closing', name: 'Closing', columns: ['name', 'status', 'spend', 'bookings_show_up', 'closed', 'closing_rate', 'cpclose', 'cr3'] },
-  { id: 'financier', name: 'Financier', columns: ['name', 'status', 'spend', 'closed', 'revenue', 'cash_collected', 'marge_brute', 'roas', 'cpl_qualified'] },
-  { id: 'funnel', name: 'Funnel complet', columns: ['name', 'status', 'spend', 'crm_leads', 'qualified', 'calls_reached', 'bookings_show_up', 'closed', 'revenue', 'roas'] },
+  {
+    id: 'simple',
+    name: 'Simple',
+    columns: ['name', 'status', 'spend', 'crm_leads', 'closed', 'revenue', 'roas'],
+  },
+  {
+    id: 'performance',
+    name: 'Performance',
+    columns: [
+      'name', 'status', 'spend',
+      'crm_leads', 'calls_total', 'calls_reached', 'joignabilite',
+      'cr1', 'bookings_total', 'cr2', 'bookings_show_up', 'no_show_rate',
+      'cr3', 'closed', 'closing_rate',
+    ],
+  },
+  {
+    id: 'business',
+    name: 'Business',
+    columns: [
+      'name', 'status', 'spend',
+      'crm_leads', 'qualified', 'closed',
+      'revenue', 'cash_collected', 'marge_brute',
+      'roas', 'cpl_qualified', 'cpclose',
+    ],
+  },
 ]
 
 function loadCustomViews(tabKey: string): SavedView[] {
