@@ -11,6 +11,7 @@ import LeadMessagesTab from '@/components/leads/LeadMessagesTab'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadAttributionBlock from '@/components/leads/LeadAttributionBlock'
+import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 
 interface LeadWithRelations extends Lead {
   calls: Call[]
@@ -183,8 +184,19 @@ export default function LeadDetailPage() {
         </div>
       ) : (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
-        {/* Colonne gauche — detail */}
-        <LeadDetail lead={lead} onUpdate={handleUpdate} />
+        {/* Colonne gauche — detail + paiements */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <LeadDetail lead={lead} onUpdate={handleUpdate} />
+          <div style={{
+            background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+            borderRadius: 14, padding: 20,
+          }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>
+              Paiements
+            </p>
+            <LeadDealsWidget leadId={lead.id} />
+          </div>
+        </div>
 
         {/* Colonne droite — infos rapides */}
         <div style={{
