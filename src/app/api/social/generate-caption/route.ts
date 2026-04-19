@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
-import { getApiKey, getBrief } from '@/lib/ai/brief'
+import { getBrief, getApiKey } from '@/lib/ai/brief'
 import { callClaude } from '@/lib/ai/client'
 
 export const maxDuration = 30
@@ -8,22 +8,22 @@ export const maxDuration = 30
 interface Body {
   platform: 'instagram' | 'youtube' | 'both'
   mediaType: 'IMAGE' | 'VIDEO' | 'SHORT' | 'CAROUSEL' | null
-  hint?: string            // free-text from user: what the post is about
-  currentCaption?: string  // to refine vs create fresh
+  hint?: string
+  currentCaption?: string
 }
 
 export async function POST(request: NextRequest) {
   try {
     const { workspaceId } = await getWorkspaceId()
     const body = (await request.json()) as Body
+    const brief = await getBrief(workspaceId)
     const apiKey = await getApiKey(workspaceId)
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Clé API Claude non configurée. Ajoute-la dans Paramètres > Assistant IA.' },
+        { error: 'Clé API non configurée. Allez dans Paramètres > Assistant IA.' },
         { status: 400 },
       )
     }
-    const brief = await getBrief(workspaceId)
 
     const platformTxt =
       body.platform === 'instagram'
@@ -68,7 +68,6 @@ Renvoie UNIQUEMENT la caption finale, rien d'autre.`
     const result = await callClaude(prompt, apiKey, 'claude-sonnet-4-20250514')
     if (!result.trim()) throw new Error('Réponse vide du modèle')
 
-    // Split caption + hashtags (hashtags are the last line starting with # tokens)
     const lines = result.trim().split('\n').filter(Boolean)
     let hashtagLine = ''
     let captionBody = result.trim()

@@ -1126,8 +1126,8 @@ export interface AiCoachBrief {
   approach: string | null
   example_messages: string | null
   goal: 'book_call' | 'sell_dm' | 'both'
-  generated_brief: string | null
   api_key: string | null
+  generated_brief: string | null
   wins_analyzed: number
   updated_at: string
   created_at: string

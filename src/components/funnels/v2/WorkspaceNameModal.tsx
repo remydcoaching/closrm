@@ -179,7 +179,7 @@ export default function WorkspaceNameModal({ onSaved, onCancel }: Props) {
             <>
               Vos pages seront accessibles sur :{' '}
               <span style={{ color: '#22d3ee' }}>
-                {typeof window !== 'undefined' ? window.location.host : 'closrm.com'}
+                {typeof window !== 'undefined' ? window.location.host : 'closrm.fr'}
                 /f/<strong>{normalized}</strong>/...
               </span>
             </>

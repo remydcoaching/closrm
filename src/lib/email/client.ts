@@ -19,7 +19,7 @@ export async function sendEmail(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: `${config.fromName || 'ClosRM'} <${config.fromEmail || 'noreply@closrm.com'}>`,
+      from: `${config.fromName || 'ClosRM'} <${config.fromEmail || 'noreply@closrm.fr'}>`,
       to: [to],
       subject,
       html: htmlBody,

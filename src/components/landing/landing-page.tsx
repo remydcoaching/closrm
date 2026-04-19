@@ -214,7 +214,7 @@ export default function LandingPage() {
             <p style={{ fontSize: 16, color: 'var(--text-tertiary)', maxWidth: 500, margin: '0 auto 40px' }}>Rejoignez les coachs qui utilisent ClosRM pour transformer leurs leads en clients.</p>
             <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/register" style={greenBtn}>Commencer gratuitement <ArrowRight size={16} /></Link>
-              <a href="mailto:contact@closrm.com" style={ghostBtn}>Nous contacter</a>
+              <a href="mailto:contact@closrm.fr" style={ghostBtn}>Nous contacter</a>
             </div>
           </FadeIn>
         </div>
@@ -227,7 +227,7 @@ export default function LandingPage() {
           <div style={{ display: 'flex', gap: 24, fontSize: 13, color: 'var(--text-tertiary)' }}>
             <a href="#features" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Fonctionnalités</a>
             <a href="#pricing" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Tarifs</a>
-            <a href="mailto:contact@closrm.com" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Contact</a>
+            <a href="mailto:contact@closrm.fr" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Contact</a>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>© {new Date().getFullYear()} ClosRM. Tous droits réservés.</div>
         </div>
