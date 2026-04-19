@@ -52,10 +52,11 @@ export default function LeadActionModal({ lead, onClose, onAction }: Props) {
       fetch('/api/auth/me').then(r => r.ok ? r.json() : { data: null }),
     ]).then(([mem, me]) => {
       setMembers(mem.data ?? [])
-      if (me.data?.id) {
-        setCurrentUserId(me.data.id)
+      const uid = me?.data?.userId ?? me?.data?.id
+      if (uid) {
+        setCurrentUserId(uid)
         if (me.data.role === 'closer' || me.data.role === 'admin') {
-          setCloserId(me.data.id)
+          setCloserId(uid)
         }
       }
     }).catch(() => { /* ignore */ })
