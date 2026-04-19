@@ -92,6 +92,26 @@ export interface Lead {
   updated_at: string
 }
 
+export type DealStatus = 'active' | 'completed' | 'churned' | 'refunded'
+
+export interface Deal {
+  id: string
+  workspace_id: string
+  lead_id: string
+  setter_id: string | null
+  closer_id: string | null
+  amount: number
+  cash_collected: number
+  installments: number
+  duration_months: number | null
+  started_at: string
+  ends_at: string | null
+  status: DealStatus
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type ImportBatchStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
 
 export type ImportDedupStrategy = 'email' | 'phone' | 'email_and_phone' | 'none'

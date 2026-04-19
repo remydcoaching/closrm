@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { X, Phone, Clock, RotateCcw, Skull, MessageCircle, Calendar, Send, Trophy } from 'lucide-react'
-import { Lead } from '@/types'
+import { Lead, WorkspaceMemberWithUser } from '@/types'
 
 interface Props {
   lead: Pick<Lead, 'id' | 'first_name' | 'last_name'>
@@ -13,7 +13,7 @@ interface Props {
 export type LeadAction =
   | { type: 'schedule_call'; leadId: string }
   | { type: 'follow_up'; date: string; reason: string; channel: string }
-  | { type: 'won'; deal_amount: number; deal_installments: number; cash_collected: number }
+  | { type: 'won'; amount: number; installments: number; cash_collected: number; duration_months: number | null; closer_id: string | null; setter_id: string | null }
   | { type: 'dead' }
 
 const INSTALLMENT_OPTIONS = [
@@ -40,6 +40,26 @@ export default function LeadActionModal({ lead, onClose, onAction }: Props) {
   const [dealAmount, setDealAmount] = useState('')
   const [installments, setInstallments] = useState(1)
   const [cashCollected, setCashCollected] = useState('')
+  const [durationMonths, setDurationMonths] = useState<number | null>(null)
+  const [closerId, setCloserId] = useState<string>('')
+  const [setterId, setSetterId] = useState<string>('')
+  const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string>('')
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/workspaces/members').then(r => r.ok ? r.json() : { data: [] }),
+      fetch('/api/auth/me').then(r => r.ok ? r.json() : { data: null }),
+    ]).then(([mem, me]) => {
+      setMembers(mem.data ?? [])
+      if (me.data?.id) {
+        setCurrentUserId(me.data.id)
+        if (me.data.role === 'closer' || me.data.role === 'admin') {
+          setCloserId(me.data.id)
+        }
+      }
+    }).catch(() => { /* ignore */ })
+  }, [])
 
   useEffect(() => {
     const amount = parseFloat(dealAmount)
@@ -66,7 +86,15 @@ export default function LeadActionModal({ lead, onClose, onAction }: Props) {
     const amount = parseFloat(dealAmount)
     const cash = parseFloat(cashCollected)
     if (isNaN(amount) || amount <= 0) return
-    onAction({ type: 'won', deal_amount: amount, deal_installments: installments, cash_collected: isNaN(cash) ? 0 : cash })
+    onAction({
+      type: 'won',
+      amount,
+      installments,
+      cash_collected: isNaN(cash) ? 0 : cash,
+      duration_months: durationMonths,
+      closer_id: closerId || null,
+      setter_id: setterId || null,
+    })
     onClose()
   }
 
@@ -217,7 +245,7 @@ export default function LeadActionModal({ lead, onClose, onAction }: Props) {
               </div>
             </div>
 
-            <div style={{ marginBottom: 22 }}>
+            <div style={{ marginBottom: 18 }}>
               <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 8, display: 'block' }}>Encaissé aujourd&apos;hui</label>
               <div style={{ position: 'relative' }}>
                 <input
@@ -230,7 +258,83 @@ export default function LeadActionModal({ lead, onClose, onAction }: Props) {
                 />
                 <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>€</span>
               </div>
+              {(() => {
+                const a = parseFloat(dealAmount)
+                const c = parseFloat(cashCollected)
+                if (!isNaN(a) && !isNaN(c) && a > 0) {
+                  const remaining = Math.max(0, a - c)
+                  const remainingPerInstallment = installments > 1 ? remaining / (installments - (c > 0 ? 1 : 0)) : remaining
+                  return (
+                    <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                      Reste à payer : <strong style={{ color: 'var(--text-primary)' }}>{remaining.toFixed(0)}€</strong>
+                      {installments > 1 && remaining > 0 && ` (soit ~${remainingPerInstallment.toFixed(0)}€ × ${installments - (c > 0 ? 1 : 0)} fois)`}
+                    </div>
+                  )
+                }
+                return null
+              })()}
             </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 8, display: 'block' }}>Durée d&apos;engagement</label>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {([
+                  { v: null, l: 'Aucune' },
+                  { v: 3, l: '3 mois' },
+                  { v: 6, l: '6 mois' },
+                  { v: 12, l: '12 mois' },
+                  { v: 24, l: '24 mois' },
+                ] as const).map(opt => {
+                  const active = durationMonths === opt.v
+                  return (
+                    <button
+                      key={opt.l}
+                      onClick={() => setDurationMonths(opt.v)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                        border: active ? '2px solid #38A169' : '1px solid var(--border-primary)',
+                        background: active ? 'rgba(56,161,105,0.10)' : 'transparent',
+                        color: active ? '#38A169' : 'var(--text-muted)',
+                      }}
+                    >
+                      {opt.l}
+                    </button>
+                  )
+                })}
+              </div>
+              {durationMonths != null && parseFloat(dealAmount) > 0 && (
+                <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                  MRR : <strong style={{ color: 'var(--text-primary)' }}>{(parseFloat(dealAmount) / durationMonths).toFixed(0)}€/mois</strong> pendant {durationMonths} mois
+                </div>
+              )}
+            </div>
+
+            {members.length > 0 && (
+              <div style={{ marginBottom: 22, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 6, display: 'block' }}>Closer</label>
+                  <select value={closerId} onChange={e => setCloserId(e.target.value)} style={{ ...inputS, cursor: 'pointer' }}>
+                    <option value="">—</option>
+                    {members.map(m => (
+                      <option key={m.user_id} value={m.user_id}>
+                        {m.user.full_name || m.user.email}{m.user_id === currentUserId ? ' (moi)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 6, display: 'block' }}>Setter</label>
+                  <select value={setterId} onChange={e => setSetterId(e.target.value)} style={{ ...inputS, cursor: 'pointer' }}>
+                    <option value="">—</option>
+                    {members.map(m => (
+                      <option key={m.user_id} value={m.user_id}>
+                        {m.user.full_name || m.user.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setMode('menu')} style={{ flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, border: '1px solid var(--border-primary)', background: 'transparent', color: 'var(--text-tertiary)', cursor: 'pointer' }}>Retour</button>

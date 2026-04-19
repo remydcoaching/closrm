@@ -161,14 +161,16 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
       })
     } else if (action.type === 'won') {
       await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'fait' }) })
-      await fetch(`/api/leads/${fu.lead.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      await fetch('/api/deals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'clos',
-          deal_amount: action.deal_amount,
-          deal_installments: action.deal_installments,
+          lead_id: fu.lead.id,
+          amount: action.amount,
           cash_collected: action.cash_collected,
-          closed_at: new Date().toISOString(),
+          installments: action.installments,
+          duration_months: action.duration_months,
+          closer_id: action.closer_id,
+          setter_id: action.setter_id,
         }),
       })
     } else if (action.type === 'dead') {
