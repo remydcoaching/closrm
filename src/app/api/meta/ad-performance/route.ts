@@ -30,6 +30,9 @@ export interface AdPerformanceRow {
   qualified_count: number
   closed_count: number
   calls_count: number
+  calls_reached: number
+  bookings_total: number
+  bookings_show_up: number
   revenue: number
   cash_collected: number
   cpl: number | null
@@ -93,27 +96,46 @@ export async function GET(request: NextRequest) {
     type LeadRow = { id: string; status: string; deal_amount: number | null; cash_collected: number | null; meta_campaign_id: string | null; meta_adset_id: string | null; meta_ad_id: string | null }
     const leads = (leadsData ?? []) as LeadRow[]
 
-    // 3. Fetch call counts per lead (single query)
+    // 3. Fetch call counts + reached per lead (single query)
     const leadIds = leads.map(l => l.id)
     const callCountByLead = new Map<string, number>()
+    const callReachedByLead = new Map<string, number>()
+    const bookingTotalByLead = new Map<string, number>()
+    const bookingShowUpByLead = new Map<string, number>()
     if (leadIds.length > 0) {
       const { data: callsData } = await supabase
         .from('calls')
-        .select('lead_id')
+        .select('lead_id, outcome, reached')
         .eq('workspace_id', workspaceId)
         .in('lead_id', leadIds)
       for (const c of callsData ?? []) {
         callCountByLead.set(c.lead_id, (callCountByLead.get(c.lead_id) ?? 0) + 1)
+        if (c.reached || c.outcome === 'done') {
+          callReachedByLead.set(c.lead_id, (callReachedByLead.get(c.lead_id) ?? 0) + 1)
+        }
+      }
+      // Bookings
+      const { data: bookingsData } = await supabase
+        .from('bookings')
+        .select('lead_id, status')
+        .eq('workspace_id', workspaceId)
+        .in('lead_id', leadIds)
+      for (const b of bookingsData ?? []) {
+        if (!b.lead_id) continue
+        bookingTotalByLead.set(b.lead_id, (bookingTotalByLead.get(b.lead_id) ?? 0) + 1)
+        if (b.status === 'completed' || b.status === 'confirmed') {
+          bookingShowUpByLead.set(b.lead_id, (bookingShowUpByLead.get(b.lead_id) ?? 0) + 1)
+        }
       }
     }
 
     // 4. Aggregate by level id
-    type Agg = { lead_count: number; qualified_count: number; closed_count: number; calls_count: number; revenue: number; cash_collected: number }
+    type Agg = { lead_count: number; qualified_count: number; closed_count: number; calls_count: number; calls_reached: number; bookings_total: number; bookings_show_up: number; revenue: number; cash_collected: number }
     const aggById = new Map<string, Agg>()
     const ensure = (id: string) => {
       let a = aggById.get(id)
       if (!a) {
-        a = { lead_count: 0, qualified_count: 0, closed_count: 0, calls_count: 0, revenue: 0, cash_collected: 0 }
+        a = { lead_count: 0, qualified_count: 0, closed_count: 0, calls_count: 0, calls_reached: 0, bookings_total: 0, bookings_show_up: 0, revenue: 0, cash_collected: 0 }
         aggById.set(id, a)
       }
       return a
@@ -130,6 +152,9 @@ export async function GET(request: NextRequest) {
         a.cash_collected += Number(l.cash_collected ?? 0)
       }
       a.calls_count += callCountByLead.get(l.id) ?? 0
+      a.calls_reached += callReachedByLead.get(l.id) ?? 0
+      a.bookings_total += bookingTotalByLead.get(l.id) ?? 0
+      a.bookings_show_up += bookingShowUpByLead.get(l.id) ?? 0
     }
 
     // 5. Fetch Meta insights at this level
@@ -167,8 +192,9 @@ export async function GET(request: NextRequest) {
 
     // 7. Build rows
     const rows: AdPerformanceRow[] = []
+    const emptyAgg: Agg = { lead_count: 0, qualified_count: 0, closed_count: 0, calls_count: 0, calls_reached: 0, bookings_total: 0, bookings_show_up: 0, revenue: 0, cash_collected: 0 }
     for (const id of allIds) {
-      const agg = aggById.get(id) ?? { lead_count: 0, qualified_count: 0, closed_count: 0, calls_count: 0, revenue: 0, cash_collected: 0 }
+      const agg = aggById.get(id) ?? emptyAgg
       const ins = insightByInsId.get(id)
       const obj = objectById.get(id)
       const spend = ins?.spend ?? 0
@@ -187,6 +213,9 @@ export async function GET(request: NextRequest) {
         qualified_count: agg.qualified_count,
         closed_count: agg.closed_count,
         calls_count: agg.calls_count,
+        calls_reached: agg.calls_reached,
+        bookings_total: agg.bookings_total,
+        bookings_show_up: agg.bookings_show_up,
         revenue: Math.round(agg.revenue * 100) / 100,
         cash_collected: Math.round(agg.cash_collected * 100) / 100,
         cpl: cpl !== null ? Math.round(cpl * 100) / 100 : null,

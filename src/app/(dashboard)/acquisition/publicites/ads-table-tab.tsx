@@ -34,8 +34,21 @@ interface AdsTableTabProps {
   onRowClick?: (id: string, name: string) => void
 }
 
-type ColumnKey = 'name' | 'status' | 'spend' | 'impressions' | 'clicks' | 'ctr' | 'leads' | 'cpl'
-  | 'crm_leads' | 'qualified' | 'calls' | 'closed' | 'revenue' | 'cpl_qualified' | 'roas'
+type ColumnKey =
+  // Meta Ads
+  | 'name' | 'status' | 'spend' | 'impressions' | 'cpm' | 'clicks' | 'cpc' | 'ctr' | 'leads' | 'cpl' | 'frequency'
+  // Video
+  | 'hook_rate' | 'hold_rate_25' | 'hold_rate_50' | 'hold_rate_75'
+  // CRM Funnel — Appels
+  | 'crm_leads' | 'qualified' | 'calls_total' | 'calls_reached' | 'cpar' | 'joignabilite'
+  // Conversions
+  | 'cr1' | 'cr2' | 'cr3'
+  // Bookings
+  | 'bookings_total' | 'cpsb' | 'bookings_show_up' | 'cpsp' | 'no_show_rate'
+  // Closing
+  | 'closed' | 'cpclose' | 'closing_rate'
+  // Financier
+  | 'revenue' | 'cash_collected' | 'cpl_qualified' | 'roas' | 'marge_brute'
 type SortKey = Exclude<ColumnKey, 'status'>
 type SortState = { key: SortKey; dir: 'asc' | 'desc' } | null
 
@@ -56,15 +69,24 @@ interface SavedView {
 }
 
 const ALL_COLUMN_KEYS: ColumnKey[] = [
-  'name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl',
-  'crm_leads', 'qualified', 'calls', 'closed', 'revenue', 'cpl_qualified', 'roas',
+  'name', 'status', 'spend', 'impressions', 'cpm', 'clicks', 'cpc', 'ctr', 'leads', 'cpl', 'frequency',
+  'hook_rate', 'hold_rate_25', 'hold_rate_50', 'hold_rate_75',
+  'crm_leads', 'qualified', 'calls_total', 'calls_reached', 'cpar', 'joignabilite',
+  'cr1', 'cr2', 'cr3',
+  'bookings_total', 'cpsb', 'bookings_show_up', 'cpsp', 'no_show_rate',
+  'closed', 'cpclose', 'closing_rate',
+  'revenue', 'cash_collected', 'cpl_qualified', 'roas', 'marge_brute',
 ]
 
 const DEFAULT_VIEWS: SavedView[] = [
   { id: 'essential', name: 'Essentiel', columns: ['name', 'status', 'spend', 'crm_leads', 'qualified', 'closed', 'revenue', 'roas'] },
-  { id: 'video', name: 'Performance vidéo', columns: ['name', 'status', 'spend', 'impressions', 'clicks', 'ctr'] },
-  { id: 'funnel', name: 'Funnel complet', columns: ['name', 'status', 'spend', 'crm_leads', 'qualified', 'calls', 'closed', 'revenue', 'roas', 'cpl_qualified'] },
-  { id: 'meta', name: 'Données Meta', columns: ['name', 'status', 'spend', 'impressions', 'clicks', 'ctr', 'leads', 'cpl'] },
+  { id: 'meta', name: 'Données Meta', columns: ['name', 'status', 'spend', 'impressions', 'cpm', 'clicks', 'cpc', 'ctr', 'leads', 'cpl', 'frequency'] },
+  { id: 'video', name: 'Performance vidéo', columns: ['name', 'status', 'spend', 'impressions', 'hook_rate', 'hold_rate_25', 'hold_rate_50', 'hold_rate_75'] },
+  { id: 'appels', name: 'Funnel appels', columns: ['name', 'status', 'spend', 'crm_leads', 'calls_total', 'calls_reached', 'joignabilite', 'cpar', 'cr1'] },
+  { id: 'bookings', name: 'Funnel bookings', columns: ['name', 'status', 'spend', 'calls_reached', 'bookings_total', 'bookings_show_up', 'no_show_rate', 'cpsb', 'cpsp', 'cr2'] },
+  { id: 'closing', name: 'Closing', columns: ['name', 'status', 'spend', 'bookings_show_up', 'closed', 'closing_rate', 'cpclose', 'cr3'] },
+  { id: 'financier', name: 'Financier', columns: ['name', 'status', 'spend', 'closed', 'revenue', 'cash_collected', 'marge_brute', 'roas', 'cpl_qualified'] },
+  { id: 'funnel', name: 'Funnel complet', columns: ['name', 'status', 'spend', 'crm_leads', 'qualified', 'calls_reached', 'bookings_show_up', 'closed', 'revenue', 'roas'] },
 ]
 
 function loadCustomViews(tabKey: string): SavedView[] {
@@ -85,21 +107,51 @@ function saveCustomViews(tabKey: string, views: SavedView[]) {
 /* ── Column definitions ──────────────────────────────────────── */
 
 const ALL_COLUMNS: ColumnDef[] = [
+  // Meta Ads
   { key: 'name', label: 'Nom', sortable: true, align: 'left', defaultVisible: true },
   { key: 'status', label: 'Statut', sortable: false, align: 'left', defaultVisible: true },
   { key: 'spend', label: 'Dépensé', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'crm_leads', label: 'Leads CRM', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'qualified', label: 'Qualifiés', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'calls', label: 'Appels', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'closed', label: 'Closés', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'revenue', label: 'CA', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'roas', label: 'ROAS', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'cpl_qualified', label: 'CPL qualifié', sortable: true, align: 'right', defaultVisible: false },
   { key: 'impressions', label: 'Impressions', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cpm', label: 'CPM', sortable: true, align: 'right', defaultVisible: false },
   { key: 'clicks', label: 'Clics', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cpc', label: 'CPC', sortable: true, align: 'right', defaultVisible: false },
   { key: 'ctr', label: 'CTR', sortable: true, align: 'right', defaultVisible: false },
   { key: 'leads', label: 'Leads Meta', sortable: true, align: 'right', defaultVisible: false },
   { key: 'cpl', label: 'CPL Meta', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'frequency', label: 'Répétition', sortable: true, align: 'right', defaultVisible: false },
+  // Video
+  { key: 'hook_rate', label: 'Hook rate', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'hold_rate_25', label: 'Hold 25%', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'hold_rate_50', label: 'Hold 50%', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'hold_rate_75', label: 'Hold 75%', sortable: true, align: 'right', defaultVisible: false },
+  // CRM — Leads
+  { key: 'crm_leads', label: 'Leads CRM', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'qualified', label: 'Qualifiés', sortable: true, align: 'right', defaultVisible: true },
+  // Appels
+  { key: 'calls_total', label: 'Appels passés', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'calls_reached', label: 'Appels joints', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cpar', label: 'CPAr', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'joignabilite', label: '% Joignabilité', sortable: true, align: 'right', defaultVisible: false },
+  // Conversions
+  { key: 'cr1', label: 'CR1', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cr2', label: 'CR2', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cr3', label: 'CR3', sortable: true, align: 'right', defaultVisible: false },
+  // Bookings
+  { key: 'bookings_total', label: 'Séances bookées', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cpsb', label: 'CPSb', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'bookings_show_up', label: 'Séances présentes', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cpsp', label: 'CPSp', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'no_show_rate', label: '% No show', sortable: true, align: 'right', defaultVisible: false },
+  // Closing
+  { key: 'closed', label: 'Closings', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'cpclose', label: 'CPClose', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'closing_rate', label: '% Closing', sortable: true, align: 'right', defaultVisible: false },
+  // Financier
+  { key: 'revenue', label: 'CA contracté', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'cash_collected', label: 'Cash collecté', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cpl_qualified', label: 'CPL qualifié', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'roas', label: 'ROAS', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'marge_brute', label: 'Marge brute', sortable: true, align: 'right', defaultVisible: false },
 ]
 
 const COLUMN_MAP = new Map(ALL_COLUMNS.map(c => [c.key, c]))
@@ -427,20 +479,53 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
     return data.breakdown.filter(row => row.name.toLowerCase().includes(q))
   }, [data, search])
 
-  // CRM value extractor
-  const crmValue = useCallback((id: string, key: SortKey): number | null | string => {
-    const crm = crmMap?.get(id)
+  // Compute value for any column key on a given row
+  const computeValue = useCallback((row: (typeof filtered)[0], key: SortKey): number | string => {
+    const spend = row.spend || 0
+    const crm = crmMap?.get(row.id)
+    // Meta-only / row-native keys
+    switch (key) {
+      case 'name': return row.name
+      case 'spend': return spend
+      case 'impressions': return row.impressions
+      case 'clicks': return row.clicks
+      case 'ctr': return row.ctr
+      case 'leads': return row.leads
+      case 'cpl': return row.cpl ?? 0
+      case 'cpm': return row.impressions > 0 ? (spend / row.impressions) * 1000 : 0
+      case 'cpc': return row.clicks > 0 ? spend / row.clicks : 0
+      case 'frequency': return row.frequency ?? 0
+      case 'hook_rate': return row.hook_rate ?? 0
+      case 'hold_rate_25': return row.hold_rate_25 ?? 0
+      case 'hold_rate_50': return row.hold_rate_50 ?? 0
+      case 'hold_rate_75': return row.hold_rate_75 ?? 0
+    }
     if (!crm) return 0
     switch (key) {
       case 'crm_leads': return crm.lead_count
       case 'qualified': return crm.qualified_count
-      case 'calls': return crm.calls_count
+      case 'calls_total': return crm.calls_count
+      case 'calls_reached': return crm.calls_reached
+      case 'cpar': return crm.calls_reached > 0 ? spend / crm.calls_reached : 0
+      case 'joignabilite': return crm.calls_count > 0 ? (crm.calls_reached / crm.calls_count) * 100 : 0
+      case 'cr1': return crm.lead_count > 0 ? (crm.calls_count / crm.lead_count) * 100 : 0
+      case 'cr2': return crm.calls_reached > 0 ? (crm.bookings_total / crm.calls_reached) * 100 : 0
+      case 'cr3': return crm.bookings_show_up > 0 ? (crm.closed_count / crm.bookings_show_up) * 100 : 0
+      case 'bookings_total': return crm.bookings_total
+      case 'cpsb': return crm.bookings_total > 0 ? spend / crm.bookings_total : 0
+      case 'bookings_show_up': return crm.bookings_show_up
+      case 'cpsp': return crm.bookings_show_up > 0 ? spend / crm.bookings_show_up : 0
+      case 'no_show_rate': return crm.bookings_total > 0 ? ((crm.bookings_total - crm.bookings_show_up) / crm.bookings_total) * 100 : 0
       case 'closed': return crm.closed_count
+      case 'cpclose': return crm.closed_count > 0 ? spend / crm.closed_count : 0
+      case 'closing_rate': return crm.bookings_show_up > 0 ? (crm.closed_count / crm.bookings_show_up) * 100 : 0
       case 'revenue': return crm.revenue
+      case 'cash_collected': return crm.cash_collected
       case 'cpl_qualified': return crm.cpl_qualified ?? 0
       case 'roas': return crm.roas ?? 0
-      default: return 0
+      case 'marge_brute': return crm.revenue - spend
     }
+    return 0
   }, [crmMap])
 
   // Sort
@@ -448,15 +533,9 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
     const rows = [...filtered]
     const sortKey = sort?.key ?? 'spend'
     const sortDir = sort?.dir ?? 'desc'
-    const crmKeys: SortKey[] = ['crm_leads', 'qualified', 'calls', 'closed', 'revenue', 'cpl_qualified', 'roas']
-
     return rows.sort((a, b) => {
-      const valA = crmKeys.includes(sortKey)
-        ? (crmValue(a.id, sortKey) as number)
-        : (a[sortKey as Exclude<SortKey, 'crm_leads' | 'qualified' | 'calls' | 'closed' | 'revenue' | 'cpl_qualified' | 'roas'>] ?? 0)
-      const valB = crmKeys.includes(sortKey)
-        ? (crmValue(b.id, sortKey) as number)
-        : (b[sortKey as Exclude<SortKey, 'crm_leads' | 'qualified' | 'calls' | 'closed' | 'revenue' | 'cpl_qualified' | 'roas'>] ?? 0)
+      const valA = computeValue(a, sortKey)
+      const valB = computeValue(b, sortKey)
       if (typeof valA === 'string' && typeof valB === 'string') {
         return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
       }
@@ -464,7 +543,7 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
         ? (valA as number) - (valB as number)
         : (valB as number) - (valA as number)
     })
-  }, [filtered, sort, crmValue])
+  }, [filtered, sort, computeValue])
 
   if (loading || !data) {
     return <TableSkeleton />
@@ -487,6 +566,7 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
 
   function renderCell(row: (typeof sorted)[0], col: ColumnDef) {
     const crm = crmMap?.get(row.id)
+    const spend = row.spend || 0
     switch (col.key) {
       case 'name':
         return (
@@ -497,47 +577,63 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
       case 'status': {
         const s = getStatusLabel(row.status)
         return (
-          <span style={{
-            fontSize: 10,
-            fontWeight: 600,
-            padding: '2px 8px',
-            borderRadius: 4,
-            background: s.bg,
-            color: s.color,
-          }}>
+          <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: s.bg, color: s.color }}>
             {s.label}
           </span>
         )
       }
-      case 'spend':
-        return formatEuro(row.spend)
-      case 'impressions':
-        return formatNumber(row.impressions)
-      case 'clicks':
-        return formatNumber(row.clicks)
-      case 'ctr':
-        return row.ctr.toFixed(2) + '%'
-      case 'leads':
-        return <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{row.leads}</span>
-      case 'cpl':
-        return row.cpl !== null ? formatEuro(row.cpl) : '—'
-      case 'crm_leads':
-        return <span style={{ fontWeight: 600 }}>{crm?.lead_count ?? 0}</span>
-      case 'qualified':
-        return <span style={{ color: '#38A169', fontWeight: 500 }}>{crm?.qualified_count ?? 0}</span>
-      case 'calls':
-        return crm?.calls_count ?? 0
-      case 'closed':
-        return <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{crm?.closed_count ?? 0}</span>
-      case 'revenue':
-        return <span style={{ fontWeight: 600 }}>{crm?.revenue ? formatEuro(crm.revenue) : '—'}</span>
-      case 'cpl_qualified':
-        return crm?.cpl_qualified != null ? formatEuro(crm.cpl_qualified) : '—'
+      // — Meta
+      case 'spend': return formatEuro(row.spend)
+      case 'impressions': return formatNumber(row.impressions)
+      case 'cpm': return row.impressions > 0 ? formatEuro((spend / row.impressions) * 1000) : '—'
+      case 'clicks': return formatNumber(row.clicks)
+      case 'cpc': return row.clicks > 0 ? formatEuro(spend / row.clicks) : '—'
+      case 'ctr': return row.ctr.toFixed(2) + '%'
+      case 'leads': return <span style={{ fontWeight: 500 }}>{row.leads}</span>
+      case 'cpl': return row.cpl !== null ? formatEuro(row.cpl) : '—'
+      case 'frequency': return row.frequency?.toFixed(2) ?? '—'
+      // — Video
+      case 'hook_rate': return row.hook_rate != null ? row.hook_rate.toFixed(1) + '%' : '—'
+      case 'hold_rate_25': return row.hold_rate_25 != null ? row.hold_rate_25.toFixed(1) + '%' : '—'
+      case 'hold_rate_50': return row.hold_rate_50 != null ? row.hold_rate_50.toFixed(1) + '%' : '—'
+      case 'hold_rate_75': return row.hold_rate_75 != null ? row.hold_rate_75.toFixed(1) + '%' : '—'
+      // — CRM leads
+      case 'crm_leads': return <span style={{ fontWeight: 600 }}>{crm?.lead_count ?? 0}</span>
+      case 'qualified': return <span style={{ color: '#38A169', fontWeight: 500 }}>{crm?.qualified_count ?? 0}</span>
+      // — Appels
+      case 'calls_total': return crm?.calls_count ?? 0
+      case 'calls_reached': return crm?.calls_reached ?? 0
+      case 'cpar': return crm && crm.calls_reached > 0 ? formatEuro(spend / crm.calls_reached) : '—'
+      case 'joignabilite': return crm && crm.calls_count > 0 ? ((crm.calls_reached / crm.calls_count) * 100).toFixed(0) + '%' : '—'
+      // — Conversions
+      case 'cr1': return crm && crm.lead_count > 0 ? ((crm.calls_count / crm.lead_count) * 100).toFixed(0) + '%' : '—'
+      case 'cr2': return crm && crm.calls_reached > 0 ? ((crm.bookings_total / crm.calls_reached) * 100).toFixed(0) + '%' : '—'
+      case 'cr3': return crm && crm.bookings_show_up > 0 ? ((crm.closed_count / crm.bookings_show_up) * 100).toFixed(0) + '%' : '—'
+      // — Bookings
+      case 'bookings_total': return crm?.bookings_total ?? 0
+      case 'cpsb': return crm && crm.bookings_total > 0 ? formatEuro(spend / crm.bookings_total) : '—'
+      case 'bookings_show_up': return crm?.bookings_show_up ?? 0
+      case 'cpsp': return crm && crm.bookings_show_up > 0 ? formatEuro(spend / crm.bookings_show_up) : '—'
+      case 'no_show_rate': return crm && crm.bookings_total > 0 ? (((crm.bookings_total - crm.bookings_show_up) / crm.bookings_total) * 100).toFixed(0) + '%' : '—'
+      // — Closing
+      case 'closed': return <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{crm?.closed_count ?? 0}</span>
+      case 'cpclose': return crm && crm.closed_count > 0 ? formatEuro(spend / crm.closed_count) : '—'
+      case 'closing_rate': return crm && crm.bookings_show_up > 0 ? ((crm.closed_count / crm.bookings_show_up) * 100).toFixed(0) + '%' : '—'
+      // — Financier
+      case 'revenue': return <span style={{ fontWeight: 600 }}>{crm?.revenue ? formatEuro(crm.revenue) : '—'}</span>
+      case 'cash_collected': return crm?.cash_collected ? formatEuro(crm.cash_collected) : '—'
+      case 'cpl_qualified': return crm?.cpl_qualified != null ? formatEuro(crm.cpl_qualified) : '—'
       case 'roas': {
         const v = crm?.roas
         if (v == null) return '—'
         const color = v >= 1 ? '#38A169' : v < 1 ? '#f59e0b' : 'var(--text-muted)'
         return <span style={{ color, fontWeight: 600 }}>{Math.round(v * 100)}%</span>
+      }
+      case 'marge_brute': {
+        if (!crm) return '—'
+        const m = crm.revenue - spend
+        const color = m > 0 ? '#38A169' : m < 0 ? '#ef4444' : 'var(--text-muted)'
+        return <span style={{ color, fontWeight: 500 }}>{formatEuro(m)}</span>
       }
     }
   }
