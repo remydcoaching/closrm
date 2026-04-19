@@ -8,6 +8,7 @@ import { sendIgMessage } from '@/lib/instagram/api'
 import { getIntegrationCredentials } from '@/lib/integrations/get-credentials'
 import { cancelBookingReminders } from '@/lib/bookings/reminders'
 import { verifyDomain } from '@/lib/email/domains'
+import { consumeResource } from '@/lib/billing/service'
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -353,17 +354,27 @@ export async function GET(request: NextRequest) {
               if (!lead.email) {
                 sendError = "Pas d'adresse email"
               } else {
-                const apiKey = process.env.RESEND_API_KEY
-                if (!apiKey) {
-                  sendError = 'RESEND_API_KEY non configurée'
+                if (!process.env.AWS_ACCESS_KEY_ID) {
+                  sendError = 'AWS SES non configuré'
                 } else {
-                  const result = await sendEmail(
-                    { apiKey },
-                    lead.email,
-                    'Rappel de votre rendez-vous',
-                    `<p>${reminder.message.replace(/\n/g, '<br>')}</p>`
-                  )
-                  if (!result.ok) sendError = result.error ?? 'Erreur envoi email'
+                  const quotaResult = await consumeResource({
+                    workspaceId: reminder.workspace_id,
+                    resourceType: 'email',
+                    quantity: 1,
+                    source: 'booking_reminder',
+                    metadata: { reminder_id: reminder.id, lead_id: reminder.lead_id },
+                  })
+                  if (!quotaResult.allowed) {
+                    sendError = quotaResult.error_message || 'Quota email dépassé'
+                  } else {
+                    const result = await sendEmail(
+                      {},
+                      lead.email,
+                      'Rappel de votre rendez-vous',
+                      `<p>${reminder.message.replace(/\n/g, '<br>')}</p>`
+                    )
+                    if (!result.ok) sendError = result.error ?? 'Erreur envoi email'
+                  }
                 }
               }
             } else if (reminder.channel === 'whatsapp') {

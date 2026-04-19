@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
   Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
   CalendarDays, CalendarRange, Layers, Share2, MessageCircle, MessagesSquare, Sparkles, Users2,
-  GraduationCap, Link2, Euro,
+  GraduationCap, Link2, Euro, CreditCard,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isRouteVisible } from '@/lib/permissions'
@@ -52,6 +52,8 @@ const NAV = [
     title: 'COMPTE',
     items: [
       { label: 'Paramètres', href: '/parametres/reglages', icon: Settings },
+      { label: 'Plan & Usage', href: '/parametres/plan', icon: CreditCard },
+      { label: 'Domaines email', href: '/parametres/domaines-email', icon: Mail },
       { label: 'Intégrations', href: '/parametres/integrations', icon: Plug },
       { label: 'Calendriers', href: '/parametres/calendriers', icon: CalendarRange },
     ],

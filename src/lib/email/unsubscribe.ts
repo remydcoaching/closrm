@@ -6,8 +6,15 @@
 import { createHmac } from 'crypto'
 
 function getSecret(): string {
-  const secret = process.env.RESEND_API_KEY // reuse as signing secret
-  if (!secret) throw new Error('RESEND_API_KEY is not set (used for unsubscribe token signing)')
+  // Secret HMAC pour les tokens unsubscribe. On préfère une variable dédiée
+  // et on fallback sur SUPABASE_SERVICE_ROLE_KEY qui est toujours présente
+  // côté serveur (jamais exposée au client).
+  const secret =
+    process.env.UNSUBSCRIBE_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!secret) {
+    throw new Error('UNSUBSCRIBE_SECRET ou SUPABASE_SERVICE_ROLE_KEY requis pour signer les tokens unsubscribe')
+  }
   return secret
 }
 

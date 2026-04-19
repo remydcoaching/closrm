@@ -7,9 +7,24 @@
 
 ---
 
+> **MISE À JOUR 2026-04-19 (décision finale pricing email)** :
+> Switch complet **Resend → AWS SES en V1**. Raisons :
+> 1. **Cap de 10 domaines sur Resend Pro** = blocker pour multi-tenant (besoin Scale $1150 dès 10-15 coachs custom domain)
+> 2. **Coût drastiquement inférieur** : $1/10k emails sur SES vs $35 minimum sur Resend même pour 10k
+> 3. **Pas de cliff pricing** : AWS SES scale linéairement, Resend a un gap Pro $35 → Scale $1150
+> 4. **Domaines illimités** sur SES, problème structurel résolu dès V1
+>
+> Impact scope : P4 revient à 3.5j (implémentation complète SES), dependency au démarrage : création compte AWS + sortie sandbox (24-48h délai). Total refonte billing : **18j**.
+
 ## 1. Résumé exécutif
 
-ClosRM est aujourd'hui architecturé comme un **outil interne** : chaque workspace fournit ses propres clés API (Resend pour email, Anthropic pour IA). Cette architecture empêche :
+ClosRM est partiellement architecturé pour le modèle payant :
+- ✅ **Email** : clé Resend déjà côté serveur (env var ClosRM), rien à refactor côté clé API. À ajouter : quota tracking.
+- ❌ **IA / Claude** : chaque workspace stocke sa propre clé Anthropic dans `ai_coach_briefs.api_key`. À refactor en proxy backend avec clé unique ClosRM.
+- ❌ **Billing / Stripe / wallet** : zéro infrastructure, à bâtir from scratch.
+- ❌ **WhatsApp / SMS** : UI prévue mais pas d'envoi réel implémenté.
+
+Cette architecture partielle empêche :
 
 1. **Toute monétisation** : impossible de prendre une marge sur des consommables que le client paie directement au fournisseur.
 2. **Une UX d'onboarding fluide** : le coach doit créer deux comptes externes (Resend + Anthropic) avant de pouvoir envoyer le moindre email ou utiliser l'IA.
@@ -244,7 +259,7 @@ ELSE (quota épuisé):
 | P1 | Infra billing & plans (DB + helpers) | 1.5j | P2 à P8 |
 | P2 | Stripe integration (Checkout + portail + webhooks) | 2.5j | P5, P8 |
 | P3 | Refonte IA (proxy + tracking) | 3j | — |
-| P4 | Refonte email (abstraction + AWS SES optionnel) | 3.5j | — |
+| P4 | Email : switch complet Resend → AWS SES + quota tracking | 3.5j | Sortie sandbox AWS (24-48h) |
 | P5 | Wallet & overage | 2j | — (dépend P2) |
 | P6 | WhatsApp/SMS intégration + billing | 3j | — |
 | P7 | UI Paramètres > Plan & Usage | 1.5j | — |
@@ -307,27 +322,61 @@ ELSE (quota épuisé):
 - Consommation IA d'un workspace apparaît dans `usage_events` avec coût correct
 - Workspace sans quota → 402 avec message "Rechargez votre wallet ou upgradez votre plan"
 
-### P4 — Refonte email (3.5j)
+### P4 — Switch complet Resend → AWS SES (3.5j) + sortie sandbox AWS (24-48h)
 
-**Livrables** :
+**Décision finale (2026-04-19)** : AWS SES dès la V1 payante. Raison : le cap de 10 domaines sur Resend Pro est un vrai blocker pour un SaaS multi-tenant où chaque coach vérifie son propre domaine. À Scale Resend ($1150/mois) c'est $13k/an versus $1-30/mois sur AWS SES au même volume. Le switch est économiquement évident et le dev (3.5j) est négligeable vs bénéfices long terme.
+
+**Pré-requis (à faire en parallèle du dev)** :
+- Compte AWS créé au nom de l'auto-entreprise Pierre (15 min)
+- Région **eu-west-3 (Paris)** activée (RGPD + latence)
+- Demande de sortie sandbox SES envoyée (5 min + 24-48h délai AWS)
+- IAM user `closrm-ses-production` + clés API (10 min)
+- SNS topic pour bounces/complaints configuré (15 min)
+- Voir guide détaillé "Setup AWS SES step-by-step" en annexe de ce doc
+
+**Livrables code** :
 - `src/lib/email/providers/types.ts` (interface `EmailProvider`)
-- `src/lib/email/providers/resend.ts` (reprend la logique actuelle)
-- `src/lib/email/providers/ses.ts` (AWS SES via `@aws-sdk/client-ses`)
-- `src/lib/email/index.ts` (export `emailProvider` selon env)
-- Refactor `src/lib/email/batch-sender.ts` → utilise `emailProvider.sendBatch`
-- Refactor `src/lib/email/templates/booking-confirmation.ts` → utilise `emailProvider.sendOne`
-- Refactor `src/lib/workflows/actions/send-email.ts` idem
-- Refactor cron scheduler idem
-- Refactor domain verification → supporte SES (`CreateEmailIdentity` + DKIM + SNS notifications)
-- Webhook SNS `src/app/api/webhooks/ses/route.ts` (mirror du resend existant)
-- Quota check avant chaque envoi
-- ENV vars : `EMAIL_PROVIDER=resend|ses`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SNS_TOPIC_ARN`
+- `src/lib/email/providers/ses.ts` (impl complète via `@aws-sdk/client-ses` + `@aws-sdk/client-sesv2` + `@aws-sdk/client-sns`)
+- `src/lib/email/index.ts` (export `emailProvider` directement SES, plus de conditionnel)
+- Refactor des 4 call sites pour utiliser `emailProvider.sendOne / sendBatch` :
+  - `src/lib/workflows/actions/send-email.ts`
+  - `src/app/api/cron/workflow-scheduler/route.ts:356`
+  - `src/app/api/emails/broadcasts/[id]/send/route.ts:108`
+  - `src/lib/email/templates/booking-confirmation.ts`
+- Ajouter `billingService.checkAvailability(workspaceId, 'email', N)` avant chaque envoi
+- Ajouter `billingService.consume(workspaceId, 'email', N, cost_cents, source)` après envoi
+- Webhook SNS `src/app/api/webhooks/ses/route.ts` pour recevoir bounces/complaints/delivery events
+- Refactor domain verification : suppression des appels Resend, utilisation SES `CreateEmailIdentity` + DKIM + SNS topic
+- Migration `email_domains` : ajouter `ses_identity_arn`, marquer `resend_domain_id` comme legacy
+- Retirer dépendance Resend du code (garder la clé RESEND_API_KEY en env var optionnelle pour fallback temporaire si besoin)
+
+**Migration données existantes** :
+- Aucun domain vérifié à migrer en prod réelle (workspaces actuels = Pierre + Rémy = `is_internal=true`)
+- Si Rémy ou Pierre avait des domaines vérifiés sur Resend → re-vérifier sur SES (5 min chacun)
+
+**ENV vars à ajouter** :
+```
+AWS_REGION=eu-west-3
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_SES_CONFIG_SET=closrm-default
+AWS_SNS_SES_TOPIC_ARN=arn:aws:sns:eu-west-3:XXX:closrm-ses-bounces
+EMAIL_FROM_DEFAULT=noreply@closrm.com
+```
 
 **Critères de done** :
-- Switch `EMAIL_PROVIDER=resend` → comportement identique à avant
-- Switch `EMAIL_PROVIDER=ses` → envoie via SES (après sortie sandbox AWS)
-- Consommation email d'un workspace apparaît dans `usage_events`
-- Bounce handler SES coupe automatiquement le workspace si taux > 5%
+- Envoi email depuis workspace Pierre fonctionne via SES (après sortie sandbox)
+- Domain verification d'un nouveau domaine coach fonctionne via SES (CNAME DKIM à ajouter chez registrar)
+- Envoi d'un broadcast 100 emails traqué dans `usage_events`
+- Webhook SNS reçoit un bounce test et met à jour `email_sends.status`
+- Workspace avec quota dépassé + wallet vide → envoi bloqué avec erreur claire
+- Workspace `is_internal=true` → bypass complet, envoi toujours autorisé
+- Taux de bounce d'un workspace > 3% → suspension automatique + email admin
+
+**Resend** :
+- Compte Resend conservé en backup uniquement (env var `RESEND_API_KEY` peut rester)
+- Aucun appel Resend dans le code de prod
+- Domaine(s) vérifié(s) sur Resend peuvent être abandonnés ou laissés dormir
 
 ### P5 — Wallet & overage (2j)
 
@@ -781,7 +830,116 @@ Sans observabilité, on pilote à l'aveugle. Les KPIs à monitorer dès le J1 :
 
 ---
 
-## Annexe B — Références externes
+## Annexe B — Guide setup AWS SES (à exécuter avant P4)
+
+### Étape 1 — Créer le compte AWS (15 min)
+1. [aws.amazon.com](https://aws.amazon.com) → "Create an AWS Account"
+2. Email pro (`admin@closrm.com` ou `pierre@closrm.com`, pas gmail perso)
+3. Type : **Professional**
+4. Nom société : nom auto-entreprise Pierre
+5. SIRET + adresse déclarée URSSAF
+6. CB pro (Qonto/Shine/etc.)
+7. Vérif téléphonique (SMS)
+8. Support plan : **Basic (gratuit)** — pas les payants
+
+### Étape 2 — Région Paris (5 min)
+Console top-right → sélectionner **Europe (Paris) eu-west-3** (RGPD + latence).
+
+### Étape 3 — Demande sortie sandbox (5 min + 24-48h délai AWS)
+Console → SES → **Account dashboard** → **Request production access**. Copie-colle ce formulaire :
+
+```
+Mail type: Transactional
+Website URL: https://closrm.com
+
+Use case description:
+ClosRM est un CRM SaaS destiné aux coachs francophones.
+Emails envoyés via SES : confirmations de RDV, rappels de RDV
+(J-1, H-2), notifications de follow-up, réponses automatiques
+aux leads ayant rempli un formulaire d'opt-in.
+
+Chaque domaine d'expédition est vérifié individuellement par
+notre client (le coach possède et contrôle son propre domaine,
+ex: coach-julien.com). Destinataires = leads ayant explicitement
+demandé à être contactés via Meta Ads lead forms, formulaires web.
+
+Our opt-out process:
+Chaque email inclut un lien de désabonnement. Désabonnements
+traités automatiquement, adresses ajoutées à liste de suppression.
+Bounces et complaints monitorés via SNS, suspension workspace
+automatique si taux > 3%.
+
+Mailing list acquisition:
+Leads acquis par nos clients via Meta Ads Lead Forms, tunnels
+de vente, saisie manuelle dans le CRM.
+
+Additional info:
+Volumes attendus: 10-50k emails/mois initialement.
+Taux bounce cible: < 1%. Complaint cible: < 0.05%.
+```
+
+AWS répond sous 24-48h par email.
+
+### Étape 4 — Vérifier domaine de test (en parallèle sandbox exit)
+1. Console SES → Configuration → Identities → **Create identity**
+2. Type : **Domain**
+3. Domain : `test-ses.closrm.com` (sous-domaine dédié)
+4. ✅ Use DKIM (recommended settings)
+5. AWS te donne 3 enregistrements CNAME DKIM à ajouter chez ton registrar DNS
+6. 5-30 min plus tard → statut `Verified`
+
+### Étape 5 — User IAM + clés API (10 min)
+1. Console → IAM → Users → **Create user**
+2. Username : `closrm-ses-production`
+3. **Ne pas** cocher "Enable console access" (API only)
+4. Permissions → Attach policies directly → cocher :
+   - `AmazonSESFullAccess`
+   - `AmazonSNSFullAccess`
+5. Créer user
+6. Onglet Security credentials → **Create access key**
+7. Type : **Application running outside AWS**
+8. Copier et sauvegarder en 1Password/Bitwarden :
+   - Access Key ID (`AKIA...`)
+   - Secret Access Key (⚠️ **ne réapparaît plus jamais**)
+
+### Étape 6 — SNS pour bounces/complaints (15 min)
+1. Console → SNS → Topics → **Create topic**
+2. Type : Standard
+3. Name : `closrm-ses-bounces`
+4. Après création → **Create subscription**
+5. Protocol : **HTTPS**
+6. Endpoint : `https://closrm.com/api/webhooks/ses` (route créée en P4)
+7. **Enable raw message delivery** : décoché
+
+Puis dans SES :
+1. Console SES → **Configuration sets** → **Create set**
+2. Name : `closrm-default`
+3. Event destinations → SNS → sélectionner `closrm-ses-bounces`
+4. Events to publish : Bounce, Complaint, Delivery, Reject
+
+### Étape 7 — ENV vars Vercel (5 min)
+Dashboard Vercel → Settings → Environment Variables :
+```
+AWS_REGION=eu-west-3
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_SES_CONFIG_SET=closrm-default
+AWS_SNS_SES_TOPIC_ARN=arn:aws:sns:eu-west-3:XXX:closrm-ses-bounces
+EMAIL_FROM_DEFAULT=noreply@closrm.com
+```
+Tous environnements (Production, Preview, Development).
+
+### Étape 8 — Install SDKs (pendant P4)
+```bash
+npm install @aws-sdk/client-ses @aws-sdk/client-sesv2 @aws-sdk/client-sns
+```
+
+### Étape 9 — Skip Mail Manager (inbound) V1
+Mail Manager = inbound email, pas nécessaire V1. Feature "conversations email dans ClosRM" prévue V2.
+
+---
+
+## Annexe C — Références externes
 
 - [Stripe Subscriptions docs](https://docs.stripe.com/billing/subscriptions/overview)
 - [Stripe SetupIntent off-session](https://docs.stripe.com/payments/save-and-reuse)
