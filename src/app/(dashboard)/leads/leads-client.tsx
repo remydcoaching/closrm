@@ -201,13 +201,20 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
       })
       // pas de refresh liste : la relance est créée, le lead lui-même n'a pas changé
     } else if (action.type === 'won') {
-      patchLead(lead.id, {
-        status: 'clos',
-        deal_amount: action.deal_amount,
-        deal_installments: action.deal_installments,
-        cash_collected: action.cash_collected,
-        closed_at: new Date().toISOString(),
-      } as Partial<Lead>)
+      await fetch('/api/deals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          amount: action.amount,
+          cash_collected: action.cash_collected,
+          installments: action.installments,
+          duration_months: action.duration_months,
+          closer_id: action.closer_id,
+          setter_id: action.setter_id,
+        }),
+      })
+      setRefreshKey(k => k + 1)
     } else if (action.type === 'dead') {
       patchLead(lead.id, { status: 'dead' })
     }

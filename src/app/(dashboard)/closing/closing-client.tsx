@@ -156,14 +156,16 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
       })
     } else if (action.type === 'won') {
       await fetch(`/api/calls/${call.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'done' }) })
-      await fetch(`/api/leads/${call.lead.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      await fetch('/api/deals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'clos',
-          deal_amount: action.deal_amount,
-          deal_installments: action.deal_installments,
+          lead_id: call.lead.id,
+          amount: action.amount,
           cash_collected: action.cash_collected,
-          closed_at: new Date().toISOString(),
+          installments: action.installments,
+          duration_months: action.duration_months,
+          closer_id: action.closer_id,
+          setter_id: action.setter_id,
         }),
       })
     } else if (action.type === 'dead') {
