@@ -12,12 +12,13 @@
 
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
 
+const SES_OUTBOUND_REGION = 'eu-west-3'
+
 let _client: SESv2Client | null = null
 
 function getClient(): SESv2Client {
   if (_client) return _client
-  const region = process.env.AWS_REGION || 'eu-west-3'
-  _client = new SESv2Client({ region })
+  _client = new SESv2Client({ region: SES_OUTBOUND_REGION })
   return _client
 }
 
