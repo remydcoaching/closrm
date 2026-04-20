@@ -213,7 +213,7 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
           <div style={{ fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.08)', padding: '8px 12px', borderRadius: 8 }}>{error}</div>
         )}
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '16px 0 0' }}>
-          Utilisez votre domaine principal (ex: moncoaching.fr) ou un sous-domaine (ex: mail.moncoaching.fr)
+          Utilisez votre domaine principal (ex: moncoaching.fr). Les réponses de vos leads seront reçues sur le sous-domaine <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 4 }}>reply.{domain.trim() || 'moncoaching.fr'}</code>, pour ne pas interférer avec votre boîte mail existante.
         </p>
       </div>
     )
@@ -234,9 +234,9 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           {[
-            { key: 'mx' as const, label: 'Records MX existants', desc: 'Supprimez les anciens records MX sur ce domaine/sous-domaine' },
-            { key: 'spf' as const, label: 'Records TXT (SPF)', desc: 'Supprimez les records TXT contenant "v=spf1"' },
-            { key: 'dkim' as const, label: 'Records CNAME (DKIM)', desc: 'Supprimez les anciens records CNAME de type DKIM' },
+            { key: 'mx' as const, label: 'Records MX existants sur reply.' + (domainData?.domain ?? 'votredomaine'), desc: 'Uniquement sur le sous-domaine reply. Ne touchez PAS aux MX de votre domaine racine (votre boîte mail pro).' },
+            { key: 'spf' as const, label: 'Records TXT (SPF) contenant d\'autres services', desc: 'Si vous avez déjà un SPF (ex: v=spf1 include:_spf.mail.ovh.net), on va le remplacer par celui d\'Amazon SES.' },
+            { key: 'dkim' as const, label: 'Anciens records CNAME (DKIM)', desc: 'Supprimez les CNAME DKIM d\'anciens services (Mailgun, Sendgrid, Resend, GoHighLevel…).' },
           ].map(item => (
             <label key={item.key} style={{
               display: 'flex', alignItems: 'flex-start', gap: 12,
