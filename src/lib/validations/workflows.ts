@@ -88,7 +88,7 @@ export const createStepSchema = z.object({
 export const updateStepSchema = z.object({
   step_type: z.enum(['action', 'delay', 'condition', 'wait_for_event']).optional(),
   action_type: z.enum(workflowActionTypes).optional().nullable(),
-  action_config: z.record(z.string(), z.unknown()).optional(),
+  action_config: z.record(z.string(), z.unknown()).optional().nullable(),
   delay_value: z.number().int().min(1).optional().nullable(),
   delay_unit: z.enum(['minutes', 'hours', 'days']).optional().nullable(),
   condition_field: z.string().max(200).optional().nullable(),
