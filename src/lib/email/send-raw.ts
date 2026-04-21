@@ -4,6 +4,7 @@
  */
 
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
+import { createServiceClient } from '@/lib/supabase/service'
 
 const SES_OUTBOUND_REGION = 'eu-west-3'
 
@@ -12,6 +13,27 @@ function getClient(): SESv2Client {
   if (_client) return _client
   _client = new SESv2Client({ region: SES_OUTBOUND_REGION })
   return _client
+}
+
+/**
+ * Vérifie si un recipient est sur la suppression list (bounce permanent ou complaint).
+ * Bloque aussi bien les suppressions globales que celles scopées au workspace.
+ * Si aucun workspace_id n'est fourni, on check seulement le global.
+ */
+async function isSuppressed(email: string, workspaceId?: string): Promise<boolean> {
+  const supabase = createServiceClient()
+  const normalized = email.trim().toLowerCase()
+  let query = supabase
+    .from('email_suppressions')
+    .select('id')
+    .eq('email', normalized)
+  if (workspaceId) {
+    query = query.or(`workspace_id.is.null,workspace_id.eq.${workspaceId}`)
+  } else {
+    query = query.is('workspace_id', null)
+  }
+  const { data } = await query.limit(1).maybeSingle()
+  return Boolean(data)
 }
 
 export interface SendThreadedEmailInput {
@@ -25,17 +47,29 @@ export interface SendThreadedEmailInput {
   inReplyTo?: string | null
   references?: string | null
   configurationSetName?: string
+  /**
+   * Workspace qui émet le mail. Utilisé pour check la suppression list scopée.
+   * Si omis, on ne check que les suppressions globales (safe mais moins précis).
+   */
+  workspaceId?: string
 }
 
 export interface SendThreadedEmailResult {
   ok: boolean
   messageId?: string
   error?: string
+  suppressed?: boolean
 }
 
 export async function sendThreadedEmail(
   input: SendThreadedEmailInput,
 ): Promise<SendThreadedEmailResult> {
+  // Gate suppression list : si le destinataire a hard-bounced ou complained,
+  // on refuse l'envoi (protection de la réputation SES obligatoire).
+  if (await isSuppressed(input.to, input.workspaceId)) {
+    return { ok: false, suppressed: true, error: 'Destinataire sur la suppression list' }
+  }
+
   const fromHeader = input.fromName
     ? `${input.fromName} <${input.fromEmail}>`
     : input.fromEmail
