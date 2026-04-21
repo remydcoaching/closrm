@@ -3,6 +3,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import MetaIntegrationCard from './meta-card'
 import GoogleCalendarCard from './google-card'
 import DomainWizardCard from '@/components/emails/DomainWizardCard'
+import SuppressionList from '@/components/emails/SuppressionList'
 
 interface PageProps {
   searchParams: Promise<{ success?: string; error?: string }>
@@ -79,6 +80,9 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
 
         {/* Domaine Email */}
         <DomainWizardCard />
+
+        {/* Liste de suppressions emails */}
+        <SuppressionList />
 
         {/* WhatsApp Business */}
         <PlaceholderCard
