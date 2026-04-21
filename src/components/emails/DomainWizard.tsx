@@ -61,7 +61,9 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
         setError(json.error ?? 'Erreur lors de l\'ajout du domaine')
         return
       }
-      setDomainData(json.data)
+      // L'API retourne l'objet directement (pas enveloppé dans { data })
+      const payload = json.data ?? json
+      setDomainData(payload)
       setStep('cleanup')
       onDomainChange()
     } catch {
@@ -78,11 +80,13 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
       const res = await fetch(`/api/emails/domains/${domainData.id}/verify`, { method: 'POST' })
       if (res.ok) {
         const json = await res.json()
-        setDomainData(json.data)
-        if (json.data.status === 'verified') {
+        // L'API retourne l'objet directement (pas enveloppé dans { data })
+        const payload = json.data ?? json
+        setDomainData(payload)
+        if (payload.status === 'verified') {
           setStep('done')
-          setFromEmail(json.data.default_from_email ?? `contact@${json.data.domain}`)
-          setFromName(json.data.default_from_name ?? '')
+          setFromEmail(payload.default_from_email ?? `contact@${payload.domain}`)
+          setFromName(payload.default_from_name ?? '')
           onDomainChange()
         }
       }
