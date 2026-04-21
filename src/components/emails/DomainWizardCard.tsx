@@ -8,11 +8,16 @@ export default function DomainWizardCard() {
   const [emailDomains, setEmailDomains] = useState<EmailDomain[]>([])
 
   async function fetchEmailDomains() {
-    const res = await fetch('/api/emails/domains')
-    if (res.ok) {
-      const json = await res.json()
-      setEmailDomains(json.data ?? json ?? [])
+    // cache: 'no-store' : Next.js peut sinon servir une réponse périmée après
+    // création/suppression d'un domaine dans la même session.
+    const res = await fetch('/api/emails/domains', { cache: 'no-store' })
+    if (!res.ok) {
+      console.error('[DomainWizardCard] GET /api/emails/domains failed', res.status)
+      return
     }
+    const json = await res.json()
+    const list = Array.isArray(json) ? json : (json.data ?? [])
+    setEmailDomains(list)
   }
 
   useEffect(() => { fetchEmailDomains() }, [])
