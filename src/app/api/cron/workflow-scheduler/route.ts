@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { resumeExecution } from '@/lib/workflows/engine'
-import { sendEmail } from '@/lib/email/client'
+import { sendEmail, isSuppressed } from '@/lib/email/client'
 import { sendWhatsAppMessage } from '@/lib/whatsapp/client'
 import { sendIgMessage } from '@/lib/instagram/api'
 import { getIntegrationCredentials } from '@/lib/integrations/get-credentials'
 import { cancelBookingReminders } from '@/lib/bookings/reminders'
 import { verifyDomain } from '@/lib/email/domains'
 import { consumeResource } from '@/lib/billing/service'
+import { getWorkspaceSenderConfig } from '@/lib/email/sender-config'
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -353,28 +354,34 @@ export async function GET(request: NextRequest) {
             if (reminder.channel === 'email') {
               if (!lead.email) {
                 sendError = "Pas d'adresse email"
+              } else if (!process.env.AWS_ACCESS_KEY_ID) {
+                sendError = 'AWS SES non configuré'
+              } else if (await isSuppressed(lead.email, reminder.workspace_id)) {
+                // Skip sans débit ni erreur : rappel silencieux si lead unsubscribed/bounced
+                sendError = null
               } else {
-                if (!process.env.AWS_ACCESS_KEY_ID) {
-                  sendError = 'AWS SES non configuré'
+                const quotaResult = await consumeResource({
+                  workspaceId: reminder.workspace_id,
+                  resourceType: 'email',
+                  quantity: 1,
+                  source: 'booking_reminder',
+                  metadata: { reminder_id: reminder.id, lead_id: reminder.lead_id },
+                })
+                if (!quotaResult.allowed) {
+                  sendError = quotaResult.error_message || 'Quota email dépassé'
                 } else {
-                  const quotaResult = await consumeResource({
-                    workspaceId: reminder.workspace_id,
-                    resourceType: 'email',
-                    quantity: 1,
-                    source: 'booking_reminder',
-                    metadata: { reminder_id: reminder.id, lead_id: reminder.lead_id },
-                  })
-                  if (!quotaResult.allowed) {
-                    sendError = quotaResult.error_message || 'Quota email dépassé'
-                  } else {
-                    const result = await sendEmail(
-                      {},
-                      lead.email,
-                      'Rappel de votre rendez-vous',
-                      `<p>${reminder.message.replace(/\n/g, '<br>')}</p>`
-                    )
-                    if (!result.ok) sendError = result.error ?? 'Erreur envoi email'
-                  }
+                  const senderConfig = await getWorkspaceSenderConfig(reminder.workspace_id)
+                  const result = await sendEmail(
+                    {
+                      fromEmail: senderConfig.fromEmail,
+                      fromName: senderConfig.fromName,
+                      workspaceId: reminder.workspace_id,
+                    },
+                    lead.email,
+                    'Rappel de votre rendez-vous',
+                    `<p>${reminder.message.replace(/\n/g, '<br>')}</p>`
+                  )
+                  if (!result.ok) sendError = result.error ?? 'Erreur envoi email'
                 }
               }
             } else if (reminder.channel === 'whatsapp') {

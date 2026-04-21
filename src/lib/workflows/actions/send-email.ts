@@ -1,4 +1,4 @@
-import { sendEmail } from '@/lib/email/client'
+import { sendEmail, isSuppressed } from '@/lib/email/client'
 import { getWorkspaceSenderConfig } from '@/lib/email/sender-config'
 import { consumeResource } from '@/lib/billing/service'
 import type { ExecutionContext } from './index'
@@ -25,6 +25,16 @@ export async function execute(
 
   const htmlBody = `<div style="font-family:sans-serif;color:#333;line-height:1.6">${body.replace(/\n/g, '<br>')}</div>`
 
+  // Pre-check suppression list : skip avant débit pour éviter un débit wallet
+  // sur un email que SES refuserait de toute façon. Sans ça l'envoi serait
+  // skippé dans sendEmail() mais le wallet déjà prélevé → money leak.
+  if (await isSuppressed(to, workspaceId)) {
+    return {
+      success: true,
+      result: { skipped: true, reason: 'recipient_suppressed', to },
+    }
+  }
+
   // Quota check + débit (atomique côté DB)
   const consumeResult = await consumeResource({
     workspaceId,
@@ -47,7 +57,7 @@ export async function execute(
   })
 
   const result = await sendEmail(
-    { fromEmail: senderConfig.fromEmail, fromName: senderConfig.fromName },
+    { fromEmail: senderConfig.fromEmail, fromName: senderConfig.fromName, workspaceId },
     to,
     subject,
     htmlBody

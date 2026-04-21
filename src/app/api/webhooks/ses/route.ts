@@ -16,6 +16,7 @@
 
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { isAllowedSnsTopic } from '@/lib/email/sns-verify'
 
 interface SnsEnvelope {
   Type?: string
@@ -57,6 +58,12 @@ export async function POST(request: Request) {
     envelope = JSON.parse(text) as SnsEnvelope
   } catch {
     return NextResponse.json({ ok: true })
+  }
+
+  // Filtrage TopicArn en defense-en-profondeur (voir sns-verify.ts)
+  if (!isAllowedSnsTopic(envelope)) {
+    console.warn('[ses webhook] rejected unknown TopicArn', envelope.TopicArn)
+    return NextResponse.json({ ok: false, error: 'unknown topic' }, { status: 403 })
   }
 
   // Handshake d'abonnement SNS : on doit GET la SubscribeURL pour confirmer

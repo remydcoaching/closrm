@@ -164,7 +164,12 @@ export async function POST(_request: Request, context: RouteContext) {
     }))
 
   if (sendLogs.length) {
-    await supabase.from('email_sends').insert(sendLogs)
+    const { error: logErr } = await supabase.from('email_sends').insert(sendLogs)
+    if (logErr) {
+      // Critique : sans ces logs, les events SES (bounces/opens/clicks) ne
+      // pourront plus matcher ce broadcast → events silencieusement perdus.
+      console.error('[broadcasts/send] email_sends insert failed', logErr)
+    }
   }
 
   // Update broadcast

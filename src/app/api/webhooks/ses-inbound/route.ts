@@ -18,11 +18,13 @@
 import { NextResponse } from 'next/server'
 import PostalMime from 'postal-mime'
 import { createServiceClient } from '@/lib/supabase/service'
+import { isAllowedSnsTopic } from '@/lib/email/sns-verify'
 
 interface SnsEnvelope {
   Type?: string
   Message?: string
   SubscribeURL?: string
+  TopicArn?: string
 }
 
 interface SesInboundNotification {
@@ -48,6 +50,12 @@ export async function POST(request: Request) {
     envelope = JSON.parse(text) as SnsEnvelope
   } catch {
     return NextResponse.json({ ok: true })
+  }
+
+  // Filtrage TopicArn en defense-en-profondeur (voir sns-verify.ts)
+  if (!isAllowedSnsTopic(envelope)) {
+    console.warn('[ses-inbound] rejected unknown TopicArn', envelope.TopicArn)
+    return NextResponse.json({ ok: false, error: 'unknown topic' }, { status: 403 })
   }
 
   // Handshake SNS
@@ -134,11 +142,15 @@ export async function POST(request: Request) {
     domainCandidates.push(parts.slice(1).join('.')) // reply.foo.com → foo.com
   }
 
-  const { data: domainRow } = await supabase
+  // .limit(1) : si plusieurs domaines matchent (edge case : coach possède
+  // foo.com ET reply.foo.com distinctement), prendre le premier plutôt que
+  // .maybeSingle() qui renverrait une erreur PGRST116 swallowed.
+  const { data: domainRows } = await supabase
     .from('email_domains')
     .select('workspace_id, domain')
     .in('domain', domainCandidates)
-    .maybeSingle()
+    .limit(1)
+  const domainRow = domainRows?.[0]
 
   if (!domainRow) {
     console.warn('[ses-inbound] no matching workspace for', toDomain)
@@ -239,8 +251,10 @@ export async function POST(request: Request) {
       .eq('id', conversationId)
   }
 
-  // Insert message
-  await supabase.from('email_messages').insert({
+  // Insert message. Si échec (race sur ses_message_id en dedup, FK brisée
+  // entre-temps, etc.) on log mais on répond 200 pour éviter que SNS ne
+  // redélivre en boucle — le contenu est déjà dans la conversation.
+  const { error: msgErr } = await supabase.from('email_messages').insert({
     workspace_id: workspaceId,
     conversation_id: conversationId,
     ses_message_id: sesMessageId,
@@ -257,6 +271,9 @@ export async function POST(request: Request) {
     sent_at: new Date().toISOString(),
     is_read: false,
   })
+  if (msgErr && !/duplicate|unique/i.test(msgErr.message)) {
+    console.error('[ses-inbound] message insert failed', msgErr)
+  }
 
   return NextResponse.json({ ok: true })
 }

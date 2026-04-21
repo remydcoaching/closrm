@@ -15,7 +15,15 @@ import { createServiceClient } from '@/lib/supabase/service'
 
 const SES_OUTBOUND_REGION = 'eu-west-3'
 
-async function isSuppressed(email: string, workspaceId?: string): Promise<boolean> {
+/**
+ * Vérifie si une adresse est sur la suppression list (bounce permanent,
+ * complaint, ou opt-out). Si oui, AWS SES refusera l'envoi et le compte
+ * peut être suspendu → on doit skip AVANT tout débit wallet/quota.
+ *
+ * Exporté pour que les call sites (workflow, broadcast, cron) puissent
+ * check en amont et éviter un débit sur un email qui ne partira pas.
+ */
+export async function isSuppressed(email: string, workspaceId?: string): Promise<boolean> {
   const supabase = createServiceClient()
   const normalized = email.trim().toLowerCase()
   let query = supabase.from('email_suppressions').select('id').eq('email', normalized)

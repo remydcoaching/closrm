@@ -77,6 +77,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     updates.default_from_name = name || null
   }
 
+  updates.updated_at = new Date().toISOString()
+
   const { data, error } = await supabase
     .from('email_domains')
     .update(updates)

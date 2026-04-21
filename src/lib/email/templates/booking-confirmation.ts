@@ -1,4 +1,4 @@
-import { sendEmail } from '@/lib/email/client'
+import { sendEmail, isSuppressed } from '@/lib/email/client'
 import { getWorkspaceSenderConfig, SENDER_FALLBACK_EMAIL, SENDER_FALLBACK_NAME } from '@/lib/email/sender-config'
 import { consumeResource } from '@/lib/billing/service'
 
@@ -135,6 +135,12 @@ export async function sendBookingConfirmationEmail(
 ): Promise<void> {
   if (!process.env.AWS_ACCESS_KEY_ID) return
 
+  // Pre-check suppression list avant débit — évite un prélèvement wallet sur
+  // une adresse que SES refuserait.
+  if (await isSuppressed(params.to, params.workspaceId)) {
+    return
+  }
+
   // Quota check si workspaceId fourni (on skip pour les envois hors workspace,
   // ex. email test sans contexte, pour ne pas casser les anciens appels)
   if (params.workspaceId) {
@@ -159,7 +165,11 @@ export async function sendBookingConfirmationEmail(
     : { fromEmail: SENDER_FALLBACK_EMAIL, fromName: params.coachName || SENDER_FALLBACK_NAME }
 
   await sendEmail(
-    { fromEmail: senderConfig.fromEmail, fromName: senderConfig.fromName },
+    {
+      fromEmail: senderConfig.fromEmail,
+      fromName: senderConfig.fromName,
+      workspaceId: params.workspaceId,
+    },
     params.to,
     subject,
     html,

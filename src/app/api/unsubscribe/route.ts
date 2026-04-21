@@ -41,8 +41,8 @@ export async function POST(request: Request) {
 
   const supabase = createServiceClient()
 
-  // 1. Marque le lead
-  const { data: lead } = await supabase
+  // 1. Marque le lead (ignore si déjà inexistant/supprimé — idempotent)
+  const { data: lead, error: leadErr } = await supabase
     .from('leads')
     .update({
       email_unsubscribed: true,
@@ -51,28 +51,37 @@ export async function POST(request: Request) {
     .eq('id', payload.leadId)
     .eq('workspace_id', payload.workspaceId)
     .select('email')
-    .single()
+    .maybeSingle()
+
+  if (leadErr) {
+    console.error('[unsubscribe] lead update failed', leadErr)
+  }
 
   // 2. Désactive les enrollments séquence actifs
-  await supabase
+  const { error: enrollErr } = await supabase
     .from('email_sequence_enrollments')
     .update({ status: 'unsubscribed' })
     .eq('lead_id', payload.leadId)
     .eq('status', 'active')
 
+  if (enrollErr) {
+    console.error('[unsubscribe] sequence enrollments update failed', enrollErr)
+  }
+
   // 3. Ajoute à la suppression list scopée au workspace pour bloquer
-  //    les futurs envois SES (broadcasts, workflows, etc.)
+  //    les futurs envois SES (broadcasts, workflows, etc.).
+  //    Insert simple : la contrainte unique est sur une expression
+  //    (COALESCE(workspace_id::text,'global'), lower(email)) donc onConflict
+  //    ne peut pas la cibler via PostgREST.
   if (lead?.email) {
-    await supabase
-      .from('email_suppressions')
-      .upsert(
-        {
-          workspace_id: payload.workspaceId,
-          email: lead.email.toLowerCase(),
-          reason: 'unsubscribe',
-        },
-        { onConflict: 'workspace_id,email', ignoreDuplicates: true },
-      )
+    const { error: suppErr } = await supabase.from('email_suppressions').insert({
+      workspace_id: payload.workspaceId,
+      email: lead.email.toLowerCase(),
+      reason: 'unsubscribe',
+    })
+    if (suppErr && !/duplicate|unique/i.test(suppErr.message)) {
+      console.error('[unsubscribe] suppression insert failed', suppErr)
+    }
   }
 
   return NextResponse.json({ ok: true })
