@@ -56,10 +56,22 @@ export function verifyUnsubscribeToken(token: string): UnsubscribePayload | null
 }
 
 /**
- * Build the full unsubscribe URL for an email.
+ * Build the full unsubscribe URL for an email body (page avec confirmation).
  */
 export function buildUnsubscribeUrl(leadId: string, workspaceId: string): string {
   const token = generateUnsubscribeToken({ leadId, workspaceId })
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   return `${baseUrl}/unsubscribe?token=${token}`
+}
+
+/**
+ * Build the API URL used in the List-Unsubscribe header (one-click POST).
+ * Distinct de buildUnsubscribeUrl : Gmail/Yahoo envoient un POST directement
+ * sur cette URL sans interaction utilisateur, donc elle doit pointer sur
+ * l'API et non sur une page web.
+ */
+export function buildUnsubscribeApiUrl(leadId: string, workspaceId: string): string {
+  const token = generateUnsubscribeToken({ leadId, workspaceId })
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  return `${baseUrl}/api/unsubscribe?token=${token}`
 }

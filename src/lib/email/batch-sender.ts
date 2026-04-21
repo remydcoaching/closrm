@@ -5,7 +5,7 @@
  */
 
 import { sendEmail, type EmailConfig } from './client'
-import { buildUnsubscribeUrl } from './unsubscribe'
+import { buildUnsubscribeUrl, buildUnsubscribeApiUrl } from './unsubscribe'
 
 const BATCH_SIZE = 100
 const BATCH_DELAY_MS = 1100 // slightly over 1s to stay safe
@@ -61,13 +61,19 @@ export async function sendBatch(
     // Send batch in parallel
     const batchResults = await Promise.allSettled(
       batch.map(async (recipient) => {
+        const unsubscribeUrl = buildUnsubscribeApiUrl(recipient.leadId, recipient.workspaceId)
         const htmlWithUnsub = injectUnsubscribeLink(
           recipient.htmlBody,
           recipient.leadId,
           recipient.workspaceId,
         )
 
-        const res = await sendEmail(config, recipient.email, recipient.subject, htmlWithUnsub)
+        const res = await sendEmail(
+          { ...config, unsubscribeUrl, workspaceId: recipient.workspaceId },
+          recipient.email,
+          recipient.subject,
+          htmlWithUnsub,
+        )
         return { leadId: recipient.leadId, ...res }
       })
     )

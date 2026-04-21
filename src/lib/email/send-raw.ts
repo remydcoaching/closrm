@@ -52,6 +52,11 @@ export interface SendThreadedEmailInput {
    * Si omis, on ne check que les suppressions globales (safe mais moins précis).
    */
   workspaceId?: string
+  /**
+   * URL unsubscribe signée. Déclenche l'ajout des headers List-Unsubscribe +
+   * List-Unsubscribe-Post (obligatoires pour le bulk d'après Gmail).
+   */
+  unsubscribeUrl?: string
 }
 
 export interface SendThreadedEmailResult {
@@ -77,6 +82,10 @@ export async function sendThreadedEmail(
   const headers: Array<{ Name: string; Value: string }> = []
   if (input.inReplyTo) headers.push({ Name: 'In-Reply-To', Value: input.inReplyTo })
   if (input.references) headers.push({ Name: 'References', Value: input.references })
+  if (input.unsubscribeUrl) {
+    headers.push({ Name: 'List-Unsubscribe', Value: `<${input.unsubscribeUrl}>` })
+    headers.push({ Name: 'List-Unsubscribe-Post', Value: 'List-Unsubscribe=One-Click' })
+  }
 
   const body: { Html?: { Data: string; Charset: string }; Text?: { Data: string; Charset: string } } = {}
   if (input.bodyHtml) body.Html = { Data: input.bodyHtml, Charset: 'UTF-8' }
