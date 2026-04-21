@@ -613,6 +613,27 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Moyen
 - **Statut :** En attente de validation
 
+### [A-019] Wizard DNS email : UX à améliorer
+- **Contexte :** Session 2026-04-22 — setup domaine pierre-coaching.fr
+- **Description :** L'étape 4 "Vérification" liste les records (type + nom) sans afficher la valeur cible. Pour un coach non-technique, pas clair ce qu'il doit copier dans sa zone DNS. Pistes : (1) afficher la valeur directement sous le nom, (2) bouton "Copier" par record sur cette étape, (3) détection/warning des anciens DKIM obsolètes à supprimer, (4) tooltip OVH/Cloudflare/Gandi expliquant "sous-domaine = @" pour la racine, (5) distinction visuelle "nouveaux à ajouter" vs "déjà existants à garder".
+- **Priorité estimée :** Moyenne (bloque l'onboarding des coachs non-techniques)
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### [A-020] Broadcast : ciblage par tag ou lead spécifique
+- **Contexte :** Session 2026-04-21 — impossible de cibler 2 leads précis pour un test SES
+- **Description :** L'UI de broadcast actuel ne permet de filtrer que par date/source/tag/statut, mais pas de sélectionner des leads spécifiques. Ajouter un multi-select ou un filtre "tag = X" qui fonctionne (actuellement non dispo dans l'UI). Critique pour tester sans risquer d'envoyer à toute la base.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### [A-021] Hardening webhook SNS — signature cryptographique
+- **Contexte :** Session 2026-04-21 — ajout d'un filtre TopicArn (commit e17bb7f)
+- **Description :** Implémenter la vérif de signature SNS complète (fetch SigningCertURL + verify RSA-SHA1/256 sur les champs canonicalisés) via `sns-validator` npm. Le filtre TopicArn actuel est un palliatif.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (1-2h)
+- **Statut :** En attente de validation
+
 ---
 
-*Mis a jour le 2026-04-17 par Claude Code — ClosRM*
+*Mis a jour le 2026-04-22 par Claude Code — ClosRM*

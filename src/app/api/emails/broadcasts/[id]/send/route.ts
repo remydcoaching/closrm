@@ -39,7 +39,7 @@ export async function POST(_request: Request, context: RouteContext) {
   if (!template) return NextResponse.json({ error: 'Template introuvable' }, { status: 404 })
 
   // Get sender config (workspace custom domain or fallback)
-  const { fromEmail, fromName } = await getWorkspaceSenderConfig(workspaceId)
+  const { fromEmail, fromName, replyTo } = await getWorkspaceSenderConfig(workspaceId)
 
   // Get coach name
   const { data: user } = await supabase
@@ -134,7 +134,7 @@ export async function POST(_request: Request, context: RouteContext) {
   }
 
   const result = await sendBatch(
-    { fromEmail, fromName },
+    { fromEmail, fromName, replyTo },
     recipients,
   )
 

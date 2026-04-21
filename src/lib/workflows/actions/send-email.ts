@@ -57,7 +57,12 @@ export async function execute(
   })
 
   const result = await sendEmail(
-    { fromEmail: senderConfig.fromEmail, fromName: senderConfig.fromName, workspaceId },
+    {
+      fromEmail: senderConfig.fromEmail,
+      fromName: senderConfig.fromName,
+      replyTo: senderConfig.replyTo,
+      workspaceId,
+    },
     to,
     subject,
     htmlBody

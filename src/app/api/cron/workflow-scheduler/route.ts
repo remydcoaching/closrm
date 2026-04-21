@@ -375,6 +375,7 @@ export async function GET(request: NextRequest) {
                     {
                       fromEmail: senderConfig.fromEmail,
                       fromName: senderConfig.fromName,
+                      replyTo: senderConfig.replyTo,
                       workspaceId: reminder.workspace_id,
                     },
                     lead.email,

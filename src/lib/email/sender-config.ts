@@ -11,6 +11,7 @@
  */
 
 import { createServiceClient } from '@/lib/supabase/service'
+import { getInboundSubdomain } from '@/lib/email/domains'
 
 const DEFAULT_FROM_EMAIL = 'noreply@closrm.fr'
 const DEFAULT_FROM_NAME = 'ClosRM'
@@ -18,6 +19,16 @@ const DEFAULT_FROM_NAME = 'ClosRM'
 export interface SenderConfig {
   fromEmail: string
   fromName: string
+  /**
+   * Adresse Reply-To que les clients mail (Gmail, Outlook…) utilisent quand
+   * le lead clique "Répondre". Pointe sur le sous-domaine inbound
+   * (reply.{domain}) qui a le MX configuré pour que les réponses soient
+   * captées par le webhook SES inbound et remontées dans la conversation.
+   *
+   * Si absent, Gmail essaie d'écrire à fromEmail (= racine du domaine),
+   * qui n'a pas de MX → bounce "Adresse introuvable".
+   */
+  replyTo?: string
 }
 
 /**
@@ -32,13 +43,17 @@ export async function getWorkspaceSenderConfig(
   overrides?: Partial<SenderConfig>,
 ): Promise<SenderConfig> {
   if (overrides?.fromEmail && overrides?.fromName) {
-    return { fromEmail: overrides.fromEmail, fromName: overrides.fromName }
+    return {
+      fromEmail: overrides.fromEmail,
+      fromName: overrides.fromName,
+      replyTo: overrides.replyTo,
+    }
   }
 
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('email_domains')
-    .select('default_from_email, default_from_name')
+    .select('domain, default_from_email, default_from_name')
     .eq('workspace_id', workspaceId)
     .eq('status', 'verified')
     .not('default_from_email', 'is', null)
@@ -46,10 +61,16 @@ export async function getWorkspaceSenderConfig(
     .limit(1)
     .maybeSingle()
 
-  return {
-    fromEmail: overrides?.fromEmail || data?.default_from_email || DEFAULT_FROM_EMAIL,
-    fromName: overrides?.fromName || data?.default_from_name || DEFAULT_FROM_NAME,
-  }
+  const fromEmail = overrides?.fromEmail || data?.default_from_email || DEFAULT_FROM_EMAIL
+  const fromName = overrides?.fromName || data?.default_from_name || DEFAULT_FROM_NAME
+
+  // Reply-To : si le workspace a un domaine custom, route vers reply.{domain}
+  // pour que le webhook inbound capte les réponses. Sinon, pas de reply-to
+  // (SES fallback noreply@closrm.fr accepte déjà les réponses directement).
+  const replyTo = overrides?.replyTo
+    || (data?.domain ? `reply@${getInboundSubdomain(data.domain)}` : undefined)
+
+  return { fromEmail, fromName, replyTo }
 }
 
 export const SENDER_FALLBACK_EMAIL = DEFAULT_FROM_EMAIL

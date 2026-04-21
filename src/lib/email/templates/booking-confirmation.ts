@@ -168,6 +168,7 @@ export async function sendBookingConfirmationEmail(
     {
       fromEmail: senderConfig.fromEmail,
       fromName: senderConfig.fromName,
+      replyTo: 'replyTo' in senderConfig ? senderConfig.replyTo : undefined,
       workspaceId: params.workspaceId,
     },
     params.to,

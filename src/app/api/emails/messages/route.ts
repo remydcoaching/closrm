@@ -105,6 +105,7 @@ export async function POST(request: Request) {
     const result = await sendThreadedEmail({
       fromEmail: sender.fromEmail,
       fromName: sender.fromName,
+      replyTo: sender.replyTo,
       to: conv.participant_email,
       subject,
       bodyHtml: body_html,
