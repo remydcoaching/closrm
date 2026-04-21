@@ -100,6 +100,18 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
     return () => clearInterval(interval)
   }, [step, domainData, handleVerify])
 
+  // Sync l'état interne quand le prop `existingDomain` change après mount
+  // (chargement async par DomainWizardCard). Sans ça, les useState initiaux
+  // restent figés à vide et le wizard démarre toujours à l'étape "domain".
+  useEffect(() => {
+    if (!existingDomain) return
+    setDomainData(existingDomain)
+    setDomain(existingDomain.domain ?? '')
+    setFromEmail(existingDomain.default_from_email ?? '')
+    setFromName(existingDomain.default_from_name ?? '')
+    setStep(existingDomain.status === 'verified' ? 'done' : 'verify')
+  }, [existingDomain])
+
   async function handleSaveFrom() {
     if (!domainData) return
     setSavingFrom(true)
