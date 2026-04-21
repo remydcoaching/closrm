@@ -29,14 +29,25 @@ export async function POST(_request: Request, context: RouteContext) {
   if (!broadcast) return NextResponse.json({ error: 'Campagne introuvable' }, { status: 404 })
   if (broadcast.status === 'sent') return NextResponse.json({ error: 'Déjà envoyé' }, { status: 400 })
 
-  // Get template
-  const { data: template } = await supabase
-    .from('email_templates')
-    .select('*')
-    .eq('id', broadcast.template_id)
-    .single()
-
-  if (!template) return NextResponse.json({ error: 'Template introuvable' }, { status: 404 })
+  // Récupère le template si le broadcast en référence un. Sinon on utilisera
+  // directement broadcast.body_html (mode "email libre").
+  let template: { blocks: EmailBlock[]; preview_text: string | null; subject: string | null } | null = null
+  if (broadcast.template_id) {
+    const { data } = await supabase
+      .from('email_templates')
+      .select('*')
+      .eq('id', broadcast.template_id)
+      .single()
+    if (!data) {
+      return NextResponse.json({ error: 'Template introuvable' }, { status: 404 })
+    }
+    template = data
+  } else if (!broadcast.body_html && !broadcast.body_text) {
+    return NextResponse.json(
+      { error: 'Broadcast sans template ni contenu — impossible d\'envoyer' },
+      { status: 400 },
+    )
+  }
 
   // Get sender config (workspace custom domain or fallback)
   const { fromEmail, fromName, replyTo } = await getWorkspaceSenderConfig(workspaceId)
@@ -131,9 +142,14 @@ export async function POST(_request: Request, context: RouteContext) {
     .update({ status: 'sending', total_count: leads.length })
     .eq('id', id)
 
-  // Compile template for each lead
-  const baseHtml = compileBlocks(template.blocks as EmailBlock[], template.preview_text)
-  const subject = broadcast.subject || template.subject || 'Sans sujet'
+  // Compile template pour chaque lead. Si pas de template (mode email libre),
+  // utiliser directement broadcast.body_html, ou dériver depuis body_text.
+  const baseHtml = template
+    ? compileBlocks(template.blocks as EmailBlock[], template.preview_text)
+    : (broadcast.body_html || (broadcast.body_text
+        ? `<div style="font-family:sans-serif;line-height:1.6">${broadcast.body_text.replace(/\n/g, '<br>')}</div>`
+        : ''))
+  const subject = broadcast.subject || template?.subject || 'Sans sujet'
 
   const recipients: BatchRecipient[] = leads.map((lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'email' | 'phone'>) => {
     const resolvedHtml = resolveTemplate(baseHtml, {

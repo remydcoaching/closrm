@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { RefreshCw, Search, Send, Mail } from 'lucide-react'
+import { RefreshCw, Search, Send, Mail, Plus } from 'lucide-react'
+import NewEmailModal from '@/components/messages/NewEmailModal'
 
 interface EmailConversation {
   id: string
@@ -59,6 +60,7 @@ export default function EmailMessagesView() {
   const [sending, setSending] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showNewModal, setShowNewModal] = useState(false)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleSearchChange = (value: string) => {
@@ -202,25 +204,45 @@ export default function EmailMessagesView() {
           }}
         >
           <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Inbox</h2>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            title="Rafraîchir"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: '50%',
-              border: '1px solid var(--border-primary)',
-              background: 'var(--bg-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              opacity: refreshing ? 0.5 : 1,
-            }}
-          >
-            <RefreshCw size={14} color="var(--text-tertiary)" className={refreshing ? 'animate-spin' : ''} />
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setShowNewModal(true)}
+              title="Nouveau message"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                border: 'none',
+                background: 'var(--color-primary)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <Plus size={16} />
+            </button>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Rafraîchir"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                border: '1px solid var(--border-primary)',
+                background: 'var(--bg-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                opacity: refreshing ? 0.5 : 1,
+              }}
+            >
+              <RefreshCw size={14} color="var(--text-tertiary)" className={refreshing ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
 
         <div style={{ padding: '0 20px 12px' }}>
@@ -568,6 +590,22 @@ export default function EmailMessagesView() {
           </div>
         )}
       </div>
+
+      {showNewModal && (
+        <NewEmailModal
+          onClose={() => setShowNewModal(false)}
+          onSent={async (conversationId) => {
+            setShowNewModal(false)
+            await fetchConversations()
+            // Auto-select the new conversation
+            const res = await fetch(`/api/emails/conversations`)
+            const json = await res.json()
+            const convos: EmailConversation[] = json.data ?? []
+            const target = convos.find((c) => c.id === conversationId)
+            if (target) fetchMessages(target)
+          }}
+        />
+      )}
     </div>
   )
 }
