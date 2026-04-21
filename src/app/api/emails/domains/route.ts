@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
-import { createDomain } from '@/lib/email/domains'
+import { createDomain, getInboundSubdomain } from '@/lib/email/domains'
+import { addRecipientToRule } from '@/lib/email/receipt-rule'
 
 export async function GET() {
   const { workspaceId } = await getWorkspaceId()
@@ -46,6 +47,15 @@ export async function POST(request: Request) {
   }
 
   const sesDomain = result.domain
+
+  // Enregistrer le sous-domaine inbound dans la receipt rule SES (eu-west-1).
+  // Si la config env manque, on log mais on ne bloque pas l'onboarding — le
+  // domaine sera quand même créé côté SES et le coach pourra envoyer des mails,
+  // seule la réception sera KO tant que la rule n'est pas mise à jour.
+  const recipientAdd = await addRecipientToRule(getInboundSubdomain(domain))
+  if (!recipientAdd.ok) {
+    console.warn('[emails/domains] receipt rule update failed', recipientAdd.error)
+  }
   const dnsRecords = sesDomain.records.map(r => ({
     type: r.type,
     name: r.name,

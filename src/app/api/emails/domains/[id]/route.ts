@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
-import { deleteDomain as deleteResendDomain } from '@/lib/email/domains'
+import { deleteDomain as deleteResendDomain, getInboundSubdomain } from '@/lib/email/domains'
+import { removeRecipientFromRule } from '@/lib/email/receipt-rule'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -95,7 +96,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
   const { data: domain } = await supabase
     .from('email_domains')
-    .select('resend_domain_id')
+    .select('resend_domain_id, domain')
     .eq('id', id)
     .eq('workspace_id', workspaceId)
     .single()
@@ -106,6 +107,13 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
   if (domain.resend_domain_id) {
     await deleteResendDomain(domain.resend_domain_id)
+  }
+
+  if (domain.domain) {
+    const removal = await removeRecipientFromRule(getInboundSubdomain(domain.domain))
+    if (!removal.ok) {
+      console.warn('[emails/domains] receipt rule cleanup failed', removal.error)
+    }
   }
 
   const { error } = await supabase
