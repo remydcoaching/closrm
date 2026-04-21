@@ -66,9 +66,34 @@ export async function POST(_request: Request, context: RouteContext) {
   if (filters.reached === 'true') query = query.eq('reached', true)
   if (filters.reached === 'false') query = query.eq('reached', false)
 
-  const { data: leads } = await query
-  if (!leads?.length) {
+  const { data: rawLeads } = await query
+  if (!rawLeads?.length) {
     return NextResponse.json({ error: 'Aucun destinataire trouvé' }, { status: 400 })
+  }
+
+  // Filtrer les leads dont l'email est dans la suppression list (scoped
+  // workspace + globale). Sans ça, le quota/wallet est sur-provisionné et
+  // le fair-use cap peut bloquer à tort des broadcasts.
+  const emailsLower = rawLeads
+    .map((l) => l.email?.trim().toLowerCase())
+    .filter((e): e is string => Boolean(e))
+
+  const { data: suppressed } = await supabase
+    .from('email_suppressions')
+    .select('email')
+    .in('email', emailsLower)
+    .or(`workspace_id.is.null,workspace_id.eq.${workspaceId}`)
+
+  const suppressedSet = new Set((suppressed || []).map((s) => s.email))
+  const leads = rawLeads.filter(
+    (l) => l.email && !suppressedSet.has(l.email.trim().toLowerCase()),
+  )
+
+  if (!leads.length) {
+    return NextResponse.json(
+      { error: 'Tous les destinataires sont en suppression list' },
+      { status: 400 },
+    )
   }
 
   // Pre-check quota broadcast (avant d'envoyer, on vérifie qu'on a la
@@ -158,6 +183,7 @@ export async function POST(_request: Request, context: RouteContext) {
       broadcast_id: id,
       template_id: broadcast.template_id,
       resend_email_id: r.resendEmailId,
+      source: 'broadcast',
       status: 'sent',
       subject,
       from_email: fromEmail,

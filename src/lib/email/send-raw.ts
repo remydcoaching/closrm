@@ -5,6 +5,7 @@
 
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
 import { createServiceClient } from '@/lib/supabase/service'
+import { retrySesCall } from '@/lib/email/retry'
 
 const SES_OUTBOUND_REGION = 'eu-west-3'
 
@@ -107,7 +108,7 @@ export async function sendThreadedEmail(
   })
 
   try {
-    const res = await getClient().send(command)
+    const res = await retrySesCall(() => getClient().send(command), 'sendThreadedEmail')
     return { ok: true, messageId: res.MessageId }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) }

@@ -10,6 +10,7 @@ import { cancelBookingReminders } from '@/lib/bookings/reminders'
 import { verifyDomain } from '@/lib/email/domains'
 import { consumeResource } from '@/lib/billing/service'
 import { getWorkspaceSenderConfig } from '@/lib/email/sender-config'
+import { logEmailSend } from '@/lib/email/log-send'
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -382,7 +383,18 @@ export async function GET(request: NextRequest) {
                     'Rappel de votre rendez-vous',
                     `<p>${reminder.message.replace(/\n/g, '<br>')}</p>`
                   )
-                  if (!result.ok) sendError = result.error ?? 'Erreur envoi email'
+                  if (!result.ok) {
+                    sendError = result.error ?? 'Erreur envoi email'
+                  } else {
+                    await logEmailSend({
+                      workspaceId: reminder.workspace_id,
+                      sesMessageId: result.id,
+                      source: 'booking_reminder',
+                      leadId: reminder.lead_id,
+                      subject: 'Rappel de votre rendez-vous',
+                      fromEmail: senderConfig.fromEmail,
+                    })
+                  }
                 }
               }
             } else if (reminder.channel === 'whatsapp') {

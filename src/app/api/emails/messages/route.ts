@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { getWorkspaceSenderConfig } from '@/lib/email/sender-config'
 import { sendThreadedEmail } from '@/lib/email/send-raw'
+import { consumeResource } from '@/lib/billing/service'
+import { logEmailSend } from '@/lib/email/log-send'
 
 export async function GET(request: Request) {
   try {
@@ -102,10 +104,27 @@ export async function POST(request: Request) {
       subjectOverride ||
       (conv.subject ? (conv.subject.startsWith('Re:') ? conv.subject : `Re: ${conv.subject}`) : '(Sans objet)')
 
+    // Quota + débit wallet atomique avant l'envoi. Protège contre les abus
+    // (envois en masse via l'inbox) et trace l'usage dans la facturation.
+    const quotaResult = await consumeResource({
+      workspaceId,
+      resourceType: 'email',
+      quantity: 1,
+      source: 'direct_message',
+      metadata: { conversation_id, to: conv.participant_email },
+    })
+    if (!quotaResult.allowed) {
+      return NextResponse.json(
+        { error: quotaResult.error_message || 'Quota email dépassé' },
+        { status: 402 },
+      )
+    }
+
     const result = await sendThreadedEmail({
       fromEmail: sender.fromEmail,
       fromName: sender.fromName,
       replyTo: sender.replyTo,
+      workspaceId,
       to: conv.participant_email,
       subject,
       bodyHtml: body_html,
@@ -146,6 +165,17 @@ export async function POST(request: Request) {
     if (insertErr) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 })
     }
+
+    // Log dans email_sends pour que les events SES (bounce/complaint/open/click)
+    // puissent matcher ce message plus tard via resend_email_id.
+    await logEmailSend({
+      workspaceId,
+      sesMessageId: result.messageId,
+      source: 'direct_message',
+      leadId: conv.lead_id ?? null,
+      subject,
+      fromEmail: sender.fromEmail,
+    })
 
     await supabase
       .from('email_conversations')

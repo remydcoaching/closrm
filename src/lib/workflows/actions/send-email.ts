@@ -1,6 +1,7 @@
 import { sendEmail, isSuppressed } from '@/lib/email/client'
 import { getWorkspaceSenderConfig } from '@/lib/email/sender-config'
 import { consumeResource } from '@/lib/billing/service'
+import { logEmailSend } from '@/lib/email/log-send'
 import type { ExecutionContext } from './index'
 
 export async function execute(
@@ -69,6 +70,18 @@ export async function execute(
   )
 
   if (!result.ok) return { success: false, error: result.error }
+
+  // Log dans email_sends pour que les events SES (bounce/complaint/open/click)
+  // puissent être matchés à ce workflow plus tard.
+  await logEmailSend({
+    workspaceId,
+    sesMessageId: result.id,
+    source: 'workflow',
+    leadId: context.leadId,
+    subject,
+    fromEmail: senderConfig.fromEmail,
+  })
+
   return {
     success: true,
     result: {

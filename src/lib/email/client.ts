@@ -12,6 +12,7 @@
 
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
 import { createServiceClient } from '@/lib/supabase/service'
+import { retrySesCall } from '@/lib/email/retry'
 
 const SES_OUTBOUND_REGION = 'eu-west-3'
 
@@ -113,7 +114,7 @@ export async function sendEmail(
   })
 
   try {
-    const res = await getClient().send(command)
+    const res = await retrySesCall(() => getClient().send(command), 'sendEmail')
     return { ok: true, id: res.MessageId }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

@@ -627,6 +627,18 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Moyen
 - **Statut :** En attente de validation
 
+### [A-022] Messages : bouton "Nouvelle conversation"
+- **Contexte :** Session 2026-04-22 — user ne peut pas démarrer un email sans avoir reçu de réponse d'abord
+- **Description :** L'UI `/messages` (onglet Email) n'affiche pas de bouton pour composer un nouvel email vers un lead. On ne peut que répondre à une conversation existante. Ajouter un bouton "Nouveau message" qui ouvre un modal : sélection lead → sujet → corps → envoi via `/api/emails/messages` avec création de conversation si absente.
+- **Priorité estimée :** Haute (bloque un usage basique)
+- **Effort estimé :** Moyen
+
+### [A-023] Broadcasts : email libre sans template obligatoire
+- **Contexte :** Session 2026-04-22 — user veut envoyer un email ponctuel sans créer de template
+- **Description :** Actuellement `/acquisition/emails` → Campagnes exige de sélectionner un template. Ajouter une option "Email libre" qui permet de composer directement sujet + HTML/markdown sans passer par le workflow template. Ou bien une modale "quick send" qui crée un template éphémère automatiquement.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible (le backend accepte déjà tout via email_broadcasts.subject + template.blocks)
+
 ### [A-021] Hardening webhook SNS — signature cryptographique
 - **Contexte :** Session 2026-04-21 — ajout d'un filtre TopicArn (commit e17bb7f)
 - **Description :** Implémenter la vérif de signature SNS complète (fetch SigningCertURL + verify RSA-SHA1/256 sur les champs canonicalisés) via `sns-validator` npm. Le filtre TopicArn actuel est un palliatif.

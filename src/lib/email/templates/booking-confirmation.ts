@@ -1,6 +1,7 @@
 import { sendEmail, isSuppressed } from '@/lib/email/client'
 import { getWorkspaceSenderConfig, SENDER_FALLBACK_EMAIL, SENDER_FALLBACK_NAME } from '@/lib/email/sender-config'
 import { consumeResource } from '@/lib/billing/service'
+import { logEmailSend } from '@/lib/email/log-send'
 
 interface BookingConfirmationParams {
   to: string
@@ -164,7 +165,7 @@ export async function sendBookingConfirmationEmail(
     ? await getWorkspaceSenderConfig(params.workspaceId, { fromName: params.coachName })
     : { fromEmail: SENDER_FALLBACK_EMAIL, fromName: params.coachName || SENDER_FALLBACK_NAME }
 
-  await sendEmail(
+  const result = await sendEmail(
     {
       fromEmail: senderConfig.fromEmail,
       fromName: senderConfig.fromName,
@@ -175,4 +176,14 @@ export async function sendBookingConfirmationEmail(
     subject,
     html,
   )
+
+  if (result.ok && params.workspaceId) {
+    await logEmailSend({
+      workspaceId: params.workspaceId,
+      sesMessageId: result.id,
+      source: 'booking_confirmation',
+      subject,
+      fromEmail: senderConfig.fromEmail,
+    })
+  }
 }
