@@ -11,8 +11,20 @@
  */
 
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
+import { createServiceClient } from '@/lib/supabase/service'
 
 const SES_OUTBOUND_REGION = 'eu-west-3'
+
+async function isSuppressed(email: string, workspaceId?: string): Promise<boolean> {
+  const supabase = createServiceClient()
+  const normalized = email.trim().toLowerCase()
+  let query = supabase.from('email_suppressions').select('id').eq('email', normalized)
+  query = workspaceId
+    ? query.or(`workspace_id.is.null,workspace_id.eq.${workspaceId}`)
+    : query.is('workspace_id', null)
+  const { data } = await query.limit(1).maybeSingle()
+  return Boolean(data)
+}
 
 let _client: SESv2Client | null = null
 
@@ -30,12 +42,14 @@ export interface EmailConfig {
   fromName?: string
   replyTo?: string
   configurationSetName?: string
+  workspaceId?: string
 }
 
 export interface SendEmailResult {
   ok: boolean
   id?: string
   error?: string
+  suppressed?: boolean
 }
 
 const DEFAULT_FROM_EMAIL = 'noreply@closrm.fr'
@@ -47,6 +61,10 @@ export async function sendEmail(
   subject: string,
   htmlBody: string,
 ): Promise<SendEmailResult> {
+  if (await isSuppressed(to, config.workspaceId)) {
+    return { ok: false, suppressed: true, error: 'Destinataire sur la suppression list' }
+  }
+
   const fromEmail = config.fromEmail || DEFAULT_FROM_EMAIL
   const fromName = config.fromName || DEFAULT_FROM_NAME
   const fromHeader = fromName ? `${fromName} <${fromEmail}>` : fromEmail

@@ -25,11 +25,27 @@ interface SnsEnvelope {
   TopicArn?: string
 }
 
+interface SesBouncedRecipient {
+  emailAddress?: string
+  status?: string
+  action?: string
+  diagnosticCode?: string
+}
+
 interface SesNotification {
   eventType?: string // Bounce | Complaint | Delivery | Open | Click | Reject
   notificationType?: string // legacy SES notif format
   mail?: {
     messageId?: string
+  }
+  bounce?: {
+    bounceType?: string // Permanent | Transient | Undetermined
+    bounceSubType?: string
+    bouncedRecipients?: SesBouncedRecipient[]
+  }
+  complaint?: {
+    complainedRecipients?: { emailAddress?: string }[]
+    complaintFeedbackType?: string
   }
 }
 
@@ -75,44 +91,86 @@ export async function POST(request: Request) {
   // On stocke le SES MessageId dans la même colonne resend_email_id (legacy)
   const { data: send } = await supabase
     .from('email_sends')
-    .select('id')
+    .select('id, workspace_id')
     .eq('resend_email_id', messageId)
     .single()
 
-  if (!send) {
-    return NextResponse.json({ ok: true })
-  }
-
   const now = new Date().toISOString()
 
-  switch (eventType) {
-    case 'Delivery':
-      await supabase.from('email_sends').update({ status: 'delivered' }).eq('id', send.id)
-      break
-    case 'Open':
-      await supabase
-        .from('email_sends')
-        .update({ status: 'opened', opened_at: now })
-        .eq('id', send.id)
-      break
-    case 'Click':
-      await supabase
-        .from('email_sends')
-        .update({ status: 'clicked', clicked_at: now })
-        .eq('id', send.id)
-      break
-    case 'Bounce':
-      await supabase
-        .from('email_sends')
-        .update({ status: 'bounced', bounced_at: now })
-        .eq('id', send.id)
-      break
-    case 'Complaint':
-      await supabase.from('email_sends').update({ status: 'complained' }).eq('id', send.id)
-      break
-    case 'Reject':
-      await supabase.from('email_sends').update({ status: 'bounced', bounced_at: now }).eq('id', send.id)
-      break
+  // Ajoute à la suppression list si bounce permanent ou complaint.
+  // Si on ne retrouve pas le send (ex: email envoyé avant instrumentation),
+  // on stocke quand même en suppression globale pour protéger la réputation.
+  async function addSuppressions(
+    recipients: { emailAddress?: string; diagnosticCode?: string }[],
+    reason: 'bounce' | 'complaint',
+    bounceType?: string,
+    bounceSubType?: string,
+  ) {
+    const rows = recipients
+      .map((r) => r.emailAddress?.trim().toLowerCase())
+      .filter((e): e is string => Boolean(e))
+      .map((email, idx) => ({
+        workspace_id: send?.workspace_id ?? null,
+        email,
+        reason,
+        bounce_type: bounceType ?? null,
+        bounce_subtype: bounceSubType ?? null,
+        diagnostic: recipients[idx]?.diagnosticCode ?? null,
+        ses_message_id: messageId,
+      }))
+    if (rows.length === 0) return
+    // upsert → ignore si déjà en suppression (contrainte unique workspace+email)
+    await supabase.from('email_suppressions').upsert(rows, {
+      onConflict: 'workspace_id,email',
+      ignoreDuplicates: true,
+    })
+  }
+
+  if (send) {
+    switch (eventType) {
+      case 'Delivery':
+        await supabase.from('email_sends').update({ status: 'delivered' }).eq('id', send.id)
+        break
+      case 'Open':
+        await supabase
+          .from('email_sends')
+          .update({ status: 'opened', opened_at: now })
+          .eq('id', send.id)
+        break
+      case 'Click':
+        await supabase
+          .from('email_sends')
+          .update({ status: 'clicked', clicked_at: now })
+          .eq('id', send.id)
+        break
+      case 'Bounce':
+        await supabase
+          .from('email_sends')
+          .update({ status: 'bounced', bounced_at: now })
+          .eq('id', send.id)
+        break
+      case 'Complaint':
+        await supabase.from('email_sends').update({ status: 'complained' }).eq('id', send.id)
+        break
+      case 'Reject':
+        await supabase
+          .from('email_sends')
+          .update({ status: 'bounced', bounced_at: now })
+          .eq('id', send.id)
+        break
+    }
+  }
+
+  // Suppressions : dans tous les cas, même si on ne retrouve pas le send local.
+  if (eventType === 'Bounce' && notif.bounce?.bounceType === 'Permanent') {
+    await addSuppressions(
+      notif.bounce.bouncedRecipients || [],
+      'bounce',
+      notif.bounce.bounceType,
+      notif.bounce.bounceSubType,
+    )
+  } else if (eventType === 'Complaint') {
+    await addSuppressions(notif.complaint?.complainedRecipients || [], 'complaint')
   }
 
   return NextResponse.json({ ok: true })
