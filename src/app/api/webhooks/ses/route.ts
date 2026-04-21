@@ -119,11 +119,13 @@ export async function POST(request: Request) {
         ses_message_id: messageId,
       }))
     if (rows.length === 0) return
-    // upsert → ignore si déjà en suppression (contrainte unique workspace+email)
-    await supabase.from('email_suppressions').upsert(rows, {
-      onConflict: 'workspace_id,email',
-      ignoreDuplicates: true,
-    })
+    // Insert simple : la contrainte unique est sur une expression
+    // (COALESCE(workspace_id::text,'global'), lower(email)) donc onConflict
+    // ne peut pas la cibler via PostgREST. On insert et on ignore les doublons.
+    const { error } = await supabase.from('email_suppressions').insert(rows)
+    if (error && !/duplicate|unique/i.test(error.message)) {
+      console.error('[ses webhook] suppression insert failed', error)
+    }
   }
 
   if (send) {
