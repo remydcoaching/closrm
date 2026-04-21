@@ -43,6 +43,16 @@ export interface EmailConfig {
   replyTo?: string
   configurationSetName?: string
   workspaceId?: string
+  /**
+   * URL d'un lien unsubscribe signé. Si fournie, ajoute les headers
+   * List-Unsubscribe + List-Unsubscribe-Post (RFC 8058) qui permettent à
+   * Gmail/Yahoo d'afficher un bouton "Se désabonner" dans la UI mail et
+   * d'envoyer un POST one-click vers cette URL.
+   *
+   * Obligatoire pour les envois bulk/broadcasts d'après les règles Gmail de
+   * février 2024 (senders > 5 000 mails/jour).
+   */
+  unsubscribeUrl?: string
 }
 
 export interface SendEmailResult {
@@ -72,6 +82,12 @@ export async function sendEmail(
   const configurationSetName =
     config.configurationSetName || process.env.SES_CONFIGURATION_SET
 
+  const headers: Array<{ Name: string; Value: string }> = []
+  if (config.unsubscribeUrl) {
+    headers.push({ Name: 'List-Unsubscribe', Value: `<${config.unsubscribeUrl}>` })
+    headers.push({ Name: 'List-Unsubscribe-Post', Value: 'List-Unsubscribe=One-Click' })
+  }
+
   const command = new SendEmailCommand({
     FromEmailAddress: fromHeader,
     Destination: { ToAddresses: [to] },
@@ -83,6 +99,7 @@ export async function sendEmail(
         Body: {
           Html: { Data: htmlBody, Charset: 'UTF-8' },
         },
+        Headers: headers.length > 0 ? headers : undefined,
       },
     },
   })
