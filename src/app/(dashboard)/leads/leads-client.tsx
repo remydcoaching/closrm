@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { Plus, Settings2, Search } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Plus, Settings2, Search, Upload, Download, Clock } from 'lucide-react'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 import { Lead, LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
 import LeadFilters from '@/components/leads/LeadFilters'
@@ -34,6 +34,7 @@ const DEFAULT_COLUMNS: LeadStatus[] = [
 ]
 
 export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientProps) {
+  const router = useRouter()
   const urlParams = useSearchParams()
   const metaAdId = urlParams?.get('meta_ad_id') ?? undefined
   const metaAdsetId = urlParams?.get('meta_adset_id') ?? undefined
@@ -70,6 +71,8 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
   const [showForm, setShowForm] = useState(false)
+  const [showActionsMenu, setShowActionsMenu] = useState(false)
+  const actionsMenuRef = useRef<HTMLDivElement>(null)
   const [confirm, setConfirm] = useState<{ title: string; message: string; danger?: boolean; onConfirm: () => void } | null>(null)
   const [scheduleTarget, setScheduleTarget] = useState<Lead | null>(null)
   const [treatTarget, setTreatTarget] = useState<Lead | null>(null)
@@ -93,6 +96,17 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
     }
     fetchMembers()
   }, [])
+
+  // Fermer le menu actions au clic en dehors
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false)
+      }
+    }
+    if (showActionsMenu) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showActionsMenu])
 
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -251,13 +265,49 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
             </button>
           )}
           <ViewToggle value={view} onChange={setView} />
-          <button onClick={() => setShowForm(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
-          }}>
-            <Plus size={15} /> Ajouter un lead
-          </button>
+          <div ref={actionsMenuRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowActionsMenu((v) => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 38, height: 38, borderRadius: 8,
+                background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
+              }}
+            >
+              <Plus size={18} strokeWidth={2.5} />
+            </button>
+            {showActionsMenu && (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                width: 240, borderRadius: 10, overflow: 'hidden',
+                background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+                boxShadow: 'var(--shadow-dropdown)', zIndex: 50,
+              }}>
+                {[
+                  { icon: <Plus size={15} />, label: 'Ajouter un lead', onClick: () => { setShowForm(true); setShowActionsMenu(false) } },
+                  { icon: <Upload size={15} />, label: 'Importer des leads', onClick: () => { router.push('/leads/import'); setShowActionsMenu(false) } },
+                  { icon: <Download size={15} />, label: 'Exporter des leads', onClick: () => { router.push('/base-de-donnees'); setShowActionsMenu(false) } },
+                  { icon: <Clock size={15} />, label: 'Historique des imports', onClick: () => { router.push('/leads/import/history'); setShowActionsMenu(false) } },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={item.onClick}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                      padding: '11px 14px', fontSize: 13, color: 'var(--text-primary)',
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      textAlign: 'left', transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <span style={{ color: 'var(--text-secondary)', display: 'flex' }}>{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
