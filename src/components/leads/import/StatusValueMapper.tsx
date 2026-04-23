@@ -21,10 +21,9 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
   dead: 'Dead',
 }
 
-const STATUS_ORDER: LeadStatus[] = [
-  'nouveau', 'scripte', 'setting_planifie', 'no_show_setting',
-  'closing_planifie', 'no_show_closing', 'clos', 'dead',
-]
+// Derived from STATUS_LABELS so TypeScript enforces exhaustiveness: adding a
+// new LeadStatus forces adding a label, which flows through to this order.
+const STATUS_ORDER = Object.keys(STATUS_LABELS) as LeadStatus[]
 
 // Encoded value for the <select> (separates action type from status)
 function encodeAction(action: StatusMappingAction | undefined): string {
@@ -110,6 +109,7 @@ export default function StatusValueMapper({ uniqueValues, mapping, onChange }: P
                   <td style={{ padding: '8px 14px', color: 'var(--text-primary)' }}>{value}</td>
                   <td style={{ padding: '8px 14px' }}>
                     <select
+                      aria-label={`Action pour « ${value} »`}
                       value={selectValue}
                       onChange={(e) => handleChange(value, e.target.value)}
                       style={{
