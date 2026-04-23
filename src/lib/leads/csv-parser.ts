@@ -134,6 +134,7 @@ export const STATUS_SYNONYMS: Record<LeadStatus, string[]> = {
     'scripté', 'scripte', 'contacté', 'contacte', 'contacted',
     'en attente de reponse', 'en attente de réponse', 'en attente',
     'awaiting response', 'a recontacter', 'à recontacter',
+    'qualifié', 'qualifie',
   ],
   setting_planifie: [
     'setting planifié', 'setting planifie', 'setting',
