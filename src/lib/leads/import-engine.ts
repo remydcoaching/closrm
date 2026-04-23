@@ -167,10 +167,28 @@ function validateRow(
     }
   }
 
-  // Validate status against enum
-  const validStatuses: LeadStatus[] = ['nouveau', 'setting_planifie', 'no_show_setting', 'closing_planifie', 'no_show_closing', 'clos', 'dead']
-  if (!validStatuses.includes(prepared.status as LeadStatus)) {
-    prepared.status = config.default_status
+  // Apply status_value_mapping if the raw CSV status matches an entry.
+  // Falls back to enum validation for compat (programmatic API calls, old batches).
+  const rawStatus = (row.status || '').trim()
+  let tagFromStatus: string | null = null
+
+  if (rawStatus && config.status_value_mapping && config.status_value_mapping[rawStatus]) {
+    const action = config.status_value_mapping[rawStatus]
+    if (action.type === 'map') {
+      prepared.status = action.status
+    } else if (action.type === 'tag') {
+      prepared.status = config.default_status
+      tagFromStatus = rawStatus
+    } else {
+      // action.type === 'ignore'
+      prepared.status = config.default_status
+    }
+  } else {
+    // Legacy fallback: validate against enum, else use default
+    const validStatuses: LeadStatus[] = ['nouveau', 'scripte', 'setting_planifie', 'no_show_setting', 'closing_planifie', 'no_show_closing', 'clos', 'dead']
+    if (!validStatuses.includes(prepared.status as LeadStatus)) {
+      prepared.status = config.default_status
+    }
   }
 
   // Parse optional created_at (outside Zod — schema strips unknown fields)
@@ -201,6 +219,10 @@ function validateRow(
 
   const data: Record<string, unknown> = { ...parsed.data, status: prepared.status }
   if (createdAt) data.created_at = createdAt.toISOString()
+  if (tagFromStatus) {
+    const existingTags = (data.tags as string[]) || []
+    data.tags = [...existingTags, tagFromStatus]
+  }
 
   return { valid: true, data, errors: [] }
 }
