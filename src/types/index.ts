@@ -118,6 +118,11 @@ export type ImportDedupStrategy = 'email' | 'phone' | 'email_and_phone' | 'none'
 
 export type ImportDedupAction = 'skip' | 'update' | 'create'
 
+export type StatusMappingAction =
+  | { type: 'map'; status: LeadStatus }
+  | { type: 'tag' }
+  | { type: 'ignore' }
+
 export interface ImportConfig {
   mapping: Record<string, string>
   default_source: LeadSource | null
@@ -125,6 +130,10 @@ export interface ImportConfig {
   batch_tags: string[]
   dedup_strategy: ImportDedupStrategy
   dedup_action: ImportDedupAction
+  // Nouveau : mapping des valeurs CSV de statut → action ClosRM
+  // Clé = valeur CSV brute (ex: "RDV Bilan Pris"), valeur = action à appliquer.
+  // Absence de clé = valeur non mappée (fallback enum actuel).
+  status_value_mapping: Record<string, StatusMappingAction>
 }
 
 export interface LeadImportBatch {
