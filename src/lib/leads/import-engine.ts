@@ -25,6 +25,87 @@ function normalizeEmail(email: string): string {
 }
 
 // ------------------------------------------------------------------
+// Parse an imported creation date. Accepts:
+//   - ISO: 2026-04-23, 2026-04-23T10:30:00(Z)
+//   - FR numeric: DD/MM/YYYY, DD-MM-YYYY (optional HH:MM:SS)
+//   - FR textual: "6 janvier 2026", "6 janv. 2026", "6 janv 2026"
+// Returns null if empty, undefined if invalid.
+// ------------------------------------------------------------------
+const FR_MONTHS: Record<string, number> = {
+  'janvier': 1, 'janv': 1, 'jan': 1,
+  'fevrier': 2, 'fevr': 2, 'fev': 2,
+  'mars': 3, 'mar': 3,
+  'avril': 4, 'avr': 4,
+  'mai': 5,
+  'juin': 6,
+  'juillet': 7, 'juil': 7, 'jui': 7,
+  'aout': 8, 'aou': 8,
+  'septembre': 9, 'sept': 9, 'sep': 9,
+  'octobre': 10, 'oct': 10,
+  'novembre': 11, 'nov': 11,
+  'decembre': 12, 'dec': 12,
+}
+
+function buildUtcDate(year: number, month: number, day: number, hour = 12, minute = 0, second = 0): Date | undefined {
+  const mm = String(month).padStart(2, '0')
+  const dd = String(day).padStart(2, '0')
+  const hh = String(hour).padStart(2, '0')
+  const mi = String(minute).padStart(2, '0')
+  const ss = String(second).padStart(2, '0')
+  const d = new Date(`${year}-${mm}-${dd}T${hh}:${mi}:${ss}.000Z`)
+  if (isNaN(d.getTime())) return undefined
+  if (d.getUTCFullYear() !== year || d.getUTCMonth() + 1 !== month || d.getUTCDate() !== day) return undefined
+  return d
+}
+
+function parseImportDate(input: string | undefined): Date | null | undefined {
+  if (input === undefined) return null
+  const trimmed = input.trim()
+  if (!trimmed) return null
+
+  // ISO-like: 2026-04-23 or 2026-04-23T10:30:00(Z)
+  if (/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?Z?)?$/.test(trimmed)) {
+    const d = new Date(trimmed.includes('T') || trimmed.includes(' ') ? trimmed : `${trimmed}T12:00:00.000Z`)
+    return isNaN(d.getTime()) ? undefined : d
+  }
+
+  // FR numeric: DD/MM/YYYY or DD-MM-YYYY, optional HH:MM(:SS)
+  const frNum = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/)
+  if (frNum) {
+    const [, day, month, year, hour, minute, second] = frNum
+    return buildUtcDate(
+      Number(year), Number(month), Number(day),
+      hour ? Number(hour) : 12,
+      minute ? Number(minute) : 0,
+      second ? Number(second) : 0,
+    )
+  }
+
+  // FR textual: "6 janvier 2026", "6 janv. 2026", optional time
+  // Normalize: lowercase + strip combining marks (accents) + strip commas
+  const COMBINING_MARKS_RE = new RegExp('[\\u0300-\\u036f]', 'g')
+  const norm = trimmed
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(COMBINING_MARKS_RE, '')
+    .replace(/,/g, '')
+  const frTxt = norm.match(/^(\d{1,2})\s+([a-z]+)\.?\s+(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/)
+  if (frTxt) {
+    const [, day, monthWord, year, hour, minute, second] = frTxt
+    const month = FR_MONTHS[monthWord]
+    if (!month) return undefined
+    return buildUtcDate(
+      Number(year), month, Number(day),
+      hour ? Number(hour) : 12,
+      minute ? Number(minute) : 0,
+      second ? Number(second) : 0,
+    )
+  }
+
+  return undefined
+}
+
+// ------------------------------------------------------------------
 // Validate a single row with Zod, applying defaults from config
 // ------------------------------------------------------------------
 function validateRow(
@@ -92,6 +173,19 @@ function validateRow(
     prepared.status = config.default_status
   }
 
+  // Parse optional created_at (outside Zod — schema strips unknown fields)
+  const createdAtRaw = row.created_at
+  const createdAt = parseImportDate(createdAtRaw)
+  if (createdAt === undefined) {
+    errors.push({
+      row: rowIndex + 1,
+      field: 'created_at',
+      value: createdAtRaw || '',
+      reason: `Date de création invalide : « ${createdAtRaw} ». Formats acceptés : JJ/MM/AAAA, AAAA-MM-JJ, ou « 6 janvier 2026 » (heure optionnelle)`,
+    })
+    return { valid: false, errors }
+  }
+
   const parsed = createLeadSchema.safeParse(prepared)
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
@@ -105,7 +199,10 @@ function validateRow(
     return { valid: false, errors }
   }
 
-  return { valid: true, data: { ...parsed.data, status: prepared.status } as Record<string, unknown>, errors: [] }
+  const data: Record<string, unknown> = { ...parsed.data, status: prepared.status }
+  if (createdAt) data.created_at = createdAt.toISOString()
+
+  return { valid: true, data, errors: [] }
 }
 
 // ------------------------------------------------------------------
