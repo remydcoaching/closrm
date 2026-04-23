@@ -646,6 +646,25 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible (1-2h)
 - **Statut :** En attente de validation
 
+### A-034-01 · `prepared.status` non trimmé dans `validateRow` (import-engine)
+- **Contexte :** Identifié pendant la review de T-034. À la ligne `status: row.status || config.default_status` de la construction de `prepared`, aucune normalisation de whitespace n'est appliquée.
+- **Description :** Si un CSV a une valeur de statut avec des espaces (ex: `"  clos  "`) et que l'utilisateur ne la mappe pas explicitement via l'UI, la vérification d'enum de fallback échoue silencieusement et le lead tombe sur `default_status`. Fix proposé : `status: (row.status || '').trim() || config.default_status`. Pre-existing (pas introduit par T-034).
+- **Priorité estimée :** Basse (peu probable en pratique : l'UI trim déjà via `extractUniqueStatusValues`)
+- **Effort estimé :** Faible (1 ligne)
+- **Statut :** En attente de validation
+
+### A-034-02 · Synonymes supplémentaires dans `STATUS_SYNONYMS` (csv-parser)
+- **Contexte :** Suggéré pendant la review de T-034. Termes courants qui retournent `null` (pas de suggestion) alors qu'ils sont fréquents dans les CSV de coachs FR.
+- **Description :** Ajouter comme synonymes exacts :
+  - `scripte` : `relance`, `à relancer`, `rappel`, `suivi`
+  - `setting_planifie` : `rdv confirmé`, `appel planifié`
+  - `no_show_setting` : `injoignable`, `pas répondu`, `messagerie`
+  - `dead` : `pas intéressé`, `sans suite`, `inactif`
+  - `clos` : `client`, `payé`, `inscrit`
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (additions dans un objet)
+- **Statut :** En attente de validation
+
 ---
 
-*Mis a jour le 2026-04-22 par Claude Code — ClosRM*
+*Mis a jour le 2026-04-23 par Claude Code — ClosRM*

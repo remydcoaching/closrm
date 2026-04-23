@@ -219,6 +219,8 @@ function validateRow(
 
   const data: Record<string, unknown> = { ...parsed.data, status: prepared.status }
   if (createdAt) data.created_at = createdAt.toISOString()
+  // tagFromStatus is only non-null when action.type === 'tag'.
+  // Early-return paths above (invalid rows) correctly discard it.
   if (tagFromStatus) {
     const existingTags = (data.tags as string[]) || []
     data.tags = [...existingTags, tagFromStatus]
