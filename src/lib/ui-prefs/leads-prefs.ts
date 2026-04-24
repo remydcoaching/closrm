@@ -1,16 +1,4 @@
-import type { LeadStatus } from '@/types'
-
-const DEFAULT_COLUMN_ORDER: LeadStatus[] = [
-  'nouveau', 'scripte', 'setting_planifie', 'no_show_setting',
-  'closing_planifie', 'no_show_closing', 'clos', 'dead',
-]
-
 export type LeadsView = 'list' | 'kanban'
-
-export interface KanbanColumnsPref {
-  visible: LeadStatus[]
-  order: LeadStatus[]
-}
 
 export type DateField = 'created_at' | 'updated_at' | 'closed_at'
 export type DatePreset = 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'all'
@@ -24,7 +12,6 @@ export interface DateFilterPref {
 
 const KEYS = {
   view:       'closrm.leads.view',
-  columns:    'closrm.leads.kanban.columns',
   dateFilter: 'closrm.leads.dateFilter',
 } as const
 
@@ -49,15 +36,6 @@ export function loadView(): LeadsView {
   return readJSON<LeadsView>(KEYS.view) ?? 'list'
 }
 export function saveView(v: LeadsView) { writeJSON(KEYS.view, v) }
-
-export function loadColumns(): KanbanColumnsPref {
-  const stored = readJSON<KanbanColumnsPref>(KEYS.columns)
-  if (stored && Array.isArray(stored.visible) && Array.isArray(stored.order)) {
-    return stored
-  }
-  return { visible: [...DEFAULT_COLUMN_ORDER], order: [...DEFAULT_COLUMN_ORDER] }
-}
-export function saveColumns(p: KanbanColumnsPref) { writeJSON(KEYS.columns, p) }
 
 export function loadDateFilter(): DateFilterPref {
   return readJSON<DateFilterPref>(KEYS.dateFilter)

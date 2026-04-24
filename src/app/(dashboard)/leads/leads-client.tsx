@@ -17,9 +17,10 @@ import LeadsListView from './views/LeadsListView'
 import LeadsKanbanView from './views/LeadsKanbanView'
 import KanbanColumnsConfigModal from './views/KanbanColumnsConfigModal'
 import {
-  loadView, saveView, loadColumns, saveColumns, loadDateFilter, saveDateFilter,
-  type LeadsView, type KanbanColumnsPref, type DateFilterPref,
+  loadView, saveView, loadDateFilter, saveDateFilter,
+  type LeadsView, type DateFilterPref,
 } from '@/lib/ui-prefs/leads-prefs'
+import { useStatusConfig, useWorkspaceConfig } from '@/lib/workspace/config-context'
 
 interface Meta { total: number; page: number; per_page: number; total_pages: number }
 
@@ -27,11 +28,6 @@ interface LeadsClientProps {
   initialLeads: Lead[]
   initialTotal: number
 }
-
-const DEFAULT_COLUMNS: LeadStatus[] = [
-  'nouveau', 'scripte', 'setting_planifie', 'no_show_setting',
-  'closing_planifie', 'no_show_closing', 'clos', 'dead',
-]
 
 export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientProps) {
   const router = useRouter()
@@ -43,24 +39,20 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
     () => ({ ad_id: metaAdId, adset_id: metaAdsetId, campaign_id: metaCampaignId }),
     [metaAdId, metaAdsetId, metaCampaignId],
   )
+  const statusConfig = useStatusConfig()
+  const { updateStatusConfig } = useWorkspaceConfig()
   const [view, setView] = useState<LeadsView>('list')
-  const [columnsPref, setColumnsPref] = useState<KanbanColumnsPref>({
-    visible: [...DEFAULT_COLUMNS],
-    order:   [...DEFAULT_COLUMNS],
-  })
   const [dateFilter, setDateFilter] = useState<DateFilterPref>({ preset: 'all', field: 'created_at' })
   const [showColumnsModal, setShowColumnsModal] = useState(false)
   const [prefsHydrated, setPrefsHydrated] = useState(false)
 
   useEffect(() => {
     setView(loadView())
-    setColumnsPref(loadColumns())
     setDateFilter(loadDateFilter())
     setPrefsHydrated(true)
   }, [])
 
   useEffect(() => { if (prefsHydrated) saveView(view) }, [view, prefsHydrated])
-  useEffect(() => { if (prefsHydrated) saveColumns(columnsPref) }, [columnsPref, prefsHydrated])
   useEffect(() => { if (prefsHydrated) saveDateFilter(dateFilter) }, [dateFilter, prefsHydrated])
 
   const [leads, setLeads] = useState<Lead[]>(initialLeads)
@@ -240,7 +232,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
     if (view === 'kanban') setRefreshKey(k => k + 1)
   }
 
-  const visibleKanbanStatuses = columnsPref.order.filter(s => columnsPref.visible.includes(s))
+  const visibleKanbanStatuses = statusConfig.filter((e) => e.visible).map((e) => e.key)
 
   return (
     <div style={{ padding: 32 }}>
@@ -417,9 +409,9 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
       )}
       {showColumnsModal && (
         <KanbanColumnsConfigModal
-          value={columnsPref}
+          config={statusConfig}
           onClose={() => setShowColumnsModal(false)}
-          onSave={setColumnsPref}
+          onSave={(next) => { updateStatusConfig(next) }}
         />
       )}
     </div>

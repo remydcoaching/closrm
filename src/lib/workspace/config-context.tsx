@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { LeadSource, LeadStatus, SourceConfig, SourceConfigEntry, StatusConfig, StatusConfigEntry } from '@/types'
 import { mergeStatusConfig, mergeSourceConfig, findStatusEntry, findSourceEntry } from './config-helpers'
 import { DEFAULT_STATUS_CONFIG } from './status-defaults'
@@ -95,6 +95,45 @@ export function WorkspaceConfigProvider({ initialStatusConfig, initialSourceConf
       setSourceConfig(previous)
     }
   }, [patch, sourceConfig])
+
+  // One-shot migration: if the server returned no stored status_config
+  // but the browser has a legacy localStorage Kanban pref, import it
+  // into the workspace (preserves the user's existing Kanban ordering
+  // and visibility choices) then clear the localStorage.
+  useEffect(() => {
+    if (initialStatusConfig) return  // already migrated for this workspace
+    if (typeof window === 'undefined') return
+    const raw = window.localStorage.getItem('closrm.leads.kanban.columns')
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw) as { visible?: string[]; order?: string[] }
+      if (!parsed.order || !parsed.visible) return
+
+      const visibleSet = new Set(parsed.visible)
+      const migrated: StatusConfig = []
+      for (const key of parsed.order) {
+        const def = DEFAULT_STATUS_CONFIG.find((e) => e.key === key)
+        if (def) migrated.push({ ...def, visible: visibleSet.has(key) })
+      }
+      for (const def of DEFAULT_STATUS_CONFIG) {
+        if (!migrated.some((e) => e.key === def.key)) migrated.push(def)
+      }
+
+      fetch('/api/workspace/config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status_config: migrated }),
+      }).then((res) => {
+        if (res.ok) {
+          setStatusConfig(migrated)
+          window.localStorage.removeItem('closrm.leads.kanban.columns')
+        }
+      }).catch(() => {})
+    } catch {
+      // corrupted localStorage, ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const value = useMemo<ConfigContextValue>(() => ({
     statusConfig, sourceConfig,
