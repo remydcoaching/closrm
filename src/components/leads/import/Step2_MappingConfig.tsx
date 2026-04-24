@@ -15,6 +15,7 @@ import type { WizardState } from '@/app/(dashboard)/leads/import/import-client'
 import StatusValueMapper from '@/components/leads/import/StatusValueMapper'
 import SourceValueMapper from '@/components/leads/import/SourceValueMapper'
 import type { ImportDedupAction, ImportDedupStrategy, LeadSource, LeadStatus } from '@/types'
+import { useStatusConfig, useSourceConfig } from '@/lib/workspace/config-context'
 
 interface Props {
   state: WizardState
@@ -44,23 +45,6 @@ const CONFIDENCE_COLORS: Record<string, string> = {
   none: '#666',
 }
 
-const SOURCE_OPTIONS: { value: LeadSource; label: string }[] = [
-  { value: 'manuel', label: 'Manuel' },
-  { value: 'facebook_ads', label: 'Facebook Ads' },
-  { value: 'instagram_ads', label: 'Instagram Ads' },
-  { value: 'follow_ads', label: 'Follow Ads' },
-  { value: 'formulaire', label: 'Formulaire' },
-  { value: 'funnel', label: 'Funnel' },
-]
-
-const STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
-  { value: 'nouveau', label: 'Nouveau' },
-  { value: 'setting_planifie', label: 'Setting planifié' },
-  { value: 'closing_planifie', label: 'Closing planifié' },
-  { value: 'clos', label: 'Closé' },
-  { value: 'dead', label: 'Dead' },
-]
-
 const selectStyle: React.CSSProperties = {
   width: '100%', padding: '8px 10px', borderRadius: 6, fontSize: 13,
   background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)',
@@ -74,6 +58,17 @@ const labelStyle: React.CSSProperties = {
 export default function Step2_MappingConfig({ state, updateState, onBack, onNext }: Props) {
   const { columnMappings, config } = state
   const [showDedupTooltip, setShowDedupTooltip] = useState(false)
+
+  const statusConfig = useStatusConfig()
+  const sourceConfig = useSourceConfig()
+
+  const SOURCE_OPTIONS = sourceConfig
+    .filter((e) => e.visible)
+    .map((e) => ({ value: e.key as LeadSource, label: e.label }))
+
+  const STATUS_OPTIONS = statusConfig
+    .filter((e) => e.visible)
+    .map((e) => ({ value: e.key as LeadStatus, label: e.label }))
 
   const hasRequiredField = useMemo(() => {
     return columnMappings.some(

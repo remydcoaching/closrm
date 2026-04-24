@@ -6,6 +6,7 @@ import { createLeadSchema } from '@/lib/validations/leads'
 import { Lead, LeadSource } from '@/types'
 import { WorkflowInlineStep, WORKFLOW_TEMPLATES_BY_SOURCE } from '@/lib/leads/workflow-templates'
 import InlineWorkflowEditor from './InlineWorkflowEditor'
+import { useSourceConfig } from '@/lib/workspace/config-context'
 
 interface LeadFormProps {
   onClose: () => void
@@ -22,6 +23,7 @@ const inputStyle = {
 const labelStyle = { fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 5, display: 'block' }
 
 export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
+  const sourceConfig = useSourceConfig()
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [tagInput, setTagInput] = useState('')
@@ -215,12 +217,9 @@ export default function LeadForm({ onClose, onCreated }: LeadFormProps) {
             <label style={labelStyle}>Source</label>
             <select value={form.source} onChange={e => set('source', e.target.value)}
               style={{ ...inputStyle, cursor: 'pointer' }}>
-              <option value="manuel">Manuel</option>
-              <option value="facebook_ads">Facebook Ads</option>
-              <option value="instagram_ads">Instagram Ads</option>
-              <option value="follow_ads">Follow Ads</option>
-              <option value="formulaire">Formulaire</option>
-              <option value="funnel">Funnel</option>
+              {sourceConfig.filter((e) => e.visible).map((e) => (
+                <option key={e.key} value={e.key}>{e.label}</option>
+              ))}
             </select>
           </div>
 

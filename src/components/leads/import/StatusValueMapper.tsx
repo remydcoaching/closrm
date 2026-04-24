@@ -3,27 +3,13 @@
 import { useMemo } from 'react'
 import { AlertCircle, CheckCircle2, Tag } from 'lucide-react'
 import type { LeadStatus, StatusMappingAction } from '@/types'
+import { useStatusConfig } from '@/lib/workspace/config-context'
 
 interface Props {
   uniqueValues: string[]
   mapping: Record<string, StatusMappingAction>
   onChange: (mapping: Record<string, StatusMappingAction>) => void
 }
-
-const STATUS_LABELS: Record<LeadStatus, string> = {
-  nouveau: 'Nouveau',
-  scripte: 'Scripté',
-  setting_planifie: 'Setting planifié',
-  no_show_setting: 'No-show Setting',
-  closing_planifie: 'Closing planifié',
-  no_show_closing: 'No-show Closing',
-  clos: 'Closé',
-  dead: 'Dead',
-}
-
-// Derived from STATUS_LABELS so TypeScript enforces exhaustiveness: adding a
-// new LeadStatus forces adding a label, which flows through to this order.
-const STATUS_ORDER = Object.keys(STATUS_LABELS) as LeadStatus[]
 
 // Encoded value for the <select> (separates action type from status)
 function encodeAction(action: StatusMappingAction | undefined): string {
@@ -50,6 +36,12 @@ const selectStyle: React.CSSProperties = {
 }
 
 export default function StatusValueMapper({ uniqueValues, mapping, onChange }: Props) {
+  const statusConfig = useStatusConfig()
+  const STATUS_LABELS: Record<LeadStatus, string> = Object.fromEntries(
+    statusConfig.map((e) => [e.key, e.label]),
+  ) as Record<LeadStatus, string>
+  const STATUS_ORDER = statusConfig.filter((e) => e.visible).map((e) => e.key)
+
   const unresolvedCount = useMemo(
     () => uniqueValues.filter((v) => !mapping[v]).length,
     [uniqueValues, mapping],
