@@ -111,6 +111,12 @@ export default function ReglagesPage() {
   const [slugError, setSlugError] = useState<string | null>(null)
   const [slugSuccess, setSlugSuccess] = useState(false)
 
+  const {
+    statusConfig, sourceConfig,
+    updateStatusConfig, updateSourceConfig,
+    resetStatusConfig, resetSourceConfig,
+  } = useWorkspaceConfig()
+
   async function fetchData() {
     try {
       const [profileRes, slugRes] = await Promise.all([
@@ -174,12 +180,6 @@ export default function ReglagesPage() {
       </div>
     )
   }
-
-  const {
-    statusConfig, sourceConfig,
-    updateStatusConfig, updateSourceConfig,
-    resetStatusConfig, resetSourceConfig,
-  } = useWorkspaceConfig()
 
   const publicOrigin = typeof window !== 'undefined' ? window.location.origin : ''
 
