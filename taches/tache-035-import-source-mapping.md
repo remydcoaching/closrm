@@ -1,7 +1,7 @@
 # Tâche 035 — Mapping intelligent des sources à l'import
 
 **Dev :** Rémy
-**Statut :** spec validée, à implémenter
+**Statut :** terminé (2026-04-24)
 **Branche :** `feature/remy-source-import-mapping` (depuis `develop`)
 
 ## Objectif
@@ -30,3 +30,26 @@ Miroir de T-034 appliqué aux sources : à l'étape 2 du wizard d'import, détec
 
 - Tâche 034 (import status mapping) — pattern source de cette tâche
 - Tâche 031 (import leads) — wizard initial
+
+## Résultat
+
+Commits (7 + 4 commits de review followup) :
+- `2f44801` — types : `SourceMappingAction` + `ImportConfig.source_value_mapping`
+- `d125a92` — parser : `SOURCE_SYNONYMS` (conservateur) + helpers, Pass 2 unidirectionnel
+- `6d0ebdd` — review followup T2 : retrait de `'form'` (faux positif sur "platform") + cross-ref comment sur `suggestStatusMapping`
+- `13ac682` — engine : application de `source_value_mapping` dans `validateRow` + fix scripte enum
+- `4e7ea9a` — review followup T3 : commentaires (order + 'manuel' fallback) + A-035-05 loggué
+- `882028e` — composant `SourceValueMapper` (clone de `StatusValueMapper`)
+- `bd266eb` — intégration Step2 + gating `canContinue`
+- `a9ae4f4` — **fix critique** : `updateConfig` en functional updater pour éviter collision d'effets (détecté par reviewer T5)
+- `e1f83cd` — review followup T5 : commentaires symétriques sur l'effet source
+
+Testé manuellement avec un CSV de 6 sources couvrant les 3 actions (map / tag / ignore) + auto-suggestion conservatrice + blocage du bouton + combo tag-from-status + tag-from-source.
+
+## Améliorations identifiées
+
+- `A-035-01` · factoriser `StatusValueMapper` + `SourceValueMapper` en composant générique
+- `A-035-02` · durcissement des synonymes courts (`'direct'`, `'import'`) dans `SOURCE_SYNONYMS`
+- `A-035-03` · ajouter synonymes FR "pub"/"publicité" pour les sources ads
+- `A-035-04` · synonymes FR complémentaires pour `formulaire` et `manuel`
+- `A-035-05` · trim whitespace sur `prepared.source` dans `validateRow` (pre-existing, parallèle à A-034-01)

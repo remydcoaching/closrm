@@ -679,6 +679,13 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible (1 bloc conditionnel dans StatusValueMapper)
 - **Statut :** En attente de validation
 
+### A-035-01 · Factoriser `StatusValueMapper` + `SourceValueMapper` en composant générique
+- **Contexte :** Identifié pendant T-035. Les deux composants sont ~99 % identiques (encodeAction/decodeAction, useMemo unresolvedCount, UI table, styles inline). Duplication volontaire pour ne pas toucher T-034 fraîchement mergé.
+- **Description :** Créer un composant générique `<ValueMapper<T extends string> />` paramétré par : labels map, ordered keys, action type discriminator (`'status'` | `'source'`). Remplacer les deux composants par le générique. Garder le pattern `encodeAction`/`decodeAction` interne. Ajouter aussi `aria-label` sur les icônes du résultat (lacune détectée pendant la review de T-034 et T-035).
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen (~2-3h incluant re-test manuel des deux mappers)
+- **Statut :** En attente de validation
+
 ### A-035-05 · Trim whitespace sur `prepared.source` dans `validateRow` (import-engine)
 - **Contexte :** Identifié pendant la review de T-035, parallèle exact à A-034-01 pour `prepared.status`.
 - **Description :** À la ligne `source: row.source || config.default_source || 'manuel'` de la construction de `prepared`, aucune normalisation de whitespace n'est appliquée. Si le CSV contient `" funnel"` (avec espace), `rawSource.trim()` dans le mapping donne `"funnel"` qui ne match pas la clé du `source_value_mapping` (également trimmée), donc fallback enum. Mais `prepared.source = " funnel"` fait aussi échouer l'enum check → bascule sur `default_source` ou erreur. Pre-existing (pas introduit par T-035).
