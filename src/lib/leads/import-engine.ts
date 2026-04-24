@@ -151,6 +151,8 @@ function validateRow(
 
   // Apply source_value_mapping if the raw CSV source matches an entry.
   // Falls back to enum validation for compat (programmatic API calls, old batches).
+  // Note: source is processed before status here, but the tags emitted by
+  // each branch are appended at the return site in status→source order.
   const rawSource = (row.source || '').trim()
   let tagFromSource: string | null = null
 
@@ -159,6 +161,7 @@ function validateRow(
     if (action.type === 'map') {
       prepared.source = action.source
     } else if (action.type === 'tag') {
+      // default_source is nullable (user may not set one); 'manuel' is the safe catch-all
       prepared.source = config.default_source || 'manuel'
       tagFromSource = rawSource
     } else {
