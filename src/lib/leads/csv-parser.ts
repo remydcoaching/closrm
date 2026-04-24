@@ -1,6 +1,6 @@
 import Papa from 'papaparse'
 
-import type { LeadStatus } from '@/types'
+import type { LeadSource, LeadStatus } from '@/types'
 
 // ------------------------------------------------------------------
 // Synonyms map: target field → known CSV header synonyms (FR + EN)
@@ -200,13 +200,95 @@ export function suggestStatusMapping(value: string): LeadStatus | null {
     }
   }
 
-  // Pass 2: inclusion match (value contains synonym or vice versa)
+  // Pass 2: bidirectional inclusion. Bidirectional is safe for statuses
+  // because STATUS_SYNONYMS has no short single-word tokens that appear
+  // as substrings of unrelated CSV values. suggestSourceMapping uses a
+  // unidirectional variant (norm.includes(ns) only) because source
+  // synonyms like "fb ads" would otherwise match "Facebook" alone.
   for (const [status, synonyms] of Object.entries(STATUS_SYNONYMS) as [LeadStatus, string[]][]) {
     if (synonyms.some((s) => {
       const ns = normalize(s)
       return ns.length >= 3 && (norm.includes(ns) || ns.includes(norm))
     })) {
       return status
+    }
+  }
+
+  return null
+}
+
+// ------------------------------------------------------------------
+// Source synonyms (FR + EN) — conservative dictionary used by the
+// import wizard to pre-fill suggestions for each unique CSV source
+// value. Deliberately excludes ambiguous single-platform names like
+// "Instagram" or "Facebook" alone, which can mean either ads or
+// organic depending on the user's workflow.
+// ------------------------------------------------------------------
+export const SOURCE_SYNONYMS: Record<LeadSource, string[]> = {
+  facebook_ads: [
+    'facebook ads', 'meta ads', 'fb ads',
+  ],
+  instagram_ads: [
+    'instagram ads', 'ig ads', 'insta ads',
+  ],
+  follow_ads: [
+    'follow ads',
+  ],
+  formulaire: [
+    // 'form' alone was removed: Pass 2 would false-positive on "platform", "inform", etc.
+    'formulaire', 'website form', 'landing page', 'contact form',
+  ],
+  manuel: [
+    'manuel', 'manual', 'direct', 'import', 'inconnu',
+  ],
+  funnel: [
+    'funnel', 'tunnel', 'vsl',
+  ],
+}
+
+// ------------------------------------------------------------------
+// Extract unique non-empty source values from the raw rows, given the
+// CSV header name that was mapped to the source field. (Mirror of
+// extractUniqueStatusValues.)
+// ------------------------------------------------------------------
+export function extractUniqueSourceValues(
+  rows: Record<string, string>[],
+  csvHeader: string,
+): string[] {
+  const set = new Set<string>()
+  for (const row of rows) {
+    const val = (row[csvHeader] || '').trim()
+    if (val) set.add(val)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'))
+}
+
+// ------------------------------------------------------------------
+// Suggest a ClosRM source for a given raw CSV source value.
+// 2-pass match (exact synonym → inclusion). Returns null if no
+// confident match. Mirror of suggestStatusMapping.
+// ------------------------------------------------------------------
+export function suggestSourceMapping(value: string): LeadSource | null {
+  const norm = normalize(value)
+  if (!norm) return null
+
+  // Pass 1: exact match on any synonym
+  for (const [source, synonyms] of Object.entries(SOURCE_SYNONYMS) as [LeadSource, string[]][]) {
+    if (synonyms.some((s) => normalize(s) === norm)) {
+      return source
+    }
+  }
+
+  // Pass 2: inclusion match — the CSV value must CONTAIN the synonym
+  // (not the reverse). This prevents short values like "Instagram" or
+  // "Facebook" from matching multi-word synonyms like "instagram ads"
+  // via substring, which would be a false positive.
+  for (const [source, synonyms] of Object.entries(SOURCE_SYNONYMS) as [LeadSource, string[]][]) {
+    if (synonyms.some((s) => {
+      const ns = normalize(s)
+      return ns.length >= 3 && norm.includes(ns)
+    })) {
+      return source
     }
   }
 

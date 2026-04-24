@@ -679,6 +679,46 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible (1 bloc conditionnel dans StatusValueMapper)
 - **Statut :** En attente de validation
 
+### A-035-01 · Factoriser `StatusValueMapper` + `SourceValueMapper` en composant générique
+- **Contexte :** Identifié pendant T-035. Les deux composants sont ~99 % identiques (encodeAction/decodeAction, useMemo unresolvedCount, UI table, styles inline). Duplication volontaire pour ne pas toucher T-034 fraîchement mergé.
+- **Description :** Créer un composant générique `<ValueMapper<T extends string> />` paramétré par : labels map, ordered keys, action type discriminator (`'status'` | `'source'`). Remplacer les deux composants par le générique. Garder le pattern `encodeAction`/`decodeAction` interne. Ajouter aussi `aria-label` sur les icônes du résultat (lacune détectée pendant la review de T-034 et T-035).
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen (~2-3h incluant re-test manuel des deux mappers)
+- **Statut :** En attente de validation
+
+### A-035-05 · Trim whitespace sur `prepared.source` dans `validateRow` (import-engine)
+- **Contexte :** Identifié pendant la review de T-035, parallèle exact à A-034-01 pour `prepared.status`.
+- **Description :** À la ligne `source: row.source || config.default_source || 'manuel'` de la construction de `prepared`, aucune normalisation de whitespace n'est appliquée. Si le CSV contient `" funnel"` (avec espace), `rawSource.trim()` dans le mapping donne `"funnel"` qui ne match pas la clé du `source_value_mapping` (également trimmée), donc fallback enum. Mais `prepared.source = " funnel"` fait aussi échouer l'enum check → bascule sur `default_source` ou erreur. Pre-existing (pas introduit par T-035).
+- **Description fix :** `source: (row.source || '').trim() || config.default_source || 'manuel'`. Symétriser avec le fix proposé en A-034-01 (même pattern, lignes adjacentes).
+- **Priorité estimée :** Basse (l'UI trim déjà via `extractUniqueSourceValues`)
+- **Effort estimé :** Faible (1 ligne, couplée à A-034-01)
+- **Statut :** En attente de validation
+
+### A-035-02 · Durcissement des synonymes courts dans `SOURCE_SYNONYMS` (csv-parser)
+- **Contexte :** Identifié pendant la review de T-035. `'direct'` (6) dans `manuel` et `'import'` (6) dans `manuel` peuvent produire des faux positifs Pass 2 pour des valeurs CSV comme "director", "directement", "imports". Risque faible en pratique mais cohérent avec la philosophie conservatrice.
+- **Description :** Remplacer `'direct'` par `'direct contact'` ou `'direct mail'`, et `'import'` par `'import csv'` / `'import manuel'`. Garde l'intent de match sémantique tout en réduisant le risque de substring.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (quelques lignes)
+- **Statut :** En attente de validation
+
+### A-035-03 · Synonymes FR "pub"/"publicité" pour les sources ads
+- **Contexte :** Identifié pendant la review de T-035. Les coachs FR utilisent "pub" comme raccourci standard de "publicité", pas "ads". Valeurs CSV comme "Pub Facebook", "Publicité Meta", "Pub Insta" retournent actuellement `null`.
+- **Description :** Ajouter comme synonymes exacts :
+  - `facebook_ads` : `pub facebook`, `publicité facebook`, `pub fb`, `pub meta`, `publicité meta`, `annonce facebook`
+  - `instagram_ads` : `pub instagram`, `publicité instagram`, `pub insta`, `pub ig`
+- **Priorité estimée :** Moyenne (touche directement les coachs FR, audience cible)
+- **Effort estimé :** Faible (additions dans l'objet)
+- **Statut :** En attente de validation
+
+### A-035-04 · Synonymes FR complémentaires pour `formulaire` et `manuel`
+- **Contexte :** Identifié pendant la review de T-035. Termes français plausibles qui retournent null.
+- **Description :** Ajouter :
+  - `formulaire` : `formulaire de contact`, `formulaire candidature`, `site web`, `site internet`
+  - `manuel` : `réseau`, `réseau social`, `partenariat`
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
 ---
 
-*Mis a jour le 2026-04-23 par Claude Code — ClosRM*
+*Mis a jour le 2026-04-24 par Claude Code — ClosRM*

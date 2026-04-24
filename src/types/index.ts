@@ -123,6 +123,11 @@ export type StatusMappingAction =
   | { type: 'tag' }
   | { type: 'ignore' }
 
+export type SourceMappingAction =
+  | { type: 'map'; source: LeadSource }
+  | { type: 'tag' }
+  | { type: 'ignore' }
+
 export interface ImportConfig {
   mapping: Record<string, string>
   default_source: LeadSource | null
@@ -134,6 +139,10 @@ export interface ImportConfig {
   // Clé = valeur CSV brute (ex: "RDV Bilan Pris"), valeur = action à appliquer.
   // Absence de clé = valeur non mappée (fallback enum actuel).
   status_value_mapping: Record<string, StatusMappingAction>
+  // Mapping des valeurs CSV de source → action ClosRM (miroir de status_value_mapping).
+  // Clé = valeur CSV brute (ex: "Meta Ads"), valeur = action à appliquer.
+  // Absence de clé = valeur non mappée (fallback enum actuel).
+  source_value_mapping: Record<string, SourceMappingAction>
 }
 
 export interface LeadImportBatch {
