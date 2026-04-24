@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { EmailTemplate, EmailBroadcastFilters } from '@/types'
 import BroadcastFilterBuilder from '@/components/emails/BroadcastFilterBuilder'
 import EmailPreview from '@/components/emails/EmailPreview'
+import RichEmailEditor from '@/components/emails/RichEmailEditor'
 
 type ComposeMode = 'template' | 'libre'
 
@@ -63,8 +64,13 @@ export default function NewBroadcastPage() {
     if (mode === 'template') {
       payload.template_id = templateId
     } else {
+      // bodyText est du HTML (TipTap). On produit aussi une version text
+      // pour les clients mail qui ne lisent que text/plain.
+      payload.body_html = bodyText
       payload.body_text = bodyText
-      payload.body_html = bodyText.replace(/\n/g, '<br>')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
     }
 
     const createRes = await fetch('/api/emails/broadcasts', {
@@ -194,14 +200,11 @@ export default function NewBroadcastPage() {
               <label style={{ fontSize: 11, color: '#555', display: 'block', marginBottom: 4 }}>
                 Message
               </label>
-              <textarea
+              <RichEmailEditor
                 value={bodyText}
-                onChange={(e) => setBodyText(e.target.value)}
-                placeholder="Écris ton message ici...
-
-Tu peux utiliser {{prenom}}, {{nom}}, {{email}} comme variables."
-                rows={12}
-                style={{ ...inputStyle, resize: 'vertical', minHeight: 200 }}
+                onChange={setBodyText}
+                placeholder="Écris ton message ici... Tu peux utiliser {{prenom}}, {{nom}} etc. via le bouton Variable."
+                minHeight={240}
               />
             </div>
           )}
@@ -260,22 +263,17 @@ Tu peux utiliser {{prenom}}, {{nom}}, {{email}} comme variables."
               previewText={selectedTemplate.preview_text ?? undefined}
             />
           ) : mode === 'libre' && bodyText.trim() ? (
-            <div
+            <iframe
+              sandbox=""
+              srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111;font-size:14px;line-height:1.6;background:#fff;}a{color:#E53E3E;}</style></head><body>${bodyText}</body></html>`}
               style={{
-                background: '#fff',
+                width: '100%',
+                minHeight: 280,
                 border: '1px solid #262626',
                 borderRadius: 10,
-                padding: 24,
-                color: '#111',
-                fontSize: 14,
-                lineHeight: 1.6,
-                whiteSpace: 'pre-wrap',
-                fontFamily: 'sans-serif',
-                minHeight: 240,
+                background: '#fff',
               }}
-            >
-              {bodyText}
-            </div>
+            />
           ) : (
             <div
               style={{
