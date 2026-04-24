@@ -6,7 +6,7 @@ import { TARGET_FIELDS, applyMapping, extractUniqueStatusValues, suggestStatusMa
 import type { ColumnMapping } from '@/lib/leads/csv-parser'
 import type { WizardState } from '@/app/(dashboard)/leads/import/import-client'
 import StatusValueMapper from '@/components/leads/import/StatusValueMapper'
-import type { ImportDedupAction, ImportDedupStrategy, LeadSource, LeadStatus, StatusMappingAction } from '@/types'
+import type { ImportDedupAction, ImportDedupStrategy, LeadSource, LeadStatus } from '@/types'
 
 interface Props {
   state: WizardState
