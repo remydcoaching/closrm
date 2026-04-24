@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { sendBatch, type BatchRecipient } from '@/lib/email/batch-sender'
 import { getWorkspaceSenderConfig } from '@/lib/email/sender-config'
-import { compileBlocks } from '@/lib/email/compiler'
+import { compileBlocksV2 } from '@/lib/email/compiler-v2'
 import { resolveTemplate } from '@/lib/workflows/variables'
 import { consumeResource } from '@/lib/billing/service'
 import { getQuotaInfo } from '@/lib/billing/quota'
@@ -144,8 +144,19 @@ export async function POST(_request: Request, context: RouteContext) {
 
   // Compile template pour chaque lead. Si pas de template (mode email libre),
   // utiliser directement broadcast.body_html, ou dériver depuis body_text.
+  //
+  // Le preset_id sur le broadcast override celui du template si présent.
+  // Si aucun des deux n'a de preset_id, compileBlocksV2 retombe sur le
+  // compiler legacy (rendu identique à aujourd'hui, zéro régression).
+  const presetId = broadcast.preset_id || (template as { preset_id?: string | null })?.preset_id || null
+  const presetOverride = broadcast.preset_override || (template as { preset_override?: Record<string, unknown> | null })?.preset_override || null
   const baseHtml = template
-    ? compileBlocks(template.blocks as EmailBlock[], template.preview_text)
+    ? compileBlocksV2({
+        blocks: template.blocks as EmailBlock[],
+        previewText: template.preview_text,
+        presetId,
+        presetOverride: presetOverride as Record<string, never>,
+      })
     : (broadcast.body_html || (broadcast.body_text
         ? `<div style="font-family:sans-serif;line-height:1.6">${broadcast.body_text.replace(/\n/g, '<br>')}</div>`
         : ''))
