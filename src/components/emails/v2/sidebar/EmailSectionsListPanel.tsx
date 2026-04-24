@@ -76,7 +76,7 @@ export default function EmailSectionsListPanel({
   }
 
   return (
-    <div style={{ padding: '16px 14px', flex: 1, overflowY: 'auto', position: 'relative' }}>
+    <div style={{ padding: '16px 14px', position: 'relative' }}>
       <div
         style={{
           display: 'flex',
