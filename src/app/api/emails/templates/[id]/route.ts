@@ -33,6 +33,8 @@ export async function PUT(request: Request, context: RouteContext) {
   if (body.subject !== undefined) updates.subject = body.subject
   if (body.blocks !== undefined) updates.blocks = body.blocks
   if (body.preview_text !== undefined) updates.preview_text = body.preview_text
+  if (body.preset_id !== undefined) updates.preset_id = body.preset_id
+  if (body.preset_override !== undefined) updates.preset_override = body.preset_override
 
   const { data, error } = await supabase
     .from('email_templates')
