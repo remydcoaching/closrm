@@ -55,16 +55,18 @@ export default function EmailPagePreview({
 
   const iframeWidth = mode === 'mobile' ? 375 : 600
 
+  // Suppress unused-var warning from legacy selection overlay.
+  void selectedBlockId
+  void onSelectBlock
+
   return (
     <div
       style={{
         flex: 1,
         overflow: 'auto',
-        background: '#0a0a0a',
-        padding: 24,
+        background: '#0d0d0d',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
       }}
     >
       {/* Toolbar */}
@@ -72,25 +74,33 @@ export default function EmailPagePreview({
         style={{
           display: 'flex',
           gap: 12,
-          marginBottom: 16,
+          padding: '14px 20px',
           alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid #1f1f1f',
+          background: '#0a0a0a',
+          position: 'sticky',
+          top: 0,
+          zIndex: 2,
         }}
       >
         <div
           style={{
             display: 'flex',
-            gap: 4,
-            background: '#141414',
-            border: '1px solid #262626',
+            gap: 2,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 8,
-            padding: 4,
+            padding: 3,
           }}
         >
           <DeviceBtn active={mode === 'desktop'} onClick={() => onModeChange('desktop')}>
-            <Laptop size={14} />
+            <Laptop size={13} />
+            <span>Desktop</span>
           </DeviceBtn>
           <DeviceBtn active={mode === 'mobile'} onClick={() => onModeChange('mobile')}>
-            <Smartphone size={14} />
+            <Smartphone size={13} />
+            <span>Mobile</span>
           </DeviceBtn>
         </div>
         {onTestSend && (
@@ -100,72 +110,50 @@ export default function EmailPagePreview({
               padding: '8px 16px',
               fontSize: 12,
               fontWeight: 600,
-              background: '#E53E3E',
+              background: 'transparent',
               color: '#fff',
-              border: 'none',
+              border: '1px solid rgba(255,255,255,0.15)',
               borderRadius: 8,
               cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
-            📧 Tester l&apos;envoi
+            Envoyer un test
           </button>
         )}
       </div>
 
-      {/* Preview iframe */}
-      <div style={{ position: 'relative', width: iframeWidth, maxWidth: '100%' }}>
-        <iframe
-          sandbox=""
-          srcDoc={html}
-          style={{
-            width: iframeWidth,
-            minHeight: 600,
-            border: '1px solid #262626',
-            borderRadius: 8,
-            background: '#fff',
-            transition: 'width 0.2s ease',
-          }}
-        />
-
-        {/* Block overlay for click-to-select */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            pointerEvents: 'none',
-          }}
-        >
-          {blocks.map((block, idx) => (
-            <div
-              key={block.id}
-              onClick={() => onSelectBlock(block.id)}
-              style={{
-                flex: 1,
-                minHeight: 20,
-                cursor: 'pointer',
-                outline:
-                  selectedBlockId === block.id
-                    ? '2px solid #3b82f6'
-                    : 'none',
-                outlineOffset: -2,
-                pointerEvents: 'auto',
-                opacity: 0,
-                // Hack : on ne peut pas précisément aligner sur le contenu
-                // de l'iframe (CORS cross-origin). À améliorer avec un
-                // postMessage interne quand on retire sandbox="".
-                display: idx === 0 ? 'block' : 'none',
-              }}
-            />
-          ))}
+      {/* Preview zone */}
+      <div
+        style={{
+          flex: 1,
+          padding: '32px 20px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+        }}
+      >
+        <div style={{ width: iframeWidth, maxWidth: '100%' }}>
+          <iframe
+            sandbox=""
+            srcDoc={html}
+            style={{
+              width: iframeWidth,
+              minHeight: 680,
+              border: 'none',
+              borderRadius: 10,
+              background: '#fff',
+              transition: 'width 0.2s ease',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.04)',
+            }}
+          />
         </div>
       </div>
 
       {blocks.length === 0 && (
-        <p style={{ color: '#666', fontSize: 13, marginTop: 20 }}>
+        <p style={{ color: '#666', fontSize: 13, textAlign: 'center', padding: '0 20px 24px' }}>
           Ajoute des blocs depuis la sidebar pour voir la preview.
         </p>
       )}
@@ -186,16 +174,18 @@ function DeviceBtn({
     <button
       onClick={onClick}
       style={{
-        width: 30,
-        height: 26,
+        padding: '6px 12px',
+        fontSize: 11,
+        fontWeight: 600,
         borderRadius: 6,
         border: 'none',
-        background: active ? '#E53E3E' : 'transparent',
-        color: active ? '#fff' : '#888',
+        background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
+        color: active ? '#fff' : 'rgba(255,255,255,0.55)',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        gap: 6,
+        transition: 'all 0.15s',
       }}
     >
       {children}

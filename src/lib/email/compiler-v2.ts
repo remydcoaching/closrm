@@ -71,6 +71,12 @@ export function compileBlocksV2(input: CompileV2Input): string {
 
 function buildDocument(preset: EmailPreset, bodyHtml: string, previewText?: string | null): string {
   const isDark = preset.style === 'dark'
+  // Les clients email majeurs (Gmail, Outlook, Apple Mail) filtrent les @import
+  // de Google Fonts mais le préchargent quand même dans les webviews. Dans la
+  // preview iframe de l'éditeur, ça permet à Inter/Playfair de s'afficher
+  // correctement — côté client mail on retombe sur les fallbacks.
+  const usesPlayfair = /Playfair/.test(preset.fontFamily) || /Playfair/.test(preset.headingFontFamily || '')
+  const fontImport = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800${usesPlayfair ? '&family=Playfair+Display:wght@500;600;700;800' : ''}&display=swap');`
 
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="fr">
@@ -85,6 +91,7 @@ ${previewText ? `<meta name="description" content="${escapeHtml(previewText)}" /
 <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
 <![endif]-->
 <style>
+  ${fontImport}
   body { margin: 0; padding: 0; background-color: ${preset.background}; }
   table { border-collapse: collapse; }
   img { border: 0; outline: none; text-decoration: none; display: block; max-width: 100%; height: auto; }
@@ -107,7 +114,7 @@ ${previewText ? `<div style="display:none;font-size:1px;color:${preset.backgroun
 <table role="presentation" class="email-body-bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${preset.background};">
   <tr>
     <td align="center" style="padding:24px 12px;">
-      <table role="presentation" class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:${preset.containerBg};border-radius:8px;overflow:hidden;">
+      <table role="presentation" class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background-color:${preset.containerBg};border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,0.04),0 6px 20px rgba(0,0,0,0.05);">
 ${bodyHtml}
       </table>
     </td>
@@ -143,13 +150,13 @@ function renderBlockV2(block: EmailBlock, preset: EmailPreset): string {
 
 function renderHeader(config: HeaderBlockConfig, preset: EmailPreset): string {
   const heading = config.title
-    ? `<h1 style="margin:0;font-size:28px;font-weight:700;color:${preset.textColor};font-family:${preset.headingFontFamily || preset.fontFamily};line-height:1.2;">${escapeHtml(config.title)}</h1>`
+    ? `<h1 style="margin:0;font-size:26px;font-weight:700;letter-spacing:-0.015em;color:${preset.textColor};font-family:${preset.headingFontFamily || preset.fontFamily};line-height:1.2;">${escapeHtml(config.title)}</h1>`
     : ''
   const logo = config.logoUrl
-    ? `<img src="${escapeHtml(config.logoUrl)}" alt="${escapeHtml(config.title || '')}" style="max-height:60px;margin:0 auto 16px;" />`
+    ? `<img src="${escapeHtml(config.logoUrl)}" alt="${escapeHtml(config.title || '')}" style="max-height:44px;margin:0 auto 18px;" />`
     : ''
   return wrapBlock(
-    `<td style="padding:32px 32px 16px;text-align:${config.alignment};">${logo}${heading}</td>`,
+    `<td style="padding:40px 40px 8px;text-align:${config.alignment};">${logo}${heading}</td>`,
     preset,
   )
 }
@@ -157,18 +164,18 @@ function renderHeader(config: HeaderBlockConfig, preset: EmailPreset): string {
 function renderHero(config: EmailHeroBlockConfig, preset: EmailPreset): string {
   const align = config.alignment === 'left' ? 'left' : 'center'
   const image = config.imageUrl
-    ? `<img src="${escapeHtml(config.imageUrl)}" alt="${escapeHtml(config.title)}" width="536" style="width:100%;max-width:536px;border-radius:6px;margin-bottom:20px;" />`
+    ? `<img src="${escapeHtml(config.imageUrl)}" alt="${escapeHtml(config.title)}" width="520" style="width:100%;max-width:520px;border-radius:10px;margin-bottom:28px;" />`
     : ''
   const subtitle = config.subtitle
-    ? `<p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:${preset.mutedColor};">${escapeHtml(config.subtitle)}</p>`
+    ? `<p style="margin:0 0 28px;font-size:17px;line-height:1.6;color:${preset.mutedColor};font-family:${preset.fontFamily};">${escapeHtml(config.subtitle)}</p>`
     : ''
   const cta = config.ctaText && config.ctaUrl
     ? buttonHtml(config.ctaText, config.ctaUrl, preset)
     : ''
   return wrapBlock(
-    `<td style="padding:32px;text-align:${align};">
+    `<td style="padding:48px 40px 40px;text-align:${align};">
       ${image}
-      <h1 style="margin:0 0 12px;font-size:30px;font-weight:800;color:${preset.textColor};font-family:${preset.headingFontFamily || preset.fontFamily};line-height:1.2;">${escapeHtml(config.title)}</h1>
+      <h1 style="margin:0 0 14px;font-size:32px;font-weight:700;letter-spacing:-0.02em;color:${preset.textColor};font-family:${preset.headingFontFamily || preset.fontFamily};line-height:1.15;">${escapeHtml(config.title)}</h1>
       ${subtitle}
       ${cta}
     </td>`,
@@ -177,24 +184,22 @@ function renderHero(config: EmailHeroBlockConfig, preset: EmailPreset): string {
 }
 
 function renderText(config: TextBlockConfig, preset: EmailPreset): string {
-  // config.content peut être du HTML riche (TipTap) ou du texte brut.
-  // On détecte la présence de tags pour éviter de double-escape.
   const isHtml = /<[a-z][\s\S]*>/i.test(config.content || '')
   const content = isHtml
     ? config.content
     : escapeHtml(config.content || '').replace(/\n/g, '<br />')
   return wrapBlock(
-    `<td class="email-text" style="padding:16px 32px;font-size:16px;line-height:1.6;color:${preset.textColor};font-family:${preset.fontFamily};">${content}</td>`,
+    `<td class="email-text" style="padding:14px 40px;font-size:16px;line-height:1.7;color:${preset.textColor};font-family:${preset.fontFamily};">${content}</td>`,
     preset,
   )
 }
 
 function renderImage(config: ImageBlockConfig, preset: EmailPreset): string {
   if (!config.src) return ''
-  const width = config.width ? `${config.width}` : '536'
+  const width = config.width ? `${config.width}` : '520'
   const align = config.alignment === 'left' ? 'left' : config.alignment === 'right' ? 'right' : 'center'
   return wrapBlock(
-    `<td style="padding:16px 32px;text-align:${align};"><img src="${escapeHtml(config.src)}" alt="${escapeHtml(config.alt || '')}" width="${width}" style="width:100%;max-width:${width}px;border-radius:4px;" /></td>`,
+    `<td style="padding:20px 40px;text-align:${align};"><img src="${escapeHtml(config.src)}" alt="${escapeHtml(config.alt || '')}" width="${width}" style="width:100%;max-width:${width}px;border-radius:10px;" /></td>`,
     preset,
   )
 }
@@ -202,7 +207,7 @@ function renderImage(config: ImageBlockConfig, preset: EmailPreset): string {
 function renderButton(config: ButtonBlockConfig, preset: EmailPreset): string {
   const align = config.alignment || 'center'
   return wrapBlock(
-    `<td style="padding:16px 32px;text-align:${align};">${buttonHtml(config.text, config.url, preset, config.color)}</td>`,
+    `<td style="padding:20px 40px;text-align:${align};">${buttonHtml(config.text, config.url, preset, config.color)}</td>`,
     preset,
   )
 }
@@ -214,8 +219,8 @@ function renderCtaBanner(config: EmailCtaBannerBlockConfig, preset: EmailPreset)
     `<td style="padding:0;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${bg};">
         <tr>
-          <td style="padding:40px 32px;text-align:center;">
-            <p style="margin:0 0 20px;font-size:20px;font-weight:600;color:${textColor};font-family:${preset.headingFontFamily || preset.fontFamily};line-height:1.3;">${escapeHtml(config.text)}</p>
+          <td style="padding:44px 40px;text-align:center;">
+            <p style="margin:0 0 22px;font-size:22px;font-weight:700;letter-spacing:-0.01em;color:${textColor};font-family:${preset.headingFontFamily || preset.fontFamily};line-height:1.3;">${escapeHtml(config.text)}</p>
             ${buttonHtml(config.ctaText, config.ctaUrl, preset, '#ffffff', bg)}
           </td>
         </tr>
@@ -226,10 +231,10 @@ function renderCtaBanner(config: EmailCtaBannerBlockConfig, preset: EmailPreset)
 }
 
 function renderDivider(config: DividerBlockConfig, preset: EmailPreset): string {
-  const color = config.color || '#e4e4e7'
-  const spacing = config.spacing ?? 16
+  const color = config.color || (preset.style === 'dark' ? '#262626' : '#eeeef0')
+  const spacing = config.spacing ?? 20
   return wrapBlock(
-    `<td style="padding:${spacing}px 32px;"><div style="height:1px;background-color:${color};line-height:1px;font-size:0;">&nbsp;</div></td>`,
+    `<td style="padding:${spacing}px 40px;"><div style="height:1px;background-color:${color};line-height:1px;font-size:0;">&nbsp;</div></td>`,
     preset,
   )
 }
@@ -243,14 +248,14 @@ function renderSpacer(config: EmailSpacerBlockConfig, preset: EmailPreset): stri
 
 function renderQuote(config: EmailQuoteBlockConfig, preset: EmailPreset): string {
   const author = config.author
-    ? `<p style="margin:12px 0 0;font-size:14px;color:${preset.mutedColor};font-style:italic;">— ${escapeHtml(config.author)}</p>`
+    ? `<p style="margin:14px 0 0;font-size:13px;color:${preset.mutedColor};font-weight:500;font-style:normal;">— ${escapeHtml(config.author)}</p>`
     : ''
   return wrapBlock(
-    `<td style="padding:24px 32px;">
+    `<td style="padding:16px 40px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td style="padding:20px 24px;background-color:${preset.footerBg};border-left:4px solid ${preset.primary};">
-            <p style="margin:0;font-size:18px;line-height:1.5;color:${preset.textColor};font-style:italic;font-family:${preset.headingFontFamily || preset.fontFamily};">${escapeHtml(config.text)}</p>
+          <td style="padding:24px 28px;background-color:${preset.footerBg};border-left:3px solid ${preset.primary};border-radius:4px;">
+            <p style="margin:0;font-size:18px;line-height:1.55;color:${preset.textColor};font-style:italic;font-family:${preset.headingFontFamily || preset.fontFamily};">« ${escapeHtml(config.text)} »</p>
             ${author}
           </td>
         </tr>
@@ -264,15 +269,15 @@ function renderTestimonials(config: EmailTestimonialsBlockConfig, preset: EmailP
   const items = (config.items || [])
     .map(
       (t) => `<tr>
-        <td style="padding:16px 0;">
-          <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:${preset.textColor};font-style:italic;">« ${escapeHtml(t.quote)} »</p>
-          <p style="margin:0;font-size:13px;font-weight:600;color:${preset.primary};">${escapeHtml(t.author)}${t.role ? ` <span style="color:${preset.mutedColor};font-weight:400;">· ${escapeHtml(t.role)}</span>` : ''}</p>
+        <td style="padding:18px 0;border-top:1px solid ${preset.style === 'dark' ? '#262626' : '#eeeef0'};">
+          <p style="margin:0 0 10px;font-size:15px;line-height:1.65;color:${preset.textColor};font-family:${preset.fontFamily};">« ${escapeHtml(t.quote)} »</p>
+          <p style="margin:0;font-size:12px;font-weight:600;color:${preset.textColor};letter-spacing:0.01em;">${escapeHtml(t.author)}${t.role ? ` <span style="color:${preset.mutedColor};font-weight:400;">· ${escapeHtml(t.role)}</span>` : ''}</p>
         </td>
       </tr>`,
     )
     .join('')
   return wrapBlock(
-    `<td style="padding:16px 32px;">
+    `<td style="padding:16px 40px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${items}</table>
     </td>`,
     preset,
@@ -281,24 +286,24 @@ function renderTestimonials(config: EmailTestimonialsBlockConfig, preset: EmailP
 
 function renderFeaturesGrid(config: EmailFeaturesGridBlockConfig, preset: EmailPreset): string {
   const cols = config.columns || 2
-  const cellWidth = cols === 3 ? 170 : 256
+  const cellWidth = cols === 3 ? 160 : 240
   const items = (config.items || [])
   const rows: string[] = []
   for (let i = 0; i < items.length; i += cols) {
     const rowItems = items.slice(i, i + cols)
     const cells = rowItems
       .map(
-        (f) => `<td class="mobile-stack" align="center" width="${cellWidth}" style="padding:16px;vertical-align:top;">
-          ${f.icon ? `<div style="font-size:32px;margin-bottom:8px;">${escapeHtml(f.icon)}</div>` : ''}
-          <h3 style="margin:0 0 6px;font-size:16px;font-weight:700;color:${preset.textColor};font-family:${preset.headingFontFamily || preset.fontFamily};">${escapeHtml(f.title)}</h3>
-          <p style="margin:0;font-size:14px;line-height:1.5;color:${preset.mutedColor};">${escapeHtml(f.description)}</p>
+        (f) => `<td class="mobile-stack" align="center" width="${cellWidth}" style="padding:20px 14px;vertical-align:top;">
+          ${f.icon ? `<div style="font-size:28px;margin-bottom:12px;line-height:1;">${escapeHtml(f.icon)}</div>` : ''}
+          <h3 style="margin:0 0 6px;font-size:15px;font-weight:700;letter-spacing:-0.005em;color:${preset.textColor};font-family:${preset.headingFontFamily || preset.fontFamily};">${escapeHtml(f.title)}</h3>
+          <p style="margin:0;font-size:13px;line-height:1.55;color:${preset.mutedColor};">${escapeHtml(f.description)}</p>
         </td>`,
       )
       .join('')
     rows.push(`<tr>${cells}</tr>`)
   }
   return wrapBlock(
-    `<td style="padding:16px 24px;">
+    `<td style="padding:16px 28px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows.join('')}</table>
     </td>`,
     preset,
@@ -336,21 +341,21 @@ function renderSocialLinks(config: EmailSocialLinksBlockConfig, preset: EmailPre
     const url = config[key]
     if (url) {
       links.push(
-        `<a href="${escapeHtml(url)}" style="display:inline-block;padding:8px 14px;margin:0 4px 8px;background-color:${preset.footerBg};color:${preset.primary};text-decoration:none;border-radius:999px;font-size:13px;font-weight:600;">${label}</a>`,
+        `<a href="${escapeHtml(url)}" style="display:inline-block;padding:7px 14px;margin:0 3px 6px;background-color:transparent;color:${preset.mutedColor};text-decoration:none;border:1px solid ${preset.style === 'dark' ? '#262626' : '#eeeef0'};border-radius:999px;font-size:12px;font-weight:500;letter-spacing:0.01em;">${label}</a>`,
       )
     }
   }
   if (!links.length) return ''
   return wrapBlock(
-    `<td style="padding:16px 32px;text-align:center;">${links.join('')}</td>`,
+    `<td style="padding:20px 40px;text-align:center;">${links.join('')}</td>`,
     preset,
   )
 }
 
 function renderFooter(config: FooterBlockConfig, preset: EmailPreset): string {
   return `<tr>
-    <td style="background-color:${preset.footerBg};padding:24px 32px;text-align:center;">
-      <p class="email-muted" style="margin:0;font-size:12px;line-height:1.5;color:${preset.mutedColor};font-family:${preset.fontFamily};">${escapeHtml(config.text || '')}</p>
+    <td style="background-color:${preset.footerBg};padding:28px 40px;text-align:center;">
+      <p class="email-muted" style="margin:0;font-size:12px;line-height:1.6;color:${preset.mutedColor};font-family:${preset.fontFamily};letter-spacing:0.01em;">${escapeHtml(config.text || '')}</p>
     </td>
   </tr>`
 }
@@ -370,19 +375,18 @@ function buttonHtml(
 ): string {
   const bg = bgColor || preset.primary
   const radius = buttonShapeToRadius(preset.buttonShape)
-  const shadow = preset.buttonShadow ? `box-shadow:0 2px 8px ${bg}40;` : ''
-  // MSO VML fallback pour Outlook 2007-2019 (sans ça, pas de border-radius)
-  const msoHeight = 44
-  const msoWidth = text.length * 10 + 60
+  const shadow = preset.buttonShadow ? `box-shadow:0 1px 2px rgba(0,0,0,0.1),0 4px 12px ${bg}33;` : ''
+  const msoHeight = 46
+  const msoWidth = text.length * 11 + 64
   return `<div>
     <!--[if mso]>
     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${escapeHtml(url)}" style="height:${msoHeight}px;v-text-anchor:middle;width:${msoWidth}px;" arcsize="${Math.round((radius / msoHeight) * 100)}%" stroke="f" fillcolor="${bg}">
     <w:anchorlock/>
-    <center style="color:#ffffff;font-family:${preset.fontFamily};font-size:15px;font-weight:600;">${escapeHtml(text)}</center>
+    <center style="color:#ffffff;font-family:${preset.fontFamily};font-size:15px;font-weight:600;letter-spacing:-0.005em;">${escapeHtml(text)}</center>
     </v:roundrect>
     <![endif]-->
     <!--[if !mso]><!-- -->
-    <a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 28px;background-color:${bg};color:#ffffff;text-decoration:none;border-radius:${radius}px;font-weight:600;font-size:15px;font-family:${preset.fontFamily};${shadow}${outerBg ? `border:1px solid ${outerBg};` : ''}">${escapeHtml(text)}</a>
+    <a href="${escapeHtml(url)}" style="display:inline-block;padding:14px 32px;background-color:${bg};color:#ffffff;text-decoration:none;border-radius:${radius}px;font-weight:600;font-size:15px;letter-spacing:-0.005em;font-family:${preset.fontFamily};${shadow}${outerBg ? `border:1px solid ${outerBg};` : ''}">${escapeHtml(text)}</a>
     <!--<![endif]-->
   </div>`
 }

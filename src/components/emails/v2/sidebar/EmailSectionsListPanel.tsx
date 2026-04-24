@@ -76,50 +76,55 @@ export default function EmailSectionsListPanel({
   }
 
   return (
-    <div style={{ padding: '14px', flex: 1, overflowY: 'auto', position: 'relative' }}>
+    <div style={{ padding: '16px 14px', flex: 1, overflowY: 'auto', position: 'relative' }}>
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           marginBottom: 10,
+          paddingLeft: 2,
         }}
       >
         <span
           style={{
-            fontSize: 11,
+            fontSize: 9,
             fontWeight: 700,
             color: '#888',
             textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            letterSpacing: 0.5,
           }}
         >
-          Sections
+          Sections ({contentBlocks.length})
         </span>
         <button
           onClick={() => setShowAddMenu((s) => !s)}
+          title="Ajouter une section"
           style={{
-            width: 22,
-            height: 22,
+            padding: '4px 10px 4px 6px',
             borderRadius: 6,
-            border: 'none',
-            background: '#E53E3E',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(255,255,255,0.04)',
             color: '#fff',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: 4,
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: 0.3,
           }}
         >
-          <Plus size={12} />
+          <Plus size={11} /> Ajouter
         </button>
       </div>
 
       {showAddMenu && (
         <div
           style={{
-            background: '#1a1a1a',
-            border: '1px solid #2a2a2a',
+            background: '#141414',
+            border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 8,
             padding: 4,
             marginBottom: 10,
@@ -134,7 +139,7 @@ export default function EmailSectionsListPanel({
               style={{
                 display: 'block',
                 width: '100%',
-                padding: '8px 10px',
+                padding: '7px 10px',
                 textAlign: 'left',
                 background: 'transparent',
                 border: 'none',
@@ -142,9 +147,12 @@ export default function EmailSectionsListPanel({
                 fontSize: 12,
                 cursor: 'pointer',
                 borderRadius: 4,
+                fontWeight: 500,
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
-              + {EMAIL_BLOCK_LABELS[type]}
+              {EMAIL_BLOCK_LABELS[type]}
             </button>
           ))}
         </div>
@@ -170,24 +178,41 @@ export default function EmailSectionsListPanel({
         <div
           onClick={() => onSelectBlock(footerBlock.id)}
           style={{
-            marginTop: 8,
-            padding: '8px 10px',
-            background: selectedBlockId === footerBlock.id ? 'rgba(229,62,62,0.1)' : '#141414',
+            marginTop: 10,
+            padding: '9px 12px',
+            background:
+              selectedBlockId === footerBlock.id
+                ? 'rgba(255,255,255,0.08)'
+                : 'rgba(255,255,255,0.02)',
             border:
               selectedBlockId === footerBlock.id
-                ? '1px solid #E53E3E'
-                : '1px solid #262626',
-            borderRadius: 6,
+                ? '1px solid #fff'
+                : '1px dashed rgba(255,255,255,0.1)',
+            borderRadius: 8,
             fontSize: 12,
-            color: '#888',
+            color: '#aaa',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: 6,
           }}
         >
-          <span style={{ fontSize: 9, color: '#555' }}>🔒</span>
-          {EMAIL_BLOCK_LABELS.footer}
+          <span>{EMAIL_BLOCK_LABELS.footer}</span>
+          <span
+            style={{
+              fontSize: 8,
+              padding: '1px 5px',
+              background: 'rgba(255,255,255,0.08)',
+              color: 'rgba(255,255,255,0.5)',
+              borderRadius: 3,
+              textTransform: 'uppercase',
+              letterSpacing: 0.3,
+              fontWeight: 700,
+            }}
+          >
+            verrouillé
+          </span>
         </div>
       )}
     </div>
@@ -220,11 +245,13 @@ function SortableBlockRow({
         ...style,
         display: 'flex',
         alignItems: 'center',
-        padding: '8px 10px',
-        background: selected ? 'rgba(229,62,62,0.1)' : '#141414',
-        border: selected ? '1px solid #E53E3E' : '1px solid #262626',
-        borderRadius: 6,
-        gap: 6,
+        padding: '9px 10px',
+        background: selected ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.02)',
+        border: selected ? '1px solid #fff' : '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 8,
+        gap: 8,
+        cursor: 'pointer',
+        transition: 'all 0.12s',
       }}
       {...attributes}
       onClick={onSelect}
@@ -234,9 +261,16 @@ function SortableBlockRow({
         {...listeners}
         style={{ cursor: 'grab', color: '#555', display: 'flex', touchAction: 'none' }}
       >
-        <GripVertical size={12} />
+        <GripVertical size={13} />
       </span>
-      <span style={{ flex: 1, fontSize: 12, color: '#ddd' }}>
+      <span
+        style={{
+          flex: 1,
+          fontSize: 12,
+          color: selected ? '#fff' : '#ccc',
+          fontWeight: selected ? 600 : 500,
+        }}
+      >
         {EMAIL_BLOCK_LABELS[block.type] || block.type}
       </span>
       <button
@@ -244,12 +278,23 @@ function SortableBlockRow({
           e.stopPropagation()
           onDelete()
         }}
+        title="Supprimer"
         style={{
           background: 'transparent',
           border: 'none',
           cursor: 'pointer',
           color: '#555',
           display: 'flex',
+          padding: 2,
+          borderRadius: 4,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = '#E53E3E'
+          e.currentTarget.style.background = 'rgba(229,62,62,0.1)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = '#555'
+          e.currentTarget.style.background = 'transparent'
         }}
       >
         <Trash2 size={12} />

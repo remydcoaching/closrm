@@ -43,31 +43,47 @@ export default function EmailBlockInspector({ block, onChange, onClose }: Props)
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div
         style={{
-          padding: '14px 16px',
-          borderBottom: '1px solid #262626',
+          padding: '16px 18px',
+          borderBottom: '1px solid #1f1f1f',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>
-          {EMAIL_BLOCK_LABELS[block.type] || block.type}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: '#888',
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            Bloc
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+            {EMAIL_BLOCK_LABELS[block.type] || block.type}
+          </span>
+        </div>
         <button
           onClick={onClose}
+          title="Fermer"
           style={{
             background: 'transparent',
-            border: 'none',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 6,
             cursor: 'pointer',
             color: '#888',
             display: 'flex',
+            padding: 5,
           }}
         >
-          <X size={14} />
+          <X size={13} />
         </button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 18 }}>
         {renderPanel(block, update)}
       </div>
     </div>
@@ -481,14 +497,16 @@ function renderPanel(
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div style={{ marginBottom: 16 }}>
       <div
         style={{
-          fontSize: 10,
+          fontSize: 9,
+          fontWeight: 700,
           color: '#888',
           textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          marginBottom: 6,
+          letterSpacing: 0.5,
+          marginBottom: 7,
+          paddingLeft: 2,
         }}
       >
         {label}
@@ -500,15 +518,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 const baseInputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '8px 10px',
-  fontSize: 12,
-  background: '#0a0a0a',
-  border: '1px solid #262626',
-  borderRadius: 6,
-  color: '#ddd',
+  padding: '9px 11px',
+  fontSize: 12.5,
+  background: 'rgba(255,255,255,0.02)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 7,
+  color: '#eee',
   outline: 'none',
   fontFamily: 'inherit',
   boxSizing: 'border-box',
+  transition: 'border-color 0.12s',
 }
 
 function TextInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -567,11 +586,13 @@ function chipStyle(active: boolean): React.CSSProperties {
   return {
     flex: 1,
     padding: '7px 10px',
-    fontSize: 12,
+    fontSize: 11.5,
+    fontWeight: active ? 600 : 500,
     borderRadius: 6,
-    border: active ? '1px solid #E53E3E' : '1px solid #262626',
-    background: active ? 'rgba(229,62,62,0.1)' : '#0a0a0a',
-    color: '#ddd',
+    border: active ? '1px solid #fff' : '1px solid rgba(255,255,255,0.08)',
+    background: active ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
+    color: active ? '#fff' : '#aaa',
     cursor: 'pointer',
+    transition: 'all 0.12s',
   }
 }

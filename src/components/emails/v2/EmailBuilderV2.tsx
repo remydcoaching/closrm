@@ -46,8 +46,8 @@ export default function EmailBuilderV2({
       style={{
         display: 'flex',
         height: 'calc(100vh - 120px)',
-        border: '1px solid #262626',
-        borderRadius: 12,
+        border: '1px solid #1f1f1f',
+        borderRadius: 14,
         overflow: 'hidden',
         background: '#0a0a0a',
       }}
@@ -57,10 +57,11 @@ export default function EmailBuilderV2({
         style={{
           width: 300,
           flexShrink: 0,
-          borderRight: '1px solid #262626',
+          borderRight: '1px solid #1f1f1f',
           display: 'flex',
           flexDirection: 'column',
           overflowY: 'auto',
+          background: '#0c0c0c',
         }}
       >
         <EmailDirectionArtistiquePanel
@@ -94,8 +95,8 @@ export default function EmailBuilderV2({
           style={{
             width: 320,
             flexShrink: 0,
-            borderLeft: '1px solid #262626',
-            background: '#0f0f0f',
+            borderLeft: '1px solid #1f1f1f',
+            background: '#0c0c0c',
           }}
         >
           <EmailBlockInspector
