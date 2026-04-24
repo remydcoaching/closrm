@@ -161,6 +161,7 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
       }
       return
     }
+    // Fill only values not yet in the mapping (don't overwrite user choices)
     const next = { ...config.source_value_mapping }
     let changed = false
     for (const value of uniqueSourceValues) {
@@ -172,6 +173,7 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
         }
       }
     }
+    // Remove stale entries (values no longer present)
     for (const key of Object.keys(next)) {
       if (!uniqueSourceValues.includes(key)) {
         delete next[key]
