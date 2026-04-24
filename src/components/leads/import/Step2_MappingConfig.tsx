@@ -2,10 +2,18 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, Circle, Info } from 'lucide-react'
-import { TARGET_FIELDS, applyMapping, extractUniqueStatusValues, suggestStatusMapping } from '@/lib/leads/csv-parser'
+import {
+  TARGET_FIELDS,
+  applyMapping,
+  extractUniqueStatusValues,
+  suggestStatusMapping,
+  extractUniqueSourceValues,
+  suggestSourceMapping,
+} from '@/lib/leads/csv-parser'
 import type { ColumnMapping } from '@/lib/leads/csv-parser'
 import type { WizardState } from '@/app/(dashboard)/leads/import/import-client'
 import StatusValueMapper from '@/components/leads/import/StatusValueMapper'
+import SourceValueMapper from '@/components/leads/import/SourceValueMapper'
 import type { ImportDedupAction, ImportDedupStrategy, LeadSource, LeadStatus } from '@/types'
 
 interface Props {
@@ -127,11 +135,58 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uniqueStatusValues])
 
+  // Détecter la colonne CSV mappée vers "source"
+  const sourceCsvHeader = useMemo(
+    () => columnMappings.find((m) => m.targetField === 'source')?.csvHeader || null,
+    [columnMappings],
+  )
+
+  // Extraire les valeurs uniques de cette colonne (vide si pas mappée)
+  const uniqueSourceValues = useMemo(() => {
+    if (!sourceCsvHeader) return []
+    return extractUniqueSourceValues(state.rows, sourceCsvHeader)
+  }, [state.rows, sourceCsvHeader])
+
+  // Auto-suggérer le mapping quand la colonne est (re)mappée ou les valeurs changent
+  useEffect(() => {
+    if (uniqueSourceValues.length === 0) {
+      if (Object.keys(config.source_value_mapping).length > 0) {
+        updateConfig({ source_value_mapping: {} })
+      }
+      return
+    }
+    const next = { ...config.source_value_mapping }
+    let changed = false
+    for (const value of uniqueSourceValues) {
+      if (!next[value]) {
+        const suggested = suggestSourceMapping(value)
+        if (suggested) {
+          next[value] = { type: 'map', source: suggested }
+          changed = true
+        }
+      }
+    }
+    for (const key of Object.keys(next)) {
+      if (!uniqueSourceValues.includes(key)) {
+        delete next[key]
+        changed = true
+      }
+    }
+    if (changed) {
+      updateConfig({ source_value_mapping: next })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueSourceValues])
+
   const hasUnresolvedStatusValues = useMemo(() => {
     return uniqueStatusValues.some((v) => !config.status_value_mapping[v])
   }, [uniqueStatusValues, config.status_value_mapping])
 
-  const canContinue = hasRequiredField && !hasUnresolvedStatusValues
+  const hasUnresolvedSourceValues = useMemo(() => {
+    return uniqueSourceValues.some((v) => !config.source_value_mapping[v])
+  }, [uniqueSourceValues, config.source_value_mapping])
+
+  const canContinue = hasRequiredField && !hasUnresolvedStatusValues && !hasUnresolvedSourceValues
 
   const handleNext = () => {
     const mapping: Record<string, string> = {}
@@ -209,6 +264,13 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
               uniqueValues={uniqueStatusValues}
               mapping={config.status_value_mapping}
               onChange={(m) => updateConfig({ status_value_mapping: m })}
+            />
+          )}
+          {sourceCsvHeader && uniqueSourceValues.length > 0 && (
+            <SourceValueMapper
+              uniqueValues={uniqueSourceValues}
+              mapping={config.source_value_mapping}
+              onChange={(m) => updateConfig({ source_value_mapping: m })}
             />
           )}
         </div>
