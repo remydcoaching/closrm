@@ -10,7 +10,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { LeadStatus } from '@/types'
-import { STATUS_CONFIG } from '@/components/leads/StatusBadge'
+import { useStatusEntry } from '@/lib/workspace/config-context'
 import type { KanbanColumnsPref } from '@/lib/ui-prefs/leads-prefs'
 
 interface Props {
@@ -31,7 +31,7 @@ function Row({ status, checked, onToggle }: { status: LeadStatus; checked: boole
     background: 'var(--bg-subtle)',
     border: '1px solid var(--border-primary)',
   }
-  const cfg = STATUS_CONFIG[status]
+  const cfg = useStatusEntry(status)
   return (
     <div ref={setNodeRef} style={style}>
       <button type="button" {...attributes} {...listeners} style={{

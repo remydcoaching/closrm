@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Phone, Mail, Tag, FileText, CheckCircle, XCircle, Clock, X, Plus } from 'lucide-react'
 import { Lead, Call, FollowUp, LeadStatus } from '@/types'
-import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
+import StatusBadge from '@/components/leads/StatusBadge'
+import { useStatusConfig } from '@/lib/workspace/config-context'
 import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -45,6 +46,8 @@ const inputStyle = {
 }
 
 export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
+  const statusConfig = useStatusConfig()
+
   const [notes, setNotes] = useState(lead.notes ?? '')
   const [tags, setTags] = useState<string[]>(lead.tags)
   const [tagInput, setTagInput] = useState('')
@@ -168,14 +171,14 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
                 background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
                 borderRadius: 10, padding: 6, minWidth: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
               }}>
-                {(Object.entries(STATUS_CONFIG) as [LeadStatus, typeof STATUS_CONFIG[LeadStatus]][]).map(([value, cfg]) => (
-                  <button key={value} onClick={() => changeStatus(value)} style={{
+                {statusConfig.filter((e) => e.visible).map((e) => (
+                  <button key={e.key} onClick={() => changeStatus(e.key)} style={{
                     display: 'block', width: '100%', textAlign: 'left',
                     padding: '7px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
-                    border: 'none', background: lead.status === value ? 'var(--bg-hover)' : 'transparent',
-                    color: cfg.color, cursor: 'pointer',
+                    border: 'none', background: lead.status === e.key ? 'var(--bg-hover)' : 'transparent',
+                    color: e.color, cursor: 'pointer',
                   }}>
-                    {cfg.label}
+                    {e.label}
                   </button>
                 ))}
               </div>

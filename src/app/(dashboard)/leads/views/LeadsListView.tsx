@@ -5,7 +5,8 @@ import { Plus, ChevronLeft, ChevronRight, Archive, Phone, ChevronDown, X, Sparkl
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { Lead, LeadStatus, WorkspaceMemberWithUser } from '@/types'
-import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
+import StatusBadge from '@/components/leads/StatusBadge'
+import { useStatusConfig } from '@/lib/workspace/config-context'
 import SourceBadge from '@/components/leads/SourceBadge'
 import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 
@@ -58,6 +59,8 @@ export default function LeadsListView(props: LeadsListViewProps) {
     leads, loading, members, page, totalPages, total,
     onPageChange, onLeadClick, onPatch, onCall, onTreat, onArchive, onRequestClose,
   } = props
+
+  const statusConfig = useStatusConfig()
 
   const [dropdown, setDropdown] = useState<DropdownState | null>(null)
   const [tagInput, setTagInput] = useState('')
@@ -408,16 +411,16 @@ export default function LeadsListView(props: LeadsListViewProps) {
             </div>
           )}
 
-          {dropdown.type === 'status' && (Object.entries(STATUS_CONFIG) as [LeadStatus, typeof STATUS_CONFIG[LeadStatus]][]).map(([value, cfg]) => (
-            <button key={value} onClick={() => setStatus(activeLead, value)} style={{
+          {dropdown.type === 'status' && statusConfig.filter((e) => e.visible).map((e) => (
+            <button key={e.key} onClick={() => setStatus(activeLead, e.key)} style={{
               display: 'block', width: '100%', textAlign: 'left',
               padding: '7px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
               border: 'none',
-              background: activeLead.status === value ? `${cfg.color}18` : 'transparent',
-              color: activeLead.status === value ? cfg.color : 'var(--text-secondary)',
+              background: activeLead.status === e.key ? `${e.color}18` : 'transparent',
+              color: activeLead.status === e.key ? e.color : 'var(--text-secondary)',
               cursor: 'pointer',
             }}>
-              {cfg.label}
+              {e.label}
             </button>
           ))}
         </div>
