@@ -29,7 +29,17 @@ interface EmailMessage {
   body_html: string | null
   sent_at: string
   is_read: boolean
+  ses_status?: string | null
   _optimistic?: boolean
+}
+
+const SES_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  sent: { label: '✓ Envoyé', color: '#888' },
+  delivered: { label: '✓✓ Remis', color: '#5eead4' },
+  opened: { label: '👁 Ouvert', color: '#93c5fd' },
+  clicked: { label: '🖱 Cliqué', color: '#c4b5fd' },
+  bounced: { label: '❌ Bounce', color: '#fca5a5' },
+  complained: { label: '🚫 Plainte', color: '#fcd34d' },
 }
 
 function htmlToText(html: string): string {
@@ -506,12 +516,23 @@ export default function EmailMessagesView() {
                         opacity: 0.6,
                         marginTop: 4,
                         textAlign: m.sender_type === 'user' ? 'right' : 'left',
+                        display: 'flex',
+                        justifyContent: m.sender_type === 'user' ? 'flex-end' : 'flex-start',
+                        gap: 6,
+                        alignItems: 'center',
                       }}
                     >
-                      {new Date(m.sent_at).toLocaleTimeString('fr-FR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {m.sender_type === 'user' && m.ses_status && SES_STATUS_LABELS[m.ses_status] && (
+                        <span style={{ color: SES_STATUS_LABELS[m.ses_status].color, opacity: 0.9 }}>
+                          {SES_STATUS_LABELS[m.ses_status].label}
+                        </span>
+                      )}
+                      <span>
+                        {new Date(m.sent_at).toLocaleTimeString('fr-FR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
                     </div>
                   </div>
                 )

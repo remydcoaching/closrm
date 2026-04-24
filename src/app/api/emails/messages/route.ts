@@ -27,6 +27,28 @@ export async function GET(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    // Enrichit les messages user avec le status SES (delivered/opened/clicked/...)
+    // via jointure sur email_sends.resend_email_id = email_messages.ses_message_id
+    const userSesIds = (data || [])
+      .filter((m) => m.sender_type === 'user' && m.ses_message_id)
+      .map((m) => m.ses_message_id as string)
+
+    let statusMap: Record<string, string> = {}
+    if (userSesIds.length) {
+      const { data: sends } = await supabase
+        .from('email_sends')
+        .select('resend_email_id, status')
+        .in('resend_email_id', userSesIds)
+      statusMap = Object.fromEntries(
+        (sends || []).map((s) => [s.resend_email_id as string, s.status as string]),
+      )
+    }
+
+    const enriched = (data || []).map((m) => ({
+      ...m,
+      ses_status: m.ses_message_id ? statusMap[m.ses_message_id] || null : null,
+    }))
+
     // Marquer le thread comme lu
     await supabase
       .from('email_messages')
@@ -41,7 +63,7 @@ export async function GET(request: Request) {
       .eq('id', conversationId)
       .eq('workspace_id', workspaceId)
 
-    return NextResponse.json({ data: data || [] })
+    return NextResponse.json({ data: enriched })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
