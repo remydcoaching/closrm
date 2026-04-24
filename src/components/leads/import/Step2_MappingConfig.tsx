@@ -18,7 +18,9 @@ import type { ImportDedupAction, ImportDedupStrategy, LeadSource, LeadStatus } f
 
 interface Props {
   state: WizardState
-  updateState: (partial: Partial<WizardState>) => void
+  updateState: (
+    updater: Partial<WizardState> | ((prev: WizardState) => Partial<WizardState>),
+  ) => void
   onBack: () => void
   onNext: () => void
 }
@@ -86,7 +88,11 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
   }
 
   const updateConfig = (partial: Partial<typeof config>) => {
-    updateState({ config: { ...config, ...partial } })
+    // Functional updater: reads the freshest config from the latest state.
+    // Prevents stale-closure races when multiple effects in the same render
+    // tick both call updateConfig (e.g. initial CSV load with both status
+    // and source columns triggering both auto-suggest effects together).
+    updateState((prev) => ({ config: { ...prev.config, ...partial } }))
   }
 
   // Détecter la colonne CSV mappée vers "status"
