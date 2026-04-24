@@ -679,6 +679,31 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible (1 bloc conditionnel dans StatusValueMapper)
 - **Statut :** En attente de validation
 
+### A-035-02 · Durcissement des synonymes courts dans `SOURCE_SYNONYMS` (csv-parser)
+- **Contexte :** Identifié pendant la review de T-035. `'direct'` (6) dans `manuel` et `'import'` (6) dans `manuel` peuvent produire des faux positifs Pass 2 pour des valeurs CSV comme "director", "directement", "imports". Risque faible en pratique mais cohérent avec la philosophie conservatrice.
+- **Description :** Remplacer `'direct'` par `'direct contact'` ou `'direct mail'`, et `'import'` par `'import csv'` / `'import manuel'`. Garde l'intent de match sémantique tout en réduisant le risque de substring.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (quelques lignes)
+- **Statut :** En attente de validation
+
+### A-035-03 · Synonymes FR "pub"/"publicité" pour les sources ads
+- **Contexte :** Identifié pendant la review de T-035. Les coachs FR utilisent "pub" comme raccourci standard de "publicité", pas "ads". Valeurs CSV comme "Pub Facebook", "Publicité Meta", "Pub Insta" retournent actuellement `null`.
+- **Description :** Ajouter comme synonymes exacts :
+  - `facebook_ads` : `pub facebook`, `publicité facebook`, `pub fb`, `pub meta`, `publicité meta`, `annonce facebook`
+  - `instagram_ads` : `pub instagram`, `publicité instagram`, `pub insta`, `pub ig`
+- **Priorité estimée :** Moyenne (touche directement les coachs FR, audience cible)
+- **Effort estimé :** Faible (additions dans l'objet)
+- **Statut :** En attente de validation
+
+### A-035-04 · Synonymes FR complémentaires pour `formulaire` et `manuel`
+- **Contexte :** Identifié pendant la review de T-035. Termes français plausibles qui retournent null.
+- **Description :** Ajouter :
+  - `formulaire` : `formulaire de contact`, `formulaire candidature`, `site web`, `site internet`
+  - `manuel` : `réseau`, `réseau social`, `partenariat`
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
 ---
 
-*Mis a jour le 2026-04-23 par Claude Code — ClosRM*
+*Mis a jour le 2026-04-24 par Claude Code — ClosRM*

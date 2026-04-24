@@ -200,7 +200,11 @@ export function suggestStatusMapping(value: string): LeadStatus | null {
     }
   }
 
-  // Pass 2: inclusion match (value contains synonym or vice versa)
+  // Pass 2: bidirectional inclusion. Bidirectional is safe for statuses
+  // because STATUS_SYNONYMS has no short single-word tokens that appear
+  // as substrings of unrelated CSV values. suggestSourceMapping uses a
+  // unidirectional variant (norm.includes(ns) only) because source
+  // synonyms like "fb ads" would otherwise match "Facebook" alone.
   for (const [status, synonyms] of Object.entries(STATUS_SYNONYMS) as [LeadStatus, string[]][]) {
     if (synonyms.some((s) => {
       const ns = normalize(s)
@@ -231,7 +235,8 @@ export const SOURCE_SYNONYMS: Record<LeadSource, string[]> = {
     'follow ads',
   ],
   formulaire: [
-    'formulaire', 'form', 'website form', 'landing page', 'contact form',
+    // 'form' alone was removed: Pass 2 would false-positive on "platform", "inform", etc.
+    'formulaire', 'website form', 'landing page', 'contact form',
   ],
   manuel: [
     'manuel', 'manual', 'direct', 'import', 'inconnu',
