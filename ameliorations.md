@@ -646,6 +646,39 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible (1-2h)
 - **Statut :** En attente de validation
 
+### A-034-01 · `prepared.status` non trimmé dans `validateRow` (import-engine)
+- **Contexte :** Identifié pendant la review de T-034. À la ligne `status: row.status || config.default_status` de la construction de `prepared`, aucune normalisation de whitespace n'est appliquée.
+- **Description :** Si un CSV a une valeur de statut avec des espaces (ex: `"  clos  "`) et que l'utilisateur ne la mappe pas explicitement via l'UI, la vérification d'enum de fallback échoue silencieusement et le lead tombe sur `default_status`. Fix proposé : `status: (row.status || '').trim() || config.default_status`. Pre-existing (pas introduit par T-034).
+- **Priorité estimée :** Basse (peu probable en pratique : l'UI trim déjà via `extractUniqueStatusValues`)
+- **Effort estimé :** Faible (1 ligne)
+- **Statut :** En attente de validation
+
+### A-034-02 · Synonymes supplémentaires dans `STATUS_SYNONYMS` (csv-parser)
+- **Contexte :** Suggéré pendant la review de T-034. Termes courants qui retournent `null` (pas de suggestion) alors qu'ils sont fréquents dans les CSV de coachs FR.
+- **Description :** Ajouter comme synonymes exacts :
+  - `scripte` : `relance`, `à relancer`, `rappel`, `suivi`
+  - `setting_planifie` : `rdv confirmé`, `appel planifié`
+  - `no_show_setting` : `injoignable`, `pas répondu`, `messagerie`
+  - `dead` : `pas intéressé`, `sans suite`, `inactif`
+  - `clos` : `client`, `payé`, `inscrit`
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (additions dans un objet)
+- **Statut :** En attente de validation
+
+### A-034-03 · `STATUS_OPTIONS` incomplet dans Step2_MappingConfig (import wizard)
+- **Contexte :** Identifié pendant la review de T-034 mais pre-existing. Le dropdown "Statut par défaut" de l'étape 2 d'import liste seulement 5 statuts (`nouveau`, `setting_planifie`, `closing_planifie`, `clos`, `dead`). `scripte`, `no_show_setting`, `no_show_closing` sont absents.
+- **Description :** `scripte` est un default valide pour certains coachs (après contact initial). Les `no_show_*` sont exotiques comme defaults mais devraient être cohérents avec l'enum. Décider si on les ajoute ou si on documente le choix.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-034-04 · Message d'aide si aucune valeur de statut n'est auto-reconnue
+- **Contexte :** Suggéré pendant la review de T-034. Si l'utilisateur mappe une colonne statut et que toutes les valeurs retournent `null` de `suggestStatusMapping`, le `StatusValueMapper` affiche toutes les lignes en rouge (⚠ à régler) sans texte explicatif. Le bouton Continuer est désactivé et l'utilisateur peut être perdu.
+- **Description :** Ajouter une ligne d'aide sous le header quand `unresolvedCount === uniqueValues.length` : « Aucune valeur n'a pu être reconnue automatiquement. Mappez-les manuellement. »
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (1 bloc conditionnel dans StatusValueMapper)
+- **Statut :** En attente de validation
+
 ---
 
-*Mis a jour le 2026-04-22 par Claude Code — ClosRM*
+*Mis a jour le 2026-04-23 par Claude Code — ClosRM*

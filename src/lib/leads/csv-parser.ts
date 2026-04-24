@@ -1,5 +1,7 @@
 import Papa from 'papaparse'
 
+import type { LeadStatus } from '@/types'
+
 // ------------------------------------------------------------------
 // Synonyms map: target field → known CSV header synonyms (FR + EN)
 // ------------------------------------------------------------------
@@ -118,4 +120,95 @@ export function applyMapping(
     }
     return mapped
   })
+}
+
+// ------------------------------------------------------------------
+// Status synonyms (FR + EN) — used by the import wizard to pre-fill
+// suggestions for each unique CSV status value.
+// ------------------------------------------------------------------
+export const STATUS_SYNONYMS: Record<LeadStatus, string[]> = {
+  nouveau: [
+    'nouveau', 'new', 'lead', 'entrant', 'fresh',
+  ],
+  scripte: [
+    'scripté', 'scripte', 'contacté', 'contacte', 'contacted',
+    'en attente de reponse', 'en attente de réponse', 'en attente',
+    'awaiting response', 'a recontacter', 'à recontacter',
+    'qualifié', 'qualifie',
+  ],
+  setting_planifie: [
+    'setting planifié', 'setting planifie', 'setting',
+    'rdv setting', 'rdv bilan pris', 'bilan pris',
+    'rdv planifié', 'rdv planifie', 'rendez-vous planifié',
+    'rendez-vous', 'appointment booked',
+  ],
+  no_show_setting: [
+    'no show setting', 'absent setting', 'jamais décroché',
+    'jamais decroche', 'no answer', 'manqué', 'manque',
+  ],
+  closing_planifie: [
+    'closing planifié', 'closing planifie', 'closing',
+    'rdv closing', 'closing booked',
+  ],
+  no_show_closing: [
+    'no show closing', 'absent closing', 'no show',
+  ],
+  clos: [
+    'clos', 'closé', 'close', 'fermé', 'ferme',
+    'converti', 'conversion', 'won', 'signé', 'signe',
+    'vendu', 'deal', 'bilan effectué', 'bilan effectue',
+    'meeting done', 'rdv effectué', 'rdv effectue',
+  ],
+  dead: [
+    'dead', 'mort', 'refusé', 'refuse', 'rejeté', 'rejete',
+    'perdu', 'lost', 'avorté', 'avorte',
+    'avorte - plus de reponse', 'avorté - plus de réponse',
+    'plus de reponse', 'plus de réponse',
+    'non qualifié', 'non qualifie', 'not qualified',
+    'disqualifié', 'disqualifie', 'abandonné', 'abandonne',
+  ],
+}
+
+// ------------------------------------------------------------------
+// Extract unique non-empty status values from the raw rows, given the
+// CSV header name that was mapped to the status field.
+// ------------------------------------------------------------------
+export function extractUniqueStatusValues(
+  rows: Record<string, string>[],
+  csvHeader: string,
+): string[] {
+  const set = new Set<string>()
+  for (const row of rows) {
+    const val = (row[csvHeader] || '').trim()
+    if (val) set.add(val)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'))
+}
+
+// ------------------------------------------------------------------
+// Suggest a ClosRM status for a given raw CSV status value.
+// Returns null if no confident match.
+// ------------------------------------------------------------------
+export function suggestStatusMapping(value: string): LeadStatus | null {
+  const norm = normalize(value)
+  if (!norm) return null
+
+  // Pass 1: exact match on any synonym
+  for (const [status, synonyms] of Object.entries(STATUS_SYNONYMS) as [LeadStatus, string[]][]) {
+    if (synonyms.some((s) => normalize(s) === norm)) {
+      return status
+    }
+  }
+
+  // Pass 2: inclusion match (value contains synonym or vice versa)
+  for (const [status, synonyms] of Object.entries(STATUS_SYNONYMS) as [LeadStatus, string[]][]) {
+    if (synonyms.some((s) => {
+      const ns = normalize(s)
+      return ns.length >= 3 && (norm.includes(ns) || ns.includes(norm))
+    })) {
+      return status
+    }
+  }
+
+  return null
 }

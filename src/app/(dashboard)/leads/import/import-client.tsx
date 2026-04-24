@@ -36,6 +36,7 @@ const INITIAL_CONFIG: ImportConfig = {
   batch_tags: [],
   dedup_strategy: 'email',
   dedup_action: 'skip',
+  status_value_mapping: {},
 }
 
 export default function ImportClient() {

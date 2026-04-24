@@ -1,11 +1,11 @@
 'use client'
 
-import { useMemo } from 'react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, Circle, Info } from 'lucide-react'
-import { TARGET_FIELDS, applyMapping } from '@/lib/leads/csv-parser'
+import { TARGET_FIELDS, applyMapping, extractUniqueStatusValues, suggestStatusMapping } from '@/lib/leads/csv-parser'
 import type { ColumnMapping } from '@/lib/leads/csv-parser'
 import type { WizardState } from '@/app/(dashboard)/leads/import/import-client'
+import StatusValueMapper from '@/components/leads/import/StatusValueMapper'
 import type { ImportDedupAction, ImportDedupStrategy, LeadSource, LeadStatus } from '@/types'
 
 interface Props {
@@ -81,6 +81,58 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
     updateState({ config: { ...config, ...partial } })
   }
 
+  // Détecter la colonne CSV mappée vers "status"
+  const statusCsvHeader = useMemo(
+    () => columnMappings.find((m) => m.targetField === 'status')?.csvHeader || null,
+    [columnMappings],
+  )
+
+  // Extraire les valeurs uniques de cette colonne (vide si pas mappée)
+  const uniqueStatusValues = useMemo(() => {
+    if (!statusCsvHeader) return []
+    return extractUniqueStatusValues(state.rows, statusCsvHeader)
+  }, [state.rows, statusCsvHeader])
+
+  // Auto-suggérer le mapping quand la colonne est (re)mappée ou les valeurs changent
+  useEffect(() => {
+    if (uniqueStatusValues.length === 0) {
+      // Clear mapping when column unmapped
+      if (Object.keys(config.status_value_mapping).length > 0) {
+        updateConfig({ status_value_mapping: {} })
+      }
+      return
+    }
+    // Fill only values not yet in the mapping (don't overwrite user choices)
+    const next = { ...config.status_value_mapping }
+    let changed = false
+    for (const value of uniqueStatusValues) {
+      if (!next[value]) {
+        const suggested = suggestStatusMapping(value)
+        if (suggested) {
+          next[value] = { type: 'map', status: suggested }
+          changed = true
+        }
+      }
+    }
+    // Remove stale entries (values no longer present)
+    for (const key of Object.keys(next)) {
+      if (!uniqueStatusValues.includes(key)) {
+        delete next[key]
+        changed = true
+      }
+    }
+    if (changed) {
+      updateConfig({ status_value_mapping: next })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueStatusValues])
+
+  const hasUnresolvedStatusValues = useMemo(() => {
+    return uniqueStatusValues.some((v) => !config.status_value_mapping[v])
+  }, [uniqueStatusValues, config.status_value_mapping])
+
+  const canContinue = hasRequiredField && !hasUnresolvedStatusValues
+
   const handleNext = () => {
     const mapping: Record<string, string> = {}
     for (const m of columnMappings) {
@@ -151,6 +203,13 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
             <p style={{ fontSize: 12, color: '#E53E3E', marginTop: 8 }}>
               Au moins « Email » ou « Téléphone » doit être mappé pour continuer.
             </p>
+          )}
+          {statusCsvHeader && uniqueStatusValues.length > 0 && (
+            <StatusValueMapper
+              uniqueValues={uniqueStatusValues}
+              mapping={config.status_value_mapping}
+              onChange={(m) => updateConfig({ status_value_mapping: m })}
+            />
           )}
         </div>
 
@@ -272,12 +331,12 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
         </button>
         <button
           onClick={handleNext}
-          disabled={!hasRequiredField}
+          disabled={!canContinue}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600,
-            background: hasRequiredField ? 'var(--color-primary)' : 'var(--border-primary)', border: 'none',
-            color: hasRequiredField ? '#000' : 'var(--text-muted)', cursor: hasRequiredField ? 'pointer' : 'not-allowed',
+            background: canContinue ? 'var(--color-primary)' : 'var(--border-primary)', border: 'none',
+            color: canContinue ? '#000' : 'var(--text-muted)', cursor: canContinue ? 'pointer' : 'not-allowed',
           }}
         >
           Continuer
