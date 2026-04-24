@@ -149,21 +149,37 @@ function validateRow(
     return { valid: false, errors }
   }
 
-  // Validate source against enum
-  const validSources: LeadSource[] = ['facebook_ads', 'instagram_ads', 'follow_ads', 'formulaire', 'manuel', 'funnel']
-  if (!validSources.includes(prepared.source as LeadSource)) {
-    if (config.default_source) {
-      // Default source set → replace silently
-      prepared.source = config.default_source
+  // Apply source_value_mapping if the raw CSV source matches an entry.
+  // Falls back to enum validation for compat (programmatic API calls, old batches).
+  const rawSource = (row.source || '').trim()
+  let tagFromSource: string | null = null
+
+  if (rawSource && config.source_value_mapping && config.source_value_mapping[rawSource]) {
+    const action = config.source_value_mapping[rawSource]
+    if (action.type === 'map') {
+      prepared.source = action.source
+    } else if (action.type === 'tag') {
+      prepared.source = config.default_source || 'manuel'
+      tagFromSource = rawSource
     } else {
-      // No default → flag as error
-      errors.push({
-        row: rowIndex + 1,
-        field: 'source',
-        value: row.source || '',
-        reason: `Source inconnue : « ${row.source} ». Sources valides : facebook_ads, instagram_ads, follow_ads, formulaire, manuel, funnel`,
-      })
-      return { valid: false, errors }
+      // action.type === 'ignore'
+      prepared.source = config.default_source || 'manuel'
+    }
+  } else {
+    // Legacy fallback: validate against enum, else use default or emit error
+    const validSources: LeadSource[] = ['facebook_ads', 'instagram_ads', 'follow_ads', 'formulaire', 'manuel', 'funnel']
+    if (!validSources.includes(prepared.source as LeadSource)) {
+      if (config.default_source) {
+        prepared.source = config.default_source
+      } else {
+        errors.push({
+          row: rowIndex + 1,
+          field: 'source',
+          value: row.source || '',
+          reason: `Source inconnue : « ${row.source} ». Sources valides : facebook_ads, instagram_ads, follow_ads, formulaire, manuel, funnel`,
+        })
+        return { valid: false, errors }
+      }
     }
   }
 
@@ -224,6 +240,12 @@ function validateRow(
   if (tagFromStatus) {
     const existingTags = (data.tags as string[]) || []
     data.tags = [...existingTags, tagFromStatus]
+  }
+  // tagFromSource — same invariant as tagFromStatus. Source tag appended
+  // after the status tag so tag ordering is deterministic.
+  if (tagFromSource) {
+    const existingTags = (data.tags as string[]) || []
+    data.tags = [...existingTags, tagFromSource]
   }
 
   return { valid: true, data, errors: [] }
