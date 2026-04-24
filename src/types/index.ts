@@ -782,7 +782,21 @@ export interface ResendDnsRecord {
 
 // ── Email Template Blocks ───────────────────────────────────────────────────
 
-export type EmailBlockType = 'header' | 'text' | 'image' | 'button' | 'divider' | 'footer'
+export type EmailBlockType =
+  | 'header'
+  | 'hero'
+  | 'text'
+  | 'image'
+  | 'button'
+  | 'cta_banner'
+  | 'divider'
+  | 'spacer'
+  | 'quote'
+  | 'testimonials'
+  | 'features_grid'
+  | 'video'
+  | 'social_links'
+  | 'footer'
 
 export interface HeaderBlockConfig {
   logoUrl?: string
@@ -818,12 +832,86 @@ export interface FooterBlockConfig {
   text: string  // Legal text, unsubscribe link auto-appended
 }
 
+// ── v2 email block configs (préfixés Email* pour ne pas collisionner
+//     avec les types Funnel qui utilisent des noms similaires) ──
+
+export interface EmailHeroBlockConfig {
+  title: string
+  subtitle?: string
+  imageUrl?: string
+  ctaText?: string
+  ctaUrl?: string
+  alignment: 'left' | 'center'
+}
+
+export interface EmailCtaBannerBlockConfig {
+  text: string
+  ctaText: string
+  ctaUrl: string
+  backgroundColor?: string
+}
+
+export interface EmailSpacerBlockConfig {
+  height: number
+}
+
+export interface EmailQuoteBlockConfig {
+  text: string
+  author?: string
+}
+
+export interface EmailTestimonialItem {
+  quote: string
+  author: string
+  role?: string
+  avatarUrl?: string
+}
+
+export interface EmailTestimonialsBlockConfig {
+  items: EmailTestimonialItem[]
+}
+
+export interface EmailFeatureItem {
+  icon?: string
+  title: string
+  description: string
+}
+
+export interface EmailFeaturesGridBlockConfig {
+  columns: 2 | 3
+  items: EmailFeatureItem[]
+}
+
+export interface EmailVideoBlockConfig {
+  thumbnailUrl: string
+  linkUrl: string
+  caption?: string
+}
+
+export interface EmailSocialLinksBlockConfig {
+  facebook?: string
+  instagram?: string
+  linkedin?: string
+  telegram?: string
+  twitter?: string
+  youtube?: string
+  website?: string
+}
+
 export type EmailBlockConfig =
   | HeaderBlockConfig
+  | EmailHeroBlockConfig
   | TextBlockConfig
   | ImageBlockConfig
   | ButtonBlockConfig
+  | EmailCtaBannerBlockConfig
   | DividerBlockConfig
+  | EmailSpacerBlockConfig
+  | EmailQuoteBlockConfig
+  | EmailTestimonialsBlockConfig
+  | EmailFeaturesGridBlockConfig
+  | EmailVideoBlockConfig
+  | EmailSocialLinksBlockConfig
   | FooterBlockConfig
 
 export interface EmailBlock {
@@ -840,6 +928,10 @@ export interface EmailTemplate {
   blocks: EmailBlock[]
   preview_text: string | null
   thumbnail_url: string | null
+  /** Design system v2 — preset sélectionné (null/undefined = legacy rendering) */
+  preset_id?: string | null
+  /** Overrides custom (couleurs, typo, bouton) par rapport au preset */
+  preset_override?: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }

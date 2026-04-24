@@ -39,7 +39,7 @@ export function compileBlocks(blocks: EmailBlock[], previewText?: string | null)
 }
 
 function renderBlock(block: EmailBlock): string {
-  const renderers: Record<EmailBlockType, (config: Record<string, unknown>) => string> = {
+  const renderers: Partial<Record<EmailBlockType, (config: Record<string, unknown>) => string>> = {
     header: renderHeader,
     text: renderText,
     image: renderImage,
@@ -49,7 +49,7 @@ function renderBlock(block: EmailBlock): string {
   }
 
   const renderer = renderers[block.type]
-  if (!renderer) return ''
+  if (!renderer) return ''  // v2 block types → rendus via compiler-v2
   return renderer(block.config as Record<string, unknown>)
 }
 
