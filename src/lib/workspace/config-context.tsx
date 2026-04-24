@@ -57,40 +57,44 @@ export function WorkspaceConfigProvider({ initialStatusConfig, initialSourceConf
   }, [])
 
   const updateStatusConfig = useCallback(async (next: StatusConfig) => {
-    setStatusConfig(next)  // optimistic
+    const previous = statusConfig  // snapshot before optimistic write
+    setStatusConfig(next)
     try {
       await patch({ status_config: next })
     } catch {
-      setStatusConfig(mergeStatusConfig(initialStatusConfig))  // rollback
+      setStatusConfig(previous)  // restore snapshot, not server prop
     }
-  }, [patch, initialStatusConfig])
+  }, [patch, statusConfig])
 
   const updateSourceConfig = useCallback(async (next: SourceConfig) => {
+    const previous = sourceConfig
     setSourceConfig(next)
     try {
       await patch({ source_config: next })
     } catch {
-      setSourceConfig(mergeSourceConfig(initialSourceConfig))
+      setSourceConfig(previous)
     }
-  }, [patch, initialSourceConfig])
+  }, [patch, sourceConfig])
 
   const resetStatusConfig = useCallback(async () => {
+    const previous = statusConfig
     setStatusConfig(DEFAULT_STATUS_CONFIG)
     try {
       await patch({ status_config: null })
     } catch {
-      setStatusConfig(mergeStatusConfig(initialStatusConfig))
+      setStatusConfig(previous)
     }
-  }, [patch, initialStatusConfig])
+  }, [patch, statusConfig])
 
   const resetSourceConfig = useCallback(async () => {
+    const previous = sourceConfig
     setSourceConfig(DEFAULT_SOURCE_CONFIG)
     try {
       await patch({ source_config: null })
     } catch {
-      setSourceConfig(mergeSourceConfig(initialSourceConfig))
+      setSourceConfig(previous)
     }
-  }, [patch, initialSourceConfig])
+  }, [patch, sourceConfig])
 
   const value = useMemo<ConfigContextValue>(() => ({
     statusConfig, sourceConfig,
