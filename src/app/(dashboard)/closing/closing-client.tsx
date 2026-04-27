@@ -10,6 +10,7 @@ import CallOutcomeModal from '@/components/closing/CallOutcomeModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
+import LeadActionModal, { type LeadAction } from '@/components/leads/LeadActionModal'
 
 type CallWithLead = Call & {
   lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'>
@@ -43,6 +44,7 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
   const [outcomeTarget, setOutcomeTarget] = useState<CallWithLead | null>(null)
   const [rescheduleTarget, setRescheduleTarget] = useState<CallWithLead | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CallWithLead | null>(null)
+  const [treatTarget, setTreatTarget] = useState<CallWithLead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
 
   // Team members for assignment column
@@ -135,6 +137,44 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
     setDeleteTarget(null); refresh()
   }
 
+  function handleCall(call: CallWithLead) {
+    if (call.lead.phone) {
+      window.open(`tel:${call.lead.phone}`, '_self')
+    }
+  }
+
+  async function handleTreatAction(call: CallWithLead, action: LeadAction) {
+    if (action.type === 'schedule_call') {
+      await fetch(`/api/calls/${call.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'done' }) })
+      setRescheduleTarget(call)
+      return
+    } else if (action.type === 'follow_up') {
+      await fetch(`/api/calls/${call.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'done' }) })
+      await fetch('/api/follow-ups', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: call.lead.id, reason: action.reason, scheduled_at: action.date, channel: action.channel }),
+      })
+    } else if (action.type === 'won') {
+      await fetch(`/api/calls/${call.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'done' }) })
+      await fetch('/api/deals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: call.lead.id,
+          amount: action.amount,
+          cash_collected: action.cash_collected,
+          installments: action.installments,
+          duration_months: action.duration_months,
+          closer_id: action.closer_id,
+          setter_id: action.setter_id,
+        }),
+      })
+    } else if (action.type === 'dead') {
+      await fetch(`/api/calls/${call.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'cancelled' }) })
+      await fetch(`/api/leads/${call.lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'dead' }) })
+    }
+    refresh()
+  }
+
   return (
     <div style={{ padding: 32 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -181,7 +221,7 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
 
       <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 14, overflow: 'hidden' }}>
         {view === 'list' ? (
-          <CallTable calls={calls} loading={loading} onOutcome={setOutcomeTarget} onReschedule={setRescheduleTarget} onDelete={setDeleteTarget} onLeadClick={setSidePanelLeadId} members={members} onAssignCall={handleAssignCall} />
+          <CallTable calls={calls} loading={loading} onOutcome={setOutcomeTarget} onReschedule={setRescheduleTarget} onDelete={setDeleteTarget} onCall={handleCall} onTreat={setTreatTarget} onLeadClick={setSidePanelLeadId} members={members} onAssignCall={handleAssignCall} />
         ) : (
           <div style={{ padding: 16 }}><CallCalendar calls={calls} loading={loading} onCallClick={setOutcomeTarget} /></div>
         )}
@@ -196,6 +236,7 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
       )}
 
       {outcomeTarget && <CallOutcomeModal call={outcomeTarget} onClose={() => setOutcomeTarget(null)} onUpdated={refresh} />}
+      {treatTarget && <LeadActionModal lead={treatTarget.lead} onClose={() => setTreatTarget(null)} onAction={(action) => handleTreatAction(treatTarget, action)} />}
       {rescheduleTarget && <CallScheduleModal lead={rescheduleTarget.lead} onClose={() => setRescheduleTarget(null)} onScheduled={() => { fetch(`/api/calls/${rescheduleTarget.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'cancelled' }) }); setRescheduleTarget(null); refresh() }} />}
       {deleteTarget && <ConfirmModal title="Supprimer l'appel" message={`Supprimer l'appel avec ${deleteTarget.lead.first_name} ${deleteTarget.lead.last_name} ?`} confirmLabel="Supprimer" confirmDanger onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />}
       {sidePanelLeadId && <LeadSidePanel leadId={sidePanelLeadId} onClose={() => setSidePanelLeadId(null)} />}

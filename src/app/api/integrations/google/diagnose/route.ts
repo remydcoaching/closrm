@@ -147,6 +147,161 @@ export async function GET() {
     steps.push({ step: 'read_events', ok: true, detail: { count: (evData.items ?? []).length } })
   }
 
+  // Step 5b: actually run the sync logic and surface insert errors
+  try {
+    const timeMinSync = new Date().toISOString()
+    const timeMaxSync = new Date(Date.now() + 30 * 86400000).toISOString()
+    const syncEventsRes = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?${new URLSearchParams({
+        timeMin: timeMinSync,
+        timeMax: timeMaxSync,
+        singleEvents: 'true',
+        orderBy: 'startTime',
+        maxResults: '250',
+      })}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    const syncData = await syncEventsRes.json()
+    const events = (syncData.items ?? []) as Array<{
+      id: string
+      summary?: string
+      description?: string
+      status?: string
+      start: { dateTime?: string; date?: string }
+      end: { dateTime?: string; date?: string }
+    }>
+
+    const skipped = { noDateTime: 0, cancelled: 0 }
+    const sampleEvents: Array<Record<string, unknown>> = []
+    let inserted = 0
+    let updated = 0
+    const insertErrors: Array<{ summary: string; error: string }> = []
+
+    // Fetch existing bookings for deduplication
+    const eventIds = events.map((e) => e.id)
+    const { data: existingBookings } = await supabase
+      .from('bookings')
+      .select('id, google_event_id')
+      .eq('workspace_id', workspaceId)
+      .in('google_event_id', eventIds)
+
+    const existingMap = new Map(
+      (existingBookings ?? []).map((b) => [b.google_event_id, b.id])
+    )
+
+    for (const event of events) {
+      if (!event.start.dateTime || !event.end.dateTime) {
+        skipped.noDateTime++
+        if (sampleEvents.length < 3) sampleEvents.push({ summary: event.summary, reason: 'no dateTime', start: event.start })
+        continue
+      }
+      if (event.status === 'cancelled') {
+        skipped.cancelled++
+        continue
+      }
+      const startDate = new Date(event.start.dateTime)
+      const endDate = new Date(event.end.dateTime)
+      const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60_000)
+
+      if (existingMap.has(event.id)) {
+        const bookingId = existingMap.get(event.id)!
+        const { error } = await supabase
+          .from('bookings')
+          .update({
+            title: event.summary || 'Google Calendar',
+            scheduled_at: event.start.dateTime,
+            duration_minutes: durationMinutes > 0 ? durationMinutes : 30,
+            notes: event.description || null,
+          })
+          .eq('id', bookingId)
+          .eq('workspace_id', workspaceId)
+        if (error) insertErrors.push({ summary: event.summary || '?', error: `update: ${error.message}` })
+        else updated++
+      } else {
+        const { error } = await supabase
+          .from('bookings')
+          .insert({
+            workspace_id: workspaceId,
+            title: event.summary || 'Google Calendar',
+            scheduled_at: event.start.dateTime,
+            duration_minutes: durationMinutes > 0 ? durationMinutes : 30,
+            notes: event.description || null,
+            source: 'google_sync',
+            is_personal: true,
+            google_event_id: event.id,
+            calendar_id: null,
+            lead_id: null,
+            status: 'confirmed',
+            form_data: {},
+            location_id: null,
+          })
+        if (error) insertErrors.push({ summary: event.summary || '?', error: `insert: ${error.message}` })
+        else inserted++
+      }
+    }
+
+    steps.push({
+      step: 'run_sync',
+      ok: insertErrors.length === 0,
+      detail: {
+        total_events: events.length,
+        inserted,
+        updated,
+        skipped,
+        sample_skipped: sampleEvents,
+        insert_errors: insertErrors.slice(0, 5),
+      },
+    })
+  } catch (err) {
+    steps.push({ step: 'run_sync', ok: false, detail: String(err) })
+  }
+
+  // Step 5c: inspect bookings in DB
+  try {
+    const weekStart = new Date()
+    weekStart.setDate(weekStart.getDate() - 7)
+    const weekEnd = new Date()
+    weekEnd.setDate(weekEnd.getDate() + 30)
+
+    const { data: allBookings, count: totalCount } = await supabase
+      .from('bookings')
+      .select('id, title, scheduled_at, is_personal, source, status, calendar_id, google_event_id', { count: 'exact' })
+      .eq('workspace_id', workspaceId)
+      .gte('scheduled_at', weekStart.toISOString())
+      .lte('scheduled_at', weekEnd.toISOString())
+      .order('scheduled_at', { ascending: true })
+
+    const googleSynced = (allBookings ?? []).filter((b) => b.source === 'google_sync')
+    const byStatus = (allBookings ?? []).reduce((acc: Record<string, number>, b) => {
+      acc[b.status || 'null'] = (acc[b.status || 'null'] || 0) + 1
+      return acc
+    }, {})
+    const bySource = (allBookings ?? []).reduce((acc: Record<string, number>, b) => {
+      acc[b.source || 'null'] = (acc[b.source || 'null'] || 0) + 1
+      return acc
+    }, {})
+
+    steps.push({
+      step: 'inspect_db_bookings',
+      ok: true,
+      detail: {
+        total_in_range: totalCount,
+        by_status: byStatus,
+        by_source: bySource,
+        google_sync_count: googleSynced.length,
+        sample_google_synced: googleSynced.slice(0, 5).map((b) => ({
+          id: b.id,
+          title: b.title,
+          scheduled_at: b.scheduled_at,
+          is_personal: b.is_personal,
+          status: b.status,
+        })),
+      },
+    })
+  } catch (err) {
+    steps.push({ step: 'inspect_db_bookings', ok: false, detail: String(err) })
+  }
+
   // Step 6: try to create a throwaway test event
   const testStart = new Date(Date.now() + 365 * 86400000) // 1 year in future
   const testEnd = new Date(testStart.getTime() + 15 * 60000)

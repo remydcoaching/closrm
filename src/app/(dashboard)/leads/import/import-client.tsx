@@ -36,6 +36,8 @@ const INITIAL_CONFIG: ImportConfig = {
   batch_tags: [],
   dedup_strategy: 'email',
   dedup_action: 'skip',
+  status_value_mapping: {},
+  source_value_mapping: {},
 }
 
 export default function ImportClient() {
@@ -54,8 +56,13 @@ export default function ImportClient() {
     batch: null,
   })
 
-  const updateState = (partial: Partial<WizardState>) => {
-    setState((prev) => ({ ...prev, ...partial }))
+  const updateState = (
+    updater: Partial<WizardState> | ((prev: WizardState) => Partial<WizardState>),
+  ) => {
+    setState((prev) => {
+      const partial = typeof updater === 'function' ? updater(prev) : updater
+      return { ...prev, ...partial }
+    })
   }
 
   return (

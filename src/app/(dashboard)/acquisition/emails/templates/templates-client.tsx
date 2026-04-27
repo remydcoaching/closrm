@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, FileText, Trash2 } from 'lucide-react'
+import { Plus, FileText, Trash2, X } from 'lucide-react'
 import type { EmailTemplate } from '@/types'
+import { STARTER_TEMPLATES } from '@/lib/email/starter-templates'
+import { getEmailPresetByIdOrDefault } from '@/lib/email/presets'
 
 interface TemplatesClientProps {
   initialTemplates: EmailTemplate[]
@@ -27,18 +29,39 @@ function timeAgo(dateStr: string): string {
 
 export default function TemplatesClient({ initialTemplates }: TemplatesClientProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>(initialTemplates)
+  const [showGallery, setShowGallery] = useState(false)
   const router = useRouter()
 
-  async function handleCreate() {
+  async function handleCreateBlank() {
     const res = await fetch('/api/emails/templates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Nouveau template',
+        preset_id: 'classique',
         blocks: [
           { id: 'block-1', type: 'text', config: { content: '<p>Bonjour {{prenom}},</p>' } },
           { id: 'footer', type: 'footer', config: { text: '© Mon Coaching' } },
         ],
+      }),
+    })
+    if (res.ok) {
+      const template = await res.json()
+      router.push(`/acquisition/emails/templates/${template.id}`)
+    }
+  }
+
+  async function handleCreateFromStarter(starterId: string) {
+    const starter = STARTER_TEMPLATES.find((s) => s.id === starterId)
+    if (!starter) return
+    const res = await fetch('/api/emails/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: starter.name,
+        subject: starter.subject,
+        preset_id: starter.preset_id,
+        blocks: starter.blocks,
       }),
     })
     if (res.ok) {
@@ -65,7 +88,7 @@ export default function TemplatesClient({ initialTemplates }: TemplatesClientPro
           </p>
         </div>
         <button
-          onClick={handleCreate}
+          onClick={() => setShowGallery(true)}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -84,6 +107,14 @@ export default function TemplatesClient({ initialTemplates }: TemplatesClientPro
           Nouveau template
         </button>
       </div>
+
+      {showGallery && (
+        <StarterGallery
+          onClose={() => setShowGallery(false)}
+          onBlank={handleCreateBlank}
+          onSelect={handleCreateFromStarter}
+        />
+      )}
 
       {/* Empty state */}
       {templates.length === 0 ? (
@@ -113,7 +144,7 @@ export default function TemplatesClient({ initialTemplates }: TemplatesClientPro
             Crée ton premier modèle d&apos;email
           </div>
           <button
-            onClick={handleCreate}
+            onClick={() => setShowGallery(true)}
             style={{
               padding: '8px 20px',
               fontSize: 13,
@@ -215,6 +246,159 @@ export default function TemplatesClient({ initialTemplates }: TemplatesClientPro
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function StarterGallery({
+  onClose,
+  onBlank,
+  onSelect,
+}: {
+  onClose: () => void
+  onBlank: () => void
+  onSelect: (starterId: string) => void
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 900,
+          maxWidth: '100%',
+          maxHeight: '90vh',
+          background: '#0a0a0a',
+          border: '1px solid #262626',
+          borderRadius: 14,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div
+          style={{
+            padding: '16px 20px',
+            borderBottom: '1px solid #262626',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fff' }}>
+              Choisir un point de départ
+            </h2>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>
+              6 templates pré-bâtis ou pars d&apos;une page vierge.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#888',
+              display: 'flex',
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: 20,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 14,
+          }}
+        >
+          <button
+            onClick={onBlank}
+            style={{
+              padding: 20,
+              background: '#141414',
+              border: '1px dashed #444',
+              borderRadius: 10,
+              cursor: 'pointer',
+              textAlign: 'left',
+              color: '#ccc',
+              minHeight: 180,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <div style={{ fontSize: 32, color: '#555' }}>+</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Vierge</div>
+            <div style={{ fontSize: 12, color: '#666', textAlign: 'center' }}>
+              Commence de zéro avec un seul bloc texte.
+            </div>
+          </button>
+
+          {STARTER_TEMPLATES.map((s) => {
+            const preset = getEmailPresetByIdOrDefault(s.preset_id)
+            return (
+              <button
+                key={s.id}
+                onClick={() => onSelect(s.id)}
+                style={{
+                  padding: 0,
+                  background: '#141414',
+                  border: '1px solid #262626',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  overflow: 'hidden',
+                  minHeight: 180,
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <div
+                  style={{
+                    height: 70,
+                    background: preset.primary,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 4, background: preset.containerBg }} />
+                    <div style={{ width: 28, height: 28, borderRadius: 4, background: preset.footerBg }} />
+                  </div>
+                </div>
+                <div style={{ padding: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+                    {s.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#888', lineHeight: 1.4 }}>
+                    {s.description}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

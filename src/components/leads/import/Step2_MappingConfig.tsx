@@ -1,16 +1,27 @@
 'use client'
 
-import { useMemo } from 'react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, Circle, Info } from 'lucide-react'
-import { TARGET_FIELDS, applyMapping } from '@/lib/leads/csv-parser'
+import {
+  TARGET_FIELDS,
+  applyMapping,
+  extractUniqueStatusValues,
+  suggestStatusMapping,
+  extractUniqueSourceValues,
+  suggestSourceMapping,
+} from '@/lib/leads/csv-parser'
 import type { ColumnMapping } from '@/lib/leads/csv-parser'
 import type { WizardState } from '@/app/(dashboard)/leads/import/import-client'
+import StatusValueMapper from '@/components/leads/import/StatusValueMapper'
+import SourceValueMapper from '@/components/leads/import/SourceValueMapper'
 import type { ImportDedupAction, ImportDedupStrategy, LeadSource, LeadStatus } from '@/types'
+import { useStatusConfig, useSourceConfig } from '@/lib/workspace/config-context'
 
 interface Props {
   state: WizardState
-  updateState: (partial: Partial<WizardState>) => void
+  updateState: (
+    updater: Partial<WizardState> | ((prev: WizardState) => Partial<WizardState>),
+  ) => void
   onBack: () => void
   onNext: () => void
 }
@@ -34,23 +45,6 @@ const CONFIDENCE_COLORS: Record<string, string> = {
   none: '#666',
 }
 
-const SOURCE_OPTIONS: { value: LeadSource; label: string }[] = [
-  { value: 'manuel', label: 'Manuel' },
-  { value: 'facebook_ads', label: 'Facebook Ads' },
-  { value: 'instagram_ads', label: 'Instagram Ads' },
-  { value: 'follow_ads', label: 'Follow Ads' },
-  { value: 'formulaire', label: 'Formulaire' },
-  { value: 'funnel', label: 'Funnel' },
-]
-
-const STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
-  { value: 'nouveau', label: 'Nouveau' },
-  { value: 'setting_planifie', label: 'Setting planifié' },
-  { value: 'closing_planifie', label: 'Closing planifié' },
-  { value: 'clos', label: 'Closé' },
-  { value: 'dead', label: 'Dead' },
-]
-
 const selectStyle: React.CSSProperties = {
   width: '100%', padding: '8px 10px', borderRadius: 6, fontSize: 13,
   background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)',
@@ -65,6 +59,17 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
   const { columnMappings, config } = state
   const [showDedupTooltip, setShowDedupTooltip] = useState(false)
 
+  const statusConfig = useStatusConfig()
+  const sourceConfig = useSourceConfig()
+
+  const SOURCE_OPTIONS = sourceConfig
+    .filter((e) => e.visible)
+    .map((e) => ({ value: e.key as LeadSource, label: e.label }))
+
+  const STATUS_OPTIONS = statusConfig
+    .filter((e) => e.visible)
+    .map((e) => ({ value: e.key as LeadStatus, label: e.label }))
+
   const hasRequiredField = useMemo(() => {
     return columnMappings.some(
       (m) => m.targetField === 'email' || m.targetField === 'phone'
@@ -78,8 +83,113 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
   }
 
   const updateConfig = (partial: Partial<typeof config>) => {
-    updateState({ config: { ...config, ...partial } })
+    // Functional updater: reads the freshest config from the latest state.
+    // Prevents stale-closure races when multiple effects in the same render
+    // tick both call updateConfig (e.g. initial CSV load with both status
+    // and source columns triggering both auto-suggest effects together).
+    updateState((prev) => ({ config: { ...prev.config, ...partial } }))
   }
+
+  // Détecter la colonne CSV mappée vers "status"
+  const statusCsvHeader = useMemo(
+    () => columnMappings.find((m) => m.targetField === 'status')?.csvHeader || null,
+    [columnMappings],
+  )
+
+  // Extraire les valeurs uniques de cette colonne (vide si pas mappée)
+  const uniqueStatusValues = useMemo(() => {
+    if (!statusCsvHeader) return []
+    return extractUniqueStatusValues(state.rows, statusCsvHeader)
+  }, [state.rows, statusCsvHeader])
+
+  // Auto-suggérer le mapping quand la colonne est (re)mappée ou les valeurs changent
+  useEffect(() => {
+    if (uniqueStatusValues.length === 0) {
+      // Clear mapping when column unmapped
+      if (Object.keys(config.status_value_mapping).length > 0) {
+        updateConfig({ status_value_mapping: {} })
+      }
+      return
+    }
+    // Fill only values not yet in the mapping (don't overwrite user choices)
+    const next = { ...config.status_value_mapping }
+    let changed = false
+    for (const value of uniqueStatusValues) {
+      if (!next[value]) {
+        const suggested = suggestStatusMapping(value)
+        if (suggested) {
+          next[value] = { type: 'map', status: suggested }
+          changed = true
+        }
+      }
+    }
+    // Remove stale entries (values no longer present)
+    for (const key of Object.keys(next)) {
+      if (!uniqueStatusValues.includes(key)) {
+        delete next[key]
+        changed = true
+      }
+    }
+    if (changed) {
+      updateConfig({ status_value_mapping: next })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueStatusValues])
+
+  // Détecter la colonne CSV mappée vers "source"
+  const sourceCsvHeader = useMemo(
+    () => columnMappings.find((m) => m.targetField === 'source')?.csvHeader || null,
+    [columnMappings],
+  )
+
+  // Extraire les valeurs uniques de cette colonne (vide si pas mappée)
+  const uniqueSourceValues = useMemo(() => {
+    if (!sourceCsvHeader) return []
+    return extractUniqueSourceValues(state.rows, sourceCsvHeader)
+  }, [state.rows, sourceCsvHeader])
+
+  // Auto-suggérer le mapping quand la colonne est (re)mappée ou les valeurs changent
+  useEffect(() => {
+    if (uniqueSourceValues.length === 0) {
+      if (Object.keys(config.source_value_mapping).length > 0) {
+        updateConfig({ source_value_mapping: {} })
+      }
+      return
+    }
+    // Fill only values not yet in the mapping (don't overwrite user choices)
+    const next = { ...config.source_value_mapping }
+    let changed = false
+    for (const value of uniqueSourceValues) {
+      if (!next[value]) {
+        const suggested = suggestSourceMapping(value)
+        if (suggested) {
+          next[value] = { type: 'map', source: suggested }
+          changed = true
+        }
+      }
+    }
+    // Remove stale entries (values no longer present)
+    for (const key of Object.keys(next)) {
+      if (!uniqueSourceValues.includes(key)) {
+        delete next[key]
+        changed = true
+      }
+    }
+    if (changed) {
+      updateConfig({ source_value_mapping: next })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueSourceValues])
+
+  const hasUnresolvedStatusValues = useMemo(() => {
+    return uniqueStatusValues.some((v) => !config.status_value_mapping[v])
+  }, [uniqueStatusValues, config.status_value_mapping])
+
+  const hasUnresolvedSourceValues = useMemo(() => {
+    return uniqueSourceValues.some((v) => !config.source_value_mapping[v])
+  }, [uniqueSourceValues, config.source_value_mapping])
+
+  const canContinue = hasRequiredField && !hasUnresolvedStatusValues && !hasUnresolvedSourceValues
 
   const handleNext = () => {
     const mapping: Record<string, string> = {}
@@ -151,6 +261,20 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
             <p style={{ fontSize: 12, color: '#E53E3E', marginTop: 8 }}>
               Au moins « Email » ou « Téléphone » doit être mappé pour continuer.
             </p>
+          )}
+          {statusCsvHeader && uniqueStatusValues.length > 0 && (
+            <StatusValueMapper
+              uniqueValues={uniqueStatusValues}
+              mapping={config.status_value_mapping}
+              onChange={(m) => updateConfig({ status_value_mapping: m })}
+            />
+          )}
+          {sourceCsvHeader && uniqueSourceValues.length > 0 && (
+            <SourceValueMapper
+              uniqueValues={uniqueSourceValues}
+              mapping={config.source_value_mapping}
+              onChange={(m) => updateConfig({ source_value_mapping: m })}
+            />
           )}
         </div>
 
@@ -272,12 +396,12 @@ export default function Step2_MappingConfig({ state, updateState, onBack, onNext
         </button>
         <button
           onClick={handleNext}
-          disabled={!hasRequiredField}
+          disabled={!canContinue}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600,
-            background: hasRequiredField ? 'var(--color-primary)' : 'var(--border-primary)', border: 'none',
-            color: hasRequiredField ? '#000' : 'var(--text-muted)', cursor: hasRequiredField ? 'pointer' : 'not-allowed',
+            background: canContinue ? 'var(--color-primary)' : 'var(--border-primary)', border: 'none',
+            color: canContinue ? '#000' : 'var(--text-muted)', cursor: canContinue ? 'pointer' : 'not-allowed',
           }}
         >
           Continuer

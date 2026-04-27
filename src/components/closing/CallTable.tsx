@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { CheckCircle, Calendar, Trash2 } from 'lucide-react'
+import { Phone, Sparkles, Trash2 } from 'lucide-react'
 import { Call, Lead, WorkspaceMemberWithUser } from '@/types'
 import CallOutcomeBadge from './CallOutcomeBadge'
 import CallTypeBadge from './CallTypeBadge'
@@ -19,6 +19,8 @@ interface Props {
   onOutcome: (call: CallWithLead) => void
   onReschedule: (call: CallWithLead) => void
   onDelete: (call: CallWithLead) => void
+  onCall: (call: CallWithLead) => void
+  onTreat: (call: CallWithLead) => void
   onLeadClick: (leadId: string) => void
   members?: WorkspaceMemberWithUser[]
   onAssignCall?: (callId: string, userId: string | null) => void
@@ -27,7 +29,7 @@ interface Props {
 const th: React.CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: '0.15em', borderBottom: '1px solid var(--border-primary)' }
 const td: React.CSSProperties = { padding: '12px', fontSize: 13, borderBottom: '1px solid var(--bg-hover)', verticalAlign: 'middle' }
 
-export default function CallTable({ calls, loading, onOutcome, onReschedule, onDelete, onLeadClick, members = [], onAssignCall }: Props) {
+export default function CallTable({ calls, loading, onDelete, onCall, onTreat, onLeadClick, members = [], onAssignCall }: Props) {
   if (loading) return <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-label)' }}>Chargement...</div>
   if (calls.length === 0) return <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-label)', fontSize: 13 }}>Aucun appel dans cette catégorie</div>
 
@@ -89,15 +91,30 @@ export default function CallTable({ calls, loading, onOutcome, onReschedule, onD
                   />
                 </td>
                 <td style={{ ...td, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                    <button onClick={() => onOutcome(call)} title="Résultat" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <CheckCircle size={14} color="var(--color-primary)" />
+                  <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <button onClick={() => onCall(call)} title="Appeler" style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      padding: '5px 7px', borderRadius: 6,
+                      background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.20)',
+                      color: '#3b82f6', cursor: 'pointer',
+                    }}>
+                      <Phone size={11} />
                     </button>
-                    <button onClick={() => onReschedule(call)} title="Reprogrammer" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Calendar size={14} color="#3b82f6" />
+                    <button onClick={() => onTreat(call)} title="Traiter" style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '5px 9px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      background: 'rgba(0,200,83,0.10)', border: '1px solid rgba(0,200,83,0.20)',
+                      color: 'var(--color-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}>
+                      <Sparkles size={11} /> Traiter
                     </button>
-                    <button onClick={() => onDelete(call)} title="Supprimer" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-primary)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Trash2 size={14} color="#ef4444" />
+                    <button onClick={() => onDelete(call)} title="Supprimer" style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      padding: '5px 7px', borderRadius: 6,
+                      background: 'transparent', border: '1px solid var(--border-primary)',
+                      color: '#ef4444', cursor: 'pointer',
+                    }}>
+                      <Trash2 size={11} />
                     </button>
                   </div>
                 </td>

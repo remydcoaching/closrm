@@ -1,23 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Plus, ChevronLeft, ChevronRight, Archive, Phone, ChevronDown, X, Calendar } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Archive, Phone, ChevronDown, X, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { Lead, LeadStatus, WorkspaceMemberWithUser } from '@/types'
-import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
+import StatusBadge from '@/components/leads/StatusBadge'
+import { useStatusConfig } from '@/lib/workspace/config-context'
 import SourceBadge from '@/components/leads/SourceBadge'
 import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
-
-function InstagramIcon({ size = 11 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
 
 const ATTEMPTS_OPTIONS = [
   { value: 0, label: "Pas d'appel" },
@@ -58,7 +49,7 @@ export interface LeadsListViewProps {
   onLeadClick: (leadId: string) => void
   onPatch: (leadId: string, patch: Partial<Lead>) => void
   onCall: (lead: Lead) => void
-  onSchedule: (lead: Lead) => void
+  onTreat: (lead: Lead) => void
   onArchive: (lead: Lead) => void
   onRequestClose: (lead: Lead) => void
 }
@@ -66,8 +57,10 @@ export interface LeadsListViewProps {
 export default function LeadsListView(props: LeadsListViewProps) {
   const {
     leads, loading, members, page, totalPages, total,
-    onPageChange, onLeadClick, onPatch, onCall, onSchedule, onArchive, onRequestClose,
+    onPageChange, onLeadClick, onPatch, onCall, onTreat, onArchive, onRequestClose,
   } = props
+
+  const statusConfig = useStatusConfig()
 
   const [dropdown, setDropdown] = useState<DropdownState | null>(null)
   const [tagInput, setTagInput] = useState('')
@@ -132,20 +125,20 @@ export default function LeadsListView(props: LeadsListViewProps) {
   return (
     <>
       <div style={card}>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '88px' }} />
-              <col style={{ width: '14%' }} />
+              <col style={{ width: '7%' }} />
               <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
               <col style={{ width: '14%' }} />
               <col style={{ width: '8%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '50px' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '12%' }} />
-              <col />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '8%' }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-primary)' }}>
@@ -282,44 +275,19 @@ export default function LeadsListView(props: LeadsListViewProps) {
                       </button>
                     </div>
                   </td>
-                  <td style={{ padding: '10px 8px' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                      <button onClick={() => onCall(lead)} title="Appeler" style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        padding: '5px 9px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.20)',
-                        color: '#3b82f6', cursor: 'pointer', whiteSpace: 'nowrap',
+                  <td style={{ padding: '10px 4px' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <button onClick={() => onTreat(lead)} title="Traiter ce lead" style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 26, height: 26, borderRadius: 6,
+                        background: 'rgba(0,200,83,0.12)', border: '1px solid rgba(0,200,83,0.25)',
+                        color: 'var(--color-primary)', cursor: 'pointer',
                       }}>
-                        <Phone size={11} /> Appeler
+                        <Sparkles size={12} />
                       </button>
-                      <button onClick={() => onSchedule(lead)} title="Planifier" style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        padding: '5px 9px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        background: 'rgba(0,200,83,0.10)', border: '1px solid rgba(0,200,83,0.20)',
-                        color: 'var(--color-primary)', cursor: 'pointer', whiteSpace: 'nowrap',
-                      }}>
-                        <Calendar size={11} /> Planifier
-                      </button>
-                      {lead.instagram_handle && (
-                        <a
-                          href={`https://instagram.com/${lead.instagram_handle}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`Profil @${lead.instagram_handle}`}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center',
-                            padding: '5px 7px', borderRadius: 6,
-                            background: 'rgba(225,48,108,0.10)', border: '1px solid rgba(225,48,108,0.20)',
-                            color: '#E1306C', cursor: 'pointer',
-                          }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <InstagramIcon size={11} />
-                        </a>
-                      )}
                       <button onClick={() => onArchive(lead)} title="Archiver" style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        padding: '5px 7px', borderRadius: 6,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 26, height: 26, borderRadius: 6,
                         background: 'transparent', border: '1px solid var(--border-primary)',
                         color: 'var(--text-label)', cursor: 'pointer',
                       }}>
@@ -443,16 +411,16 @@ export default function LeadsListView(props: LeadsListViewProps) {
             </div>
           )}
 
-          {dropdown.type === 'status' && (Object.entries(STATUS_CONFIG) as [LeadStatus, typeof STATUS_CONFIG[LeadStatus]][]).map(([value, cfg]) => (
-            <button key={value} onClick={() => setStatus(activeLead, value)} style={{
+          {dropdown.type === 'status' && statusConfig.filter((e) => e.visible).map((e) => (
+            <button key={e.key} onClick={() => setStatus(activeLead, e.key)} style={{
               display: 'block', width: '100%', textAlign: 'left',
               padding: '7px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
               border: 'none',
-              background: activeLead.status === value ? `${cfg.color}18` : 'transparent',
-              color: activeLead.status === value ? cfg.color : 'var(--text-secondary)',
+              background: activeLead.status === e.key ? `${e.color}18` : 'transparent',
+              color: activeLead.status === e.key ? e.color : 'var(--text-secondary)',
               cursor: 'pointer',
             }}>
-              {cfg.label}
+              {e.label}
             </button>
           ))}
         </div>

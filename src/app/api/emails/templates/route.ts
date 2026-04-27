@@ -29,6 +29,8 @@ export async function POST(request: Request) {
       subject: body.subject || '',
       blocks: body.blocks || [],
       preview_text: body.preview_text || null,
+      preset_id: body.preset_id || 'classique',
+      preset_override: body.preset_override || null,
     })
     .select()
     .single()

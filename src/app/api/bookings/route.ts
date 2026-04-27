@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createBookingSchema, bookingFiltersSchema } from '@/lib/validations/bookings'
@@ -208,17 +208,21 @@ export async function POST(request: NextRequest) {
 
     const scheduledAt = new Date(data.scheduled_at)
     const endAt = new Date(scheduledAt.getTime() + (data.duration_minutes ?? 30) * 60_000)
-    createGoogleCalendarEvent(
-      workspaceId,
-      {
-        summary: data.title,
-        description: data.notes ?? undefined,
-        start: { dateTime: scheduledAt.toISOString() },
-        end: { dateTime: endAt.toISOString() },
-      },
-      { withMeet: isOnlineLocation && !locationAddress },
-    )
-      .then(async (result) => {
+
+    // Use after() to ensure Google push + email run reliably post-response on Vercel
+    after(async () => {
+      try {
+        const result = await createGoogleCalendarEvent(
+          workspaceId,
+          {
+            summary: data.title,
+            description: data.notes ?? undefined,
+            start: { dateTime: scheduledAt.toISOString() },
+            end: { dateTime: endAt.toISOString() },
+          },
+          { withMeet: isOnlineLocation && !locationAddress },
+        )
+
         if (result?.eventId) {
           const supa = await createClient()
           await supa
@@ -231,7 +235,6 @@ export async function POST(request: NextRequest) {
             .eq('workspace_id', workspaceId)
         }
 
-        // Send confirmation email to lead if they have an email
         const leadEmail = (data.lead as { email?: string | null } | null)?.email
         if (leadEmail) {
           const leadFirst = (data.lead as { first_name?: string } | null)?.first_name ?? ''
@@ -244,7 +247,7 @@ export async function POST(request: NextRequest) {
             .eq('role', 'coach')
             .maybeSingle()
 
-          sendBookingConfirmationEmail({
+          await sendBookingConfirmationEmail({
             to: leadEmail,
             coachName: owner?.full_name ?? 'Votre coach',
             prospectName: `${leadFirst} ${leadLast}`.trim(),
@@ -255,10 +258,10 @@ export async function POST(request: NextRequest) {
             locationAddress: locationAddress ?? undefined,
           }).catch(() => {})
         }
-      })
-      .catch((err) => {
-        console.error('[booking] Google Calendar event creation failed:', err instanceof Error ? err.message : err)
-      })
+      } catch (err) {
+        console.error('[booking] Post-response work failed:', err instanceof Error ? err.message : err)
+      }
+    })
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {

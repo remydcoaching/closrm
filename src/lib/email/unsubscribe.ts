@@ -6,8 +6,15 @@
 import { createHmac } from 'crypto'
 
 function getSecret(): string {
-  const secret = process.env.RESEND_API_KEY // reuse as signing secret
-  if (!secret) throw new Error('RESEND_API_KEY is not set (used for unsubscribe token signing)')
+  // Secret HMAC pour les tokens unsubscribe. On préfère une variable dédiée
+  // et on fallback sur SUPABASE_SERVICE_ROLE_KEY qui est toujours présente
+  // côté serveur (jamais exposée au client).
+  const secret =
+    process.env.UNSUBSCRIBE_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!secret) {
+    throw new Error('UNSUBSCRIBE_SECRET ou SUPABASE_SERVICE_ROLE_KEY requis pour signer les tokens unsubscribe')
+  }
   return secret
 }
 
@@ -49,10 +56,22 @@ export function verifyUnsubscribeToken(token: string): UnsubscribePayload | null
 }
 
 /**
- * Build the full unsubscribe URL for an email.
+ * Build the full unsubscribe URL for an email body (page avec confirmation).
  */
 export function buildUnsubscribeUrl(leadId: string, workspaceId: string): string {
   const token = generateUnsubscribeToken({ leadId, workspaceId })
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   return `${baseUrl}/unsubscribe?token=${token}`
+}
+
+/**
+ * Build the API URL used in the List-Unsubscribe header (one-click POST).
+ * Distinct de buildUnsubscribeUrl : Gmail/Yahoo envoient un POST directement
+ * sur cette URL sans interaction utilisateur, donc elle doit pointer sur
+ * l'API et non sur une page web.
+ */
+export function buildUnsubscribeApiUrl(leadId: string, workspaceId: string): string {
+  const token = generateUnsubscribeToken({ leadId, workspaceId })
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  return `${baseUrl}/api/unsubscribe?token=${token}`
 }

@@ -40,6 +40,9 @@ function getDefaultConfig(type: EmailBlockType): EmailBlock['config'] {
     case 'button': return { text: 'Cliquer ici', url: '', color: '#E53E3E', alignment: 'center' as const }
     case 'divider': return { color: '#e4e4e7', spacing: 16 }
     case 'footer': return { text: '' }
+    default:
+      // v2 block types : le legacy builder ne les crée pas (palette ne les expose pas)
+      return { text: '' }
   }
 }
 

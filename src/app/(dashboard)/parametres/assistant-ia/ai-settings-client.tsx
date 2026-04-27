@@ -161,7 +161,6 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
     { title: 'Votre ton', description: 'Comment vous adressez-vous a vos prospects ?' },
     { title: 'Votre approche', description: 'Comment abordez-vous la conversation avec un nouveau lead ?' },
     { title: 'Exemples de messages', description: 'Collez 2-3 messages que vous envoyez habituellement a vos prospects.' },
-    { title: 'Vos contenus', description: 'Listez vos lead magnets, videos, ressources que vous partagez a vos prospects. Un par ligne.' },
     { title: 'Votre objectif', description: 'Que voulez-vous accomplir avec vos messages ?' },
     { title: 'Cle API Claude', description: 'Entrez votre cle API Anthropic pour activer l\'assistant IA. Obtenez-la sur console.anthropic.com' },
   ]
@@ -174,8 +173,7 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
       case 3: return answers.approach.trim().length > 0
       case 4: return true
       case 5: return true
-      case 6: return true
-      case 7: return answers.api_key.trim().length > 10
+      case 6: return answers.api_key.trim().length > 10
       default: return false
     }
   }
@@ -369,24 +367,8 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
           />
         )}
 
-        {/* Step 5 — Lead Magnets (gestion déportée vers la page dédiée) */}
+        {/* Step 5 — Goal */}
         {step === 5 && (
-          <div style={{ padding: 24, textAlign: 'center' }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--color-text-primary)' }}>Lead Magnets</h3>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 16 }}>
-              Les lead magnets sont désormais gérés dans une page dédiée avec tracking des clics.
-            </p>
-            <a
-              href="/acquisition/lead-magnets"
-              style={{ color: 'var(--color-primary)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
-            >
-              Aller à Acquisition › Lead Magnets →
-            </a>
-          </div>
-        )}
-
-        {/* Step 6 — Goal */}
-        {step === 6 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {([
               { value: 'book_call' as Goal, label: 'Booker un appel', desc: 'L\'objectif est de planifier un appel de setting ou closing' },
@@ -434,8 +416,8 @@ function WizardView({ existingBrief, onComplete }: { existingBrief: AiCoachBrief
           </div>
         )}
 
-        {/* Step 7 — API Key */}
-        {step === 7 && (
+        {/* Step 6 — API Key */}
+        {step === 6 && (
           <div>
             <input
               type="password"
@@ -559,23 +541,13 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
     setLearning(true)
     setLearnResult(null)
     try {
-      // Step 1: Scan existing closed leads for winning conversations
-      const scanRes = await fetch('/api/ai/scan-wins', { method: 'POST' })
-      const scanJson = scanRes.ok ? await scanRes.json() : null
-      const scanned = scanJson?.data?.recorded || 0
-
-      // Step 2: Analyze winning conversations and update brief
       const res = await fetch('/api/ai/learn', { method: 'POST' })
       if (!res.ok) {
         const json = await res.json().catch(() => null)
-        if (scanned > 0) {
-          setLearnResult(`${scanned} conversation(s) importee(s), mais pas assez pour analyser. Continuez a closer !`)
-          return
-        }
         throw new Error(json?.error || 'Erreur')
       }
       const json = await res.json()
-      setLearnResult(`${scanned > 0 ? `${scanned} nouvelle(s) conversation(s) importee(s). ` : ''}Brief mis a jour a partir de ${json.data.wins_analyzed} conversation(s) gagnante(s).`)
+      setLearnResult(`Brief mis a jour a partir de ${json.data.wins_analyzed} conversation(s) gagnante(s).`)
       onUpdate()
     } catch (err) {
       setLearnResult(err instanceof Error ? err.message : 'Erreur')
@@ -696,18 +668,6 @@ function EditView({ brief, onUpdate }: { brief: AiCoachBrief; onUpdate: () => vo
           rows={5}
           style={{ ...inputStyle, resize: 'vertical' as const }}
         />
-      ),
-    },
-    {
-      id: 'lead_magnets',
-      label: 'Mes contenus / lead magnets',
-      content: (
-        <div style={{ padding: 12, color: 'var(--color-text-secondary)', fontSize: 13 }}>
-          Gérés dans la page dédiée avec tracking des clics.{' '}
-          <a href="/acquisition/lead-magnets" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
-            Aller à Acquisition › Lead Magnets →
-          </a>
-        </div>
       ),
     },
     {

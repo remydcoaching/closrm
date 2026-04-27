@@ -16,7 +16,7 @@ interface Props {
   dragHandleProps?: Record<string, unknown>
 }
 
-const BLOCK_LABELS: Record<EmailBlockType, string> = {
+const BLOCK_LABELS: Partial<Record<EmailBlockType, string>> = {
   header: 'En-tête',
   text: 'Texte',
   image: 'Image',
@@ -44,6 +44,9 @@ export default function BlockRenderer({ block, onChange, onDelete, isFooter, dra
         return <DividerBlock config={block.config as Parameters<typeof DividerBlock>[0]['config']} onChange={handleConfigChange} />
       case 'footer':
         return <FooterBlock config={block.config as Parameters<typeof FooterBlock>[0]['config']} onChange={handleConfigChange} />
+      default:
+        // v2 block types — éditeur v2 les gère, le legacy builder les ignore
+        return <div style={{ fontSize: 12, color: '#666', padding: 12 }}>Bloc {block.type} — éditable dans le builder v2</div>
     }
   }
 
@@ -62,7 +65,7 @@ export default function BlockRenderer({ block, onChange, onDelete, isFooter, dra
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span {...dragHandleProps} style={{ cursor: 'grab', color: '#444', fontSize: 14, touchAction: 'none' }}>⠿</span>
           <span style={{ fontSize: 11, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {BLOCK_LABELS[block.type]}
+            {BLOCK_LABELS[block.type] || block.type}
           </span>
         </div>
         {!isFooter && (

@@ -12,10 +12,11 @@ function InstagramIcon({ size = 13 }: { size?: number }) {
     </svg>
   )
 }
-import { Lead, Call, FollowUp, LeadStatus, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
+import { Lead, Call, FollowUp, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import ClosingModal from '@/components/leads/ClosingModal'
-import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
+import StatusBadge from '@/components/leads/StatusBadge'
+import { useStatusConfig } from '@/lib/workspace/config-context'
 import SourceBadge from '@/components/leads/SourceBadge'
 import CallOutcomeBadge from '@/components/closing/CallOutcomeBadge'
 import CallTypeBadge from '@/components/closing/CallTypeBadge'
@@ -23,6 +24,9 @@ import ConversationThread from '@/components/messages/ConversationThread'
 import MessageInput from '@/components/messages/MessageInput'
 import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
+import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
+import LeadAttributionBlock from '@/components/leads/LeadAttributionBlock'
+import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
@@ -36,14 +40,14 @@ const inputS: React.CSSProperties = { width: '100%', boxSizing: 'border-box', pa
 const smallBtn: React.CSSProperties = { background: 'none', border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26 }
 
 export default function LeadSidePanel({ leadId, onClose }: Props) {
+  const statusConfig = useStatusConfig()
+
   const [lead, setLead] = useState<LeadWithRelations | null>(null)
   const [loading, setLoading] = useState(true)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [newTag, setNewTag] = useState('')
-  const [notes, setNotes] = useState('')
   const [showClosingModal, setShowClosingModal] = useState(false)
-  const notesTimer = useRef<NodeJS.Timeout>(null)
 
   // Team members state
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -89,32 +93,36 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
     fetchCurrentRole()
   }, [])
 
-  async function fetchLead() {
-    setLoading(true)
+  async function fetchLead(opts?: { silent?: boolean }) {
+    if (!opts?.silent) setLoading(true)
     const res = await fetch(`/api/leads/${leadId}`)
     if (res.ok) {
       const json = await res.json()
       setLead(json.data)
-      setNotes(json.data.notes || '')
     }
-    setLoading(false)
+    if (!opts?.silent) setLoading(false)
   }
 
   async function patchLead(patch: Partial<Lead>): Promise<Lead | null> {
     const res = await fetch(`/api/leads/${leadId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
     const json = res.ok ? await res.json() : null
-    await fetchLead()
+    // Merge updated fields optimistically without triggering the loading state
+    if (json?.data) {
+      setLead(prev => prev ? { ...prev, ...json.data } : prev)
+    } else {
+      await fetchLead({ silent: true })
+    }
     return json?.data ?? null
   }
 
   async function patchCall(callId: string, patch: Partial<Call>) {
     await fetch(`/api/calls/${callId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
-    fetchLead()
+    fetchLead({ silent: true })
   }
 
   async function patchFollowUp(fuId: string, patch: Partial<FollowUp>) {
     await fetch(`/api/follow-ups/${fuId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
-    fetchLead()
+    fetchLead({ silent: true })
   }
 
   function startEdit(field: string, value: string) {
@@ -124,12 +132,6 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   function saveEdit(field: string) {
     patchLead({ [field]: editValue })
     setEditingField(null)
-  }
-
-  function handleNotesChange(val: string) {
-    setNotes(val)
-    if (notesTimer.current) clearTimeout(notesTimer.current)
-    notesTimer.current = setTimeout(() => patchLead({ notes: val }), 800)
   }
 
   function addTag() {
@@ -271,21 +273,32 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             </div>
 
+            {/* Origine publicitaire (si Lead Ads) */}
+            {(lead.meta_campaign_id || lead.meta_adset_id || lead.meta_ad_id) && (
+              <div style={{ marginBottom: 14 }}>
+                <LeadAttributionBlock
+                  meta_campaign_id={lead.meta_campaign_id}
+                  meta_adset_id={lead.meta_adset_id}
+                  meta_ad_id={lead.meta_ad_id}
+                />
+              </div>
+            )}
+
             {/* Status */}
             <div style={card}>
               <div style={sectionTitle}>Statut</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {(Object.keys(STATUS_CONFIG) as LeadStatus[]).map((s) => {
-                  const active = lead.status === s
-                  const cfg = STATUS_CONFIG[s]
+                {statusConfig.filter((e) => e.visible).map((e) => {
+                  const active = lead.status === e.key
+                  const cfg = e
                   return (
-                    <button key={s} onClick={async () => {
-                      if (s === 'clos') { setShowClosingModal(true); return }
+                    <button key={e.key} onClick={async () => {
+                      if (e.key === 'clos') { setShowClosingModal(true); return }
                       const previousAssignedTo = lead.assigned_to
-                      const updated = await patchLead({ status: s })
+                      const updated = await patchLead({ status: e.key })
                       // Show auto-assign notification for setters
                       if (
-                        s === 'closing_planifie' &&
+                        e.key === 'closing_planifie' &&
                         currentRole === 'setter' &&
                         updated?.assigned_to &&
                         updated.assigned_to !== previousAssignedTo
@@ -397,10 +410,16 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             </div>
 
-            {/* Notes editable */}
+            {/* Paiements / Deals */}
+            <div style={card}>
+              <div style={sectionTitle}>Paiements</div>
+              <LeadDealsWidget leadId={leadId} />
+            </div>
+
+            {/* Notes multiples */}
             <div style={card}>
               <div style={sectionTitle}>Notes</div>
-              <textarea value={notes} onChange={(e) => handleNotesChange(e.target.value)} rows={3} placeholder="Notes sur ce lead..." style={{ ...inputS, resize: 'vertical' as const, fontSize: 12, lineHeight: 1.5 }} />
+              <LeadNotesWidget leadId={leadId} />
             </div>
 
             {/* AI Assistant */}
@@ -434,9 +453,9 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
 
             {/* Follow-ups — editable dates */}
             <div style={card}>
-              <div style={sectionTitle}>Follow-ups ({lead.follow_ups.length})</div>
+              <div style={sectionTitle}>Relances ({lead.follow_ups.length})</div>
               {lead.follow_ups.length === 0 ? (
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun follow-up</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucune relance</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {lead.follow_ups.map((fu) => (

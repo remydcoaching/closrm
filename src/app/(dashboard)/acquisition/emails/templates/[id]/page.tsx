@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { EmailBlock, EmailTemplate } from '@/types'
+import type { EmailPresetOverride } from '@/lib/email/design-types'
 import EmailBlockBuilder from '@/components/emails/EmailBlockBuilder'
 import EmailPreview from '@/components/emails/EmailPreview'
+import EmailBuilderV2 from '@/components/emails/v2/EmailBuilderV2'
 
 const TEMPLATE_VARIABLES = [
   { key: '{{prenom}}', label: 'Prenom du prospect' },
@@ -17,11 +19,16 @@ const TEMPLATE_VARIABLES = [
 export default function TemplateEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Feature flag : ?legacy=true force l'ancien builder 1-col (pour debug/fallback).
+  const useLegacy = searchParams.get('legacy') === 'true'
   const [template, setTemplate] = useState<EmailTemplate | null>(null)
   const [blocks, setBlocks] = useState<EmailBlock[]>([])
   const [name, setName] = useState('')
   const [subject, setSubject] = useState('')
   const [previewText, setPreviewText] = useState('')
+  const [presetId, setPresetId] = useState<string>('classique')
+  const [presetOverride, setPresetOverride] = useState<EmailPresetOverride | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -39,6 +46,10 @@ export default function TemplateEditorPage({ params }: { params: Promise<{ id: s
         setName(data.name)
         setSubject(data.subject)
         setPreviewText(data.preview_text || '')
+        // v2 design system (migration 049 — fallback si null pour les
+        // templates antérieurs à la v2)
+        setPresetId(data.preset_id || 'classique')
+        setPresetOverride((data.preset_override as EmailPresetOverride | null) || null)
         // Mark initial load done after a tick so the auto-save doesn't fire on load
         setTimeout(() => { initialLoadDone.current = true }, 100)
       })
@@ -56,7 +67,14 @@ export default function TemplateEditorPage({ params }: { params: Promise<{ id: s
         await fetch(`/api/emails/templates/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, subject, blocks, preview_text: previewText }),
+          body: JSON.stringify({
+            name,
+            subject,
+            blocks,
+            preview_text: previewText,
+            preset_id: presetId,
+            preset_override: presetOverride,
+          }),
         })
         setAutoSaveStatus('saved')
         setTimeout(() => setAutoSaveStatus('idle'), 2000)
@@ -68,7 +86,7 @@ export default function TemplateEditorPage({ params }: { params: Promise<{ id: s
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     }
-  }, [id, name, subject, blocks, previewText, template])
+  }, [id, name, subject, blocks, previewText, presetId, presetOverride, template])
 
   const handleSave = useCallback(async () => {
     // Cancel pending auto-save
@@ -79,12 +97,19 @@ export default function TemplateEditorPage({ params }: { params: Promise<{ id: s
     await fetch(`/api/emails/templates/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, subject, blocks, preview_text: previewText }),
+      body: JSON.stringify({
+        name,
+        subject,
+        blocks,
+        preview_text: previewText,
+        preset_id: presetId,
+        preset_override: presetOverride,
+      }),
     })
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
-  }, [id, name, subject, blocks, previewText])
+  }, [id, name, subject, blocks, previewText, presetId, presetOverride])
 
   function handleCopyVariable(variable: string) {
     navigator.clipboard.writeText(variable)
@@ -199,17 +224,33 @@ export default function TemplateEditorPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* Builder + Preview split */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        <div>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Blocs</h3>
-          <EmailBlockBuilder blocks={blocks} onChange={setBlocks} />
+      {/* Builder : v2 par défaut, legacy 2-col avec ?legacy=true */}
+      {useLegacy ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <div>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Blocs</h3>
+            <EmailBlockBuilder blocks={blocks} onChange={setBlocks} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Aperçu</h3>
+            <EmailPreview blocks={blocks} previewText={previewText} />
+          </div>
         </div>
-        <div>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Aperçu</h3>
-          <EmailPreview blocks={blocks} previewText={previewText} />
-        </div>
-      </div>
+      ) : (
+        <EmailBuilderV2
+          template={{
+            id,
+            preset_id: presetId,
+            preset_override: presetOverride as Record<string, unknown> | null,
+          }}
+          blocks={blocks}
+          onBlocksChange={setBlocks}
+          onDesignChange={(changes) => {
+            if (changes.presetId !== undefined) setPresetId(changes.presetId)
+            if (changes.presetOverride !== undefined) setPresetOverride(changes.presetOverride)
+          }}
+        />
+      )}
     </div>
   )
 }

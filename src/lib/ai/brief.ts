@@ -1,19 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { AiCoachBrief, LeadMagnet } from '@/types'
+import { AiCoachBrief } from '@/types'
 import { callClaude } from './client'
 import { buildBriefGenerationPrompt } from './prompts'
-
-export async function getLeadMagnetsForWorkspace(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  workspaceId: string
-): Promise<Pick<LeadMagnet, 'id' | 'title' | 'url' | 'platform'>[]> {
-  const { data } = await supabase
-    .from('lead_magnets')
-    .select('id, title, url, platform')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: false })
-  return data ?? []
-}
 
 export async function getBrief(workspaceId: string): Promise<AiCoachBrief | null> {
   const supabase = await createClient()

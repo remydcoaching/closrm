@@ -1,7 +1,20 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import type { MetaAdCreative } from '@/lib/meta/client'
+import StatusBadge from '@/components/leads/StatusBadge'
+import type { LeadStatus } from '@/types'
+
+interface LeadLite {
+  id: string
+  first_name: string
+  last_name: string
+  phone: string | null
+  email: string | null
+  status: LeadStatus
+  created_at: string
+}
 
 interface AdKpis {
   spend: number
@@ -101,6 +114,8 @@ const kpiValueStyle: React.CSSProperties = {
 export default function AdCreativePanel({ adId, adName, adKpis, onClose }: Props) {
   const [creative, setCreative] = useState<MetaAdCreative | null>(null)
   const [loadingCreative, setLoadingCreative] = useState(true)
+  const [leads, setLeads] = useState<LeadLite[]>([])
+  const [loadingLeads, setLoadingLeads] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -123,6 +138,17 @@ export default function AdCreativePanel({ adId, adName, adKpis, onClose }: Props
         if (!cancelled) setLoadingCreative(false)
       })
 
+    return () => { cancelled = true }
+  }, [adId])
+
+  useEffect(() => {
+    let cancelled = false
+    setLoadingLeads(true)
+    fetch(`/api/leads?meta_ad_id=${adId}&per_page=100`)
+      .then(res => res.ok ? res.json() : { data: [] })
+      .then(json => { if (!cancelled) setLeads(json.data ?? []) })
+      .catch(() => { if (!cancelled) setLeads([]) })
+      .finally(() => { if (!cancelled) setLoadingLeads(false) })
     return () => { cancelled = true }
   }, [adId])
 
@@ -305,6 +331,80 @@ export default function AdCreativePanel({ adId, adName, adKpis, onClose }: Props
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Leads CRM section */}
+        <div style={{ ...sectionStyle, paddingTop: 0 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginBottom: 12,
+          }}>
+            <div style={{
+              fontSize: 10, fontWeight: 600, color: '#A0A0A0',
+              textTransform: 'uppercase', letterSpacing: '0.12em',
+            }}>
+              Leads CRM {leads.length > 0 && `(${leads.length})`}
+            </div>
+            {leads.length > 0 && (
+              <Link
+                href={`/leads?meta_ad_id=${adId}`}
+                style={{ fontSize: 11, color: '#1877F2', textDecoration: 'none' }}
+              >
+                Voir tout →
+              </Link>
+            )}
+          </div>
+
+          {loadingLeads ? (
+            <div style={{ fontSize: 12, color: '#A0A0A0', padding: '12px 0' }}>Chargement…</div>
+          ) : leads.length === 0 ? (
+            <div style={{
+              background: '#141414', border: '1px solid #262626',
+              borderRadius: 10, padding: 16,
+              fontSize: 12, color: '#A0A0A0', textAlign: 'center',
+            }}>
+              Aucun lead attribué à cette pub
+            </div>
+          ) : (
+            <div style={{
+              background: '#141414', border: '1px solid #262626', borderRadius: 10,
+              overflow: 'hidden',
+            }}>
+              {leads.slice(0, 50).map((lead, i) => (
+                <Link
+                  key={lead.id}
+                  href={`/leads/${lead.id}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px',
+                    borderBottom: i < Math.min(leads.length, 50) - 1 ? '1px solid #1a1a1a' : 'none',
+                    textDecoration: 'none', color: '#fff',
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#1a1a1a')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {lead.first_name} {lead.last_name}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#A0A0A0', marginTop: 2 }}>
+                      {lead.phone || lead.email || '—'}
+                    </div>
+                  </div>
+                  <StatusBadge status={lead.status} />
+                </Link>
+              ))}
+              {leads.length > 50 && (
+                <div style={{
+                  padding: '10px 14px', fontSize: 11, color: '#A0A0A0',
+                  textAlign: 'center', borderTop: '1px solid #1a1a1a',
+                }}>
+                  +{leads.length - 50} leads non affichés — voir la liste complète
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>

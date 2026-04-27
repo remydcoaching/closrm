@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { MetaConnectionState } from './page'
 import type { MetaInsightsResponse } from '@/app/api/meta/insights/route'
+import type { AdPerformanceRow } from '@/app/api/meta/ad-performance/route'
 import AdsMetaBanner from './ads-meta-banner'
 import AdsPeriodSelector, { type PeriodPreset } from './ads-period-selector'
 import AdsOverviewTab from './ads-overview-tab'
@@ -61,6 +62,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     name: string
     kpis: { spend: number; impressions: number; clicks: number; ctr: number; leads: number; cpl: number | null }
   } | null>(null)
+  const [crmByLevel, setCrmByLevel] = useState<Record<string, Map<string, AdPerformanceRow>>>({})
 
   const fetchInsights = useCallback(async () => {
     if (connectionState !== 'connected') return
@@ -136,6 +138,26 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
   }, [connectionState])
 
   useEffect(() => { Promise.all([fetchInsights(), fetchClosedCount()]) }, [fetchInsights, fetchClosedCount])
+
+  // Fetch CRM attribution aggregates (leads/qualifiés/closés/CA/ROAS) for the current level
+  const fetchCrm = useCallback(async () => {
+    if (connectionState !== 'connected') return
+    if (tab !== 'campaigns' && tab !== 'adsets' && tab !== 'ads') return
+    const level = tab === 'campaigns' ? 'campaign' : tab === 'adsets' ? 'adset' : 'ad'
+    try {
+      const params = new URLSearchParams({ level, date_from: dateFrom, date_to: dateTo })
+      if (drillDown.campaignId && (tab === 'adsets' || tab === 'ads')) params.set('campaign_id', drillDown.campaignId)
+      if (drillDown.adsetId && tab === 'ads') params.set('adset_id', drillDown.adsetId)
+      const res = await fetch(`/api/meta/ad-performance?${params.toString()}`)
+      if (!res.ok) return
+      const json: { data: AdPerformanceRow[] } = await res.json()
+      const map = new Map<string, AdPerformanceRow>()
+      for (const r of json.data ?? []) map.set(r.id, r)
+      setCrmByLevel(prev => ({ ...prev, [level]: map }))
+    } catch { /* non-critical */ }
+  }, [connectionState, tab, dateFrom, dateTo, drillDown])
+
+  useEffect(() => { fetchCrm() }, [fetchCrm])
 
   function handlePeriodChange(preset: PeriodPreset, customFrom?: string, customTo?: string) {
     setPeriod(preset)
@@ -340,7 +362,10 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
           closedCount={closedCount}
         />
       )}
-      {!error && tab !== 'overview' && tab !== 'performance' && (
+      {!error && tab !== 'overview' && tab !== 'performance' && (() => {
+        const level = tab === 'campaigns' ? 'campaign' : tab === 'adsets' ? 'adset' : 'ad'
+        const crmMap = crmByLevel[level]
+        return (
         <AdsTableTab
           data={data}
           loading={loading}
@@ -348,6 +373,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
           campaignType={campaignType}
           dateFrom={dateFrom}
           dateTo={dateTo}
+          crmMap={crmMap}
           onRowClick={
             tab === 'campaigns'
               ? (id, name) => handleDrillIntoCampaign(id, name)
@@ -361,7 +387,8 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
               : undefined
           }
         />
-      )}
+        )
+      })()}
 
       {selectedAd && (
         <AdCreativePanel

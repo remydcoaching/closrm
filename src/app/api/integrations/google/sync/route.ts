@@ -8,8 +8,9 @@ export async function POST() {
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
-    // Fetch Google Calendar events for the next 30 days
-    const timeMin = new Date().toISOString()
+    // Fetch Google Calendar events from 14 days ago to +30 days
+    // (past window needed to capture events from the current week that have already started)
+    const timeMin = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
     const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
     console.log('[Google Sync] Fetching events for workspace:', workspaceId)

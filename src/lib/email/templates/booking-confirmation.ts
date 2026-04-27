@@ -1,4 +1,7 @@
-import { sendEmail } from '@/lib/email/client'
+import { sendEmail, isSuppressed } from '@/lib/email/client'
+import { getWorkspaceSenderConfig, SENDER_FALLBACK_EMAIL, SENDER_FALLBACK_NAME } from '@/lib/email/sender-config'
+import { consumeResource } from '@/lib/billing/service'
+import { logEmailSend } from '@/lib/email/log-send'
 
 interface BookingConfirmationParams {
   to: string
@@ -9,6 +12,7 @@ interface BookingConfirmationParams {
   meetUrl?: string
   locationName?: string
   locationAddress?: string
+  workspaceId?: string
 }
 
 function buildBookingConfirmationHtml(params: BookingConfirmationParams): string {
@@ -125,21 +129,61 @@ function buildBookingConfirmationHtml(params: BookingConfirmationParams): string
 }
 
 /**
- * Send a booking confirmation email via Resend.
+ * Send a booking confirmation email via AWS SES.
  */
 export async function sendBookingConfirmationEmail(
   params: BookingConfirmationParams
 ): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) return
+  if (!process.env.AWS_ACCESS_KEY_ID) return
+
+  // Pre-check suppression list avant débit — évite un prélèvement wallet sur
+  // une adresse que SES refuserait.
+  if (await isSuppressed(params.to, params.workspaceId)) {
+    return
+  }
+
+  // Quota check si workspaceId fourni (on skip pour les envois hors workspace,
+  // ex. email test sans contexte, pour ne pas casser les anciens appels)
+  if (params.workspaceId) {
+    const quotaResult = await consumeResource({
+      workspaceId: params.workspaceId,
+      resourceType: 'email',
+      quantity: 1,
+      source: 'booking_confirmation',
+      metadata: { to: params.to },
+    })
+    if (!quotaResult.allowed) {
+      console.warn('[booking-confirmation] Quota email dépassé pour workspace', params.workspaceId)
+      return
+    }
+  }
 
   const html = buildBookingConfirmationHtml(params)
   const subject = `Votre rendez-vous avec ${params.coachName} est confirme`
 
-  await sendEmail(
-    { apiKey },
+  const senderConfig = params.workspaceId
+    ? await getWorkspaceSenderConfig(params.workspaceId, { fromName: params.coachName })
+    : { fromEmail: SENDER_FALLBACK_EMAIL, fromName: params.coachName || SENDER_FALLBACK_NAME }
+
+  const result = await sendEmail(
+    {
+      fromEmail: senderConfig.fromEmail,
+      fromName: senderConfig.fromName,
+      replyTo: 'replyTo' in senderConfig ? senderConfig.replyTo : undefined,
+      workspaceId: params.workspaceId,
+    },
     params.to,
     subject,
     html,
   )
+
+  if (result.ok && params.workspaceId) {
+    await logEmailSend({
+      workspaceId: params.workspaceId,
+      sesMessageId: result.id,
+      source: 'booking_confirmation',
+      subject,
+      fromEmail: senderConfig.fromEmail,
+    })
+  }
 }

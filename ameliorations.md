@@ -613,6 +613,112 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Moyen
 - **Statut :** En attente de validation
 
+### [A-019] Wizard DNS email : UX à améliorer
+- **Contexte :** Session 2026-04-22 — setup domaine pierre-coaching.fr
+- **Description :** L'étape 4 "Vérification" liste les records (type + nom) sans afficher la valeur cible. Pour un coach non-technique, pas clair ce qu'il doit copier dans sa zone DNS. Pistes : (1) afficher la valeur directement sous le nom, (2) bouton "Copier" par record sur cette étape, (3) détection/warning des anciens DKIM obsolètes à supprimer, (4) tooltip OVH/Cloudflare/Gandi expliquant "sous-domaine = @" pour la racine, (5) distinction visuelle "nouveaux à ajouter" vs "déjà existants à garder".
+- **Priorité estimée :** Moyenne (bloque l'onboarding des coachs non-techniques)
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### [A-020] Broadcast : ciblage par tag ou lead spécifique
+- **Contexte :** Session 2026-04-21 — impossible de cibler 2 leads précis pour un test SES
+- **Description :** L'UI de broadcast actuel ne permet de filtrer que par date/source/tag/statut, mais pas de sélectionner des leads spécifiques. Ajouter un multi-select ou un filtre "tag = X" qui fonctionne (actuellement non dispo dans l'UI). Critique pour tester sans risquer d'envoyer à toute la base.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### [A-022] Messages : bouton "Nouvelle conversation"
+- **Contexte :** Session 2026-04-22 — user ne peut pas démarrer un email sans avoir reçu de réponse d'abord
+- **Description :** L'UI `/messages` (onglet Email) n'affiche pas de bouton pour composer un nouvel email vers un lead. On ne peut que répondre à une conversation existante. Ajouter un bouton "Nouveau message" qui ouvre un modal : sélection lead → sujet → corps → envoi via `/api/emails/messages` avec création de conversation si absente.
+- **Priorité estimée :** Haute (bloque un usage basique)
+- **Effort estimé :** Moyen
+
+### [A-023] Broadcasts : email libre sans template obligatoire
+- **Contexte :** Session 2026-04-22 — user veut envoyer un email ponctuel sans créer de template
+- **Description :** Actuellement `/acquisition/emails` → Campagnes exige de sélectionner un template. Ajouter une option "Email libre" qui permet de composer directement sujet + HTML/markdown sans passer par le workflow template. Ou bien une modale "quick send" qui crée un template éphémère automatiquement.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible (le backend accepte déjà tout via email_broadcasts.subject + template.blocks)
+
+### [A-021] Hardening webhook SNS — signature cryptographique
+- **Contexte :** Session 2026-04-21 — ajout d'un filtre TopicArn (commit e17bb7f)
+- **Description :** Implémenter la vérif de signature SNS complète (fetch SigningCertURL + verify RSA-SHA1/256 sur les champs canonicalisés) via `sns-validator` npm. Le filtre TopicArn actuel est un palliatif.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (1-2h)
+- **Statut :** En attente de validation
+
+### A-034-01 · `prepared.status` non trimmé dans `validateRow` (import-engine)
+- **Contexte :** Identifié pendant la review de T-034. À la ligne `status: row.status || config.default_status` de la construction de `prepared`, aucune normalisation de whitespace n'est appliquée.
+- **Description :** Si un CSV a une valeur de statut avec des espaces (ex: `"  clos  "`) et que l'utilisateur ne la mappe pas explicitement via l'UI, la vérification d'enum de fallback échoue silencieusement et le lead tombe sur `default_status`. Fix proposé : `status: (row.status || '').trim() || config.default_status`. Pre-existing (pas introduit par T-034).
+- **Priorité estimée :** Basse (peu probable en pratique : l'UI trim déjà via `extractUniqueStatusValues`)
+- **Effort estimé :** Faible (1 ligne)
+- **Statut :** En attente de validation
+
+### A-034-02 · Synonymes supplémentaires dans `STATUS_SYNONYMS` (csv-parser)
+- **Contexte :** Suggéré pendant la review de T-034. Termes courants qui retournent `null` (pas de suggestion) alors qu'ils sont fréquents dans les CSV de coachs FR.
+- **Description :** Ajouter comme synonymes exacts :
+  - `scripte` : `relance`, `à relancer`, `rappel`, `suivi`
+  - `setting_planifie` : `rdv confirmé`, `appel planifié`
+  - `no_show_setting` : `injoignable`, `pas répondu`, `messagerie`
+  - `dead` : `pas intéressé`, `sans suite`, `inactif`
+  - `clos` : `client`, `payé`, `inscrit`
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (additions dans un objet)
+- **Statut :** En attente de validation
+
+### A-034-03 · `STATUS_OPTIONS` incomplet dans Step2_MappingConfig (import wizard)
+- **Contexte :** Identifié pendant la review de T-034 mais pre-existing. Le dropdown "Statut par défaut" de l'étape 2 d'import liste seulement 5 statuts (`nouveau`, `setting_planifie`, `closing_planifie`, `clos`, `dead`). `scripte`, `no_show_setting`, `no_show_closing` sont absents.
+- **Description :** `scripte` est un default valide pour certains coachs (après contact initial). Les `no_show_*` sont exotiques comme defaults mais devraient être cohérents avec l'enum. Décider si on les ajoute ou si on documente le choix.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-034-04 · Message d'aide si aucune valeur de statut n'est auto-reconnue
+- **Contexte :** Suggéré pendant la review de T-034. Si l'utilisateur mappe une colonne statut et que toutes les valeurs retournent `null` de `suggestStatusMapping`, le `StatusValueMapper` affiche toutes les lignes en rouge (⚠ à régler) sans texte explicatif. Le bouton Continuer est désactivé et l'utilisateur peut être perdu.
+- **Description :** Ajouter une ligne d'aide sous le header quand `unresolvedCount === uniqueValues.length` : « Aucune valeur n'a pu être reconnue automatiquement. Mappez-les manuellement. »
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (1 bloc conditionnel dans StatusValueMapper)
+- **Statut :** En attente de validation
+
+### A-035-01 · Factoriser `StatusValueMapper` + `SourceValueMapper` en composant générique
+- **Contexte :** Identifié pendant T-035. Les deux composants sont ~99 % identiques (encodeAction/decodeAction, useMemo unresolvedCount, UI table, styles inline). Duplication volontaire pour ne pas toucher T-034 fraîchement mergé.
+- **Description :** Créer un composant générique `<ValueMapper<T extends string> />` paramétré par : labels map, ordered keys, action type discriminator (`'status'` | `'source'`). Remplacer les deux composants par le générique. Garder le pattern `encodeAction`/`decodeAction` interne. Ajouter aussi `aria-label` sur les icônes du résultat (lacune détectée pendant la review de T-034 et T-035).
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen (~2-3h incluant re-test manuel des deux mappers)
+- **Statut :** En attente de validation
+
+### A-035-05 · Trim whitespace sur `prepared.source` dans `validateRow` (import-engine)
+- **Contexte :** Identifié pendant la review de T-035, parallèle exact à A-034-01 pour `prepared.status`.
+- **Description :** À la ligne `source: row.source || config.default_source || 'manuel'` de la construction de `prepared`, aucune normalisation de whitespace n'est appliquée. Si le CSV contient `" funnel"` (avec espace), `rawSource.trim()` dans le mapping donne `"funnel"` qui ne match pas la clé du `source_value_mapping` (également trimmée), donc fallback enum. Mais `prepared.source = " funnel"` fait aussi échouer l'enum check → bascule sur `default_source` ou erreur. Pre-existing (pas introduit par T-035).
+- **Description fix :** `source: (row.source || '').trim() || config.default_source || 'manuel'`. Symétriser avec le fix proposé en A-034-01 (même pattern, lignes adjacentes).
+- **Priorité estimée :** Basse (l'UI trim déjà via `extractUniqueSourceValues`)
+- **Effort estimé :** Faible (1 ligne, couplée à A-034-01)
+- **Statut :** En attente de validation
+
+### A-035-02 · Durcissement des synonymes courts dans `SOURCE_SYNONYMS` (csv-parser)
+- **Contexte :** Identifié pendant la review de T-035. `'direct'` (6) dans `manuel` et `'import'` (6) dans `manuel` peuvent produire des faux positifs Pass 2 pour des valeurs CSV comme "director", "directement", "imports". Risque faible en pratique mais cohérent avec la philosophie conservatrice.
+- **Description :** Remplacer `'direct'` par `'direct contact'` ou `'direct mail'`, et `'import'` par `'import csv'` / `'import manuel'`. Garde l'intent de match sémantique tout en réduisant le risque de substring.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible (quelques lignes)
+- **Statut :** En attente de validation
+
+### A-035-03 · Synonymes FR "pub"/"publicité" pour les sources ads
+- **Contexte :** Identifié pendant la review de T-035. Les coachs FR utilisent "pub" comme raccourci standard de "publicité", pas "ads". Valeurs CSV comme "Pub Facebook", "Publicité Meta", "Pub Insta" retournent actuellement `null`.
+- **Description :** Ajouter comme synonymes exacts :
+  - `facebook_ads` : `pub facebook`, `publicité facebook`, `pub fb`, `pub meta`, `publicité meta`, `annonce facebook`
+  - `instagram_ads` : `pub instagram`, `publicité instagram`, `pub insta`, `pub ig`
+- **Priorité estimée :** Moyenne (touche directement les coachs FR, audience cible)
+- **Effort estimé :** Faible (additions dans l'objet)
+- **Statut :** En attente de validation
+
+### A-035-04 · Synonymes FR complémentaires pour `formulaire` et `manuel`
+- **Contexte :** Identifié pendant la review de T-035. Termes français plausibles qui retournent null.
+- **Description :** Ajouter :
+  - `formulaire` : `formulaire de contact`, `formulaire candidature`, `site web`, `site internet`
+  - `manuel` : `réseau`, `réseau social`, `partenariat`
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
 ---
 
-*Mis a jour le 2026-04-17 par Claude Code — ClosRM*
+*Mis a jour le 2026-04-24 par Claude Code — ClosRM*

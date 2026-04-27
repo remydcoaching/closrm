@@ -2,21 +2,11 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import type { IgConversation, Lead, Call, LeadStatus } from '@/types'
+import type { IgConversation, Lead, Call } from '@/types'
+import { useStatusConfig } from '@/lib/workspace/config-context'
 
 interface Props {
   conversation: IgConversation
-}
-
-const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: string }> = {
-  nouveau: { label: 'Nouveau', color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
-  scripte: { label: 'Scripté', color: '#06b6d4', bg: 'rgba(6,182,212,0.1)' },
-  setting_planifie: { label: 'Setting planifié', color: '#D69E2E', bg: 'rgba(214,158,46,0.1)' },
-  no_show_setting: { label: 'No-show setting', color: '#E53E3E', bg: 'rgba(229,62,62,0.1)' },
-  closing_planifie: { label: 'Closing planifié', color: '#D69E2E', bg: 'rgba(214,158,46,0.1)' },
-  no_show_closing: { label: 'No-show closing', color: '#E53E3E', bg: 'rgba(229,62,62,0.1)' },
-  clos: { label: 'Closé', color: '#38A169', bg: 'rgba(56,161,105,0.1)' },
-  dead: { label: 'Dead', color: '#E53E3E', bg: 'rgba(229,62,62,0.1)' },
 }
 
 function formatCallDate(dateStr: string): string {
@@ -40,6 +30,8 @@ const labelStyle: React.CSSProperties = {
 }
 
 export default function ContactPanel({ conversation }: Props) {
+  const statusConfig = useStatusConfig()
+
   const [lead, setLead] = useState<Lead | null>(null)
   const [nextCall, setNextCall] = useState<Call | null>(null)
   const [loadingLead, setLoadingLead] = useState(false)
@@ -158,7 +150,7 @@ export default function ContactPanel({ conversation }: Props) {
           <div style={sectionStyle}>
             <div style={labelStyle}>Statut pipeline</div>
             {(() => {
-              const s = STATUS_CONFIG[lead.status]
+              const s = statusConfig.find((e) => e.key === lead.status) ?? statusConfig[0]
               return (
                 <span style={{
                   display: 'inline-flex',

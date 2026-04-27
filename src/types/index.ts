@@ -92,11 +92,41 @@ export interface Lead {
   updated_at: string
 }
 
+export type DealStatus = 'active' | 'completed' | 'churned' | 'refunded'
+
+export interface Deal {
+  id: string
+  workspace_id: string
+  lead_id: string
+  setter_id: string | null
+  closer_id: string | null
+  amount: number
+  cash_collected: number
+  installments: number
+  duration_months: number | null
+  started_at: string
+  ends_at: string | null
+  status: DealStatus
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type ImportBatchStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
 
 export type ImportDedupStrategy = 'email' | 'phone' | 'email_and_phone' | 'none'
 
 export type ImportDedupAction = 'skip' | 'update' | 'create'
+
+export type StatusMappingAction =
+  | { type: 'map'; status: LeadStatus }
+  | { type: 'tag' }
+  | { type: 'ignore' }
+
+export type SourceMappingAction =
+  | { type: 'map'; source: LeadSource }
+  | { type: 'tag' }
+  | { type: 'ignore' }
 
 export interface ImportConfig {
   mapping: Record<string, string>
@@ -105,6 +135,14 @@ export interface ImportConfig {
   batch_tags: string[]
   dedup_strategy: ImportDedupStrategy
   dedup_action: ImportDedupAction
+  // Nouveau : mapping des valeurs CSV de statut → action ClosRM
+  // Clé = valeur CSV brute (ex: "RDV Bilan Pris"), valeur = action à appliquer.
+  // Absence de clé = valeur non mappée (fallback enum actuel).
+  status_value_mapping: Record<string, StatusMappingAction>
+  // Mapping des valeurs CSV de source → action ClosRM (miroir de status_value_mapping).
+  // Clé = valeur CSV brute (ex: "Meta Ads"), valeur = action à appliquer.
+  // Absence de clé = valeur non mappée (fallback enum actuel).
+  source_value_mapping: Record<string, SourceMappingAction>
 }
 
 export interface LeadImportBatch {
@@ -753,7 +791,21 @@ export interface ResendDnsRecord {
 
 // ── Email Template Blocks ───────────────────────────────────────────────────
 
-export type EmailBlockType = 'header' | 'text' | 'image' | 'button' | 'divider' | 'footer'
+export type EmailBlockType =
+  | 'header'
+  | 'hero'
+  | 'text'
+  | 'image'
+  | 'button'
+  | 'cta_banner'
+  | 'divider'
+  | 'spacer'
+  | 'quote'
+  | 'testimonials'
+  | 'features_grid'
+  | 'video'
+  | 'social_links'
+  | 'footer'
 
 export interface HeaderBlockConfig {
   logoUrl?: string
@@ -789,12 +841,86 @@ export interface FooterBlockConfig {
   text: string  // Legal text, unsubscribe link auto-appended
 }
 
+// ── v2 email block configs (préfixés Email* pour ne pas collisionner
+//     avec les types Funnel qui utilisent des noms similaires) ──
+
+export interface EmailHeroBlockConfig {
+  title: string
+  subtitle?: string
+  imageUrl?: string
+  ctaText?: string
+  ctaUrl?: string
+  alignment: 'left' | 'center'
+}
+
+export interface EmailCtaBannerBlockConfig {
+  text: string
+  ctaText: string
+  ctaUrl: string
+  backgroundColor?: string
+}
+
+export interface EmailSpacerBlockConfig {
+  height: number
+}
+
+export interface EmailQuoteBlockConfig {
+  text: string
+  author?: string
+}
+
+export interface EmailTestimonialItem {
+  quote: string
+  author: string
+  role?: string
+  avatarUrl?: string
+}
+
+export interface EmailTestimonialsBlockConfig {
+  items: EmailTestimonialItem[]
+}
+
+export interface EmailFeatureItem {
+  icon?: string
+  title: string
+  description: string
+}
+
+export interface EmailFeaturesGridBlockConfig {
+  columns: 2 | 3
+  items: EmailFeatureItem[]
+}
+
+export interface EmailVideoBlockConfig {
+  thumbnailUrl: string
+  linkUrl: string
+  caption?: string
+}
+
+export interface EmailSocialLinksBlockConfig {
+  facebook?: string
+  instagram?: string
+  linkedin?: string
+  telegram?: string
+  twitter?: string
+  youtube?: string
+  website?: string
+}
+
 export type EmailBlockConfig =
   | HeaderBlockConfig
+  | EmailHeroBlockConfig
   | TextBlockConfig
   | ImageBlockConfig
   | ButtonBlockConfig
+  | EmailCtaBannerBlockConfig
   | DividerBlockConfig
+  | EmailSpacerBlockConfig
+  | EmailQuoteBlockConfig
+  | EmailTestimonialsBlockConfig
+  | EmailFeaturesGridBlockConfig
+  | EmailVideoBlockConfig
+  | EmailSocialLinksBlockConfig
   | FooterBlockConfig
 
 export interface EmailBlock {
@@ -811,6 +937,10 @@ export interface EmailTemplate {
   blocks: EmailBlock[]
   preview_text: string | null
   thumbnail_url: string | null
+  /** Design system v2 — preset sélectionné (null/undefined = legacy rendering) */
+  preset_id?: string | null
+  /** Overrides custom (couleurs, typo, bouton) par rapport au preset */
+  preset_override?: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
@@ -1106,8 +1236,8 @@ export interface AiCoachBrief {
   approach: string | null
   example_messages: string | null
   goal: 'book_call' | 'sell_dm' | 'both'
-  generated_brief: string | null
   api_key: string | null
+  generated_brief: string | null
   wins_analyzed: number
   updated_at: string
   created_at: string
@@ -1411,3 +1541,26 @@ export interface YtVideoWithStats extends YtVideo {
   traffic_sources: YtTrafficSource[]
   demographics: YtDemographics[]
 }
+
+// ------------------------------------------------------------------
+// Workspace label customization (T-036)
+// ------------------------------------------------------------------
+export interface StatusConfigEntry {
+  key: LeadStatus
+  label: string
+  color: string  // hex '#RRGGBB'
+  bg: string     // rgba 'rgba(R,G,B,A)'
+  visible: boolean
+}
+
+export interface SourceConfigEntry {
+  key: LeadSource
+  label: string
+  color: string
+  bg: string
+  visible: boolean
+}
+
+// Ordered array — position = display order
+export type StatusConfig = StatusConfigEntry[]
+export type SourceConfig = SourceConfigEntry[]

@@ -21,12 +21,22 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const body = await request.json()
 
+  // Accepte soit un template_id, soit body_html/body_text direct (email libre)
+  if (!body.template_id && !body.body_html && !body.body_text) {
+    return NextResponse.json(
+      { error: 'Un template OU un contenu (body) est requis' },
+      { status: 400 },
+    )
+  }
+
   const { data, error } = await supabase
     .from('email_broadcasts')
     .insert({
       workspace_id: workspaceId,
       name: body.name || 'Nouvelle campagne',
       template_id: body.template_id || null,
+      body_html: body.body_html || null,
+      body_text: body.body_text || null,
       subject: body.subject || null,
       filters: body.filters || {},
       status: 'draft',

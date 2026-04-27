@@ -2,8 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { AiSuggestion, Lead, IgMessage } from '@/types'
 import { callClaude } from './client'
 import { buildSuggestionPrompt } from './prompts'
-import { getBrief, getApiKey, getWinningConversations, getLeadMagnetsForWorkspace } from './brief'
-import { replaceLeadMagnetUrls } from './replace-lead-magnet-urls'
+import { getBrief, getApiKey, getWinningConversations } from './brief'
 
 export async function generateSuggestion(
   workspaceId: string,
@@ -56,11 +55,8 @@ export async function generateSuggestion(
   // 5. Fetch golden scripts
   const goldenExamples = await getWinningConversations(workspaceId, lead.source, 3)
 
-  // 6. Fetch lead magnets (table structurée, remplace l'ancien JSON blob)
-  const leadMagnets = await getLeadMagnetsForWorkspace(supabase, workspaceId)
-
-  // 7. Build prompt
-  const prompt = buildSuggestionPrompt({ brief, lead: lead as Lead, messages, goldenExamples, leadMagnets })
+  // 6. Build prompt
+  const prompt = buildSuggestionPrompt({ brief, lead: lead as Lead, messages, goldenExamples })
 
   // 7. Call Claude — Haiku pour conversations courtes, Sonnet pour longues
   const model = messages.length > 10 ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001'
@@ -78,18 +74,6 @@ export async function generateSuggestion(
       guidance: 'Impossible de generer une suggestion. Redigez votre message manuellement.',
       message: '',
     }
-  }
-
-  // 8bis. Post-process : remplacer URLs des lead_magnets par short links trackables pour ce lead
-  if (parsed.message && leadMagnets.length > 0) {
-    parsed.message = await replaceLeadMagnetUrls({
-      message: parsed.message,
-      leadId,
-      workspaceId,
-      leadMagnets,
-      supabase,
-      appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-    })
   }
 
   // 9. Determine window status
