@@ -249,6 +249,7 @@ export async function POST(request: NextRequest) {
 
           await sendBookingConfirmationEmail({
             to: leadEmail,
+            workspaceId,
             coachName: owner?.full_name ?? 'Votre coach',
             prospectName: `${leadFirst} ${leadLast}`.trim(),
             date: scheduledAt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
@@ -256,7 +257,7 @@ export async function POST(request: NextRequest) {
             meetUrl: result?.meetUrl ?? undefined,
             locationName: locationName ?? undefined,
             locationAddress: locationAddress ?? undefined,
-          }).catch(() => {})
+          }).catch((err) => console.error('[booking] booking-confirmation email failed:', err instanceof Error ? err.message : err))
         }
       } catch (err) {
         console.error('[booking] Post-response work failed:', err instanceof Error ? err.message : err)
