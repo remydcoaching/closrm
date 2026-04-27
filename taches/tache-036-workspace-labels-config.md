@@ -1,7 +1,7 @@
 # Tâche 036 — Personnalisation des statuts et sources par workspace
 
 **Dev :** Rémy
-**Statut :** spec validée, à implémenter
+**Statut :** terminé (2026-04-24)
 **Branche :** `feature/remy-workspace-labels-config` (depuis `develop`)
 
 ## Objectif
@@ -53,3 +53,26 @@ Deux points d'entrée UI pour une seule source de vérité (DB) : Paramètres > 
 - Tâche 034 (import status mapping) — consume les labels via le hook désormais
 - Tâche 035 (import source mapping) — idem
 - Migration 003 (branding) — pattern JSONB déjà en place sur `workspaces` pour `accent_color`/`logo_url`
+
+## Résultat
+
+Implémenté en 12 phases sur la branche `feature/remy-workspace-labels-config` (~17 commits).
+
+Commits clés :
+- `dc01dc7` — types `StatusConfig`/`SourceConfig`
+- `0fd43de` — defaults + helpers (merge, hexToRgba)
+- `5af9eea` — migration DB 050 (JSONB nullable)
+- `5196a19` — API route `/api/workspace/config` (GET/PATCH avec Zod)
+- `94f260c` + `346d73b` — context + hooks (incluant fix de rollback)
+- `dd4ca5f` — wire provider dans dashboard layout
+- `ce8adba` — refactor StatusBadge/SourceBadge → hooks
+- `836d9cc` — refactor 6 consumers de leads (4 autres exclus car autres type systems)
+- `3884634` + `ba3f3c8` — UI Paramètres (LabelsEditor + 2 sections, fix Rules of Hooks)
+- `ea89d7e` — Kanban modal rewire + migration localStorage one-shot
+- `471a82f` — import wizard + LeadForm honor workspace config
+
+Testé manuellement : Paramètres > Réglages, Kanban (modal + colonnes), filtres, dropdowns, import wizard, LeadForm. Les changements de label/couleur/ordre/visibilité se propagent immédiatement dans toute l'app.
+
+## Améliorations identifiées (loggées dans ameliorations.md à valider)
+
+(à compléter au fil des reviews futures)
