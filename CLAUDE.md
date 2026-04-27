@@ -318,6 +318,29 @@ Avant d'écrire la moindre ligne de code, Claude Code **doit** :
    - Si la branche courante est `main` ou `develop` → **stopper et demander de créer une branche feature**
 4. **Confirmer avec le développeur** que la branche de travail est la bonne avant de démarrer
 
+### Travail en parallèle dans plusieurs sessions Claude Code
+
+**Règle absolue** : si une autre session Claude Code tourne déjà dans ce repo sur une autre feature, **ne jamais partager le même working tree**. Deux sessions qui partagent le même `.git` et le même checkout provoquent des basculements de branche silencieux en plein milieu d'opérations (Writes qui atterrissent sur la mauvaise branche, commits d'une autre feature qui s'invitent dans le PR, etc.).
+
+**Protocole obligatoire quand Pierre lance une 2e session en parallèle** :
+
+1. En tout début de tâche, demander au développeur : *« Est-ce qu'une autre session Claude Code tourne déjà sur ce repo en ce moment ? »*
+2. Si **oui** → **créer systématiquement un git worktree dédié** avant d'écrire quoi que ce soit :
+   ```bash
+   git worktree add ../closrm-<slug-feature> feature/pierre-<slug-feature>
+   cd ../closrm-<slug-feature>
+   ```
+   Toute la suite de la session (reads, writes, commits, push) se fait dans ce dossier isolé.
+3. Si **non** → travailler normalement dans `/Users/pierrerebmann/closrm`, mais si un basculement de branche non demandé est détecté en cours de session (branche courante qui change entre deux Bash calls sans qu'on l'ait touchée), alerter le développeur immédiatement — c'est le signal qu'une 2e session vient de démarrer.
+4. En fin de tâche, proposer au développeur de nettoyer le worktree si la branche est mergée : `git worktree remove ../closrm-<slug-feature>`.
+
+**Signes qu'un bug de working tree partagé vient de se produire** :
+- Un `git status` après un commit montre la branche d'une autre feature.
+- Un `git log` fait apparaître un commit d'une autre feature dans la branche courante.
+- Des fichiers uncommitted apparaissent alors que personne ne les a édités dans cette session.
+
+Si un de ces signes apparaît **sans** worktree en place, arrêter l'opération en cours, explorer ce qui s'est passé avant de committer quoi que ce soit, et proposer de passer en worktree pour finir la tâche.
+
 ### Garde-fous obligatoires AVANT UN COMMIT
 
 Avant tout commit, Claude Code **doit** :
