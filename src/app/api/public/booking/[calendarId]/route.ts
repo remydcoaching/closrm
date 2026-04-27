@@ -399,6 +399,7 @@ export async function POST(
 
           sendBookingConfirmationEmail({
             to: email,
+            workspaceId: calendar.workspace_id,
             coachName: ownerRes.data?.full_name ?? 'Votre coach',
             prospectName: `${firstName} ${lastName}`.trim(),
             date: bookingStartDt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
@@ -406,7 +407,7 @@ export async function POST(
             meetUrl: result.meetUrl ?? undefined,
             locationName: locationName ?? undefined,
             locationAddress: locationAddress ?? undefined,
-          }).catch(() => {})
+          }).catch((err) => console.error('[public-booking-by-id] booking-confirmation email failed:', err instanceof Error ? err.message : err))
         }
       }
     })
@@ -433,13 +434,14 @@ export async function POST(
 
       sendBookingConfirmationEmail({
         to: email,
+        workspaceId: calendar.workspace_id,
         coachName: ownerRes.data?.full_name ?? 'Votre coach',
         prospectName: `${firstName} ${lastName}`.trim(),
         date: bookingStartDt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
         time: bookingStartDt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         locationName: locationName ?? undefined,
         locationAddress: locationAddress ?? undefined,
-      }).catch(() => {})
+      }).catch((err) => console.error('[public-booking-by-id] booking-confirmation email failed:', err instanceof Error ? err.message : err))
     }
   }
 
