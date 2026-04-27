@@ -1,28 +1,26 @@
-import { LeadStatus } from '@/types'
+'use client'
 
-const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: string }> = {
-  nouveau: { label: 'Nouveau', color: '#a0a0a0', bg: 'rgba(160,160,160,0.12)' },
-  scripte: { label: 'Scripté', color: '#06b6d4', bg: 'rgba(6,182,212,0.12)' },
-  setting_planifie: { label: 'Setting planifié', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  no_show_setting: { label: 'No-show Setting', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  closing_planifie: { label: 'Closing planifié', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
-  no_show_closing: { label: 'No-show Closing', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  clos: { label: 'Closé ✅', color: 'var(--color-primary)', bg: 'rgba(0,200,83,0.12)' },
-  dead: { label: 'Dead ❌', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-}
+import { LeadStatus } from '@/types'
+import { useStatusEntry } from '@/lib/workspace/config-context'
+import { DEFAULT_STATUS_CONFIG } from '@/lib/workspace/status-defaults'
+
+// Legacy export kept for server-side / non-context use cases (e.g. static rendering).
+// Prefer useStatusEntry(status) in client components.
+export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bg: string }> =
+  Object.fromEntries(
+    DEFAULT_STATUS_CONFIG.map((e) => [e.key, { label: e.label, color: e.color, bg: e.bg }]),
+  ) as Record<LeadStatus, { label: string; color: string; bg: string }>
 
 export default function StatusBadge({ status }: { status: LeadStatus }) {
-  const config = STATUS_CONFIG[status]
+  const entry = useStatusEntry(status)
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
       padding: '3px 10px', borderRadius: 99,
       fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
-      color: config.color, background: config.bg,
+      color: entry.color, background: entry.bg,
     }}>
-      {config.label}
+      {entry.label}
     </span>
   )
 }
-
-export { STATUS_CONFIG }

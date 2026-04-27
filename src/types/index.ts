@@ -1541,3 +1541,26 @@ export interface YtVideoWithStats extends YtVideo {
   traffic_sources: YtTrafficSource[]
   demographics: YtDemographics[]
 }
+
+// ------------------------------------------------------------------
+// Workspace label customization (T-036)
+// ------------------------------------------------------------------
+export interface StatusConfigEntry {
+  key: LeadStatus
+  label: string
+  color: string  // hex '#RRGGBB'
+  bg: string     // rgba 'rgba(R,G,B,A)'
+  visible: boolean
+}
+
+export interface SourceConfigEntry {
+  key: LeadSource
+  label: string
+  color: string
+  bg: string
+  visible: boolean
+}
+
+// Ordered array — position = display order
+export type StatusConfig = StatusConfigEntry[]
+export type SourceConfig = SourceConfigEntry[]

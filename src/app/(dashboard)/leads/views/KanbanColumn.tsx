@@ -3,7 +3,7 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { Lead, LeadStatus, WorkspaceMemberWithUser } from '@/types'
-import { STATUS_CONFIG } from '@/components/leads/StatusBadge'
+import { useStatusEntry } from '@/lib/workspace/config-context'
 import KanbanCard from './KanbanCard'
 
 interface KanbanColumnProps {
@@ -20,7 +20,7 @@ export default function KanbanColumn({
   status, leads, total, memberMap, onCardClick, onLoadMore, loadingMore,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `col:${status}`, data: { type: 'column', status } })
-  const cfg = STATUS_CONFIG[status]
+  const cfg = useStatusEntry(status)
   const hasMore = total > leads.length
 
   return (

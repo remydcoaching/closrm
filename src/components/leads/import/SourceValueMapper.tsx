@@ -3,25 +3,13 @@
 import { useMemo } from 'react'
 import { AlertCircle, CheckCircle2, Tag } from 'lucide-react'
 import type { LeadSource, SourceMappingAction } from '@/types'
+import { useSourceConfig } from '@/lib/workspace/config-context'
 
 interface Props {
   uniqueValues: string[]
   mapping: Record<string, SourceMappingAction>
   onChange: (mapping: Record<string, SourceMappingAction>) => void
 }
-
-const SOURCE_LABELS: Record<LeadSource, string> = {
-  facebook_ads: 'Facebook Ads',
-  instagram_ads: 'Instagram Ads',
-  follow_ads: 'Follow Ads',
-  formulaire: 'Formulaire',
-  manuel: 'Manuel',
-  funnel: 'Funnel',
-}
-
-// Derived from SOURCE_LABELS so TypeScript enforces exhaustiveness: adding a
-// new LeadSource forces adding a label, which flows through to this order.
-const SOURCE_ORDER = Object.keys(SOURCE_LABELS) as LeadSource[]
 
 // Encoded value for the <select> (separates action type from source)
 function encodeAction(action: SourceMappingAction | undefined): string {
@@ -48,6 +36,12 @@ const selectStyle: React.CSSProperties = {
 }
 
 export default function SourceValueMapper({ uniqueValues, mapping, onChange }: Props) {
+  const sourceConfig = useSourceConfig()
+  const SOURCE_LABELS: Record<LeadSource, string> = Object.fromEntries(
+    sourceConfig.map((e) => [e.key, e.label]),
+  ) as Record<LeadSource, string>
+  const SOURCE_ORDER = sourceConfig.filter((e) => e.visible).map((e) => e.key)
+
   const unresolvedCount = useMemo(
     () => uniqueValues.filter((v) => !mapping[v]).length,
     [uniqueValues, mapping],

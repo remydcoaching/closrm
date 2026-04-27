@@ -1,12 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserCircle2, Building2, Palette, Link2, ShieldAlert, CreditCard } from 'lucide-react'
+import { UserCircle2, Building2, Palette, Link2, ShieldAlert, CreditCard, Tag, Tags } from 'lucide-react'
 import ProfileForm from '@/components/settings/ProfileForm'
 import WorkspaceForm from '@/components/settings/WorkspaceForm'
 import BrandingForm from '@/components/settings/BrandingForm'
 import DeleteAccount from '@/components/settings/DeleteAccount'
 import PlanOverview from '@/components/settings/PlanOverview'
+import { useWorkspaceConfig } from '@/lib/workspace/config-context'
+import { DEFAULT_STATUS_CONFIG } from '@/lib/workspace/status-defaults'
+import { DEFAULT_SOURCE_CONFIG } from '@/lib/workspace/source-defaults'
+import LabelsEditor from '@/app/(dashboard)/parametres/reglages/labels-editor'
 
 interface UserData {
   id: string
@@ -106,6 +110,12 @@ export default function ReglagesPage() {
   const [slugSaving, setSlugSaving] = useState(false)
   const [slugError, setSlugError] = useState<string | null>(null)
   const [slugSuccess, setSlugSuccess] = useState(false)
+
+  const {
+    statusConfig, sourceConfig,
+    updateStatusConfig, updateSourceConfig,
+    resetStatusConfig, resetSourceConfig,
+  } = useWorkspaceConfig()
 
   async function fetchData() {
     try {
@@ -248,6 +258,38 @@ export default function ReglagesPage() {
               accentColor={workspace.accent_color ?? '#00C853'}
               logoUrl={workspace.logo_url ?? null}
               onSave={fetchData}
+            />
+          </Section>
+
+          <div style={{ borderTop: '1px solid var(--border-primary)' }} />
+
+          <Section
+            icon={<Tag size={18} />}
+            title="Statuts du pipeline"
+            description="Renommer, recolorer, réordonner ou masquer les statuts de leads."
+          >
+            <LabelsEditor
+              title="Statuts"
+              entries={statusConfig}
+              defaults={DEFAULT_STATUS_CONFIG}
+              onChange={updateStatusConfig}
+              onReset={resetStatusConfig}
+            />
+          </Section>
+
+          <div style={{ borderTop: '1px solid var(--border-primary)' }} />
+
+          <Section
+            icon={<Tags size={18} />}
+            title="Sources des leads"
+            description="Renommer, recolorer, réordonner ou masquer les sources d'acquisition."
+          >
+            <LabelsEditor
+              title="Sources"
+              entries={sourceConfig}
+              defaults={DEFAULT_SOURCE_CONFIG}
+              onChange={updateSourceConfig}
+              onReset={resetSourceConfig}
             />
           </Section>
 

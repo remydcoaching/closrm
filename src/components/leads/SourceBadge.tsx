@@ -1,24 +1,25 @@
-import { LeadSource } from '@/types'
+'use client'
 
-const SOURCE_CONFIG: Record<LeadSource, { label: string; color: string; bg: string }> = {
-  facebook_ads: { label: 'Facebook Ads', color: '#3b82f6', bg: 'rgba(59,130,246,0.10)' },
-  instagram_ads: { label: 'Instagram Ads', color: '#e879f9', bg: 'rgba(232,121,249,0.10)' },
-  follow_ads: { label: 'Follow Ads', color: '#a855f7', bg: 'rgba(168,85,247,0.10)' },
-  formulaire: { label: 'Formulaire', color: '#06b6d4', bg: 'rgba(6,182,212,0.10)' },
-  manuel: { label: 'Manuel', color: '#a0a0a0', bg: 'rgba(160,160,160,0.10)' },
-  funnel: { label: 'Funnel', color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
-}
+import { LeadSource } from '@/types'
+import { useSourceEntry } from '@/lib/workspace/config-context'
+import { DEFAULT_SOURCE_CONFIG } from '@/lib/workspace/source-defaults'
+
+// Legacy export kept for non-context use cases.
+export const SOURCE_CONFIG: Record<LeadSource, { label: string; color: string; bg: string }> =
+  Object.fromEntries(
+    DEFAULT_SOURCE_CONFIG.map((e) => [e.key, { label: e.label, color: e.color, bg: e.bg }]),
+  ) as Record<LeadSource, { label: string; color: string; bg: string }>
 
 export default function SourceBadge({ source }: { source: LeadSource }) {
-  const config = SOURCE_CONFIG[source]
+  const entry = useSourceEntry(source)
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
       padding: '3px 10px', borderRadius: 99,
       fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
-      color: config.color, background: config.bg,
+      color: entry.color, background: entry.bg,
     }}>
-      {config.label}
+      {entry.label}
     </span>
   )
 }

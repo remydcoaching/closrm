@@ -12,10 +12,11 @@ function InstagramIcon({ size = 13 }: { size?: number }) {
     </svg>
   )
 }
-import { Lead, Call, FollowUp, LeadStatus, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
+import { Lead, Call, FollowUp, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import ClosingModal from '@/components/leads/ClosingModal'
-import StatusBadge, { STATUS_CONFIG } from '@/components/leads/StatusBadge'
+import StatusBadge from '@/components/leads/StatusBadge'
+import { useStatusConfig } from '@/lib/workspace/config-context'
 import SourceBadge from '@/components/leads/SourceBadge'
 import CallOutcomeBadge from '@/components/closing/CallOutcomeBadge'
 import CallTypeBadge from '@/components/closing/CallTypeBadge'
@@ -39,6 +40,8 @@ const inputS: React.CSSProperties = { width: '100%', boxSizing: 'border-box', pa
 const smallBtn: React.CSSProperties = { background: 'none', border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26 }
 
 export default function LeadSidePanel({ leadId, onClose }: Props) {
+  const statusConfig = useStatusConfig()
+
   const [lead, setLead] = useState<LeadWithRelations | null>(null)
   const [loading, setLoading] = useState(true)
   const [editingField, setEditingField] = useState<string | null>(null)
@@ -285,17 +288,17 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
             <div style={card}>
               <div style={sectionTitle}>Statut</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {(Object.keys(STATUS_CONFIG) as LeadStatus[]).map((s) => {
-                  const active = lead.status === s
-                  const cfg = STATUS_CONFIG[s]
+                {statusConfig.filter((e) => e.visible).map((e) => {
+                  const active = lead.status === e.key
+                  const cfg = e
                   return (
-                    <button key={s} onClick={async () => {
-                      if (s === 'clos') { setShowClosingModal(true); return }
+                    <button key={e.key} onClick={async () => {
+                      if (e.key === 'clos') { setShowClosingModal(true); return }
                       const previousAssignedTo = lead.assigned_to
-                      const updated = await patchLead({ status: s })
+                      const updated = await patchLead({ status: e.key })
                       // Show auto-assign notification for setters
                       if (
-                        s === 'closing_planifie' &&
+                        e.key === 'closing_planifie' &&
                         currentRole === 'setter' &&
                         updated?.assigned_to &&
                         updated.assigned_to !== previousAssignedTo
