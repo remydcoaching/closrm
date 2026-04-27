@@ -92,7 +92,7 @@ export default function NewBroadcastPage() {
 
     setSending(false)
     if (sendRes.ok) {
-      router.push('/acquisition/emails/broadcasts')
+      router.push('/acquisition/emails?tab=campagnes')
     } else {
       setError(result.error || 'Erreur envoi')
     }
@@ -101,7 +101,7 @@ export default function NewBroadcastPage() {
   return (
     <div style={{ padding: '24px 32px' }}>
       <button
-        onClick={() => router.push('/acquisition/emails/broadcasts')}
+        onClick={() => router.push('/acquisition/emails?tab=campagnes')}
         style={{
           fontSize: 13,
           color: '#666',

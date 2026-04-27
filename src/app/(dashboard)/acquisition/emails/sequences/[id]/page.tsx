@@ -60,7 +60,7 @@ export default function SequenceEditorPage({ params }: { params: Promise<{ id: s
   return (
     <div style={{ padding: '24px 32px', maxWidth: 700 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <button onClick={() => router.push('/acquisition/emails/sequences')} style={{
+        <button onClick={() => router.push('/acquisition/emails?tab=sequences')} style={{
           fontSize: 13, color: '#666', background: 'none', border: 'none', cursor: 'pointer',
         }}>
           ← Retour aux séquences

@@ -126,7 +126,7 @@ export default function TemplateEditorPage({ params }: { params: Promise<{ id: s
     <div style={{ padding: '24px 32px' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <button onClick={() => router.push('/acquisition/emails/templates')} style={{
+        <button onClick={() => router.push('/acquisition/emails?tab=templates')} style={{
           fontSize: 13, color: '#666', background: 'none', border: 'none', cursor: 'pointer',
         }}>
           ← Retour aux templates
