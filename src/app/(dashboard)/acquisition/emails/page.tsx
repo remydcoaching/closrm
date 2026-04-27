@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Mail, Send, FileText, Settings, AlertCircle } from 'lucide-react'
 import BroadcastsClient from './broadcasts/broadcasts-client'
 import SequencesClient from './sequences/sequences-client'
@@ -9,6 +10,12 @@ import DomainWizard from '@/components/emails/DomainWizard'
 import type { EmailDomain } from '@/types'
 
 type Tab = 'campagnes' | 'sequences' | 'templates' | 'parametres'
+
+const TAB_KEYS: Tab[] = ['campagnes', 'sequences', 'templates', 'parametres']
+
+function isTab(value: string | null): value is Tab {
+  return value !== null && (TAB_KEYS as string[]).includes(value)
+}
 
 interface TabDef {
   key: Tab
@@ -39,7 +46,25 @@ interface Counts {
 }
 
 export default function EmailsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('campagnes')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<Tab>(isTab(tabParam) ? tabParam : 'campagnes')
+
+  // Sync tab when query param changes (e.g. browser back/forward)
+  useEffect(() => {
+    if (isTab(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam])
+
+  const changeTab = useCallback((tab: Tab) => {
+    setActiveTab(tab)
+    const params = new URLSearchParams(Array.from(searchParams.entries()))
+    params.set('tab', tab)
+    router.replace(`/acquisition/emails?${params.toString()}`, { scroll: false })
+  }, [router, searchParams])
   const [counts, setCounts] = useState<Counts>({ broadcasts: 0, sequences: 0, templates: 0 })
   const [stats, setStats] = useState<EmailStats | null>(null)
   const [domainVerified, setDomainVerified] = useState<boolean | null>(null)
@@ -136,7 +161,7 @@ export default function EmailsPage() {
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => changeTab(tab.key)}
               style={{
                 padding: '10px 18px',
                 fontSize: 13,
@@ -175,7 +200,7 @@ export default function EmailsPage() {
 
       {/* Domain warning banner on Campagnes tab */}
       {activeTab === 'campagnes' && domainVerified === false && (
-        <DomainBanner onGoToSettings={() => setActiveTab('parametres')} />
+        <DomainBanner onGoToSettings={() => changeTab('parametres')} />
       )}
 
       {/* Tab content */}
