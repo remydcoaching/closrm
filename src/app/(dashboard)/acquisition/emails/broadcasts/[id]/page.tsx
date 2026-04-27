@@ -73,7 +73,7 @@ export default function BroadcastDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div style={{ padding: '24px 32px' }}>
       <button
-        onClick={() => router.push('/acquisition/emails/broadcasts')}
+        onClick={() => router.push('/acquisition/emails?tab=campagnes')}
         style={{
           fontSize: 13,
           color: '#666',
