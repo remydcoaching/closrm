@@ -2,6 +2,7 @@ import { sendEmail, isSuppressed } from '@/lib/email/client'
 import { getWorkspaceSenderConfig, SENDER_FALLBACK_EMAIL, SENDER_FALLBACK_NAME } from '@/lib/email/sender-config'
 import { consumeResource } from '@/lib/billing/service'
 import { logEmailSend } from '@/lib/email/log-send'
+import { createServiceClient } from '@/lib/supabase/service'
 
 interface BookingConfirmationParams {
   to: string
@@ -161,9 +162,23 @@ export async function sendBookingConfirmationEmail(
   const html = buildBookingConfirmationHtml(params)
   const subject = `Votre rendez-vous avec ${params.coachName} est confirme`
 
+  // From-name priority: workspace brand name > coach legal name > fallback.
+  // The brand name (workspaces.name) is what coaches expect to appear in
+  // recipients' inboxes. Falls back to coachName (users.full_name) if the
+  // workspace has no brand name yet.
+  let senderName = params.coachName
+  if (params.workspaceId) {
+    const { data: ws } = await createServiceClient()
+      .from('workspaces')
+      .select('name')
+      .eq('id', params.workspaceId)
+      .maybeSingle()
+    if (ws?.name) senderName = ws.name
+  }
+
   const senderConfig = params.workspaceId
-    ? await getWorkspaceSenderConfig(params.workspaceId, { fromName: params.coachName })
-    : { fromEmail: SENDER_FALLBACK_EMAIL, fromName: params.coachName || SENDER_FALLBACK_NAME }
+    ? await getWorkspaceSenderConfig(params.workspaceId, { fromName: senderName })
+    : { fromEmail: SENDER_FALLBACK_EMAIL, fromName: senderName || SENDER_FALLBACK_NAME }
 
   const result = await sendEmail(
     {
