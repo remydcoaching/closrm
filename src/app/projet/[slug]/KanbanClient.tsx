@@ -29,7 +29,8 @@ type AssigneeFilter = 'all' | Exclude<TaskAssignee, null>
 const COLUMN_BG: Record<TaskStatus, string> = {
   todo: 'rgba(160,160,160,0.06)',
   in_progress: 'rgba(59,130,246,0.08)',
-  done: 'rgba(0,200,83,0.08)',
+  done_this_week: 'rgba(0,200,83,0.12)',
+  done: 'rgba(0,200,83,0.05)',
   blocked: 'rgba(239,68,68,0.08)',
 }
 
@@ -51,7 +52,7 @@ export default function KanbanClient({ slug, board, initialTasks }: Props) {
   }, [tasks, filter])
 
   const tasksByStatus = useMemo(() => {
-    const map: Record<TaskStatus, PmTask[]> = { todo: [], in_progress: [], done: [], blocked: [] }
+    const map: Record<TaskStatus, PmTask[]> = { todo: [], in_progress: [], done_this_week: [], done: [], blocked: [] }
     for (const t of filteredTasks) map[t.status].push(t)
     for (const status of Object.keys(map) as TaskStatus[]) {
       map[status].sort((a, b) => a.position - b.position)
@@ -167,7 +168,7 @@ export default function KanbanClient({ slug, board, initialTasks }: Props) {
 
   const totals = useMemo(() => ({
     total: tasks.length,
-    done: tasks.filter(t => t.status === 'done').length,
+    done: tasks.filter(t => t.status === 'done' || t.status === 'done_this_week').length,
     inProgress: tasks.filter(t => t.status === 'in_progress').length,
   }), [tasks])
 
@@ -251,7 +252,7 @@ export default function KanbanClient({ slug, board, initialTasks }: Props) {
       >
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, minmax(260px, 1fr))',
+          gridTemplateColumns: 'repeat(5, minmax(240px, 1fr))',
           gap: 16,
           padding: 24,
           overflowX: 'auto',
