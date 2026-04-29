@@ -9,10 +9,11 @@ import {
   DragStartEvent,
   PointerSensor,
   closestCorners,
+  useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { PmBoard, PmTask, TaskAssignee, TaskStatus } from '@/types/pm'
 import { TASK_ASSIGNEES, TASK_STATUSES } from '@/types/pm'
 import TaskCard from './TaskCard'
@@ -311,7 +312,7 @@ function KanbanColumn({
   onEditTask: (t: PmTask) => void
   bg: string
 }) {
-  const { setNodeRef } = useSortable({ id: status, data: { type: 'column', status } })
+  const { setNodeRef } = useDroppable({ id: status, data: { type: 'column', status } })
   return (
     <div
       ref={setNodeRef}
