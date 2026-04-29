@@ -2,8 +2,24 @@
 -- Tasks marked done go to "done_this_week" first.
 -- Every Monday at 08:00, a cron moves them to "done".
 
--- Expand status CHECK constraint
-ALTER TABLE public.pm_tasks DROP CONSTRAINT IF EXISTS pm_tasks_status_check;
+-- Drop ALL existing check constraints on pm_tasks.status
+-- (the inline CHECK from 053 has an auto-generated name we can't predict)
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_class rel ON rel.oid = con.conrelid
+    WHERE rel.relname = 'pm_tasks'
+      AND con.contype = 'c'
+      AND pg_get_constraintdef(con.oid) LIKE '%status%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.pm_tasks DROP CONSTRAINT %I', r.conname);
+  END LOOP;
+END $$;
+
 ALTER TABLE public.pm_tasks ADD CONSTRAINT pm_tasks_status_check
   CHECK (status IN ('todo', 'in_progress', 'done', 'done_this_week', 'blocked'));
 
@@ -19,5 +35,3 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
--- Move existing "done" tasks to "done" (no change), only future ones go to done_this_week
