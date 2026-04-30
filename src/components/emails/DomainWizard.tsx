@@ -37,6 +37,7 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
   const [fromEmail, setFromEmail] = useState(existingDomain?.default_from_email ?? '')
   const [fromName, setFromName] = useState(existingDomain?.default_from_name ?? '')
   const [savingFrom, setSavingFrom] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const dnsRecords: ResendDnsRecord[] = (domainData?.dns_records ?? []) as ResendDnsRecord[]
 
@@ -48,13 +49,18 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
 
   async function handleAddDomain() {
     if (!domain.trim()) return
+    let cleanDomain = domain.trim().toLowerCase()
+    if (cleanDomain.includes('@')) {
+      cleanDomain = cleanDomain.split('@').pop()!
+      setDomain(cleanDomain)
+    }
     setLoading(true)
     setError(null)
     try {
       const res = await fetch('/api/emails/domains', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: domain.trim().toLowerCase() }),
+        body: JSON.stringify({ domain: cleanDomain }),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -118,14 +124,30 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
 
   async function handleSaveFrom() {
     if (!domainData) return
+    setSaveStatus(null)
+
+    const email = fromEmail.trim().toLowerCase()
+    if (email && domainData.domain && !email.endsWith(`@${domainData.domain}`)) {
+      setSaveStatus({ type: 'error', message: `L'adresse doit se terminer par @${domainData.domain}` })
+      return
+    }
+
     setSavingFrom(true)
     try {
-      await fetch(`/api/emails/domains/${domainData.id}`, {
+      const res = await fetch(`/api/emails/domains/${domainData.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ default_from_email: fromEmail, default_from_name: fromName }),
+        body: JSON.stringify({ default_from_email: email, default_from_name: fromName }),
       })
+      const json = await res.json()
+      if (!res.ok) {
+        setSaveStatus({ type: 'error', message: json.error ?? 'Erreur lors de la sauvegarde' })
+        return
+      }
+      setSaveStatus({ type: 'success', message: 'Adresse d\'envoi enregistrée' })
       onDomainChange()
+    } catch {
+      setSaveStatus({ type: 'error', message: 'Erreur réseau' })
     } finally {
       setSavingFrom(false)
     }
@@ -485,10 +507,22 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
           <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 6, fontWeight: 500 }}>Adresse d&apos;envoi</label>
           <input type="email" value={fromEmail} onChange={e => setFromEmail(e.target.value)} placeholder={`contact@${domainData?.domain ?? 'mondomaine.fr'}`} style={inputStyle} />
         </div>
-        <button onClick={handleSaveFrom} disabled={savingFrom} style={{ ...btnPrimary, alignSelf: 'flex-start', opacity: savingFrom ? 0.5 : 1 }}>
-          {savingFrom ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
-          Enregistrer
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={handleSaveFrom} disabled={savingFrom} style={{ ...btnPrimary, opacity: savingFrom ? 0.5 : 1 }}>
+            {savingFrom ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : null}
+            Enregistrer
+          </button>
+          {saveStatus && (
+            <span style={{
+              fontSize: 13, fontWeight: 500,
+              color: saveStatus.type === 'success' ? '#38A169' : '#ef4444',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              {saveStatus.type === 'success' ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
+              {saveStatus.message}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
