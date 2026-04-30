@@ -405,9 +405,10 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
     return (
       <div>
         {renderProgressBar()}
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px' }}>Vérification en cours</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 24px' }}>
-          La propagation DNS peut prendre de quelques minutes à 48h. Cette page se met à jour automatiquement.
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px' }}>Vérification de votre domaine</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.6 }}>
+          Nous vérifions que les records DNS ont bien été ajoutés chez votre hébergeur (Hostinger, OVH, Ionos…).
+          La propagation peut prendre de quelques minutes à 48h selon votre hébergeur. Cette page se met à jour automatiquement.
         </p>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
