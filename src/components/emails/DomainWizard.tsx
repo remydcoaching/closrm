@@ -383,9 +383,13 @@ export default function DomainWizard({ existingDomain, onDomainChange }: DomainW
     return (
       <div>
         {renderProgressBar()}
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px' }}>Vérification en cours</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 24px' }}>
-          La propagation DNS peut prendre de quelques minutes à 48h. Cette page se met à jour automatiquement.
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 8px' }}>Vérification de vos records DNS</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.6 }}>
+          Assurez-vous d&apos;avoir ajouté les 5 records DNS chez votre hébergeur de domaine (OVH, Ionos, Cloudflare…).
+          Une fois ajoutés, la vérification est automatique — la propagation peut prendre de quelques minutes à 48h.
+        </p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 24px', padding: '10px 14px', borderRadius: 8, background: 'var(--bg-hover)', lineHeight: 1.5 }}>
+          💡 Pas de mail à attendre — la vérification se fait uniquement via les records DNS. Cliquez sur « Revoir les records » si vous devez vérifier les valeurs à copier.
         </p>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
