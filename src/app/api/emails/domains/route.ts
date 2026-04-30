@@ -22,10 +22,18 @@ export async function POST(request: Request) {
   const { workspaceId } = await getWorkspaceId()
   const supabase = await createClient()
   const body = await request.json()
-  const domain = body.domain?.trim()?.toLowerCase()
+  let domain = body.domain?.trim()?.toLowerCase()
 
   if (!domain) {
     return NextResponse.json({ error: 'Le domaine est requis' }, { status: 400 })
+  }
+
+  if (domain.includes('@')) {
+    domain = domain.split('@').pop()!
+  }
+
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(domain)) {
+    return NextResponse.json({ error: 'Format de domaine invalide (ex: moncoaching.fr)' }, { status: 400 })
   }
 
   // Check duplicate
