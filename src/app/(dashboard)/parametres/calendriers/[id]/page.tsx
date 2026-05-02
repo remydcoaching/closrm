@@ -10,6 +10,7 @@ import FormFieldsEditor from '@/components/booking-calendars/FormFieldsEditor'
 import LocationEditor from '@/components/booking-calendars/LocationEditor'
 import PurposeEditor from '@/components/booking-calendars/PurposeEditor'
 import RemindersEditor from '@/components/booking-calendars/RemindersEditor'
+import RemindersLog from '@/components/booking-calendars/RemindersLog'
 
 const DEFAULT_AVAILABILITY: WeekAvailability = {
   monday: [{ start: '09:00', end: '17:00' }],
@@ -38,6 +39,9 @@ export default function EditCalendarPage() {
   const [description, setDescription] = useState('')
   const [durationMinutes, setDurationMinutes] = useState(30)
   const [bufferMinutes, setBufferMinutes] = useState(0)
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState<number | ''>('')
+  const [emailTemplate, setEmailTemplate] = useState<'premium' | 'minimal' | 'plain'>('premium')
+  const [emailAccentColor, setEmailAccentColor] = useState('#E53E3E')
   const [color, setColor] = useState('#E53E3E')
   const [availability, setAvailability] = useState<WeekAvailability>(DEFAULT_AVAILABILITY)
   const [formFields, setFormFields] = useState<FormField[]>([])
@@ -59,6 +63,9 @@ export default function EditCalendarPage() {
         setDescription(cal.description ?? '')
         setDurationMinutes(cal.duration_minutes)
         setBufferMinutes(cal.buffer_minutes)
+        setMaxAdvanceDays(cal.max_advance_days ?? '')
+        setEmailTemplate(((cal as unknown as { email_template?: 'premium' | 'minimal' | 'plain' }).email_template) ?? 'premium')
+        setEmailAccentColor(((cal as unknown as { email_accent_color?: string }).email_accent_color) ?? '#E53E3E')
         setColor(cal.color)
         setAvailability(cal.availability ?? DEFAULT_AVAILABILITY)
         setFormFields(cal.form_fields ?? [])
@@ -97,6 +104,9 @@ export default function EditCalendarPage() {
           description: description || null,
           duration_minutes: durationMinutes,
           buffer_minutes: bufferMinutes,
+          max_advance_days: maxAdvanceDays === '' ? null : maxAdvanceDays,
+          email_template: emailTemplate,
+          email_accent_color: emailAccentColor,
           color,
           availability,
           form_fields: formFields,
@@ -285,6 +295,29 @@ export default function EditCalendarPage() {
             </div>
           </div>
 
+          {/* Booking horizon */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+              Limite de réservation (max. jours dans le futur)
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                placeholder="Aucune limite"
+                value={maxAdvanceDays}
+                onChange={e => setMaxAdvanceDays(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
+                style={{ ...inputStyle, maxWidth: 180 }}
+              />
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                {maxAdvanceDays === ''
+                  ? 'Pas de limite — les prospects peuvent réserver à n\'importe quelle date.'
+                  : `Les prospects ne pourront pas réserver au-delà de ${maxAdvanceDays} jour${maxAdvanceDays > 1 ? 's' : ''} dans le futur.`}
+              </span>
+            </div>
+          </div>
+
           {/* Color */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Couleur</label>
@@ -381,7 +414,37 @@ export default function EditCalendarPage() {
           background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
           borderRadius: 12, padding: 24,
         }}>
-          <RemindersEditor reminders={reminders} onChange={setReminders} />
+          <RemindersEditor
+            reminders={reminders}
+            onChange={setReminders}
+            calendarName={name}
+            emailTemplate={emailTemplate}
+            emailAccentColor={emailAccentColor}
+            onEmailTemplateChange={setEmailTemplate}
+            onEmailAccentColorChange={setEmailAccentColor}
+          />
+        </div>
+      </section>
+
+      {/* Section: Historique des rappels */}
+      <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Historique des envois
+        </h2>
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+          borderRadius: 12, padding: 24,
+        }}>
+          <RemindersLog calendarId={id} />
         </div>
       </section>
 
