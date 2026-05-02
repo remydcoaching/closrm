@@ -69,6 +69,8 @@ interface UseAgendaDataResult {
   removeEvents: (predicate: (ev: AgendaEvent) => boolean) => void
   /** Patch optimiste d'un event par id. */
   patchEvent: (id: string, updater: (ev: AgendaEvent) => AgendaEvent) => void
+  /** Ajoute un event localement (optimistic insert). */
+  addEvent: (ev: AgendaEvent) => void
 }
 
 function getDateRange(viewMode: AgendaViewMode, date: Date) {
@@ -225,6 +227,12 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
     setEvents((prev) => prev.map((ev) => (ev.id === id ? updater(ev) : ev)))
   }, [])
 
+  /** Ajoute un event au state local (optimistic insert avant POST). Le refetch
+   *  ultérieur le remplacera par la version serveur (avec l'ID réel). */
+  const addEvent = useCallback((ev: AgendaEvent) => {
+    setEvents((prev) => [...prev, ev])
+  }, [])
+
   return {
     events,
     calendars,
@@ -236,5 +244,6 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
     refetch: fetchEvents,
     removeEvents,
     patchEvent,
+    addEvent,
   }
 }
