@@ -6,6 +6,7 @@ import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
 import { createBookingReminders } from '@/lib/bookings/reminders'
+import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import type { CalendarReminder } from '@/types'
 
 const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, purpose, location_ids, reminders), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
@@ -299,8 +300,8 @@ export async function POST(request: NextRequest) {
             ? emailConfirmationReminder.message
                 .replace(/\{\{prenom\}\}/g, leadFirst)
                 .replace(/\{\{nom\}\}/g, leadLast)
-                .replace(/\{\{date_rdv\}\}/g, scheduledAt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
-                .replace(/\{\{heure_rdv\}\}/g, scheduledAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
+                .replace(/\{\{date_rdv\}\}/g, formatBookingDateFR(scheduledAt))
+                .replace(/\{\{heure_rdv\}\}/g, formatBookingTimeFR(scheduledAt))
                 .replace(/\{\{nom_calendrier\}\}/g, (data.booking_calendar as { name?: string } | null)?.name ?? '')
             : undefined
 
@@ -315,8 +316,8 @@ export async function POST(request: NextRequest) {
             workspaceId,
             coachName: owner?.full_name ?? 'Votre coach',
             prospectName: `${leadFirst} ${leadLast}`.trim(),
-            date: scheduledAt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-            time: scheduledAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            date: formatBookingDateFR(scheduledAt),
+            time: formatBookingTimeFR(scheduledAt),
             meetUrl: result?.meetUrl ?? undefined,
             locationName: locationName ?? undefined,
             locationAddress: locationAddress ?? undefined,

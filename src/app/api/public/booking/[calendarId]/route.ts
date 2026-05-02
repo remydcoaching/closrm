@@ -17,6 +17,7 @@ import { getAvailableSlots } from '@/lib/bookings/availability'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
 import { createBookingReminders } from '@/lib/bookings/reminders'
+import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import type { CalendarReminder } from '@/types'
 import { startOfMonth, endOfMonth, parseISO, addMinutes } from 'date-fns'
 
@@ -296,7 +297,7 @@ export async function POST(
       is_personal: false,
       location_id: location_id ?? null,
     })
-    .select('id, scheduled_at, duration_minutes, status')
+    .select('id, scheduled_at, duration_minutes, status, manage_token')
     .single()
 
   if (bookingError || !booking) {
@@ -452,8 +453,8 @@ export async function POST(
         const calAccent = (calRes.data as { email_accent_color?: string } | null)?.email_accent_color ?? '#E53E3E'
         const calName = (calRes.data as { name?: string } | null)?.name ?? ''
 
-        const dateStr = bookingStartDt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-        const timeStr = bookingStartDt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        const dateStr = formatBookingDateFR(bookingStartDt)
+        const timeStr = formatBookingTimeFR(bookingStartDt)
 
         const customMessage = emailConfirmationReminder
           ? emailConfirmationReminder.message

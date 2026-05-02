@@ -8,8 +8,8 @@ import { consumeResource } from '@/lib/billing/service'
 import { getWorkspaceSenderConfig } from '@/lib/email/sender-config'
 import { logEmailSend } from '@/lib/email/log-send'
 import { buildBookingConfirmationHtml } from '@/lib/email/templates/booking-confirmation'
-import { format, parseISO } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import { parseISO } from 'date-fns'
+import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +52,21 @@ export async function GET(request: NextRequest) {
           .update({ status: 'failed', error: 'Lead introuvable' })
           .eq('id', reminder.id)
         results.failed++
+        continue
+      }
+
+      // Skip silently if the booking has been deleted or cancelled —
+      // sending a reminder for a non-existent booking would just confuse
+      // the prospect. Mark as cancelled instead of failed (this is expected).
+      const { data: bookingStatus } = await supabase
+        .from('bookings')
+        .select('id, status')
+        .eq('id', reminder.booking_id)
+        .maybeSingle()
+      if (!bookingStatus || bookingStatus.status === 'cancelled') {
+        await supabase.from('booking_reminders')
+          .update({ status: 'cancelled', error: 'Booking deleted or cancelled' })
+          .eq('id', reminder.id)
         continue
       }
 
@@ -99,8 +114,8 @@ export async function GET(request: NextRequest) {
             }
 
             const scheduledAt = booking?.scheduled_at ? parseISO(booking.scheduled_at) : null
-            const dateStr = scheduledAt ? format(scheduledAt, 'EEEE d MMMM yyyy', { locale: fr }) : ''
-            const timeStr = scheduledAt ? format(scheduledAt, 'HH:mm') : ''
+            const dateStr = scheduledAt ? formatBookingDateFR(scheduledAt) : ''
+            const timeStr = scheduledAt ? formatBookingTimeFR(scheduledAt) : ''
 
             const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
             const manageToken = (booking as { manage_token?: string } | null)?.manage_token
