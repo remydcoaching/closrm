@@ -30,6 +30,8 @@ import { AlertTriangle, Plus } from 'lucide-react'
 import { useAgendaData } from '@/lib/agenda/use-agenda-data'
 import type { AgendaEvent } from '@/types/agenda'
 import { WeekView } from '@/components/agenda/v2/WeekView'
+import { DayView } from '@/components/agenda/v2/DayView'
+import { MonthView } from '@/components/agenda/v2/MonthView'
 import { AgendaToolbar, type AgendaViewMode } from '@/components/agenda/v2/AgendaToolbar'
 import { EventDetailPanel } from '@/components/agenda/v2/EventDetailPanel'
 import NewBookingModal from '@/components/agenda/NewBookingModal'
@@ -134,7 +136,6 @@ export default function AgendaV2Page() {
       <AgendaToolbar
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        disabledModes={['day', 'month']}
         periodLabel={periodLabel}
         onPrev={navigatePrev}
         onNext={navigateNext}
@@ -214,12 +215,33 @@ export default function AgendaV2Page() {
       ) : (
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-            <WeekView
-              date={currentDate}
-              events={events}
-              onEventClick={handleEventClick}
-              onSlotClick={handleSlotClick}
-            />
+            {viewMode === 'week' && (
+              <WeekView
+                date={currentDate}
+                events={events}
+                onEventClick={handleEventClick}
+                onSlotClick={handleSlotClick}
+              />
+            )}
+            {viewMode === 'day' && (
+              <DayView
+                date={currentDate}
+                events={events}
+                onEventClick={handleEventClick}
+                onSlotClick={handleSlotClick}
+              />
+            )}
+            {viewMode === 'month' && (
+              <MonthView
+                date={currentDate}
+                events={events}
+                onEventClick={handleEventClick}
+                onDayClick={(d) => {
+                  setCurrentDate(d)
+                  setViewMode('day')
+                }}
+              />
+            )}
             {/* FAB nouveau RDV — placé en bas-droite, mais au-dessus du panel */}
             <button
               type="button"
