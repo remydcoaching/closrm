@@ -198,10 +198,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // If the calendar already has an email "Confirmation" reminder (delay 0), the
-    // cron will send the styled confirmation — skip the direct send to avoid a
-    // duplicate. Otherwise, send the default confirmation immediately below.
-    const hasEmailConfirmationReminder = calReminders.some(
+    // The Confirmation reminder (delay 0, channel email) is sent directly
+    // here at creation time (not queued in booking_reminders). We extract its
+    // message + template config for sendBookingConfirmationEmail below.
+    const emailConfirmationReminder = calReminders.find(
       (r) => r.channel === 'email' && r.delay_value === 0,
     )
 
@@ -281,16 +281,34 @@ export async function POST(request: NextRequest) {
         }
 
         const leadEmail = (data.lead as { email?: string | null } | null)?.email
-        if (leadEmail && !hasEmailConfirmationReminder) {
+        if (leadEmail) {
           const leadFirst = (data.lead as { first_name?: string } | null)?.first_name ?? ''
           const leadLast = (data.lead as { last_name?: string } | null)?.last_name ?? ''
           const supa2 = await createClient()
-          const { data: owner } = await supa2
-            .from('users')
-            .select('full_name')
-            .eq('workspace_id', workspaceId)
-            .eq('role', 'coach')
-            .maybeSingle()
+          const [{ data: owner }, { data: cal }] = await Promise.all([
+            supa2.from('users').select('full_name').eq('workspace_id', workspaceId).eq('role', 'coach').maybeSingle(),
+            data.calendar_id
+              ? supa2.from('booking_calendars').select('email_template, email_accent_color').eq('id', data.calendar_id).maybeSingle()
+              : Promise.resolve({ data: null }),
+          ])
+          const calTemplate = (cal as { email_template?: 'premium' | 'minimal' | 'plain' } | null)?.email_template ?? 'premium'
+          const calAccent = (cal as { email_accent_color?: string } | null)?.email_accent_color ?? '#E53E3E'
+
+          // Resolve {{vars}} in the Confirmation reminder message if present
+          const customMessage = emailConfirmationReminder
+            ? emailConfirmationReminder.message
+                .replace(/\{\{prenom\}\}/g, leadFirst)
+                .replace(/\{\{nom\}\}/g, leadLast)
+                .replace(/\{\{date_rdv\}\}/g, scheduledAt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))
+                .replace(/\{\{heure_rdv\}\}/g, scheduledAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
+                .replace(/\{\{nom_calendrier\}\}/g, (data.booking_calendar as { name?: string } | null)?.name ?? '')
+            : undefined
+
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+          const manageToken = (data as unknown as { manage_token?: string }).manage_token
+          const manageUrl = appUrl && manageToken
+            ? `${appUrl}/booking/manage/${data.id}?token=${manageToken}`
+            : undefined
 
           await sendBookingConfirmationEmail({
             to: leadEmail,
@@ -302,6 +320,10 @@ export async function POST(request: NextRequest) {
             meetUrl: result?.meetUrl ?? undefined,
             locationName: locationName ?? undefined,
             locationAddress: locationAddress ?? undefined,
+            template: calTemplate,
+            accentColor: calAccent,
+            customMessage,
+            manageUrl,
           }).catch((err) => console.error('[booking] booking-confirmation email failed:', err instanceof Error ? err.message : err))
         }
       } catch (err) {
