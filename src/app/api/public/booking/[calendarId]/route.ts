@@ -35,6 +35,7 @@ interface CalendarRow {
   buffer_minutes: number
   purpose: string
   reminders: unknown[]
+  max_advance_days: number | null
 }
 
 async function getCalendarById(calendarId: string): Promise<CalendarRow | null> {
@@ -43,7 +44,7 @@ async function getCalendarById(calendarId: string): Promise<CalendarRow | null> 
   const { data: calendar, error } = await supabase
     .from('booking_calendars')
     .select(
-      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose, reminders',
+      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose, reminders, max_advance_days',
     )
     .eq('id', calendarId)
     .eq('is_active', true)
@@ -78,6 +79,30 @@ export async function GET(
     const now = new Date()
     rangeStart = startOfMonth(now)
     rangeEnd = endOfMonth(now)
+  }
+
+  // Enforce booking horizon: cap the visible range at now + max_advance_days
+  if (calendar.max_advance_days != null) {
+    const horizon = new Date()
+    horizon.setHours(23, 59, 59, 999)
+    horizon.setDate(horizon.getDate() + calendar.max_advance_days)
+    if (rangeEnd > horizon) rangeEnd = horizon
+    // If the entire requested month is past the horizon, return empty slots
+    if (rangeStart > horizon) {
+      return NextResponse.json({
+        calendar: {
+          name: calendar.name,
+          description: calendar.description,
+          duration_minutes: calendar.duration_minutes,
+          location_ids: calendar.location_ids,
+          color: calendar.color,
+          form_fields: calendar.form_fields,
+          max_advance_days: calendar.max_advance_days,
+        },
+        locations: [],
+        slots: [],
+      })
+    }
   }
 
   const { data: existingBookings, error: bookingsError } = await supabase
@@ -121,6 +146,7 @@ export async function GET(
       location_ids: calendar.location_ids,
       color: calendar.color,
       form_fields: calendar.form_fields,
+      max_advance_days: calendar.max_advance_days,
     },
     locations: locationsList,
     slots,
@@ -160,6 +186,19 @@ export async function POST(
   // Anti-double-booking
   const bookingStart = parseISO(scheduled_at)
   const bookingEnd = addMinutes(bookingStart, calendar.duration_minutes)
+
+  // Enforce booking horizon
+  if (calendar.max_advance_days != null) {
+    const horizon = new Date()
+    horizon.setHours(23, 59, 59, 999)
+    horizon.setDate(horizon.getDate() + calendar.max_advance_days)
+    if (bookingStart > horizon) {
+      return NextResponse.json(
+        { error: `Vous ne pouvez réserver qu'à maximum ${calendar.max_advance_days} jour${calendar.max_advance_days > 1 ? 's' : ''} d'avance.` },
+        { status: 400 },
+      )
+    }
+  }
 
   const { data: conflicts, error: conflictError } = await supabase
     .from('bookings')
@@ -399,7 +438,11 @@ export async function POST(
       console.error('[public-booking-by-id] Google Calendar event creation failed:', err instanceof Error ? err.message : err)
     }
 
-    if (email) {
+    const hasEmailConfirmationReminder = (calendar.reminders as CalendarReminder[] | undefined)?.some(
+      (r) => r.channel === 'email' && r.delay_value === 0,
+    )
+
+    if (email && !hasEmailConfirmationReminder) {
       try {
         const ownerRes = await supabase
           .from('users')

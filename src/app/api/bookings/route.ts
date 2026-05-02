@@ -179,8 +179,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create booking reminders if calendar has reminders configured
+    const calReminders = ((data.booking_calendar as { reminders?: unknown[] } | null)?.reminders ?? []) as CalendarReminder[]
     if (data.lead_id && data.calendar_id) {
-      const calReminders = ((data.booking_calendar as { reminders?: unknown[] } | null)?.reminders ?? []) as CalendarReminder[]
       const calName = (data.booking_calendar as { name?: string } | null)?.name ?? ''
       const leadData = data.lead as { first_name?: string; last_name?: string } | null
       if (calReminders.length > 0 && leadData) {
@@ -197,6 +197,13 @@ export async function POST(request: NextRequest) {
         })
       }
     }
+
+    // If the calendar already has an email "Confirmation" reminder (delay 0), the
+    // cron will send the styled confirmation — skip the direct send to avoid a
+    // duplicate. Otherwise, send the default confirmation immediately below.
+    const hasEmailConfirmationReminder = calReminders.some(
+      (r) => r.channel === 'email' && r.delay_value === 0,
+    )
 
     // Fire workflow triggers (non-blocking)
     if (data.lead_id) {
@@ -274,7 +281,7 @@ export async function POST(request: NextRequest) {
         }
 
         const leadEmail = (data.lead as { email?: string | null } | null)?.email
-        if (leadEmail) {
+        if (leadEmail && !hasEmailConfirmationReminder) {
           const leadFirst = (data.lead as { first_name?: string } | null)?.first_name ?? ''
           const leadLast = (data.lead as { last_name?: string } | null)?.last_name ?? ''
           const supa2 = await createClient()
