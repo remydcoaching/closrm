@@ -49,6 +49,21 @@
   --scrollbar-hover: rgba(255,255,255,0.15);
 }
 
+/* Agenda — tokens dédiés au module refonte (Phase 2).
+   Restent valides en light mode via les surcharges plus bas. */
+:root {
+  --agenda-grid-line: rgba(255, 255, 255, 0.035);         /* demi-heures (très subtiles, plus utilisées) */
+  --agenda-grid-line-strong: rgba(255, 255, 255, 0.09);   /* heures pleines (visibles mais douces) */
+  --agenda-today-tint: rgba(0, 200, 83, 0.025);           /* léger fond vert primaire */
+  --agenda-event-fill-opacity: 0.14;
+  --agenda-event-bar-width: 3px;
+  --agenda-event-radius: 6px;
+  --agenda-now-thickness: 2px;
+  --agenda-slot-height: 32px;
+  --agenda-gutter-width: 56px;
+  --agenda-allday-height: 24px;
+}
+
 /* Light mode */
 [data-theme="light"] {
   --bg-primary: #ffffff;
@@ -70,6 +85,11 @@
   --shadow-dropdown: rgba(0,0,0,0.15);
   --scrollbar-thumb: rgba(0,0,0,0.12);
   --scrollbar-hover: rgba(0,0,0,0.2);
+
+  /* Agenda — surcharges light mode */
+  --agenda-grid-line: rgba(0, 0, 0, 0.04);
+  --agenda-grid-line-strong: rgba(0, 0, 0, 0.08);
+  --agenda-today-tint: rgba(0, 200, 83, 0.04);
 }
 
 * {

@@ -120,22 +120,35 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
                       marginBottom: 1, cursor: 'pointer',
                     }}
                   >
-                    {format(parseISO(b.scheduled_at), 'HH:mm')} {title}
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                      {format(parseISO(b.scheduled_at), 'HH:mm')}
+                    </span>{' '}{title}
                   </div>
                 )
               })}
 
-              {/* Overflow indicator */}
+              {/* Overflow indicator — clicking opens the day view so events are not silently lost */}
               {overflow > 0 && (
-                <div
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDayClick(day) }}
                   style={{
                     fontSize: 10,
                     color: 'var(--text-secondary)',
                     marginTop: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '1px 4px',
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontWeight: 500,
                   }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
                 >
                   +{overflow} autre{overflow > 1 ? 's' : ''}
-                </div>
+                </button>
               )}
             </div>
           )
