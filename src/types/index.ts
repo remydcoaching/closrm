@@ -412,6 +412,8 @@ export interface BookingCalendar {
   purpose: CalendarPurpose
   reminders: CalendarReminder[]
   is_active: boolean
+  confirmation_template_id: string | null
+  reminder_email_template_id: string | null
   created_at: string
   updated_at: string
 }
