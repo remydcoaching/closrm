@@ -409,6 +409,9 @@ export interface BookingCalendar {
   form_fields: FormField[]
   availability: WeekAvailability
   buffer_minutes: number
+  max_advance_days: number | null
+  email_template: 'premium' | 'minimal' | 'plain'
+  email_accent_color: string
   purpose: CalendarPurpose
   reminders: CalendarReminder[]
   is_active: boolean

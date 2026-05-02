@@ -11,6 +11,9 @@ import { verifyDomain } from '@/lib/email/domains'
 import { consumeResource } from '@/lib/billing/service'
 import { getWorkspaceSenderConfig } from '@/lib/email/sender-config'
 import { logEmailSend } from '@/lib/email/log-send'
+import { buildBookingConfirmationHtml } from '@/lib/email/templates/booking-confirmation'
+import { format, parseISO } from 'date-fns'
+import { fr } from 'date-fns/locale'
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -378,7 +381,67 @@ export async function GET(request: NextRequest) {
                 if (!quotaResult.allowed) {
                   sendError = quotaResult.error_message || 'Quota email dépassé'
                 } else {
-                  const senderConfig = await getWorkspaceSenderConfig(reminder.workspace_id)
+                  // Lookup workspace brand name + coach name + booking details for the styled template
+                  const [{ data: ws }, { data: coachUser }, { data: booking }] = await Promise.all([
+                    supabase.from('workspaces').select('name').eq('id', reminder.workspace_id).maybeSingle(),
+                    supabase.from('users').select('full_name').eq('workspace_id', reminder.workspace_id).eq('role', 'coach').maybeSingle(),
+                    supabase.from('bookings').select('scheduled_at, meet_url, location_name, location_address, calendar_id, manage_token').eq('id', reminder.booking_id).maybeSingle(),
+                  ])
+
+                  // Resolve template + accent color from the calendar (fall back to defaults)
+                  let calTemplate: 'premium' | 'minimal' | 'plain' = 'premium'
+                  let calAccent: string = '#E53E3E'
+                  const bookingCalId = (booking as { calendar_id?: string | null } | null)?.calendar_id
+                  if (bookingCalId) {
+                    const { data: cal } = await supabase
+                      .from('booking_calendars')
+                      .select('email_template, email_accent_color')
+                      .eq('id', bookingCalId)
+                      .maybeSingle()
+                    if (cal) {
+                      const t = (cal as { email_template?: string }).email_template
+                      if (t === 'minimal' || t === 'plain' || t === 'premium') calTemplate = t
+                      const c = (cal as { email_accent_color?: string }).email_accent_color
+                      if (typeof c === 'string' && /^#[0-9A-Fa-f]{6}$/.test(c)) calAccent = c
+                    }
+                  }
+
+                  const scheduledAt = booking?.scheduled_at ? parseISO(booking.scheduled_at) : null
+                  const dateStr = scheduledAt ? format(scheduledAt, 'EEEE d MMMM yyyy', { locale: fr }) : ''
+                  const timeStr = scheduledAt ? format(scheduledAt, 'HH:mm') : ''
+
+                  const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+                  const manageToken = (booking as { manage_token?: string } | null)?.manage_token
+                  const manageUrl = appUrl && manageToken
+                    ? `${appUrl}/booking/manage/${reminder.booking_id}?token=${manageToken}`
+                    : undefined
+
+                  const html = scheduledAt
+                    ? buildBookingConfirmationHtml({
+                        to: lead.email,
+                        workspaceId: reminder.workspace_id,
+                        coachName: coachUser?.full_name ?? '',
+                        brandName: ws?.name ?? coachUser?.full_name ?? '',
+                        prospectName: `${lead.first_name ?? ''} ${lead.last_name ?? ''}`.trim(),
+                        date: dateStr,
+                        time: timeStr,
+                        meetUrl: booking?.meet_url ?? undefined,
+                        locationName: booking?.location_name ?? undefined,
+                        locationAddress: booking?.location_address ?? undefined,
+                        customMessage: reminder.message,
+                        template: calTemplate,
+                        accentColor: calAccent,
+                        manageUrl,
+                      })
+                    : `<p>${reminder.message.replace(/\n/g, '<br>')}</p>`
+
+                  const subject = scheduledAt
+                    ? `Votre rendez-vous le ${dateStr} à ${timeStr}`
+                    : 'Rappel de votre rendez-vous'
+
+                  const senderConfig = await getWorkspaceSenderConfig(reminder.workspace_id, {
+                    fromName: ws?.name ?? coachUser?.full_name ?? undefined,
+                  })
                   const result = await sendEmail(
                     {
                       fromEmail: senderConfig.fromEmail,
@@ -387,8 +450,8 @@ export async function GET(request: NextRequest) {
                       workspaceId: reminder.workspace_id,
                     },
                     lead.email,
-                    'Rappel de votre rendez-vous',
-                    `<p>${reminder.message.replace(/\n/g, '<br>')}</p>`
+                    subject,
+                    html
                   )
                   if (!result.ok) {
                     sendError = result.error ?? 'Erreur envoi email'
@@ -398,7 +461,7 @@ export async function GET(request: NextRequest) {
                       sesMessageId: result.id,
                       source: 'booking_reminder',
                       leadId: reminder.lead_id,
-                      subject: 'Rappel de votre rendez-vous',
+                      subject,
                       fromEmail: senderConfig.fromEmail,
                     })
                   }

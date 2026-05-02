@@ -1,12 +1,19 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, X, Mail, MessageCircle, MessageSquare, Clock, ChevronDown, ChevronUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Plus, X, Mail, MessageCircle, MessageSquare, Clock, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import type { CalendarReminder, ReminderChannel } from '@/types'
+
+type EmailTemplateChoice = 'premium' | 'minimal' | 'plain'
 
 interface RemindersEditorProps {
   reminders: CalendarReminder[]
   onChange: (reminders: CalendarReminder[]) => void
+  calendarName?: string
+  emailTemplate?: EmailTemplateChoice
+  emailAccentColor?: string
+  onEmailTemplateChange?: (template: EmailTemplateChoice) => void
+  onEmailAccentColorChange?: (color: string) => void
 }
 
 const CHANNELS: { value: ReminderChannel; label: string; icon: typeof Mail; color: string }[] = [
@@ -43,9 +50,68 @@ function formatDelay(r: CalendarReminder): string {
   return `J-${r.delay_value}`
 }
 
-export default function RemindersEditor({ reminders, onChange }: RemindersEditorProps) {
+export default function RemindersEditor({
+  reminders,
+  onChange,
+  calendarName,
+  emailTemplate = 'premium',
+  emailAccentColor = '#E53E3E',
+  onEmailTemplateChange,
+  onEmailAccentColorChange,
+}: RemindersEditorProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showPresets, setShowPresets] = useState(false)
+  const [previewHtml, setPreviewHtml] = useState<string>('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewVariant, setPreviewVariant] = useState<'meet' | 'location'>('meet')
+  const [previewError, setPreviewError] = useState<string | null>(null)
+
+  // Live-refresh the preview whenever the expanded EMAIL reminder's message changes,
+  // the calendar name changes, or the variant toggle changes. Debounced 400ms.
+  const expandedReminder = reminders.find((r) => r.id === expandedId)
+  const expandedMessage = expandedReminder?.channel === 'email' ? expandedReminder.message : ''
+  const isEmailExpanded = expandedReminder?.channel === 'email'
+
+  useEffect(() => {
+    if (!isEmailExpanded) {
+      setPreviewHtml('')
+      return
+    }
+    let cancelled = false
+    setPreviewLoading(true)
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/calendars/preview-reminder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: expandedMessage,
+            calendarName,
+            variant: previewVariant,
+            template: emailTemplate,
+            accentColor: emailAccentColor,
+          }),
+        })
+        if (cancelled) return
+        if (!res.ok) {
+          setPreviewError('Erreur de chargement')
+          return
+        }
+        const html = await res.text()
+        if (cancelled) return
+        setPreviewError(null)
+        setPreviewHtml(html)
+      } catch {
+        if (!cancelled) setPreviewError('Erreur réseau')
+      } finally {
+        if (!cancelled) setPreviewLoading(false)
+      }
+    }, 400)
+    return () => {
+      cancelled = true
+      clearTimeout(handle)
+    }
+  }, [isEmailExpanded, expandedMessage, calendarName, previewVariant, emailTemplate, emailAccentColor])
 
   function addFromPreset(preset: typeof QUICK_PRESETS[0], channel: ReminderChannel = 'whatsapp') {
     const isConfirmation = 'isConfirmation' in preset && preset.isConfirmation
@@ -94,8 +160,70 @@ export default function RemindersEditor({ reminders, onChange }: RemindersEditor
     updateReminder(id, updates)
   }
 
+  const TEMPLATE_OPTIONS: { value: EmailTemplateChoice; label: string; description: string }[] = [
+    { value: 'premium', label: 'Premium', description: 'Header dark + détails illustrés' },
+    { value: 'minimal', label: 'Minimal', description: 'Sobre, light, lisible' },
+    { value: 'plain', label: 'Texte', description: 'Brut, sans mise en forme' },
+  ]
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Style email — visible only if at least one email reminder exists */}
+      {(onEmailTemplateChange || onEmailAccentColorChange) && reminders.some(r => r.channel === 'email') && (
+        <div style={{
+          padding: '12px 14px', borderRadius: 10,
+          border: '1px solid var(--border-primary)',
+          background: 'var(--bg-input)',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label, #9CA3AF)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Style des emails
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {TEMPLATE_OPTIONS.map(opt => {
+              const isActive = emailTemplate === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => onEmailTemplateChange?.(opt.value)}
+                  style={{
+                    flex: '1 1 140px', minWidth: 0,
+                    padding: '10px 12px', borderRadius: 8,
+                    border: `1.5px solid ${isActive ? emailAccentColor : 'var(--border-primary)'}`,
+                    background: isActive ? `${emailAccentColor}14` : 'transparent',
+                    color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    cursor: 'pointer', textAlign: 'left',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>{opt.label}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{opt.description}</p>
+                </button>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Couleur d&apos;accent</span>
+            <input
+              type="color"
+              value={emailAccentColor}
+              onChange={(e) => onEmailAccentColorChange?.(e.target.value)}
+              style={{ width: 32, height: 32, border: '1px solid var(--border-primary)', borderRadius: 6, padding: 0, cursor: 'pointer', background: 'transparent' }}
+            />
+            <input
+              type="text"
+              value={emailAccentColor}
+              onChange={(e) => {
+                const v = e.target.value
+                if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) onEmailAccentColorChange?.(v)
+              }}
+              style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 6, padding: '4px 8px', fontSize: 12, color: 'var(--text-primary)', outline: 'none', width: 90, fontFamily: 'monospace' }}
+            />
+          </div>
+        </div>
+      )}
+
       {reminders.length === 0 && !showPresets && (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>
           Aucun rappel configuré. Ajoutez-en pour notifier vos prospects avant leurs rendez-vous.
@@ -289,6 +417,65 @@ export default function RemindersEditor({ reminders, onChange }: RemindersEditor
                     style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: 'var(--text-primary)', outline: 'none', resize: 'vertical' }}
                   />
                 </div>
+
+                {/* Live email preview — updates as you type */}
+                {reminder.channel === 'email' && (
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-label, #9CA3AF)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          Aperçu live
+                        </span>
+                        {previewLoading && <Loader2 size={11} style={{ color: 'var(--text-muted)', animation: 'spin 1s linear infinite' }} />}
+                      </div>
+                      <div style={{ display: 'flex', gap: 3, padding: 2, background: 'var(--bg-input)', borderRadius: 6, border: '1px solid var(--border-primary)' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setPreviewVariant('meet') }}
+                          style={{
+                            padding: '3px 8px', borderRadius: 4, border: 'none',
+                            background: previewVariant === 'meet' ? 'var(--color-primary, #E53E3E)' : 'transparent',
+                            color: previewVariant === 'meet' ? '#fff' : 'var(--text-secondary)',
+                            cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                          }}
+                        >Visio</button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setPreviewVariant('location') }}
+                          style={{
+                            padding: '3px 8px', borderRadius: 4, border: 'none',
+                            background: previewVariant === 'location' ? 'var(--color-primary, #E53E3E)' : 'transparent',
+                            color: previewVariant === 'location' ? '#fff' : 'var(--text-secondary)',
+                            cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                          }}
+                        >Présentiel</button>
+                      </div>
+                    </div>
+                    <div style={{
+                      borderRadius: 10,
+                      border: '1px solid var(--border-primary)',
+                      background: '#E5E7EB',
+                      overflow: 'hidden',
+                      height: 480,
+                      position: 'relative',
+                    }}>
+                      {previewError ? (
+                        <div style={{ padding: 20, fontSize: 12, color: '#dc2626' }}>{previewError}</div>
+                      ) : previewHtml ? (
+                        <iframe
+                          srcDoc={previewHtml}
+                          title="Aperçu email"
+                          sandbox=""
+                          style={{ width: '100%', height: '100%', border: 'none', display: 'block', background: '#E5E7EB' }}
+                        />
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6B7280', fontSize: 12 }}>
+                          <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
