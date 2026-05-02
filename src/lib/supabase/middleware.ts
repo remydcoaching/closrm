@@ -56,10 +56,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Routes "utilitaires" publiques qui doivent marcher même pour un user logué
-  // (short links trackables, unsubscribe) — sinon le user est redirigé vers
-  // /dashboard au lieu d'atteindre la vraie destination.
+  // (short links trackables, unsubscribe, widget de booking, page de gestion
+  // RDV) — sinon le user est redirigé vers /dashboard au lieu d'atteindre la
+  // vraie destination.
   const isUtilityPublicRoute =
-    pathname.startsWith('/c/') || pathname.startsWith('/unsubscribe')
+    pathname.startsWith('/c/') ||
+    pathname.startsWith('/unsubscribe') ||
+    pathname.startsWith('/book/') ||
+    pathname.startsWith('/booking/')
 
   if (
     user &&
