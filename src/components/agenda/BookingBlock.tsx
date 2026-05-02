@@ -2,6 +2,7 @@
 
 import { format, parseISO, addMinutes } from 'date-fns'
 import { BookingWithCalendar } from '@/types'
+import { Z_AGENDA } from '@/lib/agenda/z-index'
 
 interface BookingBlockProps {
   booking: BookingWithCalendar
@@ -52,12 +53,13 @@ export function BookingBlock({ booking, onClick, style, draggable = true }: Book
         padding: isShort ? '2px 6px' : '4px 6px',
         cursor: 'pointer',
         overflow: 'hidden',
-        zIndex: 1,
+        zIndex: Z_AGENDA.eventBlock,
         transition: 'opacity 0.1s',
         display: 'flex',
         flexDirection: isShort ? 'row' : 'column',
         alignItems: isShort ? 'center' : 'flex-start',
         gap: isShort ? 6 : 0,
+        minWidth: 0,
         ...style,
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.85' }}
@@ -66,12 +68,13 @@ export function BookingBlock({ booking, onClick, style, draggable = true }: Book
       {isShort ? (
         /* Single line: "10:00 - 10:30  Antoine Roux" */
         <>
-          <span style={{ fontSize: 10, color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <span style={{ fontSize: 10, color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
             {startTime} - {endTime}
           </span>
           <span style={{
             fontSize: 11, fontWeight: 600, color: 'var(--text-primary)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            flex: 1, minWidth: 0,
           }}>
             {displayTitle}
           </span>
@@ -86,7 +89,7 @@ export function BookingBlock({ booking, onClick, style, draggable = true }: Book
           }}>
             {displayTitle}
           </div>
-          <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 1 }}>
+          <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 1, fontVariantNumeric: 'tabular-nums' }}>
             {startTime} - {endTime}
           </div>
           {(calendarName || locationName) && (
