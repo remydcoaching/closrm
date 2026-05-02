@@ -336,6 +336,9 @@ export async function GET(request: NextRequest) {
       }
     }
     // ─── 6. Send pending booking reminders ────────────────────────────────
+    // Moved to /api/cron/booking-reminders (runs every minute) to deliver
+    // reminders without forcing this heavier scheduler to run as often.
+    /*
     {
       const { data: pendingReminders } = await supabase
         .from('booking_reminders')
@@ -550,6 +553,7 @@ export async function GET(request: NextRequest) {
         }
       }
     }
+    */
     // ─── 7. Background DNS verification for pending email domains ─────
     {
       const { data: pendingDomains } = await supabase
