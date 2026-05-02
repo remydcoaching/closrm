@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import type { CalendarReminder } from '@/types'
-import { format, parseISO } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import { parseISO } from 'date-fns'
+import { formatBookingDateFR, formatBookingTimeFR } from './format'
 
 /**
  * Compute the send_at datetime for a reminder relative to a booking.
@@ -55,8 +55,8 @@ export function resolveMessage(
   calendarName: string
 ): string {
   const bookingDate = parseISO(bookingScheduledAt)
-  const dateStr = format(bookingDate, 'EEEE d MMMM yyyy', { locale: fr })
-  const timeStr = format(bookingDate, 'HH:mm')
+  const dateStr = formatBookingDateFR(bookingDate)
+  const timeStr = formatBookingTimeFR(bookingDate)
 
   return template
     .replace(/\{\{prenom\}\}/g, lead.first_name)
