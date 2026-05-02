@@ -34,6 +34,7 @@ import { DayView } from '@/components/agenda/v2/DayView'
 import { MonthView } from '@/components/agenda/v2/MonthView'
 import { AgendaToolbar, type AgendaViewMode } from '@/components/agenda/v2/AgendaToolbar'
 import { EventDetailPanel } from '@/components/agenda/v2/EventDetailPanel'
+import { AgendaSidebar } from '@/components/agenda/v2/AgendaSidebar'
 import NewBookingModal from '@/components/agenda/NewBookingModal'
 
 const DEFAULT_NEW_DURATION = 60
@@ -67,6 +68,12 @@ export default function AgendaV2Page() {
     duration: number
   } | null>(null)
 
+  // Filtres sidebar. Pattern : `'all'` = tout visible (état initial / "reset"),
+  // sinon une Set explicite. Évite un useEffect d'initialisation.
+  const [calendarVisibility, setCalendarVisibility] = useState<Set<string> | 'all'>('all')
+  const [showPersonal, setShowPersonal] = useState(true)
+  const [showCalls, setShowCalls] = useState(true)
+
   const {
     events,
     calendars,
@@ -76,6 +83,38 @@ export default function AgendaV2Page() {
     dismissSyncError,
     refetch,
   } = useAgendaData({ viewMode, currentDate })
+
+  // Set des calendriers visibles, dérivé : si on est en mode `'all'`, c'est
+  // l'ensemble de tous les calendriers connus à l'instant t (donc s'auto-met-
+  // à-jour si un nouveau cal arrive sans qu'on touche au state).
+  const visibleCalendarIds = useMemo<Set<string>>(() => {
+    if (calendarVisibility === 'all') return new Set(calendars.map((c) => c.id))
+    return calendarVisibility
+  }, [calendarVisibility, calendars])
+
+  const filteredEvents = useMemo(() => {
+    return events.filter((ev) => {
+      if (ev.kind === 'call') return showCalls
+      const b = ev.booking
+      if (b.is_personal) return showPersonal
+      if (calendarVisibility === 'all') return true
+      if (b.calendar_id) return visibleCalendarIds.has(b.calendar_id)
+      return true
+    })
+  }, [events, visibleCalendarIds, calendarVisibility, showPersonal, showCalls])
+
+  function toggleCalendar(id: string) {
+    setCalendarVisibility((prev) => {
+      // Première interaction : on matérialise la Set complète puis on toggle
+      const base =
+        prev === 'all'
+          ? new Set(calendars.map((c) => c.id))
+          : new Set(prev)
+      if (base.has(id)) base.delete(id)
+      else base.add(id)
+      return base
+    })
+  }
 
   const periodLabel = useMemo(
     () => formatPeriodLabel(viewMode, currentDate),
@@ -214,11 +253,22 @@ export default function AgendaV2Page() {
         </div>
       ) : (
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <AgendaSidebar
+            selectedDate={currentDate}
+            onSelectDate={setCurrentDate}
+            calendars={calendars}
+            visibleCalendarIds={visibleCalendarIds}
+            onToggleCalendar={toggleCalendar}
+            showPersonal={showPersonal}
+            onTogglePersonal={() => setShowPersonal((v) => !v)}
+            showCalls={showCalls}
+            onToggleCalls={() => setShowCalls((v) => !v)}
+          />
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
             {viewMode === 'week' && (
               <WeekView
                 date={currentDate}
-                events={events}
+                events={filteredEvents}
                 onEventClick={handleEventClick}
                 onSlotClick={handleSlotClick}
               />
@@ -226,7 +276,7 @@ export default function AgendaV2Page() {
             {viewMode === 'day' && (
               <DayView
                 date={currentDate}
-                events={events}
+                events={filteredEvents}
                 onEventClick={handleEventClick}
                 onSlotClick={handleSlotClick}
               />
@@ -234,7 +284,7 @@ export default function AgendaV2Page() {
             {viewMode === 'month' && (
               <MonthView
                 date={currentDate}
-                events={events}
+                events={filteredEvents}
                 onEventClick={handleEventClick}
                 onDayClick={(d) => {
                   setCurrentDate(d)
