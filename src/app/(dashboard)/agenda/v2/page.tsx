@@ -13,7 +13,7 @@
  * Au cutover (Phase 8), on renommera v2/ → agenda/ et l'ancienne ira en _old/.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   addDays,
   addMonths,
@@ -90,6 +90,7 @@ export default function AgendaV2Page() {
     refetch,
     removeEvents,
     patchEvent,
+    addEvent,
   } = useAgendaData({ viewMode, currentDate })
 
   // Charge les templates planning au montage (single hit, hors render critique)
@@ -169,12 +170,32 @@ export default function AgendaV2Page() {
     setCurrentDate(new Date())
   }
 
+  // ── Sélection en deux temps + copy/paste ──
+  // 1er clic sur un event → highlight (panel fermé). 2ᵉ clic sur le même
+  // → ouvre le panel. Cmd+C copie l'event highlighted. Cmd+V crée une copie
+  // au slot survolé par le curseur.
+  const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null)
+  const [copiedEvent, setCopiedEvent] = useState<AgendaEvent | null>(null)
+  const hoverPosRef = useRef<{ date: Date; hour: number } | null>(null)
+
   const handleEventClick = useCallback((ev: AgendaEvent) => {
-    setSelectedEvent(ev)
+    // Click sur l'event déjà highlighted (et panel pas encore ouvert) → ouvre le panel
+    if (highlightedEventId === ev.id && !selectedEvent) {
+      setSelectedEvent(ev)
+      return
+    }
+    // Sinon : highlight uniquement
+    setHighlightedEventId(ev.id)
+    setSelectedEvent(null)
+  }, [highlightedEventId, selectedEvent])
+
+  const handleHoverChange = useCallback((date: Date | null, hour: number | null) => {
+    hoverPosRef.current = date && hour !== null ? { date, hour } : null
   }, [])
 
   const handleSlotClick = useCallback((dayDate: Date, hour: number, durationMinutes?: number) => {
     setSelectedEvent(null)
+    setHighlightedEventId(null)
     setNewBookingPrefill({
       date: format(dayDate, 'yyyy-MM-dd'),
       time: hourToHHmm(hour),
@@ -305,12 +326,91 @@ export default function AgendaV2Page() {
     }
   }
 
-  // Raccourci clavier : Backspace / Delete supprime l'event sélectionné
-  // (uniquement les bookings, scope='this' par défaut). Ignoré si un input
-  // est focus pour ne pas voler la frappe utilisateur.
+  // ── Cmd+C / Cmd+V : copy / paste de l'event highlighted ──
   useEffect(() => {
-    if (!selectedEvent) return
-    if (selectedEvent.kind !== 'booking') return
+    function isTypingTarget(target: EventTarget | null): boolean {
+      if (!(target instanceof HTMLElement)) return false
+      const tag = target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+      if (target.isContentEditable) return true
+      return false
+    }
+    function onKey(e: KeyboardEvent) {
+      const isCopy = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c'
+      const isPaste = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v'
+      if (!isCopy && !isPaste) return
+      if (isTypingTarget(e.target)) return
+
+      if (isCopy && highlightedEventId) {
+        const ev = events.find((x) => x.id === highlightedEventId)
+        if (!ev) return
+        e.preventDefault()
+        setCopiedEvent(ev)
+        return
+      }
+      if (isPaste && copiedEvent && hoverPosRef.current) {
+        e.preventDefault()
+        const { date, hour } = hoverPosRef.current
+        const newDate = new Date(date)
+        const h = Math.floor(hour)
+        const m = Math.round((hour - h) * 60)
+        const snappedM = m < 15 ? 0 : m < 45 ? 30 : 60
+        if (snappedM === 60) { newDate.setHours(h + 1, 0, 0, 0) }
+        else { newDate.setHours(h, snappedM, 0, 0) }
+
+        const sourceBooking = copiedEvent.kind === 'booking' ? copiedEvent.booking : null
+
+        // ── Optimistic : on insère immédiatement dans le state local avec un
+        //    ID temporaire. Le refetch après POST remplace par la vraie row.
+        const tempId = `tmp-${crypto.randomUUID()}`
+        const newScheduledAt = newDate.toISOString()
+        if (copiedEvent.kind === 'booking' && sourceBooking) {
+          const optimistic: AgendaEvent = {
+            ...copiedEvent,
+            id: tempId,
+            start: newScheduledAt,
+            booking: {
+              ...sourceBooking,
+              id: tempId,
+              scheduled_at: newScheduledAt,
+              lead_id: null,
+              call_id: null,
+              google_event_id: null,
+              meet_url: null,
+              recurrence_group_id: null,
+            },
+            lead: null,
+          }
+          addEvent(optimistic)
+        }
+
+        const payload: Record<string, unknown> = {
+          is_personal: sourceBooking?.is_personal ?? true,
+          calendar_id: sourceBooking?.calendar_id ?? null,
+          lead_id: null,
+          location_id: sourceBooking?.location_id ?? null,
+          title: copiedEvent.title,
+          scheduled_at: newScheduledAt,
+          duration_minutes: copiedEvent.durationMinutes,
+          notes: sourceBooking?.notes ?? null,
+        }
+
+        fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+          .then((res) => { if (res.ok) refetch() })
+          .catch(() => { /* silently ignore */ })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [events, highlightedEventId, copiedEvent, refetch])
+
+  // Raccourci clavier : Backspace / Delete supprime l'event highlighted
+  // (ou sélectionné dans le panel). Bookings uniquement, scope='this' par défaut.
+  useEffect(() => {
     function isTypingTarget(target: EventTarget | null): boolean {
       if (!(target instanceof HTMLElement)) return false
       const tag = target.tagName
@@ -321,14 +421,17 @@ export default function AgendaV2Page() {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Backspace' && e.key !== 'Delete') return
       if (isTypingTarget(e.target)) return
+      // Cible : event du panel en priorité, sinon l'event highlighted
+      const target = selectedEvent
+        ?? (highlightedEventId ? events.find((x) => x.id === highlightedEventId) ?? null : null)
+      if (!target || target.kind !== 'booking') return
       e.preventDefault()
-      // selectedEvent est garanti booking ici (cf. early return)
-      if (selectedEvent) handleDelete(selectedEvent, 'this')
+      handleDelete(target, 'this')
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEvent])
+  }, [selectedEvent, highlightedEventId, events])
 
   async function handleDelete(ev: AgendaEvent, scope: 'this' | 'future' | 'all' = 'this') {
     if (ev.kind !== 'booking') return
@@ -476,6 +579,8 @@ export default function AgendaV2Page() {
                 onEventClick={handleEventClick}
                 onSlotClick={handleSlotClick}
                 onEventMove={handleEventMove}
+                highlightedEventId={highlightedEventId}
+                onHoverChange={handleHoverChange}
               />
             )}
             {viewMode === 'day' && (

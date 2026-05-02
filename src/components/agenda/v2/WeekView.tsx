@@ -59,6 +59,12 @@ interface WeekViewProps {
    *  est l'ISO string de la nouvelle date+heure de début. Ne déclenche que
    *  pour les bookings (pas les calls). */
   onEventMove?: (event: AgendaEvent, newScheduledAt: string) => void
+  /** ID de l'event highlighted (sélectionné au 1er clic, panel pas encore
+   *  ouvert). Affichage : ring renforcé sur la card. */
+  highlightedEventId?: string | null
+  /** Callback déclenché à chaque mouvement de souris dans la grille.
+   *  Le parent peut stocker la position pour un paste ulterieur. `null` = hors grille. */
+  onHoverChange?: (date: Date | null, hour: number | null) => void
 }
 
 interface DragState {
@@ -87,7 +93,15 @@ interface DragMoveState {
 const GUTTER_WIDTH = 56
 const HEADER_HEIGHT = 40
 
-export function WeekView({ date, events, onEventClick, onSlotClick, onEventMove }: WeekViewProps) {
+export function WeekView({
+  date,
+  events,
+  onEventClick,
+  onSlotClick,
+  onEventMove,
+  highlightedEventId,
+  onHoverChange,
+}: WeekViewProps) {
   const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn: 1 }), [date])
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -117,6 +131,44 @@ export function WeekView({ date, events, onEventClick, onSlotClick, onEventMove 
 
   const gridHeight = totalGridHeight()
   const slotsCount = (DEFAULT_GEOMETRY.endHour - DEFAULT_GEOMETRY.startHour) * 2
+
+  // ── Hover tracking pour copy/paste : on track la cellule survolée et on
+  //    notifie le parent via onHoverChange. Pas de re-render local : le
+  //    parent peut stocker dans une ref pour ne pas thrash.
+  useEffect(() => {
+    if (!onHoverChange) return
+    let lastDay = -1
+    let lastHour = -1
+    function onMove(e: MouseEvent) {
+      let foundIdx = -1
+      let rect: DOMRect | null = null
+      for (let i = 0; i < 7; i++) {
+        const col = colRefs.current[i]
+        if (!col) continue
+        const r = col.getBoundingClientRect()
+        if (e.clientX >= r.left && e.clientX < r.right && e.clientY >= r.top && e.clientY < r.bottom) {
+          foundIdx = i
+          rect = r
+          break
+        }
+      }
+      if (foundIdx < 0 || !rect) {
+        if (lastDay !== -2) {
+          lastDay = -2
+          onHoverChange?.(null, null)
+        }
+        return
+      }
+      const y = e.clientY - rect.top
+      const hour = pixelToHour(y)
+      if (foundIdx === lastDay && Math.abs(hour - lastHour) < 0.05) return
+      lastDay = foundIdx
+      lastHour = hour
+      onHoverChange?.(days[foundIdx], hour)
+    }
+    document.addEventListener('mousemove', onMove)
+    return () => document.removeEventListener('mousemove', onMove)
+  }, [days, onHoverChange])
 
   // ── Auto-scroll au montage : positionne la grille sur l'heure courante
   //    (ou 7h par défaut si on est en pleine nuit). Évite que l'utilisateur
@@ -483,11 +535,13 @@ export function WeekView({ date, events, onEventClick, onSlotClick, onEventMove 
                   const ovr = layout.get(ev.id) ?? { column: 0, groupSize: 1 }
                   const widthPct = 100 / ovr.groupSize
                   const isBeingDragged = dragMove?.isDragging && dragMove.event.id === ev.id
+                  const isHighlighted = highlightedEventId === ev.id
                   return (
                     <EventTooltip key={ev.id} event={ev}>
                       <EventCard
                         event={ev}
                         onClick={handleEventCardClick}
+                        isHighlighted={isHighlighted}
                         style={{
                           top: pos.top,
                           height: pos.height,
