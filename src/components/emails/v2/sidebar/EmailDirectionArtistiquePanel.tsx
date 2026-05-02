@@ -28,6 +28,10 @@ const FONT_OPTIONS: { label: string; value: EmailFontFamily; preview: string }[]
   { label: 'Serif', value: "Georgia, 'Times New Roman', serif", preview: 'Georgia' },
   { label: 'Display', value: "'Playfair Display', Georgia, serif", preview: 'Playfair' },
   { label: 'Mono', value: "'JetBrains Mono', 'Courier New', monospace", preview: 'Mono' },
+  { label: 'Lora', value: "'Lora', Georgia, serif", preview: 'Lora' },
+  { label: 'DM Sans', value: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif", preview: 'DM Sans' },
+  { label: 'Source', value: "'Source Serif 4', Georgia, serif", preview: 'Source Serif' },
+  { label: 'Raleway', value: "'Raleway', -apple-system, BlinkMacSystemFont, sans-serif", preview: 'Raleway' },
 ]
 
 const BUTTON_SHAPE_OPTIONS: { label: string; value: EmailButtonShape; radius: number }[] = [
