@@ -22,9 +22,11 @@ interface EventCardProps {
   onClick?: (event: AgendaEvent) => void
   /** Position absolue calculée par le parent (top, height, left, width) */
   style: CSSProperties
+  /** Sélectionné au 1er clic — affichage avec un ring renforcé. */
+  isHighlighted?: boolean
 }
 
-export function EventCard({ event, onClick, style }: EventCardProps) {
+export function EventCard({ event, onClick, style, isHighlighted }: EventCardProps) {
   const isShort = event.durationMinutes <= 30
   const isMedium = event.durationMinutes > 30 && event.durationMinutes < 60
   const start = isoToHHmm(event.start)
@@ -62,9 +64,12 @@ export function EventCard({ event, onClick, style }: EventCardProps) {
         gap: isShort ? 8 : 0,
         minWidth: 0,
         textAlign: 'left',
-        // Bande couleur à gauche + outline subtle, via box-shadow combiné
-        // (1) inset bar gauche, (2) outline 1px tout autour à faible opacité.
-        boxShadow: `inset var(--agenda-event-bar-width) 0 0 ${event.color}, inset 0 0 0 1px ${outlineColor}`,
+        // Bande couleur à gauche + outline. En mode highlighted, on bumpe
+        // l'outline + on ajoute un ring extérieur à la couleur du calendrier
+        // pour signaler la sélection (style "click 1 = select" type Notion/Linear).
+        boxShadow: isHighlighted
+          ? `inset var(--agenda-event-bar-width) 0 0 ${event.color}, inset 0 0 0 1.5px ${event.color}, 0 0 0 2px color-mix(in srgb, ${event.color} 45%, transparent)`
+          : `inset var(--agenda-event-bar-width) 0 0 ${event.color}, inset 0 0 0 1px ${outlineColor}`,
         ...style,
       }}
       onMouseEnter={(e) => {
