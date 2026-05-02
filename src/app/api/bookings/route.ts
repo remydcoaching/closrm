@@ -68,6 +68,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
 
+    // ── Branche récurrente : insère N occurrences avec un `recurrence_group_id`
+    //    partagé. Pour éviter l'envoi de N emails/notifs, on skip les side-effects
+    //    (calls, reminders, Google sync, email confirmation). Les triggers
+    //    workflow ne se déclenchent pas non plus pour les séries.
+    if (parsed.data.recurrence) {
+      const { frequency, count } = parsed.data.recurrence
+      const baseDate = new Date(parsed.data.scheduled_at)
+      const groupId = crypto.randomUUID()
+      const rows = Array.from({ length: count }, (_, i) => {
+        const d = new Date(baseDate)
+        if (frequency === 'daily') d.setDate(d.getDate() + i)
+        else if (frequency === 'weekly') d.setDate(d.getDate() + i * 7)
+        else if (frequency === 'monthly') d.setMonth(d.getMonth() + i)
+        return {
+          workspace_id: workspaceId,
+          calendar_id: parsed.data.calendar_id ?? null,
+          lead_id: parsed.data.lead_id ?? null,
+          title: parsed.data.title,
+          scheduled_at: d.toISOString(),
+          duration_minutes: parsed.data.duration_minutes,
+          notes: parsed.data.notes ?? null,
+          is_personal: parsed.data.is_personal,
+          location_id: parsed.data.location_id ?? null,
+          source: 'manual' as const,
+          recurrence_group_id: groupId,
+        }
+      })
+
+      const { data: inserted, error: insertErr } = await supabase
+        .from('bookings')
+        .insert(rows)
+        .select(BOOKING_SELECT)
+
+      if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
+
+      return NextResponse.json({ data: inserted ?? [], recurrence_group_id: groupId })
+    }
+
     const { data, error } = await supabase
       .from('bookings')
       .insert({

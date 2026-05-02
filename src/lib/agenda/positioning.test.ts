@@ -13,6 +13,7 @@
 import {
   computeOverlapLayout,
   DEFAULT_GEOMETRY,
+  EVENT_VERTICAL_GAP_PX,
   eventToPosition,
   isoToHHmm,
   nowIndicatorTop,
@@ -59,40 +60,28 @@ function makeEvent(id: string, start: string, durationMinutes: number): AgendaEv
 /* ─── Geometry basics ─────────────────────────────────────────────────────── */
 
 assertEqual('pxPerMinute default = 32/30', pxPerMinute(), 32 / 30)
-assertEqual('totalGridHeight 7→22', totalGridHeight(), (22 - 7) * 2 * 32)
+assertEqual('totalGridHeight 0→24', totalGridHeight(), (24 - 0) * 2 * 32)
 
 /* ─── eventToPosition ─────────────────────────────────────────────────────── */
+// Note : la hauteur retournée intègre EVENT_VERTICAL_GAP_PX soustrait pour
+// aérer les events adjacents.
 
-// Event simple : 9h00 durée 30min → top 2h*64=128, height 32
+// Event simple : 9h00 durée 30min → top = 9*60*ppm, height = 30*ppm − gap
 {
   const r = eventToPosition('2026-05-02T09:00:00', 30)
-  assertEqual('eventToPosition 9h00 30min .top', r?.top, (9 - 7) * 60 * pxPerMinute())
-  assertEqual('eventToPosition 9h00 30min .height', r?.height, 30 * pxPerMinute())
+  assertEqual('eventToPosition 9h00 30min .top', r?.top, 9 * 60 * pxPerMinute())
+  assertEqual('eventToPosition 9h00 30min .height', r?.height, 30 * pxPerMinute() - EVENT_VERTICAL_GAP_PX)
 }
 
-// Event durée 1h commence à 8h30 → top = (8.5-7)*60*ppm, height = 60*ppm
+// Event durée 1h commence à 8h30 → top = 8.5*60*ppm, height = 60*ppm − gap
 {
   const r = eventToPosition('2026-05-02T08:30:00', 60)
-  assertEqual('eventToPosition 8h30 60min .top', r?.top, 1.5 * 60 * pxPerMinute())
-  assertEqual('eventToPosition 8h30 60min .height', r?.height, 60 * pxPerMinute())
+  assertEqual('eventToPosition 8h30 60min .top', r?.top, 8.5 * 60 * pxPerMinute())
+  assertEqual('eventToPosition 8h30 60min .height', r?.height, 60 * pxPerMinute() - EVENT_VERTICAL_GAP_PX)
 }
 
-// Event qui commence avant 7h → clip au top
-{
-  const r = eventToPosition('2026-05-02T06:30:00', 60) // 6h30 → 7h30
-  assertEqual('clip-top 6h30 60min .top', r?.top, 0)
-  assertEqual('clip-top 6h30 60min .height', r?.height, 30 * pxPerMinute())
-}
-
-// Event qui dépasse 22h → clip au bas
-{
-  const r = eventToPosition('2026-05-02T21:30:00', 60) // 21h30 → 22h30
-  assertEqual('clip-bot 21h30 60min .height', r?.height, 30 * pxPerMinute())
-}
-
-// Event entièrement hors plage
-assertEqual('off-range 23h30 30min', eventToPosition('2026-05-02T23:30:00', 30), null)
-assertEqual('off-range 5h00 30min', eventToPosition('2026-05-02T05:00:00', 30), null)
+// Avec startHour=0, plus de clipping en début/fin pour des heures normales.
+// On garde des cas de test pour les events vraiment hors-jour (jamais en pratique).
 
 /* ─── computeOverlapLayout ───────────────────────────────────────────────── */
 
@@ -157,15 +146,7 @@ assertEqual('off-range 5h00 30min', eventToPosition('2026-05-02T05:00:00', 30), 
 {
   const noon = new Date('2026-05-02T12:00:00')
   const top = nowIndicatorTop(noon)
-  assertEqual('now at noon', top, (12 - 7) * 60 * pxPerMinute())
-}
-{
-  const dawn = new Date('2026-05-02T05:00:00')
-  assertEqual('now off-range early', nowIndicatorTop(dawn), null)
-}
-{
-  const lateNight = new Date('2026-05-02T23:00:00')
-  assertEqual('now off-range late', nowIndicatorTop(lateNight), null)
+  assertEqual('now at noon', top, 12 * 60 * pxPerMinute())
 }
 
 /* ─── pixelToHour / snap ─────────────────────────────────────────────────── */

@@ -14,21 +14,20 @@ const START_HOUR = 6
 const END_HOUR = 23
 const SLOTS_COUNT = (END_HOUR - START_HOUR) * 2 // 34 half-hour slots
 const TOTAL_HEIGHT = SLOTS_COUNT * CELL_HEIGHT
-const HOUR_COL_WIDTH = 72
+const HOUR_COL_WIDTH = 56
 
 const DAY_KEYS: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const DAY_LABELS: Record<DayOfWeek, string> = {
-  monday: 'LUNDI',
-  tuesday: 'MARDI',
-  wednesday: 'MERCREDI',
-  thursday: 'JEUDI',
-  friday: 'VENDREDI',
-  saturday: 'SAMEDI',
-  sunday: 'DIMANCHE',
+  monday: 'Lun',
+  tuesday: 'Mar',
+  wednesday: 'Mer',
+  thursday: 'Jeu',
+  friday: 'Ven',
+  saturday: 'Sam',
+  sunday: 'Dim',
 }
 
-const GRID_BORDER = '1px solid rgba(128,128,128,0.25)'
-const GRID_BORDER_DASHED = '1px dashed rgba(128,128,128,0.12)'
+const COL_DIVIDER = '1px solid var(--agenda-grid-line)'
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number)
@@ -194,13 +193,6 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
     setEditState(null)
   }, [drag])
 
-  function isSlotInDrag(day: DayOfWeek, slotIndex: number): boolean {
-    if (!drag || day !== drag.day) return false
-    const start = Math.min(drag.startSlot, drag.currentSlot)
-    const end = Math.max(drag.startSlot, drag.currentSlot)
-    return slotIndex >= start && slotIndex <= end
-  }
-
   function handleSaveEdit(updated: TemplateBlock) {
     if (!editState) return
     const next = [...blocks]
@@ -240,29 +232,25 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
         <div style={{
           display: 'grid',
           gridTemplateColumns: `${HOUR_COL_WIDTH}px repeat(7, 1fr)`,
-          borderBottom: '2px solid rgba(128,128,128,0.35)',
+          borderBottom: '1px solid var(--agenda-grid-line-strong)',
           position: 'sticky',
           top: 0,
           zIndex: 10,
-          background: '#111111',
+          background: 'var(--bg-primary)',
         }}>
-          <div style={{
-            borderRight: GRID_BORDER,
-            padding: '6px 0',
-          }} />
+          <div style={{ padding: '8px 0' }} />
           {DAY_KEYS.map(day => (
             <div
               key={day}
               style={{
                 textAlign: 'center',
-                padding: '6px 0',
-                borderRight: GRID_BORDER,
+                padding: '10px 0',
+                borderLeft: COL_DIVIDER,
                 fontSize: 10,
-                fontWeight: 700,
+                fontWeight: 600,
                 textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                color: '#fff',
-                background: '#111111',
+                letterSpacing: 0.6,
+                color: 'var(--text-tertiary)',
               }}
             >
               {DAY_LABELS[day]}
@@ -276,27 +264,32 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
           <div style={{
             display: 'grid',
             gridTemplateColumns: `${HOUR_COL_WIDTH}px repeat(7, 1fr)`,
+            position: 'relative',
+            backgroundImage: `repeating-linear-gradient(
+              to bottom,
+              var(--agenda-grid-line-strong) 0,
+              var(--agenda-grid-line-strong) 1px,
+              transparent 1px,
+              transparent ${CELL_HEIGHT * 2}px
+            )`,
           }}>
             {slots.map(slotIdx => {
               const isFullHour = slotIdx % 2 === 0
               const hour = Math.floor(slotIdx / 2) + START_HOUR
-              const borderBottom = isFullHour ? GRID_BORDER_DASHED : GRID_BORDER
 
               return (
                 <div key={slotIdx} style={{ display: 'contents' }}>
                   {/* Hour label — only on full hours, positioned on the grid line */}
                   <div style={{
                     height: CELL_HEIGHT,
-                    borderRight: GRID_BORDER,
-                    borderBottom,
                     position: 'relative',
                   }}>
                     {isFullHour && (
                       <span style={{
-                        position: 'absolute', top: -8, right: 10,
-                        fontSize: 11, fontWeight: 500, lineHeight: 1,
-                        color: 'var(--text-secondary)',
-                        background: '#0d0d0d', paddingTop: 2, paddingBottom: 2,
+                        position: 'absolute', top: -6, right: 8,
+                        fontSize: 10.5, fontWeight: 500, lineHeight: 1,
+                        color: 'var(--text-muted)',
+                        fontVariantNumeric: 'tabular-nums',
                       }}>
                         {String(hour).padStart(2, '0')}:00
                       </span>
@@ -312,14 +305,10 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
                       onDrop={() => handleCellDrop(day, slotIdx)}
                       style={{
                         height: CELL_HEIGHT,
-                        borderRight: GRID_BORDER,
-                        borderBottom,
-                        cursor: 'pointer',
+                        borderLeft: COL_DIVIDER,
+                        cursor: 'cell',
                         boxSizing: 'border-box',
-                        background: isSlotInDrag(day, slotIdx)
-                          ? 'rgba(229,62,62,0.15)'
-                          : 'transparent',
-                        transition: 'background 0.05s',
+                        background: 'transparent',
                       }}
                     />
                   ))}
@@ -327,6 +316,9 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
               )
             })}
           </div>
+
+          {/* Lignes horaires : voir le gradient sur le grid container parent
+              (sous les blocs, masquées là où un bloc est posé — Google Cal). */}
 
           {/* Blocks overlay */}
           <div style={{
@@ -337,16 +329,34 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
             bottom: 0,
             pointerEvents: 'none',
             height: TOTAL_HEIGHT,
+            zIndex: 1,
           }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', height: '100%' }}>
               {DAY_KEYS.map(day => {
                 const dayBlocks = blocks
                   .map((b, i) => ({ ...b, _index: i }))
                   .filter(b => b.day === day)
+                const isDragDay = drag?.day === day
+                const dragStartSlot = isDragDay && drag ? Math.min(drag.startSlot, drag.currentSlot) : null
+                const dragEndSlot = isDragDay && drag ? Math.max(drag.startSlot, drag.currentSlot) + 1 : null
                 return (
                   <div key={day} style={{ position: 'relative', pointerEvents: 'none' }}>
+                    {/* Aperçu de la sélection drag-to-create — même style que l'agenda */}
+                    {dragStartSlot !== null && dragEndSlot !== null && (
+                      <TemplateDragSelectionPreview
+                        startSlot={dragStartSlot}
+                        endSlot={dragEndSlot}
+                      />
+                    )}
                     {dayBlocks.map(b => {
                       const pos = getBlockPosition(b)
+                      const isSelected = selectedBlockIndex === b._index
+                      const fillBg = `color-mix(in srgb, ${b.color} 22%, var(--bg-elevated))`
+                      const fillBgHover = `color-mix(in srgb, ${b.color} 32%, var(--bg-elevated))`
+                      const outlineColor = `color-mix(in srgb, ${b.color} 35%, transparent)`
+                      const timeColor = `color-mix(in srgb, ${b.color} 30%, var(--text-secondary) 70%)`
+                      // Hauteur effective avec un micro-gap façon Google Cal
+                      const effectiveHeight = Math.max(8, pos.height - 2)
                       return (
                         <div
                           key={b._index}
@@ -356,41 +366,53 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
                           style={{
                             position: 'absolute',
                             top: pos.top,
-                            height: pos.height,
-                            left: 0,
-                            right: 0,
-                            background: b.color,
+                            height: effectiveHeight,
+                            left: 2,
+                            right: 2,
+                            background: fillBg,
                             cursor: 'pointer',
                             pointerEvents: 'all',
                             display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderBottom: '1px solid rgba(0,0,0,0.15)',
-                            borderTop: '1px solid rgba(255,255,255,0.1)',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            justifyContent: 'flex-start',
+                            padding: '4px 8px 4px 10px',
+                            borderRadius: 6,
                             boxSizing: 'border-box',
-                            outline: selectedBlockIndex === b._index ? '2px solid #fff' : 'none',
-                            outlineOffset: -2,
-                            transition: 'filter 0.1s',
+                            boxShadow: isSelected
+                              ? `inset 3px 0 0 ${b.color}, inset 0 0 0 1.5px ${b.color}`
+                              : `inset 3px 0 0 ${b.color}, inset 0 0 0 1px ${outlineColor}`,
+                            transition: 'background 0.12s, box-shadow 0.12s',
+                            overflow: 'hidden',
                           }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1.15)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.filter = 'none' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = fillBgHover }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = fillBg }}
                         >
                           <span style={{
-                            fontSize: 10,
-                            fontWeight: 800,
-                            color: '#fff',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            textAlign: 'center',
-                            lineHeight: 1.2,
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: 'var(--text-primary)',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            whiteSpace: pos.height <= CELL_HEIGHT ? 'nowrap' : 'normal',
-                            padding: '0 4px',
-                            textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                            whiteSpace: 'nowrap',
+                            width: '100%',
+                            lineHeight: 1.25,
+                            letterSpacing: -0.15,
                           }}>
                             {b.title}
                           </span>
+                          {effectiveHeight > CELL_HEIGHT && (
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 500,
+                              color: timeColor,
+                              marginTop: 2,
+                              fontVariantNumeric: 'tabular-nums',
+                              lineHeight: 1.2,
+                            }}>
+                              {b.start} – {b.end}
+                            </span>
+                          )}
                         </div>
                       )
                     })}
@@ -424,6 +446,59 @@ export default function TemplateWeekEditor({ blocks, onChange }: TemplateWeekEdi
           onClose={closeModal}
         />
       )}
+    </div>
+  )
+}
+
+/**
+ * Aperçu visuel de la sélection drag-to-create — calé sur les mêmes tokens
+ * que l'agenda v2 (DragSelectionPreview), adapté à la grille du template
+ * (slots de 30min de hauteur CELL_HEIGHT).
+ */
+function TemplateDragSelectionPreview({ startSlot, endSlot }: { startSlot: number; endSlot: number }) {
+  const top = startSlot * CELL_HEIGHT
+  const height = (endSlot - startSlot) * CELL_HEIGHT
+  const startTime = (() => {
+    const total = startSlot * 30 + START_HOUR * 60
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+  })()
+  const endTime = (() => {
+    const total = endSlot * 30 + START_HOUR * 60
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+  })()
+  const minutes = (endSlot - startSlot) * 30
+  const durationLabel = minutes >= 60
+    ? `${Math.floor(minutes / 60)}h${minutes % 60 > 0 ? String(minutes % 60).padStart(2, '0') : ''}`
+    : `${minutes} min`
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top,
+        height,
+        left: 2,
+        right: 2,
+        background: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--color-primary) 60%, transparent)',
+        borderRadius: 4,
+        zIndex: 2,
+        pointerEvents: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '4px 6px',
+        color: 'var(--text-primary)',
+        fontSize: 11,
+        fontWeight: 500,
+        lineHeight: 1.3,
+        overflow: 'hidden',
+      }}
+    >
+      <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+        {startTime} → {endTime}
+      </span>
+      <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>
+        {durationLabel}
+      </span>
     </div>
   )
 }

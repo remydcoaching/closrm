@@ -1,14 +1,14 @@
 'use client'
 
 /**
- * Toolbar agenda v2 — Phase 3a minimaliste :
- *  [Jour | Semaine | Mois]   ← prev   Aujourd'hui   suivant →     <titre période>
- *
- * Day et Month sont visibles mais désactivés en Phase 3a (les vues n'existent
- * pas encore). On les active en Phase 4.
+ * Toolbar agenda v2 :
+ *  [Jour | Semaine | Mois]   ← prev   Aujourd'hui   suivant →     <titre période>   [Templates] [Importer]
  */
 
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { ChevronLeft, ChevronRight, LayoutTemplate, PanelLeft } from 'lucide-react'
+import type { PlanningTemplate } from '@/types'
 
 export type AgendaViewMode = 'day' | 'week' | 'month'
 
@@ -27,6 +27,14 @@ interface AgendaToolbarProps {
   onPrev: () => void
   onNext: () => void
   onToday: () => void
+  /** Liste des templates de planning disponibles pour l'import. */
+  templates?: PlanningTemplate[]
+  /** Callback déclenché quand l'utilisateur sélectionne un template à importer
+   *  pour la semaine actuelle. */
+  onImportTemplate?: (templateId: string) => void
+  /** État + toggle de la sidebar gauche (mini-cal + filtres calendriers). */
+  sidebarOpen?: boolean
+  onToggleSidebar?: () => void
 }
 
 export function AgendaToolbar({
@@ -37,7 +45,25 @@ export function AgendaToolbar({
   onPrev,
   onNext,
   onToday,
+  templates = [],
+  onImportTemplate,
+  sidebarOpen,
+  onToggleSidebar,
 }: AgendaToolbarProps) {
+  const [showImport, setShowImport] = useState(false)
+  const importRef = useRef<HTMLDivElement>(null)
+
+  // Ferme le dropdown quand on clique en dehors
+  useEffect(() => {
+    if (!showImport) return
+    const onDocClick = (e: MouseEvent) => {
+      if (!importRef.current) return
+      if (!importRef.current.contains(e.target as Node)) setShowImport(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [showImport])
+
   return (
     <div
       style={{
@@ -51,6 +77,23 @@ export function AgendaToolbar({
         flexShrink: 0,
       }}
     >
+      {/* Sidebar toggle */}
+      {onToggleSidebar && (
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label={sidebarOpen ? 'Masquer la barre latérale' : 'Afficher la barre latérale'}
+          aria-pressed={sidebarOpen}
+          style={{
+            ...navBtnStyle,
+            background: sidebarOpen ? 'var(--bg-hover)' : 'transparent',
+            color: sidebarOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
+          }}
+        >
+          <PanelLeft size={15} />
+        </button>
+      )}
+
       {/* View mode pill group */}
       <div
         style={{
@@ -140,6 +183,106 @@ export function AgendaToolbar({
       >
         {periodLabel}
       </span>
+
+      {/* Templates link */}
+      <Link
+        href="/agenda/templates"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 12px',
+          borderRadius: 6,
+          border: '1px solid var(--border-secondary)',
+          background: 'transparent',
+          color: 'var(--text-secondary)',
+          fontSize: 12,
+          textDecoration: 'none',
+          cursor: 'pointer',
+        }}
+      >
+        <LayoutTemplate size={13} /> Templates
+      </Link>
+
+      {/* Import template dropdown */}
+      {onImportTemplate && (
+        <div ref={importRef} style={{ position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => setShowImport((v) => !v)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              borderRadius: 6,
+              border: `1px solid ${showImport ? 'var(--color-primary)' : 'var(--border-secondary)'}`,
+              background: showImport ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent',
+              color: showImport ? 'var(--color-primary)' : 'var(--text-secondary)',
+              fontSize: 12,
+              cursor: 'pointer',
+            }}
+          >
+            <LayoutTemplate size={13} /> Importer
+          </button>
+          {showImport && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: 4,
+                width: 240,
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-secondary)',
+                borderRadius: 8,
+                padding: 4,
+                zIndex: 30,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+              }}
+            >
+              {templates.length === 0 ? (
+                <div style={{ padding: '12px 10px', fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
+                  Aucun template.{' '}
+                  <Link href="/agenda/templates" style={{ color: 'var(--color-primary)' }}>
+                    Créer un template
+                  </Link>
+                </div>
+              ) : (
+                templates.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      onImportTemplate(t.id)
+                      setShowImport(false)
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '8px 10px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderRadius: 6,
+                      color: 'var(--text-primary)',
+                      fontSize: 13,
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                  >
+                    <div style={{ fontWeight: 500 }}>{t.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                      {t.blocks.length} bloc{t.blocks.length > 1 ? 's' : ''}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Badge v2 — pour bien identifier qu'on est sur la nouvelle version */}
       <span

@@ -24,9 +24,13 @@ export interface GridGeometry {
 
 export const DEFAULT_GEOMETRY: GridGeometry = {
   slotHeight: 32,
-  startHour: 7,
-  endHour: 22,
+  startHour: 0,
+  endHour: 24,
 }
+
+/** Espace vertical entre événements adjacents (ressenti Google Cal). Soustrait
+ *  de la hauteur retournée par `eventToPosition`. */
+export const EVENT_VERTICAL_GAP_PX = 2
 
 /** Pixels par minute, dérivé de la géométrie. */
 export function pxPerMinute(g: GridGeometry = DEFAULT_GEOMETRY): number {
@@ -67,9 +71,13 @@ export function eventToPosition(
   const clippedEnd = Math.min(eventEndMin, endMin)
 
   const ppm = pxPerMinute(g)
+  const rawHeight = (clippedEnd - clippedStart) * ppm
+  // Soustrait un micro-gap pour aérer les events adjacents (style Google Cal).
+  // On garde une hauteur minimum pour les events très courts.
+  const height = Math.max(8, rawHeight - EVENT_VERTICAL_GAP_PX)
   return {
     top: (clippedStart - startMin) * ppm,
-    height: Math.max(1, (clippedEnd - clippedStart) * ppm),
+    height,
   }
 }
 

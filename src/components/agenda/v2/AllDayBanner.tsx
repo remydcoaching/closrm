@@ -20,6 +20,10 @@ interface AllDayBannerProps {
 }
 
 export function AllDayBanner({ events, columns, gutterWidth = 56 }: AllDayBannerProps) {
+  // Pas d'all-day events → on ne rend rien (évite un bandeau orphelin avec
+  // juste un label "Jour" dans la gutter).
+  if (events.length === 0) return null
+
   return (
     <div
       style={{
@@ -53,8 +57,7 @@ export function AllDayBanner({ events, columns, gutterWidth = 56 }: AllDayBanner
             overflow: 'hidden',
           }}
         >
-          {/* Phase 3a : rendu inerte. Phase 3b/4 : afficher events all-day du jour i. */}
-          {events.length > 0 && i === 0 && (
+          {i === 0 && (
             <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>—</span>
           )}
         </div>

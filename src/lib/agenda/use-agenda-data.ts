@@ -22,8 +22,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  endOfDay,
   endOfMonth,
   endOfWeek,
+  startOfDay,
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
@@ -63,10 +65,19 @@ interface UseAgendaDataResult {
   syncError: string | null
   dismissSyncError: () => void
   refetch: () => Promise<void>
+  /** Retire localement les events qui matchent le prédicat (optimistic). */
+  removeEvents: (predicate: (ev: AgendaEvent) => boolean) => void
+  /** Patch optimiste d'un event par id. */
+  patchEvent: (id: string, updater: (ev: AgendaEvent) => AgendaEvent) => void
 }
 
 function getDateRange(viewMode: AgendaViewMode, date: Date) {
-  if (viewMode === 'day') return { start: date, end: date }
+  if (viewMode === 'day') {
+    // BUG FIX : avant on retournait { start: date, end: date } (même instant),
+    // donc l'API ne renvoyait que des events à la nanoseconde près. Il faut la
+    // journée entière 00:00 → 23:59:59.999.
+    return { start: startOfDay(date), end: endOfDay(date) }
+  }
   if (viewMode === 'week') {
     return {
       start: startOfWeek(date, { weekStartsOn: 1 }),
@@ -108,6 +119,8 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
   }, [])
 
   useEffect(() => {
+    // Data fetching on mount — setState inside the awaited fn est légitime.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCalendars()
   }, [fetchCalendars])
 
@@ -184,6 +197,7 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
   }, [viewMode, currentDate, includeCalls])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchEvents()
   }, [fetchEvents])
 
@@ -192,11 +206,24 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
   useEffect(() => {
     if (syncDone && !didRefetchAfterSync.current) {
       didRefetchAfterSync.current = true
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchEvents()
     }
   }, [syncDone, fetchEvents])
 
   const dismissSyncError = useCallback(() => setSyncError(null), [])
+
+  /** Retire localement un ou plusieurs events (optimistic update avant
+   *  un DELETE serveur). Le refetch ultérieur réconcilie en cas d'erreur. */
+  const removeEvents = useCallback((predicate: (ev: AgendaEvent) => boolean) => {
+    setEvents((prev) => prev.filter((ev) => !predicate(ev)))
+  }, [])
+
+  /** Patch optimiste d'un event par id. Le `updater` reçoit l'event courant
+   *  et doit renvoyer la version modifiée. */
+  const patchEvent = useCallback((id: string, updater: (ev: AgendaEvent) => AgendaEvent) => {
+    setEvents((prev) => prev.map((ev) => (ev.id === id ? updater(ev) : ev)))
+  }, [])
 
   return {
     events,
@@ -207,5 +234,7 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
     syncError,
     dismissSyncError,
     refetch: fetchEvents,
+    removeEvents,
+    patchEvent,
   }
 }

@@ -65,16 +65,24 @@ export function bookingToAgendaEvent(b: BookingWithCalendar): AgendaBookingEvent
   const leadName = b.lead
     ? `${b.lead.first_name} ${b.lead.last_name}`.trim()
     : null
+  // Pour les bookings perso (créés via import de template, ou bloqués
+  // manuellement), la couleur du bloc d'origine est stockée dans
+  // `form_data.color` au moment de l'import. On la respecte si présente —
+  // sinon fallback sur le gris neutre.
+  const personalColor =
+    typeof b.form_data?.color === 'string' && b.form_data.color.length > 0
+      ? b.form_data.color
+      : '#6b7280'
   return {
     id: `booking-${b.id}`,
     kind: 'booking',
     start: b.scheduled_at,
     durationMinutes: b.duration_minutes,
     color: b.is_personal
-      ? '#6b7280'
+      ? personalColor
       : b.booking_calendar?.color ?? '#3b82f6',
     title: b.is_personal ? b.title : leadName ?? b.title,
-    subtitle: b.booking_calendar?.name ?? (b.is_personal ? 'Personnel' : null),
+    subtitle: b.booking_calendar?.name ?? null,
     lead: b.lead,
     booking: b,
   }

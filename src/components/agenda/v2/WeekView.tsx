@@ -20,7 +20,7 @@
  * `computeOverlapLayout`.
  */
 
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   addDays,
   isSameDay,
@@ -50,15 +50,44 @@ interface WeekViewProps {
   date: Date
   events: AgendaEvent[]
   onEventClick?: (event: AgendaEvent) => void
-  /** Callback quand un slot vide est cliqué. `dayDate` = date du jour cliqué
-   *  (00:00:00 local), `hour` = heure flottante snappée à la demi-heure. */
-  onSlotClick?: (dayDate: Date, hour: number) => void
+  /** Callback quand un slot vide est cliqué OU qu'une plage est sélectionnée
+   *  par drag. `hour` = heure de début snappée à la demi-heure.
+   *  `durationMinutes` = durée si l'utilisateur a draggé une plage ; absent
+   *  pour un click simple (le parent applique la durée par défaut). */
+  onSlotClick?: (dayDate: Date, hour: number, durationMinutes?: number) => void
+  /** Drag-and-drop : appelé quand un event a été déplacé. `newScheduledAt`
+   *  est l'ISO string de la nouvelle date+heure de début. Ne déclenche que
+   *  pour les bookings (pas les calls). */
+  onEventMove?: (event: AgendaEvent, newScheduledAt: string) => void
+}
+
+interface DragState {
+  dayIdx: number
+  startHour: number
+  currentHour: number
+  isDragging: boolean
+}
+
+interface DragMoveState {
+  event: AgendaEvent
+  /** Heure de début ORIGINALE de l'event (pour reset si pas de drag). */
+  originalStartHour: number
+  originalDayIdx: number
+  /** Décalage minutes entre le pointeur et le début de l'event au mousedown.
+   *  On garde le pointeur "ancré" au même point dans la card pendant le drag. */
+  pointerOffsetMinutes: number
+  /** Position courante (target) snappée à la demi-heure. */
+  currentDayIdx: number
+  currentHour: number
+  isDragging: boolean
+  startClientX: number
+  startClientY: number
 }
 
 const GUTTER_WIDTH = 56
 const HEADER_HEIGHT = 40
 
-export function WeekView({ date, events, onEventClick, onSlotClick }: WeekViewProps) {
+export function WeekView({ date, events, onEventClick, onSlotClick, onEventMove }: WeekViewProps) {
   const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn: 1 }), [date])
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -88,6 +117,158 @@ export function WeekView({ date, events, onEventClick, onSlotClick }: WeekViewPr
 
   const gridHeight = totalGridHeight()
   const slotsCount = (DEFAULT_GEOMETRY.endHour - DEFAULT_GEOMETRY.startHour) * 2
+
+  // ── Auto-scroll au montage : positionne la grille sur l'heure courante
+  //    (ou 7h par défaut si on est en pleine nuit). Évite que l'utilisateur
+  //    arrive par défaut à minuit.
+  const bodyRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const body = bodyRef.current
+    if (!body) return
+    const now = new Date()
+    const targetHour = Math.max(7, now.getHours() - 1)
+    body.scrollTop = (targetHour - DEFAULT_GEOMETRY.startHour) * 2 * DEFAULT_GEOMETRY.slotHeight
+  }, [])
+
+  // ── Drag-to-select : mousedown sur une colonne jour ouvre une plage que
+  //    l'utilisateur peut étirer. Au mouseup, on appelle onSlotClick avec la
+  //    durée correspondante. Si la souris n'a pas bougé (ou est restée dans la
+  //    même demi-heure), on retombe sur un click simple sans durée.
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const colRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  // ── Drag-to-move : mousedown sur une EventCard initie un drag potentiel.
+  //    Au-delà d'un seuil de 5px, on bascule en mode déplacement. Click sans
+  //    drag = onEventClick. Drop sur une autre cellule = onEventMove(event, isoNewStart).
+  const [dragMove, setDragMove] = useState<DragMoveState | null>(null)
+  const justDragMovedRef = useRef(false)
+
+  const handleEventCardClick = useCallback((ev: AgendaEvent) => {
+    // Si on vient de finir un drag-move, on suppress le click qui suit
+    if (justDragMovedRef.current) {
+      justDragMovedRef.current = false
+      return
+    }
+    onEventClick?.(ev)
+  }, [onEventClick])
+
+  // Document-level handlers pour le drag-move (mousemove / mouseup)
+  useEffect(() => {
+    if (!dragMove) return
+
+    function findDayIdx(clientX: number): number {
+      for (let i = 0; i < 7; i++) {
+        const col = colRefs.current[i]
+        if (!col) continue
+        const r = col.getBoundingClientRect()
+        if (clientX >= r.left && clientX < r.right) return i
+      }
+      return -1
+    }
+
+    function onMove(e: MouseEvent) {
+      setDragMove((prev) => {
+        if (!prev) return prev
+        const dx = e.clientX - prev.startClientX
+        const dy = e.clientY - prev.startClientY
+        const moved = Math.hypot(dx, dy) >= 5
+        const isDragging = prev.isDragging || moved
+        let currentDayIdx = prev.currentDayIdx
+        let currentHour = prev.currentHour
+        const targetDayIdx = findDayIdx(e.clientX)
+        const refIdx = targetDayIdx >= 0 ? targetDayIdx : prev.currentDayIdx
+        const col = colRefs.current[refIdx]
+        if (col) {
+          const rect = col.getBoundingClientRect()
+          const y = e.clientY - rect.top
+          const cursorHour = pixelToHour(y)
+          // Conserve l'offset pointer→event-start
+          const newStart = snapToHalf(cursorHour - prev.pointerOffsetMinutes / 60)
+          currentHour = Math.max(0, Math.min(23.5, newStart))
+          if (targetDayIdx >= 0) currentDayIdx = targetDayIdx
+        }
+        if (
+          prev.isDragging === isDragging
+          && prev.currentDayIdx === currentDayIdx
+          && prev.currentHour === currentHour
+        ) {
+          return prev
+        }
+        return { ...prev, isDragging, currentDayIdx, currentHour }
+      })
+    }
+
+    function onUp() {
+      setDragMove((prev) => {
+        if (!prev) return null
+        if (prev.isDragging) {
+          // Ignore les "no-op" : même jour + même heure que l'origine
+          const sameDay = prev.currentDayIdx === prev.originalDayIdx
+          const sameHour = Math.abs(prev.currentHour - prev.originalStartHour) < 0.001
+          if (!(sameDay && sameHour)) {
+            const targetDay = days[prev.currentDayIdx]
+            const newDate = new Date(targetDay)
+            const h = Math.floor(prev.currentHour)
+            const m = Math.round((prev.currentHour - h) * 60)
+            newDate.setHours(h, m, 0, 0)
+            justDragMovedRef.current = true
+            onEventMove?.(prev.event, newDate.toISOString())
+          }
+        }
+        return null
+      })
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+  }, [dragMove, days, onEventMove])
+
+  useEffect(() => {
+    if (!drag) return
+    const col = colRefs.current[drag.dayIdx]
+    if (!col) return
+
+    const onMove = (e: MouseEvent) => {
+      const rect = col.getBoundingClientRect()
+      const y = e.clientY - rect.top
+      const newHour = snapToHalf(pixelToHour(y))
+      setDrag((prev) => {
+        if (!prev) return prev
+        if (prev.currentHour === newHour) return prev
+        return {
+          ...prev,
+          currentHour: newHour,
+          isDragging: prev.isDragging || newHour !== prev.startHour,
+        }
+      })
+    }
+
+    const onUp = () => {
+      setDrag((prev) => {
+        if (!prev) return null
+        if (prev.isDragging) {
+          const start = Math.min(prev.startHour, prev.currentHour)
+          const end = Math.max(prev.startHour, prev.currentHour) + 0.5
+          const minutes = Math.max(30, Math.round((end - start) * 60))
+          onSlotClick?.(days[prev.dayIdx], start, minutes)
+        } else {
+          onSlotClick?.(days[prev.dayIdx], prev.startHour)
+        }
+        return null
+      })
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+  }, [drag, days, onSlotClick])
 
   return (
     <div
@@ -121,17 +302,18 @@ export function WeekView({ date, events, onEventClick, onSlotClick }: WeekViewPr
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 1,
+                gap: 2,
                 borderLeft: '1px solid var(--agenda-grid-line)',
-                background: today ? 'var(--agenda-today-tint)' : 'transparent',
+                background: 'transparent',
+                paddingTop: 4,
               }}
             >
               <span
                 style={{
                   fontSize: 10,
-                  color: 'var(--text-tertiary)',
+                  color: today ? 'var(--color-primary)' : 'var(--text-tertiary)',
                   textTransform: 'uppercase',
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.6,
                   fontWeight: 600,
                 }}
               >
@@ -139,10 +321,18 @@ export function WeekView({ date, events, onEventClick, onSlotClick }: WeekViewPr
               </span>
               <span
                 style={{
-                  fontSize: 14,
-                  color: today ? 'var(--color-primary)' : 'var(--text-primary)',
-                  fontWeight: today ? 700 : 500,
+                  fontSize: 13,
+                  fontWeight: today ? 600 : 500,
+                  color: today ? '#000' : 'var(--text-primary)',
+                  background: today ? 'var(--color-primary)' : 'transparent',
+                  width: 22,
+                  height: 22,
+                  borderRadius: 999,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   fontVariantNumeric: 'tabular-nums',
+                  lineHeight: 1,
                 }}
               >
                 {format(d, 'd', { locale: fr })}
@@ -156,30 +346,46 @@ export function WeekView({ date, events, onEventClick, onSlotClick }: WeekViewPr
       <AllDayBanner events={[]} columns={7} gutterWidth={GUTTER_WIDTH} />
 
       {/* Scrollable body */}
-      <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+      <div ref={bodyRef} style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: `${GUTTER_WIDTH}px repeat(7, 1fr)`,
             height: gridHeight,
             position: 'relative',
+            // Lignes horaires en arrière-plan : un gradient sur la grille,
+            // sous les cards (qui sont opaques et masquent la ligne là où elles
+            // sont posées). C'est la convention Google Calendar.
+            backgroundImage: `repeating-linear-gradient(
+              to bottom,
+              var(--agenda-grid-line-strong) 0,
+              var(--agenda-grid-line-strong) 1px,
+              transparent 1px,
+              transparent ${DEFAULT_GEOMETRY.slotHeight * 2}px
+            )`,
           }}
         >
-          {/* Gutter horaires */}
+          {/* Gutter horaires — labels positionnés JUSTE AU-DESSUS de la ligne
+              pleine heure (style Google Cal) plutôt que centrés sur la ligne,
+              pour éviter l'effet "ligne barrée à travers le texte". */}
           <div style={{ position: 'relative' }}>
             {Array.from({ length: slotsCount + 1 }).map((_, i) => {
-              if (i % 2 !== 0) return null // afficher seulement aux heures pleines
+              if (i % 2 !== 0) return null // heures pleines uniquement
+              if (i === 0) return null     // pas de label au tout premier pixel (clipping)
+              if (i === slotsCount) return null // pas de "24:00" au bout
               const hour = DEFAULT_GEOMETRY.startHour + i / 2
               return (
                 <div
                   key={i}
                   style={{
                     position: 'absolute',
-                    top: i * DEFAULT_GEOMETRY.slotHeight - 6,
+                    top: i * DEFAULT_GEOMETRY.slotHeight - 14,
                     right: 8,
-                    fontSize: 10,
-                    color: 'var(--text-tertiary)',
+                    fontSize: 10.5,
+                    color: 'var(--text-muted)',
                     fontVariantNumeric: 'tabular-nums',
+                    fontWeight: 500,
+                    lineHeight: 1,
                     pointerEvents: 'none',
                   }}
                 >
@@ -195,56 +401,80 @@ export function WeekView({ date, events, onEventClick, onSlotClick }: WeekViewPr
             const dayEvents = eventsByDay[dayIdx]
             const layout = layoutsByDay[dayIdx]
 
+            const isDragCol = drag?.dayIdx === dayIdx
+            const dragStart = isDragCol && drag ? Math.min(drag.startHour, drag.currentHour) : null
+            const dragEnd = isDragCol && drag ? Math.max(drag.startHour, drag.currentHour) + 0.5 : null
+
+            const isGhostCol = dragMove?.isDragging && dragMove.currentDayIdx === dayIdx
+
             return (
               <div
                 key={d.toISOString()}
-                onClick={(e) => {
-                  if (!onSlotClick) return
-                  // Ignorer les clicks qui bubble depuis EventCard
+                ref={(el) => { colRefs.current[dayIdx] = el }}
+                onMouseDown={(e) => {
+                  if (e.button !== 0) return
                   const target = e.target as HTMLElement
-                  if (target.closest('[data-agenda-event]')) return
+
+                  // Drag-to-move : mousedown sur une EventCard ?
+                  const eventEl = target.closest('[data-agenda-event]')
+                  if (eventEl && onEventMove) {
+                    const eventId = eventEl.getAttribute('data-agenda-event')
+                    const ev = dayEvents.find((x) => x.id === eventId)
+                    if (ev && ev.kind === 'booking') {
+                      e.preventDefault()
+                      const colRect = e.currentTarget.getBoundingClientRect()
+                      const y = e.clientY - colRect.top
+                      const cursorHour = pixelToHour(y)
+                      const evStart = parseISO(ev.start)
+                      const evStartHour = evStart.getHours() + evStart.getMinutes() / 60
+                      const pointerOffsetMinutes = (cursorHour - evStartHour) * 60
+                      setDragMove({
+                        event: ev,
+                        originalStartHour: evStartHour,
+                        originalDayIdx: dayIdx,
+                        pointerOffsetMinutes,
+                        currentDayIdx: dayIdx,
+                        currentHour: evStartHour,
+                        isDragging: false,
+                        startClientX: e.clientX,
+                        startClientY: e.clientY,
+                      })
+                      return
+                    }
+                  }
+                  if (eventEl) return // call ou pas movable → laisse le click natif
+
+                  // Sinon : drag-to-select pour créer un nouveau RDV
+                  if (!onSlotClick) return
+                  e.preventDefault()
                   const colRect = e.currentTarget.getBoundingClientRect()
                   const y = e.clientY - colRect.top
                   const hour = snapToHalf(pixelToHour(y))
-                  onSlotClick(d, hour)
+                  setDrag({ dayIdx, startHour: hour, currentHour: hour, isDragging: false })
                 }}
                 style={{
                   position: 'relative',
                   borderLeft: '1px solid var(--agenda-grid-line)',
                   background: today ? 'var(--agenda-today-tint)' : 'transparent',
                   cursor: onSlotClick ? 'cell' : 'default',
+                  userSelect: drag || dragMove ? 'none' : 'auto',
                 }}
               >
-                {/* Lignes horaires (toutes les heures pleines) */}
-                {Array.from({ length: DEFAULT_GEOMETRY.endHour - DEFAULT_GEOMETRY.startHour + 1 }).map((_, hIdx) => (
-                  <div
-                    key={hIdx}
-                    style={{
-                      position: 'absolute',
-                      top: hIdx * 2 * DEFAULT_GEOMETRY.slotHeight,
-                      left: 0,
-                      right: 0,
-                      height: 1,
-                      background: 'var(--agenda-grid-line-strong)',
-                      pointerEvents: 'none',
-                    }}
+                {/* Lignes horaires : voir gradient sur le parent grid (uniforme
+                    sur toute la largeur, sans rendu par colonne). */}
+
+                {/* Drag preview (création) */}
+                {dragStart !== null && dragEnd !== null && drag?.isDragging && (
+                  <DragSelectionPreview start={dragStart} end={dragEnd} />
+                )}
+
+                {/* Drag-move ghost (déplacement d'un event) */}
+                {isGhostCol && dragMove && (
+                  <DragMoveGhost
+                    event={dragMove.event}
+                    startHour={dragMove.currentHour}
                   />
-                ))}
-                {/* Demi-heures */}
-                {Array.from({ length: DEFAULT_GEOMETRY.endHour - DEFAULT_GEOMETRY.startHour }).map((_, hIdx) => (
-                  <div
-                    key={`half-${hIdx}`}
-                    style={{
-                      position: 'absolute',
-                      top: (hIdx * 2 + 1) * DEFAULT_GEOMETRY.slotHeight,
-                      left: 0,
-                      right: 0,
-                      height: 1,
-                      background: 'var(--agenda-grid-line)',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                ))}
+                )}
 
                 {/* Events */}
                 {dayEvents.map((ev) => {
@@ -252,16 +482,19 @@ export function WeekView({ date, events, onEventClick, onSlotClick }: WeekViewPr
                   if (!pos) return null
                   const ovr = layout.get(ev.id) ?? { column: 0, groupSize: 1 }
                   const widthPct = 100 / ovr.groupSize
+                  const isBeingDragged = dragMove?.isDragging && dragMove.event.id === ev.id
                   return (
                     <EventTooltip key={ev.id} event={ev}>
                       <EventCard
                         event={ev}
-                        onClick={onEventClick}
+                        onClick={handleEventCardClick}
                         style={{
                           top: pos.top,
                           height: pos.height,
                           left: `calc(${ovr.column * widthPct}% + 2px)`,
                           width: `calc(${widthPct}% - 4px)`,
+                          opacity: isBeingDragged ? 0.3 : 1,
+                          pointerEvents: isBeingDragged ? 'none' : 'auto',
                         }}
                       />
                     </EventTooltip>
@@ -312,6 +545,118 @@ function NowIndicatorOverlay({ todayIdx, gutterWidth }: { todayIdx: number; gutt
           <NowIndicator fullWidth gutterWidth={0} />
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * Ghost rendu pendant le déplacement d'un event existant. Utilise les mêmes
+ * tokens visuels que EventCard mais avec une ombre portée pour signaler le
+ * "vol" et un pointer-events none pour ne pas bloquer le drag.
+ */
+function DragMoveGhost({
+  event,
+  startHour,
+}: {
+  event: AgendaEvent
+  startHour: number
+}) {
+  const top = (startHour - DEFAULT_GEOMETRY.startHour) * 2 * DEFAULT_GEOMETRY.slotHeight
+  const height = Math.max(8, (event.durationMinutes / 30) * DEFAULT_GEOMETRY.slotHeight - 2)
+  const fillBg = `color-mix(in srgb, ${event.color} 32%, var(--bg-elevated))`
+  const outlineColor = `color-mix(in srgb, ${event.color} 55%, transparent)`
+  const startMin = (startHour - Math.floor(startHour)) * 60
+  const startLabel = `${String(Math.floor(startHour)).padStart(2, '0')}:${String(Math.round(startMin)).padStart(2, '0')}`
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top, height,
+        left: 2, right: 2,
+        background: fillBg,
+        borderRadius: 6,
+        boxShadow: `inset 3px 0 0 ${event.color}, inset 0 0 0 1px ${outlineColor}, 0 8px 24px rgba(0,0,0,0.45)`,
+        pointerEvents: 'none',
+        zIndex: 5,
+        padding: '4px 8px 4px 10px',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <span style={{
+        fontSize: 12.5,
+        fontWeight: 600,
+        color: 'var(--text-primary)',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        letterSpacing: -0.15,
+      }}>
+        {event.title}
+      </span>
+      <span style={{
+        fontSize: 11,
+        fontWeight: 500,
+        color: `color-mix(in srgb, ${event.color} 30%, var(--text-secondary) 70%)`,
+        marginTop: 2,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {startLabel}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * Aperçu visuel d'une plage en cours de drag-select : bloc translucide aux
+ * couleurs du primary avec heures + durée affichées. `start`/`end` en heures
+ * flottantes (ex 10.5 = 10:30).
+ */
+function DragSelectionPreview({ start, end }: { start: number; end: number }) {
+  const top = (start - DEFAULT_GEOMETRY.startHour) * 2 * DEFAULT_GEOMETRY.slotHeight
+  const height = (end - start) * 2 * DEFAULT_GEOMETRY.slotHeight
+  const minutes = Math.round((end - start) * 60)
+  const durationLabel = minutes >= 60
+    ? `${Math.floor(minutes / 60)}h${minutes % 60 > 0 ? String(minutes % 60).padStart(2, '0') : ''}`
+    : `${minutes} min`
+
+  function fmt(h: number): string {
+    const hh = Math.floor(h)
+    const mm = Math.round((h - hh) * 60)
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+  }
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top,
+        height,
+        left: 2,
+        right: 2,
+        background: 'color-mix(in srgb, var(--color-primary) 18%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--color-primary) 60%, transparent)',
+        borderRadius: 4,
+        zIndex: 2,
+        pointerEvents: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+        padding: '4px 6px',
+        color: 'var(--text-primary)',
+        fontSize: 11,
+        fontWeight: 500,
+        lineHeight: 1.3,
+        overflow: 'hidden',
+      }}
+    >
+      <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+        {fmt(start)} → {fmt(end)}
+      </span>
+      <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>
+        {durationLabel}
+      </span>
     </div>
   )
 }

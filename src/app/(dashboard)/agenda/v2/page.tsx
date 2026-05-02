@@ -13,7 +13,7 @@
  * Au cutover (Phase 8), on renommera v2/ → agenda/ et l'ancienne ira en _old/.
  */
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   addDays,
   addMonths,
@@ -29,6 +29,7 @@ import Link from 'next/link'
 import { AlertTriangle, Plus } from 'lucide-react'
 import { useAgendaData } from '@/lib/agenda/use-agenda-data'
 import type { AgendaEvent } from '@/types/agenda'
+import type { PlanningTemplate } from '@/types'
 import { WeekView } from '@/components/agenda/v2/WeekView'
 import { DayView } from '@/components/agenda/v2/DayView'
 import { MonthView } from '@/components/agenda/v2/MonthView'
@@ -67,6 +68,11 @@ export default function AgendaV2Page() {
     time: string
     duration: number
   } | null>(null)
+  const [templates, setTemplates] = useState<PlanningTemplate[]>([])
+  // Sidebar masquée par défaut — pour un coach solo avec 1-2 calendriers,
+  // les filtres + mini-cal sont du bruit visuel. Toggle dans la toolbar pour
+  // l'afficher (utile en multi-calendriers).
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Filtres sidebar. Pattern : `'all'` = tout visible (état initial / "reset"),
   // sinon une Set explicite. Évite un useEffect d'initialisation.
@@ -82,7 +88,35 @@ export default function AgendaV2Page() {
     syncError,
     dismissSyncError,
     refetch,
+    removeEvents,
+    patchEvent,
   } = useAgendaData({ viewMode, currentDate })
+
+  // Charge les templates planning au montage (single hit, hors render critique)
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/planning-templates')
+      .then((res) => res.ok ? res.json() : null)
+      .then((json) => {
+        if (cancelled) return
+        setTemplates((json?.data ?? []) as PlanningTemplate[])
+      })
+      .catch(() => { /* silently ignore */ })
+    return () => { cancelled = true }
+  }, [])
+
+  const handleImportTemplate = useCallback(async (templateId: string) => {
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
+    const res = await fetch(`/api/planning-templates/${templateId}/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        week_start: format(weekStart, 'yyyy-MM-dd'),
+        timezone_offset: new Date().getTimezoneOffset(),
+      }),
+    })
+    if (res.ok) refetch()
+  }, [currentDate, refetch])
 
   // Set des calendriers visibles, dérivé : si on est en mode `'all'`, c'est
   // l'ensemble de tous les calendriers connus à l'instant t (donc s'auto-met-
@@ -139,12 +173,12 @@ export default function AgendaV2Page() {
     setSelectedEvent(ev)
   }, [])
 
-  const handleSlotClick = useCallback((dayDate: Date, hour: number) => {
+  const handleSlotClick = useCallback((dayDate: Date, hour: number, durationMinutes?: number) => {
     setSelectedEvent(null)
     setNewBookingPrefill({
       date: format(dayDate, 'yyyy-MM-dd'),
       time: hourToHHmm(hour),
-      duration: DEFAULT_NEW_DURATION,
+      duration: durationMinutes ?? DEFAULT_NEW_DURATION,
     })
   }, [])
 
@@ -157,14 +191,178 @@ export default function AgendaV2Page() {
     })
   }
 
-  async function handleDelete(ev: AgendaEvent) {
+  async function handleEventMove(ev: AgendaEvent, newScheduledAt: string) {
     if (ev.kind !== 'booking') return
-    const res = await fetch(`/api/bookings/${ev.booking.id}`, { method: 'DELETE' })
+    // Optimistic : on applique la nouvelle position localement avant le PATCH
+    // pour éviter le flash de retour au point d'origine pendant la latence.
+    patchEvent(ev.id, (e) => {
+      if (e.kind !== 'booking') return e
+      return {
+        ...e,
+        start: newScheduledAt,
+        booking: { ...e.booking, scheduled_at: newScheduledAt },
+      }
+    })
+    try {
+      const res = await fetch(`/api/bookings/${ev.booking.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduled_at: newScheduledAt }),
+      })
+      if (!res.ok) {
+        alert('Déplacement échoué')
+        refetch() // restaure l'état serveur
+      }
+    } catch {
+      alert('Déplacement échoué (réseau)')
+      refetch()
+    }
+  }
+
+  async function handleStatusChange(ev: AgendaEvent, status: string) {
+    if (ev.kind !== 'booking') return
+    const res = await fetch(`/api/bookings/${ev.booking.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
     if (res.ok) {
-      setSelectedEvent(null)
+      // Met à jour l'event sélectionné en mémoire pour feedback immédiat
+      setSelectedEvent({
+        ...ev,
+        booking: { ...ev.booking, status: status as typeof ev.booking.status },
+      })
       refetch()
     } else {
-      alert('Suppression échouée')
+      alert('Changement de statut échoué')
+    }
+  }
+
+  /** Sauvegarde inline depuis le panel : PATCH partiel + optimistic update.
+   *  Pas d'ouverture de modal. */
+  async function handleSaveEdit(
+    ev: AgendaEvent,
+    patch: { title?: string; scheduled_at?: string; duration_minutes?: number; notes?: string | null },
+  ) {
+    if (ev.kind !== 'booking') return
+
+    // Optimistic : applique le patch sur l'event courant
+    patchEvent(ev.id, (e) => {
+      if (e.kind !== 'booking') return e
+      const newStart = patch.scheduled_at ?? e.start
+      const newDuration = patch.duration_minutes ?? e.durationMinutes
+      const newTitle = patch.title ?? e.title
+      const newNotes = patch.notes !== undefined ? patch.notes : e.booking.notes
+      return {
+        ...e,
+        title: newTitle,
+        start: newStart,
+        durationMinutes: newDuration,
+        booking: {
+          ...e.booking,
+          title: newTitle,
+          scheduled_at: newStart,
+          duration_minutes: newDuration,
+          notes: newNotes,
+        },
+      }
+    })
+    // Met à jour le selectedEvent pour rester cohérent dans le panel
+    setSelectedEvent((cur) => {
+      if (!cur || cur.id !== ev.id || cur.kind !== 'booking') return cur
+      const newStart = patch.scheduled_at ?? cur.start
+      const newDuration = patch.duration_minutes ?? cur.durationMinutes
+      const newTitle = patch.title ?? cur.title
+      const newNotes = patch.notes !== undefined ? patch.notes : cur.booking.notes
+      return {
+        ...cur,
+        title: newTitle,
+        start: newStart,
+        durationMinutes: newDuration,
+        booking: {
+          ...cur.booking,
+          title: newTitle,
+          scheduled_at: newStart,
+          duration_minutes: newDuration,
+          notes: newNotes,
+        },
+      }
+    })
+
+    try {
+      const res = await fetch(`/api/bookings/${ev.booking.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) {
+        alert('Modification échouée')
+        refetch()
+      }
+    } catch {
+      alert('Modification échouée (réseau)')
+      refetch()
+    }
+  }
+
+  // Raccourci clavier : Backspace / Delete supprime l'event sélectionné
+  // (uniquement les bookings, scope='this' par défaut). Ignoré si un input
+  // est focus pour ne pas voler la frappe utilisateur.
+  useEffect(() => {
+    if (!selectedEvent) return
+    if (selectedEvent.kind !== 'booking') return
+    function isTypingTarget(target: EventTarget | null): boolean {
+      if (!(target instanceof HTMLElement)) return false
+      const tag = target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+      if (target.isContentEditable) return true
+      return false
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Backspace' && e.key !== 'Delete') return
+      if (isTypingTarget(e.target)) return
+      e.preventDefault()
+      // selectedEvent est garanti booking ici (cf. early return)
+      if (selectedEvent) handleDelete(selectedEvent, 'this')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEvent])
+
+  async function handleDelete(ev: AgendaEvent, scope: 'this' | 'future' | 'all' = 'this') {
+    if (ev.kind !== 'booking') return
+
+    // Optimistic update : on retire d'abord l'event (ou le groupe) du state local,
+    // puis on fire le DELETE en arrière-plan. Si l'API échoue, on refetch pour
+    // récupérer l'état réel.
+    const groupId = ev.booking.recurrence_group_id
+    const targetTime = ev.booking.scheduled_at
+    if (scope === 'this' || !groupId) {
+      removeEvents((other) => other.kind === 'booking' && other.booking.id === ev.booking.id)
+    } else if (scope === 'future' && groupId) {
+      removeEvents((other) =>
+        other.kind === 'booking'
+        && other.booking.recurrence_group_id === groupId
+        && other.booking.scheduled_at >= targetTime,
+      )
+    } else if (scope === 'all' && groupId) {
+      removeEvents((other) =>
+        other.kind === 'booking' && other.booking.recurrence_group_id === groupId,
+      )
+    }
+    setSelectedEvent(null)
+
+    const url = `/api/bookings/${ev.booking.id}${scope !== 'this' ? `?scope=${scope}` : ''}`
+    try {
+      const res = await fetch(url, { method: 'DELETE' })
+      if (!res.ok) {
+        alert('Suppression échouée')
+        refetch() // réconcilie l'état
+      }
+    } catch {
+      alert('Suppression échouée (réseau)')
+      refetch()
     }
   }
 
@@ -179,6 +377,10 @@ export default function AgendaV2Page() {
         onPrev={navigatePrev}
         onNext={navigateNext}
         onToday={navigateToday}
+        templates={templates}
+        onImportTemplate={handleImportTemplate}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen((v) => !v)}
       />
 
       {syncError && (
@@ -253,17 +455,19 @@ export default function AgendaV2Page() {
         </div>
       ) : (
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          <AgendaSidebar
-            selectedDate={currentDate}
-            onSelectDate={setCurrentDate}
-            calendars={calendars}
-            visibleCalendarIds={visibleCalendarIds}
-            onToggleCalendar={toggleCalendar}
-            showPersonal={showPersonal}
-            onTogglePersonal={() => setShowPersonal((v) => !v)}
-            showCalls={showCalls}
-            onToggleCalls={() => setShowCalls((v) => !v)}
-          />
+          {sidebarOpen && (
+            <AgendaSidebar
+              selectedDate={currentDate}
+              onSelectDate={setCurrentDate}
+              calendars={calendars}
+              visibleCalendarIds={visibleCalendarIds}
+              onToggleCalendar={toggleCalendar}
+              showPersonal={showPersonal}
+              onTogglePersonal={() => setShowPersonal((v) => !v)}
+              showCalls={showCalls}
+              onToggleCalls={() => setShowCalls((v) => !v)}
+            />
+          )}
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
             {viewMode === 'week' && (
               <WeekView
@@ -271,6 +475,7 @@ export default function AgendaV2Page() {
                 events={filteredEvents}
                 onEventClick={handleEventClick}
                 onSlotClick={handleSlotClick}
+                onEventMove={handleEventMove}
               />
             )}
             {viewMode === 'day' && (
@@ -323,12 +528,14 @@ export default function AgendaV2Page() {
               event={selectedEvent}
               onClose={() => setSelectedEvent(null)}
               onDelete={handleDelete}
+              onStatusChange={handleStatusChange}
+              onSave={handleSaveEdit}
             />
           )}
         </div>
       )}
 
-      {/* Modal création */}
+      {/* Modal création (l'édition se fait inline dans le panel détail) */}
       {newBookingPrefill && (
         <NewBookingModal
           calendars={calendars}

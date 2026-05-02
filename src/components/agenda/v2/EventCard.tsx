@@ -26,9 +26,16 @@ interface EventCardProps {
 
 export function EventCard({ event, onClick, style }: EventCardProps) {
   const isShort = event.durationMinutes <= 30
+  const isMedium = event.durationMinutes > 30 && event.durationMinutes < 60
   const start = isoToHHmm(event.start)
   const end = isoToHHmm(addMinutes(parseISO(event.start), event.durationMinutes).toISOString())
-  const fillBg = `color-mix(in srgb, ${event.color} calc(var(--agenda-event-fill-opacity) * 100%), transparent)`
+  // Fond + outline + couleurs typo dérivés de la couleur du calendrier.
+  // Cards OPAQUES (mix avec bg-elevated, pas transparent) → les lignes
+  // horaires de la grille sont masquées par les cards, comme Google Cal.
+  const fillBg = `color-mix(in srgb, ${event.color} 22%, var(--bg-elevated))`
+  const fillBgHover = `color-mix(in srgb, ${event.color} 32%, var(--bg-elevated))`
+  const outlineColor = `color-mix(in srgb, ${event.color} 35%, transparent)`
+  const timeColor = `color-mix(in srgb, ${event.color} 30%, var(--text-secondary) 70%)`
 
   return (
     <button
@@ -42,29 +49,32 @@ export function EventCard({ event, onClick, style }: EventCardProps) {
         position: 'absolute',
         boxSizing: 'border-box',
         background: fillBg,
-        borderLeft: `var(--agenda-event-bar-width) solid ${event.color}`,
         border: 'none',
         borderRadius: 'var(--agenda-event-radius)',
-        padding: isShort ? '2px 6px' : '4px 6px',
+        padding: isShort ? '2px 8px 2px 10px' : '4px 8px 4px 10px',
         cursor: 'pointer',
         overflow: 'hidden',
         zIndex: Z_AGENDA.eventBlock,
-        transition: 'opacity 0.1s',
+        transition: 'background 0.12s',
         display: 'flex',
         flexDirection: isShort ? 'row' : 'column',
         alignItems: isShort ? 'center' : 'flex-start',
-        gap: isShort ? 6 : 0,
+        gap: isShort ? 8 : 0,
         minWidth: 0,
         textAlign: 'left',
+        // Bande couleur à gauche + outline subtle, via box-shadow combiné
+        // (1) inset bar gauche, (2) outline 1px tout autour à faible opacité.
+        boxShadow: `inset var(--agenda-event-bar-width) 0 0 ${event.color}, inset 0 0 0 1px ${outlineColor}`,
         ...style,
-        // Re-applique borderLeft après le spread style pour éviter qu'un parent
-        // surcharge avec un border-left générique
-        borderLeftStyle: 'solid',
-        borderLeftWidth: 'var(--agenda-event-bar-width)',
-        borderLeftColor: event.color,
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.85' }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.background = fillBgHover
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.background = fillBg
+      }}
     >
       {isShort ? (
         <>
@@ -72,7 +82,7 @@ export function EventCard({ event, onClick, style }: EventCardProps) {
             style={{
               fontSize: 11,
               fontWeight: 500,
-              color: 'var(--text-secondary)',
+              color: timeColor,
               whiteSpace: 'nowrap',
               flexShrink: 0,
               fontVariantNumeric: 'tabular-nums',
@@ -82,14 +92,15 @@ export function EventCard({ event, onClick, style }: EventCardProps) {
           </span>
           <span
             style={{
-              fontSize: 11,
-              fontWeight: 600,
+              fontSize: 12,
+              fontWeight: 500,
               color: 'var(--text-primary)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
               flex: 1,
               minWidth: 0,
+              letterSpacing: -0.1,
             }}
           >
             {event.title}
@@ -99,14 +110,15 @@ export function EventCard({ event, onClick, style }: EventCardProps) {
         <>
           <span
             style={{
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: 600,
               color: 'var(--text-primary)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
               width: '100%',
-              lineHeight: 1.2,
+              lineHeight: 1.25,
+              letterSpacing: -0.15,
             }}
           >
             {event.title}
@@ -115,17 +127,18 @@ export function EventCard({ event, onClick, style }: EventCardProps) {
             style={{
               fontSize: 11,
               fontWeight: 500,
-              color: 'var(--text-secondary)',
+              color: timeColor,
               marginTop: 2,
               fontVariantNumeric: 'tabular-nums',
+              lineHeight: 1.2,
             }}
           >
-            {start} — {end}
+            {start} – {end}
           </span>
-          {event.subtitle && (
+          {event.subtitle && !isMedium && (
             <span
               style={{
-                fontSize: 11,
+                fontSize: 10.5,
                 fontWeight: 400,
                 color: 'var(--text-tertiary)',
                 marginTop: 1,
@@ -133,6 +146,7 @@ export function EventCard({ event, onClick, style }: EventCardProps) {
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 width: '100%',
+                opacity: 0.7,
               }}
             >
               {event.subtitle}

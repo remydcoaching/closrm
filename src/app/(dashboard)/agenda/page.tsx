@@ -188,6 +188,7 @@ export default function AgendaPage() {
           is_personal: false,
           location_id: null,
           meet_url: null,
+          recurrence_group_id: null,
           created_at: call.created_at,
           booking_calendar: { name: callLabel, color: callColor },
           lead: call.lead ?? null,
