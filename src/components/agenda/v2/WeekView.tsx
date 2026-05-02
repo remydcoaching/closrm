@@ -31,12 +31,15 @@ import {
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { EventCard } from './EventCard'
+import { EventTooltip } from './EventTooltip'
 import { NowIndicator } from './NowIndicator'
 import { AllDayBanner } from './AllDayBanner'
 import {
   DEFAULT_GEOMETRY,
   computeOverlapLayout,
   eventToPosition,
+  pixelToHour,
+  snapToHalf,
   totalGridHeight,
 } from '@/lib/agenda/positioning'
 import type { AgendaEvent } from '@/types/agenda'
@@ -47,12 +50,15 @@ interface WeekViewProps {
   date: Date
   events: AgendaEvent[]
   onEventClick?: (event: AgendaEvent) => void
+  /** Callback quand un slot vide est cliqué. `dayDate` = date du jour cliqué
+   *  (00:00:00 local), `hour` = heure flottante snappée à la demi-heure. */
+  onSlotClick?: (dayDate: Date, hour: number) => void
 }
 
 const GUTTER_WIDTH = 56
 const HEADER_HEIGHT = 40
 
-export function WeekView({ date, events, onEventClick }: WeekViewProps) {
+export function WeekView({ date, events, onEventClick, onSlotClick }: WeekViewProps) {
   const weekStart = useMemo(() => startOfWeek(date, { weekStartsOn: 1 }), [date])
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -192,10 +198,21 @@ export function WeekView({ date, events, onEventClick }: WeekViewProps) {
             return (
               <div
                 key={d.toISOString()}
+                onClick={(e) => {
+                  if (!onSlotClick) return
+                  // Ignorer les clicks qui bubble depuis EventCard
+                  const target = e.target as HTMLElement
+                  if (target.closest('[data-agenda-event]')) return
+                  const colRect = e.currentTarget.getBoundingClientRect()
+                  const y = e.clientY - colRect.top
+                  const hour = snapToHalf(pixelToHour(y))
+                  onSlotClick(d, hour)
+                }}
                 style={{
                   position: 'relative',
                   borderLeft: '1px solid var(--agenda-grid-line)',
                   background: today ? 'var(--agenda-today-tint)' : 'transparent',
+                  cursor: onSlotClick ? 'cell' : 'default',
                 }}
               >
                 {/* Lignes horaires (toutes les heures pleines) */}
@@ -236,17 +253,18 @@ export function WeekView({ date, events, onEventClick }: WeekViewProps) {
                   const ovr = layout.get(ev.id) ?? { column: 0, groupSize: 1 }
                   const widthPct = 100 / ovr.groupSize
                   return (
-                    <EventCard
-                      key={ev.id}
-                      event={ev}
-                      onClick={onEventClick}
-                      style={{
-                        top: pos.top,
-                        height: pos.height,
-                        left: `calc(${ovr.column * widthPct}% + 2px)`,
-                        width: `calc(${widthPct}% - 4px)`,
-                      }}
-                    />
+                    <EventTooltip key={ev.id} event={ev}>
+                      <EventCard
+                        event={ev}
+                        onClick={onEventClick}
+                        style={{
+                          top: pos.top,
+                          height: pos.height,
+                          left: `calc(${ovr.column * widthPct}% + 2px)`,
+                          width: `calc(${widthPct}% - 4px)`,
+                        }}
+                      />
+                    </EventTooltip>
                   )
                 })}
               </div>

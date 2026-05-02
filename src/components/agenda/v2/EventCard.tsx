@@ -33,6 +33,7 @@ export function EventCard({ event, onClick, style }: EventCardProps) {
   return (
     <button
       type="button"
+      data-agenda-event={event.id}
       onClick={(e) => {
         e.stopPropagation()
         onClick?.(event)

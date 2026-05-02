@@ -1,20 +1,19 @@
 'use client'
 
 /**
- * Route /agenda/v2 — Phase 3a (week view statique read-only).
+ * Route /agenda/v2 — Phases 3a (statique) + 3b (interactions).
+ *
+ * Phase 3b ajoute :
+ *  - Click event → side panel droit (push, pas overlay)
+ *  - Click slot vide → ouvre NewBookingModal avec prefill date/heure/durée
+ *  - Hover event → tooltip (géré dans EventTooltip dans WeekView)
+ *  - Suppression d'event depuis le panel
  *
  * Cette route coexiste avec /agenda (l'ancienne) le temps de la refonte.
  * Au cutover (Phase 8), on renommera v2/ → agenda/ et l'ancienne ira en _old/.
- *
- * Phase 3a scope :
- *   - Affichage week view uniquement (Day/Month désactivés visuellement)
- *   - Read-only : click event → log console (panneau détail = Phase 3b)
- *   - Sidebar gauche absente (= Phase 5)
- *   - Drag/create absent (= Phase 6)
- *   - Mobile non géré (= Phase 7)
  */
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   addDays,
   addMonths,
@@ -27,11 +26,15 @@ import {
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Plus } from 'lucide-react'
 import { useAgendaData } from '@/lib/agenda/use-agenda-data'
 import type { AgendaEvent } from '@/types/agenda'
 import { WeekView } from '@/components/agenda/v2/WeekView'
 import { AgendaToolbar, type AgendaViewMode } from '@/components/agenda/v2/AgendaToolbar'
+import { EventDetailPanel } from '@/components/agenda/v2/EventDetailPanel'
+import NewBookingModal from '@/components/agenda/NewBookingModal'
+
+const DEFAULT_NEW_DURATION = 60
 
 function formatPeriodLabel(viewMode: AgendaViewMode, date: Date): string {
   if (viewMode === 'day') return format(date, 'EEEE d MMMM yyyy', { locale: fr })
@@ -46,16 +49,30 @@ function formatPeriodLabel(viewMode: AgendaViewMode, date: Date): string {
   return format(date, 'MMMM yyyy', { locale: fr })
 }
 
+function hourToHHmm(hour: number): string {
+  const h = Math.floor(hour)
+  const m = Math.round((hour - h) * 60)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 export default function AgendaV2Page() {
   const [viewMode, setViewMode] = useState<AgendaViewMode>('week')
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date())
+  const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null)
+  const [newBookingPrefill, setNewBookingPrefill] = useState<{
+    date: string
+    time: string
+    duration: number
+  } | null>(null)
 
   const {
     events,
-    calendarsLoaded,
     calendars,
+    locations,
+    calendarsLoaded,
     syncError,
     dismissSyncError,
+    refetch,
   } = useAgendaData({ viewMode, currentDate })
 
   const periodLabel = useMemo(
@@ -77,9 +94,37 @@ export default function AgendaV2Page() {
     setCurrentDate(new Date())
   }
 
-  function handleEventClick(ev: AgendaEvent) {
-    // Phase 3b ouvrira le side panel — pour l'instant juste log.
-    console.log('[agenda v2] event click', ev)
+  const handleEventClick = useCallback((ev: AgendaEvent) => {
+    setSelectedEvent(ev)
+  }, [])
+
+  const handleSlotClick = useCallback((dayDate: Date, hour: number) => {
+    setSelectedEvent(null)
+    setNewBookingPrefill({
+      date: format(dayDate, 'yyyy-MM-dd'),
+      time: hourToHHmm(hour),
+      duration: DEFAULT_NEW_DURATION,
+    })
+  }, [])
+
+  function handleNewBookingClick() {
+    setSelectedEvent(null)
+    setNewBookingPrefill({
+      date: format(currentDate, 'yyyy-MM-dd'),
+      time: '09:00',
+      duration: DEFAULT_NEW_DURATION,
+    })
+  }
+
+  async function handleDelete(ev: AgendaEvent) {
+    if (ev.kind !== 'booking') return
+    const res = await fetch(`/api/bookings/${ev.booking.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setSelectedEvent(null)
+      refetch()
+    } else {
+      alert('Suppression échouée')
+    }
   }
 
   const noCalendars = calendarsLoaded && calendars.length === 0
@@ -131,6 +176,7 @@ export default function AgendaV2Page() {
         </div>
       )}
 
+      {/* Content row : main view + side panel */}
       {noCalendars ? (
         <div
           style={{
@@ -166,7 +212,64 @@ export default function AgendaV2Page() {
           </Link>
         </div>
       ) : (
-        <WeekView date={currentDate} events={events} onEventClick={handleEventClick} />
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+            <WeekView
+              date={currentDate}
+              events={events}
+              onEventClick={handleEventClick}
+              onSlotClick={handleSlotClick}
+            />
+            {/* FAB nouveau RDV — placé en bas-droite, mais au-dessus du panel */}
+            <button
+              type="button"
+              onClick={handleNewBookingClick}
+              aria-label="Nouveau rendez-vous"
+              style={{
+                position: 'absolute',
+                bottom: 16,
+                right: 16,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '10px 16px',
+                borderRadius: 999,
+                border: 'none',
+                background: 'var(--color-primary)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+              }}
+            >
+              <Plus size={15} /> Nouveau RDV
+            </button>
+          </div>
+          {selectedEvent && (
+            <EventDetailPanel
+              event={selectedEvent}
+              onClose={() => setSelectedEvent(null)}
+              onDelete={handleDelete}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Modal création */}
+      {newBookingPrefill && (
+        <NewBookingModal
+          calendars={calendars}
+          locations={locations}
+          prefillDate={newBookingPrefill.date}
+          prefillTime={newBookingPrefill.time}
+          prefillDuration={newBookingPrefill.duration}
+          onClose={() => setNewBookingPrefill(null)}
+          onCreated={() => {
+            setNewBookingPrefill(null)
+            refetch()
+          }}
+        />
       )}
     </div>
   )
