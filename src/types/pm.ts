@@ -1,4 +1,4 @@
-export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked'
+export type TaskStatus = 'todo' | 'in_progress' | 'done_this_week' | 'done' | 'blocked'
 export type TaskAssignee = 'pierre' | 'remy' | 'both' | null
 export type TaskPriority = 'low' | 'normal' | 'high' | 'urgent'
 
@@ -27,6 +27,7 @@ export interface PmTask {
 export const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
   { value: 'todo', label: 'À faire' },
   { value: 'in_progress', label: 'En cours' },
+  { value: 'done_this_week', label: 'Terminé cette semaine' },
   { value: 'done', label: 'Terminé' },
   { value: 'blocked', label: 'Bloqué' },
 ]

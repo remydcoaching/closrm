@@ -1,25 +1,9 @@
 'use client'
 
-/**
- * Preview live de l'email en cours d'édition. Render les blocks dans un
- * container 600px (desktop) ou 375px (mobile), avec click-to-select.
- *
- * Stratégie "render SSR-like + iframe sandbox" :
- *   - On compile côté client avec `compileBlocksV2` (même fonction que
- *     celle utilisée par l'envoi → zéro drift preview↔envoi)
- *   - On affiche le HTML dans un iframe avec sandbox="" pour ne pas
- *     exécuter de JS éventuel et pour isoler les styles.
- *   - Le click-to-select n'est pas possible dans un iframe sandbox (pas
- *     d'accès postMessage), donc on double-affiche une couche clickable
- *     transparente par-dessus qui sélectionne le bloc par index.
- *
- * Device toggle : desktop 600px / mobile 375px.
- */
-
-import { useMemo } from 'react'
+import { useMemo, useRef, useEffect, useCallback, useState as useLocalState } from 'react'
 import { Laptop, Smartphone } from 'lucide-react'
 import type { EmailBlock } from '@/types'
-import type { EmailPreset, EmailPresetOverride } from '@/lib/email/design-types'
+import type { EmailPresetOverride } from '@/lib/email/design-types'
 import { compileBlocksV2 } from '@/lib/email/compiler-v2'
 
 interface Props {
@@ -31,7 +15,12 @@ interface Props {
   mode: 'desktop' | 'mobile'
   onModeChange: (mode: 'desktop' | 'mobile') => void
   onTestSend?: () => void
-  _preset?: EmailPreset
+}
+
+interface BlockRect {
+  id: string
+  top: number
+  height: number
 }
 
 export default function EmailPagePreview({
@@ -50,14 +39,69 @@ export default function EmailPagePreview({
       previewText: null,
       presetId,
       presetOverride,
+      isPreview: true,
     })
   }, [blocks, presetId, presetOverride])
 
   const iframeWidth = mode === 'mobile' ? 375 : 600
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [blockRects, setBlockRects] = useLocalState<BlockRect[]>([])
+  const [iframeHeight, setIframeHeight] = useLocalState(680)
 
-  // Suppress unused-var warning from legacy selection overlay.
-  void selectedBlockId
-  void onSelectBlock
+  const measureBlocks = useCallback(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    try {
+      const doc = iframe.contentDocument
+      if (!doc) return
+      const body = doc.body
+      if (body) {
+        const h = body.scrollHeight
+        if (h > 100) setIframeHeight(h)
+      }
+      const trs = doc.querySelectorAll('[data-block-id]')
+      const rects: BlockRect[] = []
+      trs.forEach((el) => {
+        const id = el.getAttribute('data-block-id')
+        if (!id) return
+        const rect = (el as HTMLElement).getBoundingClientRect()
+        rects.push({ id, top: rect.top, height: rect.height })
+      })
+      setBlockRects(rects)
+    } catch {
+      // cross-origin: can't access
+    }
+  }, [])
+
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const onLoad = () => {
+      measureBlocks()
+      const doc = iframe.contentDocument
+      if (doc) {
+        const obs = new MutationObserver(measureBlocks)
+        obs.observe(doc.body, { childList: true, subtree: true, attributes: true })
+        return () => obs.disconnect()
+      }
+    }
+    iframe.addEventListener('load', onLoad)
+    return () => iframe.removeEventListener('load', onLoad)
+  }, [html, measureBlocks])
+
+  useEffect(() => {
+    const t = setTimeout(measureBlocks, 300)
+    return () => clearTimeout(t)
+  }, [html, mode, measureBlocks])
+
+  function handleOverlayClick(blockId: string) {
+    onSelectBlock(blockId)
+  }
+
+  function handleBackgroundClick() {
+    onSelectBlock(null)
+  }
 
   return (
     <div
@@ -127,6 +171,7 @@ export default function EmailPagePreview({
 
       {/* Preview zone */}
       <div
+        onClick={handleBackgroundClick}
         style={{
           flex: 1,
           padding: '32px 20px',
@@ -135,20 +180,62 @@ export default function EmailPagePreview({
           alignItems: 'flex-start',
         }}
       >
-        <div style={{ width: iframeWidth, maxWidth: '100%' }}>
+        <div ref={wrapperRef} style={{ width: iframeWidth, maxWidth: '100%', position: 'relative' }}>
           <iframe
-            sandbox=""
+            ref={iframeRef}
+            sandbox="allow-same-origin"
             srcDoc={html}
             style={{
               width: iframeWidth,
-              minHeight: 680,
+              height: iframeHeight,
               border: 'none',
               borderRadius: 10,
-              background: '#fff',
               transition: 'width 0.2s ease',
               boxShadow: '0 4px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.04)',
+              display: 'block',
             }}
           />
+          {/* Clickable overlay layer */}
+          {blockRects.map((br) => {
+            const isSelected = br.id === selectedBlockId
+            return (
+              <div
+                key={br.id}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleOverlayClick(br.id)
+                }}
+                style={{
+                  position: 'absolute',
+                  top: br.top,
+                  left: 0,
+                  width: '100%',
+                  height: br.height,
+                  cursor: 'pointer',
+                  borderRadius: 4,
+                  border: isSelected ? '2px solid #3b82f6' : '2px solid transparent',
+                  background: isSelected
+                    ? 'rgba(59,130,246,0.06)'
+                    : 'transparent',
+                  transition: 'border-color 0.15s, background 0.15s',
+                  zIndex: 1,
+                  boxSizing: 'border-box',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) {
+                    ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(59,130,246,0.4)'
+                    ;(e.currentTarget as HTMLElement).style.background = 'rgba(59,130,246,0.03)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) {
+                    ;(e.currentTarget as HTMLElement).style.borderColor = 'transparent'
+                    ;(e.currentTarget as HTMLElement).style.background = 'transparent'
+                  }
+                }}
+              />
+            )
+          })}
         </div>
       </div>
 

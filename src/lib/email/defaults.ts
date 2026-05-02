@@ -80,10 +80,10 @@ export function getDefaultEmailBlockConfig(type: EmailBlockType): EmailBlockConf
       return {
         columns: 2,
         items: [
-          { icon: '🎯', title: 'Objectif', description: 'Atteindre ton objectif rapidement.' },
-          { icon: '📈', title: 'Progression', description: 'Suivre ta progression en temps réel.' },
-          { icon: '🤝', title: 'Accompagnement', description: 'Un suivi personnalisé.' },
-          { icon: '⚡', title: 'Résultats', description: 'Des résultats dès la première semaine.' },
+          { icon: 'target', title: 'Objectif', description: 'Atteindre ton objectif rapidement.' },
+          { icon: 'trending-up', title: 'Progression', description: 'Suivre ta progression en temps réel.' },
+          { icon: 'users', title: 'Accompagnement', description: 'Un suivi personnalisé.' },
+          { icon: 'zap', title: 'Résultats', description: 'Des résultats dès la première semaine.' },
         ],
       } satisfies EmailFeaturesGridBlockConfig
     case 'video':

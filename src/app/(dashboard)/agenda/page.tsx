@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   addDays,
   addWeeks,
@@ -14,8 +14,9 @@ import {
   format,
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal, LayoutTemplate } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal, LayoutTemplate, AlertTriangle, CalendarOff } from 'lucide-react'
 import { BookingWithCalendar, BookingCalendar, BookingLocation, PlanningTemplate } from '@/types'
+import { Z_AGENDA } from '@/lib/agenda/z-index'
 import { AgendaSidebar } from '@/components/agenda/AgendaSidebar'
 import { FilterPanel } from '@/components/agenda/FilterPanel'
 import { DayView } from '@/components/agenda/DayView'
@@ -81,6 +82,8 @@ export default function AgendaPage() {
   const [templates, setTemplates] = useState<PlanningTemplate[]>([])
   const [moveConfirm, setMoveConfirm] = useState<{ bookingId: string; booking: BookingWithCalendar | null; newDate: string; newTime: string } | null>(null)
   const [showImportDropdown, setShowImportDropdown] = useState(false)
+  const [calendarsLoaded, setCalendarsLoaded] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   // Fetch calendars once on mount
   const fetchCalendars = useCallback(async () => {
@@ -101,18 +104,29 @@ export default function AgendaPage() {
       const tplJson = await tplRes.json()
       setTemplates(tplJson.data || [])
     }
+    setCalendarsLoaded(true)
   }, [])
 
   useEffect(() => {
     fetchCalendars()
   }, [fetchCalendars])
 
-  // Trigger Google Calendar sync on mount, then refetch bookings when done
+  // Trigger Google Calendar sync on mount, then refetch bookings when done.
+  // syncDone flips exactly once — used to refetch bookings after the very first
+  // sync completes (and not on every viewMode/currentDate change).
   const [syncDone, setSyncDone] = useState(false)
   useEffect(() => {
     let cancelled = false
     fetch('/api/integrations/google/sync', { method: 'POST' })
-      .catch(() => {})
+      .then(async (res) => {
+        if (!cancelled && !res.ok) {
+          const body = await res.text().catch(() => '')
+          setSyncError(body.length > 0 && body.length < 200 ? body : 'Synchronisation Google Calendar échouée')
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSyncError('Synchronisation Google Calendar indisponible')
+      })
       .finally(() => {
         if (!cancelled) setSyncDone(true)
       })
@@ -174,6 +188,7 @@ export default function AgendaPage() {
           is_personal: false,
           location_id: null,
           meet_url: null,
+          recurrence_group_id: null,
           created_at: call.created_at,
           booking_calendar: { name: callLabel, color: callColor },
           lead: call.lead ?? null,
@@ -190,9 +205,13 @@ export default function AgendaPage() {
     fetchBookings()
   }, [fetchBookings])
 
-  // Refetch bookings once Google sync completes (first mount only)
+  // Refetch bookings once Google sync completes — exactly once, on the
+  // false→true transition. Without this guard, every viewMode/currentDate
+  // change would trigger a second fetch (since fetchBookings is in deps).
+  const didRefetchAfterSync = useRef(false)
   useEffect(() => {
-    if (syncDone) {
+    if (syncDone && !didRefetchAfterSync.current) {
+      didRefetchAfterSync.current = true
       fetchBookings()
     }
   }, [syncDone, fetchBookings])
@@ -554,6 +573,42 @@ export default function AgendaPage() {
           </button>
         </div>
 
+        {/* Sync error toast */}
+        {syncError && (
+          <div
+            role="alert"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+              borderBottom: '1px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
+              color: 'var(--text-primary)',
+              fontSize: 12,
+              flexShrink: 0,
+            }}
+          >
+            <AlertTriangle size={14} style={{ color: 'var(--color-primary)' }} />
+            <span style={{ flex: 1 }}>{syncError}</span>
+            <button
+              type="button"
+              onClick={() => setSyncError(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                fontSize: 11,
+                cursor: 'pointer',
+                padding: '2px 8px',
+                borderRadius: 4,
+              }}
+            >
+              Fermer
+            </button>
+          </div>
+        )}
+
         {/* Calendar view */}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
           {loading && (
@@ -565,9 +620,51 @@ export default function AgendaPage() {
                 right: 0,
                 height: 2,
                 background: 'var(--color-primary)',
-                zIndex: 20,
+                zIndex: Z_AGENDA.toolbar,
               }}
             />
+          )}
+
+          {/* Empty state — no calendar connected */}
+          {calendarsLoaded && calendars.length === 0 && !loading && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                padding: 32,
+                textAlign: 'center',
+                background: 'var(--bg-primary)',
+                zIndex: Z_AGENDA.toolbar,
+              }}
+            >
+              <CalendarOff size={36} style={{ color: 'var(--text-tertiary)' }} />
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Aucun calendrier configuré
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 380, lineHeight: 1.5 }}>
+                Crée ton premier calendrier de réservation pour commencer à organiser tes rendez-vous.
+              </div>
+              <a
+                href="/parametres/calendriers"
+                style={{
+                  marginTop: 8,
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  background: 'var(--color-primary)',
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                }}
+              >
+                Configurer un calendrier
+              </a>
+            </div>
           )}
 
           {viewMode === 'day' && (

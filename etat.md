@@ -129,4 +129,16 @@
 
 ---
 
-*Mis a jour le 2026-04-15 par Claude Code — ClosRM*
+## Session du 2026-04-29 — Resume des travaux Remy
+
+### T-040 — Fix RLS billing_plans + optimisation Disk IO automations
+
+| Element | Detail |
+|---------|--------|
+| **RLS billing_plans** | Migration 051 — active RLS + policy SELECT publique. Corrige alerte securite Supabase. |
+| **Index workflows** | Migration 052 — 5 index sur workflow_executions, workflow_execution_logs, leads(last_activity_at). |
+| **Refactor cron N+1** | workflow-scheduler/route.ts — 4 sections refactorees : anti-doublon batch query + .limit(500). Reduction estimee ~80-90% Disk IO. |
+
+---
+
+*Mis a jour le 2026-04-29 par Claude Code — ClosRM*

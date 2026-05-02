@@ -27,6 +27,7 @@ import type {
 import { X } from 'lucide-react'
 import { EMAIL_BLOCK_LABELS } from '@/lib/email/defaults'
 import RichEmailEditor from '@/components/emails/RichEmailEditor'
+import EmailIconPicker from './EmailIconPicker'
 
 interface Props {
   block: EmailBlock
@@ -373,7 +374,7 @@ function renderPanel(
               }}
             >
               <Field label={`Feature ${idx + 1} — Icône`}>
-                <TextInput
+                <EmailIconPicker
                   value={f.icon || ''}
                   onChange={(v) => {
                     const items = [...c.items]

@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
     }
 
     // ─── 2. Fire call_in_x_hours triggers ─────────────────────────────────
-    // Find active workflows with call_in_x_hours trigger
     const { data: callReminderWorkflows } = await supabase
       .from('workflows')
       .select('id, workspace_id, trigger_config')
@@ -65,8 +64,8 @@ export async function GET(request: NextRequest) {
         const hoursBefore = (wf.trigger_config as Record<string, unknown>)?.hours_before as number || 24
         const now = new Date()
         const targetTime = new Date(now.getTime() + hoursBefore * 60 * 60 * 1000)
-        // Window: 15 minutes (cron interval)
         const windowStart = new Date(targetTime.getTime() - 15 * 60 * 1000)
+        const antiDupeSince = new Date(now.getTime() - hoursBefore * 60 * 60 * 1000).toISOString()
 
         const { data: upcomingCalls } = await supabase
           .from('calls')
@@ -75,27 +74,29 @@ export async function GET(request: NextRequest) {
           .eq('outcome', 'pending')
           .gte('scheduled_at', windowStart.toISOString())
           .lt('scheduled_at', targetTime.toISOString())
+          .limit(500)
 
-        if (upcomingCalls) {
+        if (upcomingCalls?.length) {
+          const leadIds = upcomingCalls.map(c => c.lead_id).filter(Boolean)
+          const { data: alreadyFired } = await supabase
+            .from('workflow_executions')
+            .select('lead_id')
+            .eq('workflow_id', wf.id)
+            .in('lead_id', leadIds)
+            .gte('started_at', antiDupeSince)
+
+          const firedSet = new Set((alreadyFired ?? []).map(e => e.lead_id))
+
           for (const call of upcomingCalls) {
-            // Check if already fired for this call+workflow combo
-            const { count } = await supabase
-              .from('workflow_executions')
-              .select('*', { count: 'exact', head: true })
-              .eq('workflow_id', wf.id)
-              .eq('lead_id', call.lead_id)
-              .gte('started_at', new Date(now.getTime() - hoursBefore * 60 * 60 * 1000).toISOString())
-
-            if ((count ?? 0) === 0) {
-              try {
-                await fireTriggersForEvent(wf.workspace_id, 'call_in_x_hours', {
-                  lead_id: call.lead_id,
-                  call_id: call.id,
-                })
-                results.call_reminders_fired++
-              } catch (err) {
-                results.errors.push(`Call reminder ${call.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
-              }
+            if (firedSet.has(call.lead_id)) continue
+            try {
+              await fireTriggersForEvent(wf.workspace_id, 'call_in_x_hours', {
+                lead_id: call.lead_id,
+                call_id: call.id,
+              })
+              results.call_reminders_fired++
+            } catch (err) {
+              results.errors.push(`Call reminder ${call.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
             }
           }
         }
@@ -113,6 +114,7 @@ export async function GET(request: NextRequest) {
       for (const wf of followupWorkflows) {
         const pendingDays = (wf.trigger_config as Record<string, unknown>)?.days as number || 3
         const cutoff = new Date(Date.now() - pendingDays * 24 * 60 * 60 * 1000)
+        const antiDupeSince = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
         const { data: pendingFollowups } = await supabase
           .from('follow_ups')
@@ -120,26 +122,29 @@ export async function GET(request: NextRequest) {
           .eq('workspace_id', wf.workspace_id)
           .eq('status', 'en_attente')
           .lte('scheduled_at', cutoff.toISOString())
+          .limit(500)
 
-        if (pendingFollowups) {
+        if (pendingFollowups?.length) {
+          const leadIds = pendingFollowups.map(f => f.lead_id).filter(Boolean)
+          const { data: alreadyFired } = await supabase
+            .from('workflow_executions')
+            .select('lead_id')
+            .eq('workflow_id', wf.id)
+            .in('lead_id', leadIds)
+            .gte('started_at', antiDupeSince)
+
+          const firedSet = new Set((alreadyFired ?? []).map(e => e.lead_id))
+
           for (const fu of pendingFollowups) {
-            const { count } = await supabase
-              .from('workflow_executions')
-              .select('*', { count: 'exact', head: true })
-              .eq('workflow_id', wf.id)
-              .eq('lead_id', fu.lead_id)
-              .gte('started_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-
-            if ((count ?? 0) === 0) {
-              try {
-                await fireTriggersForEvent(wf.workspace_id, 'followup_pending_x_days', {
-                  lead_id: fu.lead_id,
-                  followup_id: fu.id,
-                })
-                results.followup_reminders_fired++
-              } catch (err) {
-                results.errors.push(`Followup ${fu.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
-              }
+            if (firedSet.has(fu.lead_id)) continue
+            try {
+              await fireTriggersForEvent(wf.workspace_id, 'followup_pending_x_days', {
+                lead_id: fu.lead_id,
+                followup_id: fu.id,
+              })
+              results.followup_reminders_fired++
+            } catch (err) {
+              results.errors.push(`Followup ${fu.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
             }
           }
         }
@@ -234,6 +239,7 @@ export async function GET(request: NextRequest) {
           const now = new Date()
           const targetTime = new Date(now.getTime() + hoursBefore * 60 * 60 * 1000)
           const windowStart = new Date(targetTime.getTime() - 15 * 60 * 1000)
+          const antiDupeSince = new Date(now.getTime() - hoursBefore * 60 * 60 * 1000).toISOString()
 
           let query = supabase
             .from('bookings')
@@ -242,36 +248,36 @@ export async function GET(request: NextRequest) {
             .eq('status', 'confirmed')
             .gte('scheduled_at', windowStart.toISOString())
             .lt('scheduled_at', targetTime.toISOString())
+            .limit(500)
 
-          // Optional calendar filter
           if (config.calendar_id) {
             query = query.eq('calendar_id', config.calendar_id as string)
           }
 
           const { data: upcomingBookings } = await query
 
-          if (upcomingBookings) {
+          if (upcomingBookings?.length) {
+            const leadIds = upcomingBookings.map(b => b.lead_id).filter(Boolean) as string[]
+            const { data: alreadyFired } = await supabase
+              .from('workflow_executions')
+              .select('lead_id')
+              .eq('workflow_id', wf.id)
+              .in('lead_id', leadIds)
+              .gte('started_at', antiDupeSince)
+
+            const firedSet = new Set((alreadyFired ?? []).map(e => e.lead_id))
+
             for (const booking of upcomingBookings) {
-              if (!booking.lead_id) continue
-
-              const { count } = await supabase
-                .from('workflow_executions')
-                .select('*', { count: 'exact', head: true })
-                .eq('workflow_id', wf.id)
-                .eq('lead_id', booking.lead_id)
-                .gte('started_at', new Date(now.getTime() - hoursBefore * 60 * 60 * 1000).toISOString())
-
-              if ((count ?? 0) === 0) {
-                try {
-                  await fireTriggersForEvent(wf.workspace_id, 'booking_in_x_hours', {
-                    lead_id: booking.lead_id,
-                    booking_id: booking.id,
-                    calendar_id: booking.calendar_id,
-                  })
-                  results.booking_reminders_fired++
-                } catch (err) {
-                  results.errors.push(`Booking reminder ${booking.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
-                }
+              if (!booking.lead_id || firedSet.has(booking.lead_id)) continue
+              try {
+                await fireTriggersForEvent(wf.workspace_id, 'booking_in_x_hours', {
+                  lead_id: booking.lead_id,
+                  booking_id: booking.id,
+                  calendar_id: booking.calendar_id,
+                })
+                results.booking_reminders_fired++
+              } catch (err) {
+                results.errors.push(`Booking reminder ${booking.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
               }
             }
           }
@@ -297,28 +303,29 @@ export async function GET(request: NextRequest) {
             .select('id')
             .eq('workspace_id', wf.workspace_id)
             .lt('last_activity_at', cutoff)
+            .limit(500)
 
-          if (inactiveLeads) {
+          if (inactiveLeads?.length) {
+            const leadIds = inactiveLeads.map(l => l.id)
+            const { data: alreadyFired } = await supabase
+              .from('workflow_executions')
+              .select('lead_id')
+              .eq('workflow_id', wf.id)
+              .in('lead_id', leadIds)
+              .gte('started_at', cutoff)
+
+            const firedSet = new Set((alreadyFired ?? []).map(e => e.lead_id))
+
             for (const lead of inactiveLeads) {
-              // Anti-duplicate: check no execution for this lead+workflow in the last {days} days
-              const antiDupeCutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
-              const { count } = await supabase
-                .from('workflow_executions')
-                .select('*', { count: 'exact', head: true })
-                .eq('workflow_id', wf.id)
-                .eq('lead_id', lead.id)
-                .gte('started_at', antiDupeCutoff)
-
-              if ((count ?? 0) === 0) {
-                try {
-                  await fireTriggersForEvent(wf.workspace_id, 'lead_inactive_x_days', {
-                    lead_id: lead.id,
-                    days_inactive: days,
-                  })
-                  results.lead_inactive_fired++
-                } catch (err) {
-                  results.errors.push(`Lead inactive ${lead.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
-                }
+              if (firedSet.has(lead.id)) continue
+              try {
+                await fireTriggersForEvent(wf.workspace_id, 'lead_inactive_x_days', {
+                  lead_id: lead.id,
+                  days_inactive: days,
+                })
+                results.lead_inactive_fired++
+              } catch (err) {
+                results.errors.push(`Lead inactive ${lead.id}: ${err instanceof Error ? err.message : 'Unknown'}`)
               }
             }
           }

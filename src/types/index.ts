@@ -475,6 +475,9 @@ export interface Booking {
   location_id: string | null
   meet_url: string | null
   is_personal: boolean
+  /** Si non-null, ce booking fait partie d'une série récurrente. Toutes les
+   *  occurrences d'une même série partagent ce group_id. */
+  recurrence_group_id: string | null
   created_at: string
 }
 

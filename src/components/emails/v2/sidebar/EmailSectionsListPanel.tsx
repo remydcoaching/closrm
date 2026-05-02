@@ -11,24 +11,51 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
+  DragOverlay,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import {
   arrayMove,
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2, Plus } from 'lucide-react'
+import {
+  GripVertical, Trash2, Plus,
+  FileText, Crosshair, Type, ImageIcon, MousePointerClick,
+  Megaphone, Minus, ArrowUpDown, Quote, MessageSquareQuote,
+  LayoutGrid, Video, Share2, PanelBottom,
+} from 'lucide-react'
 import type { EmailBlock, EmailBlockType } from '@/types'
 import {
   ADDABLE_EMAIL_BLOCK_TYPES,
   EMAIL_BLOCK_LABELS,
   createDefaultEmailBlock,
 } from '@/lib/email/defaults'
+
+const BLOCK_TYPE_ICONS: Record<EmailBlockType, React.ReactNode> = {
+  header: <FileText size={13} />,
+  hero: <Crosshair size={13} />,
+  text: <Type size={13} />,
+  image: <ImageIcon size={13} />,
+  button: <MousePointerClick size={13} />,
+  cta_banner: <Megaphone size={13} />,
+  divider: <Minus size={13} />,
+  spacer: <ArrowUpDown size={13} />,
+  quote: <Quote size={13} />,
+  testimonials: <MessageSquareQuote size={13} />,
+  features_grid: <LayoutGrid size={13} />,
+  video: <Video size={13} />,
+  social_links: <Share2 size={13} />,
+  footer: <PanelBottom size={13} />,
+}
 
 interface Props {
   blocks: EmailBlock[]
@@ -44,13 +71,22 @@ export default function EmailSectionsListPanel({
   onSelectBlock,
 }: Props) {
   const [showAddMenu, setShowAddMenu] = useState(false)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
-  // Footer est séparé et non draggable
   const footerBlock = blocks.find((b) => b.type === 'footer')
   const contentBlocks = blocks.filter((b) => b.type !== 'footer')
+  const draggedBlock = draggedId ? contentBlocks.find((b) => b.id === draggedId) : null
+
+  function handleDragStart(event: DragStartEvent) {
+    setDraggedId(event.active.id as string)
+  }
 
   function handleDragEnd(event: DragEndEvent) {
+    setDraggedId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
     const oldIndex = contentBlocks.findIndex((b) => b.id === active.id)
@@ -137,7 +173,9 @@ export default function EmailSectionsListPanel({
               key={type}
               onClick={() => handleAddBlock(type)}
               style={{
-                display: 'block',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
                 width: '100%',
                 padding: '7px 10px',
                 textAlign: 'left',
@@ -152,13 +190,22 @@ export default function EmailSectionsListPanel({
               onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             >
+              <span style={{ display: 'flex', color: '#888', flexShrink: 0 }}>
+                {BLOCK_TYPE_ICONS[type]}
+              </span>
               {EMAIL_BLOCK_LABELS[type]}
             </button>
           ))}
         </div>
       )}
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <SortableContext items={contentBlocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {contentBlocks.map((block) => (
@@ -166,12 +213,39 @@ export default function EmailSectionsListPanel({
                 key={block.id}
                 block={block}
                 selected={selectedBlockId === block.id}
+                isDragging={draggedId === block.id}
                 onSelect={() => onSelectBlock(block.id)}
                 onDelete={() => handleDelete(block.id)}
               />
             ))}
           </div>
         </SortableContext>
+        <DragOverlay>
+          {draggedBlock ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '9px 10px',
+                background: 'rgba(59,130,246,0.15)',
+                border: '1px solid rgba(59,130,246,0.4)',
+                borderRadius: 8,
+                gap: 8,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              }}
+            >
+              <span style={{ color: '#3b82f6', display: 'flex' }}>
+                <GripVertical size={13} />
+              </span>
+              <span style={{ color: '#888', display: 'flex' }}>
+                {BLOCK_TYPE_ICONS[draggedBlock.type]}
+              </span>
+              <span style={{ fontSize: 12, color: '#fff', fontWeight: 600 }}>
+                {EMAIL_BLOCK_LABELS[draggedBlock.type]}
+              </span>
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       {footerBlock && (
@@ -222,53 +296,79 @@ export default function EmailSectionsListPanel({
 function SortableBlockRow({
   block,
   selected,
+  isDragging,
   onSelect,
   onDelete,
 }: {
   block: EmailBlock
   selected: boolean
+  isDragging: boolean
   onSelect: () => void
   onDelete: () => void
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } = useSortable({
     id: block.id,
   })
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
 
   return (
     <div
       ref={setNodeRef}
       style={{
-        ...style,
+        transform: CSS.Transform.toString(transform),
+        transition: transition || 'background 0.15s ease, border-color 0.15s ease',
         display: 'flex',
         alignItems: 'center',
-        padding: '9px 10px',
-        background: selected ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.02)',
-        border: selected ? '1px solid #fff' : '1px solid rgba(255,255,255,0.06)',
+        padding: '8px 8px',
+        background: isDragging
+          ? 'rgba(59,130,246,0.06)'
+          : selected
+            ? 'rgba(255,255,255,0.1)'
+            : 'rgba(255,255,255,0.02)',
+        border: isDragging
+          ? '1px dashed rgba(59,130,246,0.3)'
+          : selected
+            ? '1px solid #fff'
+            : '1px solid rgba(255,255,255,0.06)',
         borderRadius: 8,
-        gap: 8,
+        gap: 6,
         cursor: 'pointer',
-        transition: 'all 0.12s',
+        opacity: isDragging ? 0.4 : 1,
       }}
       {...attributes}
       onClick={onSelect}
     >
-      <span
+      <button
         ref={setActivatorNodeRef}
         {...listeners}
-        style={{ cursor: 'grab', color: '#555', display: 'flex', touchAction: 'none' }}
+        type="button"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          cursor: 'grab',
+          color: 'rgba(255,255,255,0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          padding: 2,
+          flexShrink: 0,
+          touchAction: 'none',
+        }}
+        title="Glisser pour réorganiser"
       >
-        <GripVertical size={13} />
+        <GripVertical size={12} />
+      </button>
+      <span style={{ display: 'flex', color: '#888', flexShrink: 0 }}>
+        {BLOCK_TYPE_ICONS[block.type]}
       </span>
       <span
         style={{
           flex: 1,
-          fontSize: 12,
+          fontSize: 11,
           color: selected ? '#fff' : '#ccc',
           fontWeight: selected ? 600 : 500,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}
       >
         {EMAIL_BLOCK_LABELS[block.type] || block.type}
@@ -283,17 +383,18 @@ function SortableBlockRow({
           background: 'transparent',
           border: 'none',
           cursor: 'pointer',
-          color: '#555',
+          color: 'rgba(255,255,255,0.3)',
           display: 'flex',
           padding: 2,
           borderRadius: 4,
+          flexShrink: 0,
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.color = '#E53E3E'
           e.currentTarget.style.background = 'rgba(229,62,62,0.1)'
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.color = '#555'
+          e.currentTarget.style.color = 'rgba(255,255,255,0.3)'
           e.currentTarget.style.background = 'transparent'
         }}
       >

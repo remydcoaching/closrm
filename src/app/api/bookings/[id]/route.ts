@@ -226,7 +226,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -234,35 +234,77 @@ export async function DELETE(
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
-    // Fetch the booking first to get google_event_id before deleting
+    // ── Scope de suppression pour les séries récurrentes ──
+    //  this   (default) : seul ce booking
+    //  future : ce booking + toutes les occurrences ultérieures du même groupe
+    //  all    : toute la série
+    const scopeRaw = request.nextUrl.searchParams.get('scope') ?? 'this'
+    const scope = (['this', 'future', 'all'] as const).includes(scopeRaw as never)
+      ? (scopeRaw as 'this' | 'future' | 'all')
+      : 'this'
+
     const { data: bookingToDelete } = await supabase
       .from('bookings')
-      .select('id, google_event_id')
+      .select('id, google_event_id, recurrence_group_id, scheduled_at')
       .eq('id', id)
       .eq('workspace_id', workspaceId)
       .single()
 
     if (!bookingToDelete) return NextResponse.json({ error: 'Réservation non trouvée' }, { status: 404 })
 
-    // Cancel pending reminders before deleting (audit trail preserved)
-    cancelBookingReminders(id).catch(() => {})
+    // Si scope != 'this' mais le booking n'a pas de série, on retombe sur 'this'
+    const effectiveScope = bookingToDelete.recurrence_group_id ? scope : 'this'
 
-    const { data, error } = await supabase
-      .from('bookings')
-      .delete()
-      .eq('id', id)
-      .eq('workspace_id', workspaceId)
-      .select()
-      .single()
-
-    if (error || !data) return NextResponse.json({ error: 'Réservation non trouvée' }, { status: 404 })
-
-    // Delete Google Calendar event if linked (non-blocking)
-    if (bookingToDelete.google_event_id) {
-      deleteGoogleCalendarEvent(workspaceId, bookingToDelete.google_event_id).catch(() => {})
+    if (effectiveScope === 'this') {
+      cancelBookingReminders(id).catch(() => {})
+      const { data, error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', id)
+        .eq('workspace_id', workspaceId)
+        .select()
+        .single()
+      if (error || !data) return NextResponse.json({ error: 'Réservation non trouvée' }, { status: 404 })
+      if (bookingToDelete.google_event_id) {
+        deleteGoogleCalendarEvent(workspaceId, bookingToDelete.google_event_id).catch(() => {})
+      }
+      return NextResponse.json({ data, deleted_count: 1 })
     }
 
-    return NextResponse.json({ data })
+    // Récupère toutes les occurrences à supprimer
+    const groupId = bookingToDelete.recurrence_group_id as string
+    let toDeleteQuery = supabase
+      .from('bookings')
+      .select('id, google_event_id')
+      .eq('workspace_id', workspaceId)
+      .eq('recurrence_group_id', groupId)
+    if (effectiveScope === 'future') {
+      toDeleteQuery = toDeleteQuery.gte('scheduled_at', bookingToDelete.scheduled_at)
+    }
+    const { data: toDelete, error: fetchErr } = await toDeleteQuery
+    if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 })
+
+    const ids = (toDelete ?? []).map((r) => r.id)
+    if (ids.length === 0) return NextResponse.json({ data: null, deleted_count: 0 })
+
+    // Cancel reminders pour chacun (best-effort)
+    for (const rid of ids) cancelBookingReminders(rid).catch(() => {})
+
+    const { error: delErr } = await supabase
+      .from('bookings')
+      .delete()
+      .in('id', ids)
+      .eq('workspace_id', workspaceId)
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+
+    // Cleanup Google Calendar (non-blocking)
+    for (const r of toDelete ?? []) {
+      if (r.google_event_id) {
+        deleteGoogleCalendarEvent(workspaceId, r.google_event_id).catch(() => {})
+      }
+    }
+
+    return NextResponse.json({ deleted_count: ids.length, scope: effectiveScope })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

@@ -1,5 +1,13 @@
 import { z } from 'zod'
 
+/** Règle de récurrence simplifiée : `count` occurrences (incluant l'original)
+ *  espacées selon `frequency`. On reste volontairement sur un sous-ensemble
+ *  RFC 5545 — pas de RRULE complète, juste daily/weekly/monthly + count. */
+export const recurrenceSchema = z.object({
+  frequency: z.enum(['daily', 'weekly', 'monthly']),
+  count: z.number().int().min(2).max(52),
+})
+
 export const createBookingSchema = z.object({
   calendar_id: z.string().uuid('ID calendrier invalide.').optional().nullable(),
   lead_id: z.string().uuid('ID lead invalide.').optional().nullable(),
@@ -9,6 +17,7 @@ export const createBookingSchema = z.object({
   duration_minutes: z.number().int().min(5).max(480),
   notes: z.string().max(5000).optional().nullable(),
   is_personal: z.boolean().default(false),
+  recurrence: recurrenceSchema.optional().nullable(),
 })
 
 export const updateBookingSchema = z.object({
