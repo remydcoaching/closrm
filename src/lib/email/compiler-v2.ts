@@ -40,6 +40,7 @@ import { buttonShapeToRadius } from './design-types'
 import { mergePresetOverride } from './apply-preset'
 import { getEmailPresetByIdOrDefault } from './presets'
 import { compileBlocks as compileBlocksLegacy } from './compiler'
+import { getEmailIconById, renderIconSvg, isEmailIconId } from './icons'
 
 // ─── Public API ────────────────────────────────────────────────────────────
 
@@ -48,11 +49,10 @@ export interface CompileV2Input {
   previewText?: string | null
   presetId?: string | null
   presetOverride?: EmailPresetOverride | null
+  isPreview?: boolean
 }
 
 export function compileBlocksV2(input: CompileV2Input): string {
-  // Fallback legacy si pas de preset → les templates d'avant la v2 restent
-  // rendus à l'identique.
   if (!input.presetId) {
     return compileBlocksLegacy(input.blocks, input.previewText)
   }
@@ -62,21 +62,39 @@ export function compileBlocksV2(input: CompileV2Input): string {
     input.presetOverride,
   )
 
-  const bodyHtml = input.blocks.map((block) => renderBlockV2(block, preset)).join('\n')
+  const bodyHtml = input.blocks
+    .map((block) => renderBlockV2(block, preset, input.isPreview))
+    .join('\n')
 
-  return buildDocument(preset, bodyHtml, input.previewText)
+  return buildDocument(preset, bodyHtml, input.previewText, input.isPreview)
 }
 
 // ─── Document wrapper ──────────────────────────────────────────────────────
 
-function buildDocument(preset: EmailPreset, bodyHtml: string, previewText?: string | null): string {
+function buildDocument(preset: EmailPreset, bodyHtml: string, previewText?: string | null, isPreview?: boolean): string {
   const isDark = preset.style === 'dark'
-  // Les clients email majeurs (Gmail, Outlook, Apple Mail) filtrent les @import
-  // de Google Fonts mais le préchargent quand même dans les webviews. Dans la
-  // preview iframe de l'éditeur, ça permet à Inter/Playfair de s'afficher
-  // correctement — côté client mail on retombe sur les fallbacks.
   const usesPlayfair = /Playfair/.test(preset.fontFamily) || /Playfair/.test(preset.headingFontFamily || '')
-  const fontImport = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800${usesPlayfair ? '&family=Playfair+Display:wght@500;600;700;800' : ''}&display=swap');`
+  const usesLora = /Lora/.test(preset.fontFamily) || /Lora/.test(preset.headingFontFamily || '')
+  const usesDM = /DM\s?Sans/.test(preset.fontFamily) || /DM\s?Sans/.test(preset.headingFontFamily || '')
+  const usesSourceSerif = /Source\s?Serif/.test(preset.fontFamily) || /Source\s?Serif/.test(preset.headingFontFamily || '')
+  const usesRaleway = /Raleway/.test(preset.fontFamily) || /Raleway/.test(preset.headingFontFamily || '')
+  let families = 'family=Inter:wght@400;500;600;700;800'
+  if (usesPlayfair) families += '&family=Playfair+Display:wght@500;600;700;800'
+  if (usesLora) families += '&family=Lora:wght@400;500;600;700'
+  if (usesDM) families += '&family=DM+Sans:wght@400;500;600;700'
+  if (usesSourceSerif) families += '&family=Source+Serif+4:wght@400;500;600;700'
+  if (usesRaleway) families += '&family=Raleway:wght@400;500;600;700;800'
+  const fontImport = `@import url('https://fonts.googleapis.com/css2?${families}&display=swap');`
+
+  const colorSchemeValue = isDark ? 'dark only' : 'light only'
+  const darkModeCss = isPreview || isDark
+    ? ''
+    : `@media (prefers-color-scheme: dark) {
+    body, .email-body-bg { background-color: #0a0a0a !important; }
+    .email-container { background-color: #111111 !important; }
+    .email-text { color: #f4f4f5 !important; }
+    .email-muted { color: #a1a1aa !important; }
+  }`
 
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="fr">
@@ -84,14 +102,15 @@ function buildDocument(preset: EmailPreset, bodyHtml: string, previewText?: stri
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="color-scheme" content="${isDark ? 'dark' : 'light'}" />
-<meta name="supported-color-schemes" content="light dark" />
+<meta name="color-scheme" content="${colorSchemeValue}" />
+<meta name="supported-color-schemes" content="${colorSchemeValue}" />
 ${previewText ? `<meta name="description" content="${escapeHtml(previewText)}" />` : ''}
 <!--[if mso]>
 <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
 <![endif]-->
 <style>
   ${fontImport}
+  :root { color-scheme: ${colorSchemeValue}; }
   body { margin: 0; padding: 0; background-color: ${preset.background}; }
   table { border-collapse: collapse; }
   img { border: 0; outline: none; text-decoration: none; display: block; max-width: 100%; height: auto; }
@@ -101,15 +120,10 @@ ${previewText ? `<meta name="description" content="${escapeHtml(previewText)}" /
     .mobile-stack { display: block !important; width: 100% !important; }
     .mobile-center { text-align: center !important; }
   }
-  ${isDark ? '' : `@media (prefers-color-scheme: dark) {
-    body, .email-body-bg { background-color: #0a0a0a !important; }
-    .email-container { background-color: #111111 !important; }
-    .email-text { color: #f4f4f5 !important; }
-    .email-muted { color: #a1a1aa !important; }
-  }`}
+  ${darkModeCss}
 </style>
 </head>
-<body style="margin:0;padding:0;background-color:${preset.background};font-family:${preset.fontFamily};">
+<body style="margin:0;padding:0;background-color:${preset.background};font-family:${preset.fontFamily};color-scheme:${colorSchemeValue};">
 ${previewText ? `<div style="display:none;font-size:1px;color:${preset.background};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(previewText)}</div>` : ''}
 <table role="presentation" class="email-body-bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${preset.background};">
   <tr>
@@ -126,7 +140,7 @@ ${bodyHtml}
 
 // ─── Block dispatcher ──────────────────────────────────────────────────────
 
-function renderBlockV2(block: EmailBlock, preset: EmailPreset): string {
+function renderBlockV2(block: EmailBlock, preset: EmailPreset, isPreview?: boolean): string {
   const renderers: Record<EmailBlockType, (config: unknown, preset: EmailPreset) => string> = {
     header: (c, p) => renderHeader(c as HeaderBlockConfig, p),
     hero: (c, p) => renderHero(c as EmailHeroBlockConfig, p),
@@ -143,7 +157,11 @@ function renderBlockV2(block: EmailBlock, preset: EmailPreset): string {
     social_links: (c, p) => renderSocialLinks(c as EmailSocialLinksBlockConfig, p),
     footer: (c, p) => renderFooter(c as FooterBlockConfig, p),
   }
-  return renderers[block.type](block.config, preset)
+  const html = renderers[block.type](block.config, preset)
+  if (isPreview) {
+    return html.replace(/^<tr/, `<tr data-block-id="${block.id}"`)
+  }
+  return html
 }
 
 // ─── Block renderers ───────────────────────────────────────────────────────
@@ -294,7 +312,7 @@ function renderFeaturesGrid(config: EmailFeaturesGridBlockConfig, preset: EmailP
     const cells = rowItems
       .map(
         (f) => `<td class="mobile-stack" align="center" width="${cellWidth}" style="padding:20px 14px;vertical-align:top;">
-          ${f.icon ? `<div style="font-size:28px;margin-bottom:12px;line-height:1;">${escapeHtml(f.icon)}</div>` : ''}
+          ${f.icon ? renderFeatureIcon(f.icon, preset.primary) : ''}
           <h3 style="margin:0 0 6px;font-size:15px;font-weight:700;letter-spacing:-0.005em;color:${preset.textColor};font-family:${preset.headingFontFamily || preset.fontFamily};">${escapeHtml(f.title)}</h3>
           <p style="margin:0;font-size:13px;line-height:1.55;color:${preset.mutedColor};">${escapeHtml(f.description)}</p>
         </td>`,
@@ -389,6 +407,16 @@ function buttonHtml(
     <a href="${escapeHtml(url)}" style="display:inline-block;padding:14px 32px;background-color:${bg};color:#ffffff;text-decoration:none;border-radius:${radius}px;font-weight:600;font-size:15px;letter-spacing:-0.005em;font-family:${preset.fontFamily};${shadow}${outerBg ? `border:1px solid ${outerBg};` : ''}">${escapeHtml(text)}</a>
     <!--<![endif]-->
   </div>`
+}
+
+function renderFeatureIcon(iconValue: string, primaryColor: string): string {
+  if (isEmailIconId(iconValue)) {
+    const icon = getEmailIconById(iconValue)
+    if (icon) {
+      return `<div style="margin-bottom:12px;line-height:0;">${renderIconSvg(icon, primaryColor, 28)}</div>`
+    }
+  }
+  return `<div style="font-size:28px;margin-bottom:12px;line-height:1;">${escapeHtml(iconValue)}</div>`
 }
 
 function escapeHtml(str: string): string {

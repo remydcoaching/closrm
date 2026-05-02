@@ -9,6 +9,10 @@ export type EmailFontFamily =
   | "Georgia, 'Times New Roman', serif"
   | "'Playfair Display', Georgia, serif"
   | "'JetBrains Mono', 'Courier New', monospace"
+  | "'Lora', Georgia, serif"
+  | "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif"
+  | "'Source Serif 4', Georgia, serif"
+  | "'Raleway', -apple-system, BlinkMacSystemFont, sans-serif"
 
 export type EmailButtonShape = 'sharp' | 'rounded' | 'pill'
 
