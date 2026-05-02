@@ -438,29 +438,52 @@ export async function POST(
       console.error('[public-booking-by-id] Google Calendar event creation failed:', err instanceof Error ? err.message : err)
     }
 
-    const hasEmailConfirmationReminder = (calendar.reminders as CalendarReminder[] | undefined)?.some(
+    const emailConfirmationReminder = (calendar.reminders as CalendarReminder[] | undefined)?.find(
       (r) => r.channel === 'email' && r.delay_value === 0,
     )
 
-    if (email && !hasEmailConfirmationReminder) {
+    if (email) {
       try {
-        const ownerRes = await supabase
-          .from('users')
-          .select('full_name')
-          .eq('workspace_id', calendar.workspace_id)
-          .eq('role', 'coach')
-          .maybeSingle()
+        const [ownerRes, calRes] = await Promise.all([
+          supabase.from('users').select('full_name').eq('workspace_id', calendar.workspace_id).eq('role', 'coach').maybeSingle(),
+          supabase.from('booking_calendars').select('email_template, email_accent_color, name').eq('id', calendar.id).maybeSingle(),
+        ])
+        const calTemplate = (calRes.data as { email_template?: 'premium' | 'minimal' | 'plain' } | null)?.email_template ?? 'premium'
+        const calAccent = (calRes.data as { email_accent_color?: string } | null)?.email_accent_color ?? '#E53E3E'
+        const calName = (calRes.data as { name?: string } | null)?.name ?? ''
+
+        const dateStr = bookingStartDt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+        const timeStr = bookingStartDt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+
+        const customMessage = emailConfirmationReminder
+          ? emailConfirmationReminder.message
+              .replace(/\{\{prenom\}\}/g, firstName)
+              .replace(/\{\{nom\}\}/g, lastName)
+              .replace(/\{\{date_rdv\}\}/g, dateStr)
+              .replace(/\{\{heure_rdv\}\}/g, timeStr)
+              .replace(/\{\{nom_calendrier\}\}/g, calName)
+          : undefined
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+        const manageToken = (booking as unknown as { manage_token?: string }).manage_token
+        const manageUrl = appUrl && manageToken
+          ? `${appUrl}/booking/manage/${booking.id}?token=${manageToken}`
+          : undefined
 
         await sendBookingConfirmationEmail({
           to: email,
           workspaceId: calendar.workspace_id,
           coachName: ownerRes.data?.full_name ?? 'Votre coach',
           prospectName: `${firstName} ${lastName}`.trim(),
-          date: bookingStartDt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-          time: bookingStartDt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          date: dateStr,
+          time: timeStr,
           meetUrl,
           locationName: locationName ?? undefined,
           locationAddress: locationAddress ?? undefined,
+          template: calTemplate,
+          accentColor: calAccent,
+          customMessage,
+          manageUrl,
         })
       } catch (err) {
         console.error('[public-booking-by-id] booking-confirmation email failed:', err instanceof Error ? err.message : err)

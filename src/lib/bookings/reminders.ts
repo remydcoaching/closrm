@@ -93,6 +93,10 @@ export async function createBookingReminders(params: {
   }> = []
 
   for (const reminder of calendarReminders) {
+    // Confirmation email reminders (delay 0) are sent directly at booking
+    // creation by sendBookingConfirmationEmail — skip queueing them here.
+    if (reminder.delay_value === 0 && reminder.channel === 'email') continue
+
     const sendAt = computeSendAt(reminder, bookingScheduledAt)
     if (!sendAt) continue
 
