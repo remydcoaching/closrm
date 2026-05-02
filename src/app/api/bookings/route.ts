@@ -247,9 +247,11 @@ export async function POST(request: NextRequest) {
             .eq('role', 'coach')
             .maybeSingle()
 
+          const bookingCalendarId = (data as { calendar_id?: string | null }).calendar_id ?? undefined
           await sendBookingConfirmationEmail({
             to: leadEmail,
             workspaceId,
+            calendarId: bookingCalendarId,
             coachName: owner?.full_name ?? 'Votre coach',
             prospectName: `${leadFirst} ${leadLast}`.trim(),
             date: scheduledAt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),

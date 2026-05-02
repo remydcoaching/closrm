@@ -57,6 +57,8 @@ export const createBookingCalendarSchema = z.object({
   purpose: z.enum(['setting', 'closing', 'other']).default('other'),
   reminders: z.array(calendarReminderSchema).max(10).default([]),
   is_active: z.boolean().default(true),
+  confirmation_template_id: z.string().uuid().nullable().default(null),
+  reminder_email_template_id: z.string().uuid().nullable().default(null),
 })
 
 export const updateBookingCalendarSchema = createBookingCalendarSchema.partial()

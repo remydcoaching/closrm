@@ -411,6 +411,7 @@ export async function POST(
         await sendBookingConfirmationEmail({
           to: email,
           workspaceId: calendar.workspace_id,
+          calendarId: calendar.id,
           coachName: ownerRes.data?.full_name ?? 'Votre coach',
           prospectName: `${firstName} ${lastName}`.trim(),
           date: bookingStartDt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),

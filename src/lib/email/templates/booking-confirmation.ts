@@ -3,6 +3,7 @@ import { getWorkspaceSenderConfig, SENDER_FALLBACK_EMAIL, SENDER_FALLBACK_NAME }
 import { consumeResource } from '@/lib/billing/service'
 import { logEmailSend } from '@/lib/email/log-send'
 import { createServiceClient } from '@/lib/supabase/service'
+import { renderBookingTemplate, type BookingTemplateRow } from '@/lib/email/booking/render-template'
 
 interface BookingConfirmationParams {
   to: string
@@ -14,6 +15,12 @@ interface BookingConfirmationParams {
   locationName?: string
   locationAddress?: string
   workspaceId?: string
+  /**
+   * If provided, the calendar's `confirmation_template_id` is looked up. When
+   * a custom template is configured, it is rendered with booking variables
+   * instead of the hardcoded HTML below.
+   */
+  calendarId?: string
 }
 
 function buildBookingConfirmationHtml(params: BookingConfirmationParams): string {
@@ -159,13 +166,7 @@ export async function sendBookingConfirmationEmail(
     }
   }
 
-  const html = buildBookingConfirmationHtml(params)
-  const subject = `Votre rendez-vous avec ${params.coachName} est confirme`
-
   // From-name priority: workspace brand name > coach legal name > fallback.
-  // The brand name (workspaces.name) is what coaches expect to appear in
-  // recipients' inboxes. Falls back to coachName (users.full_name) if the
-  // workspace has no brand name yet.
   let senderName = params.coachName
   if (params.workspaceId) {
     const { data: ws } = await createServiceClient()
@@ -174,6 +175,51 @@ export async function sendBookingConfirmationEmail(
       .eq('id', params.workspaceId)
       .maybeSingle()
     if (ws?.name) senderName = ws.name
+  }
+
+  // If the calendar has a custom confirmation template, render it. Otherwise
+  // fall back to the hardcoded HTML so existing calendars keep working.
+  let html: string
+  let subject: string
+
+  let customTemplate: BookingTemplateRow | null = null
+  if (params.calendarId && params.workspaceId) {
+    const supabase = createServiceClient()
+    const { data: calendar } = await supabase
+      .from('booking_calendars')
+      .select('confirmation_template_id')
+      .eq('id', params.calendarId)
+      .eq('workspace_id', params.workspaceId)
+      .maybeSingle()
+
+    if (calendar?.confirmation_template_id) {
+      const { data: tpl } = await supabase
+        .from('email_templates')
+        .select('subject, blocks, preview_text, preset_id, preset_override')
+        .eq('id', calendar.confirmation_template_id)
+        .eq('workspace_id', params.workspaceId)
+        .maybeSingle()
+      if (tpl) customTemplate = tpl as BookingTemplateRow
+    }
+  }
+
+  if (customTemplate) {
+    const [firstName, ...rest] = params.prospectName.split(' ')
+    const rendered = renderBookingTemplate(customTemplate, {
+      prenom_lead: firstName ?? '',
+      nom_lead: rest.join(' '),
+      nom_coach: senderName,
+      date_rdv: params.date,
+      heure_rdv: params.time,
+      lieu_rdv: params.locationName,
+      adresse_rdv: params.locationAddress,
+      lien_meet: params.meetUrl,
+    })
+    html = rendered.html
+    subject = rendered.subject || `Votre rendez-vous avec ${senderName} est confirme`
+  } else {
+    html = buildBookingConfirmationHtml(params)
+    subject = `Votre rendez-vous avec ${senderName} est confirme`
   }
 
   const senderConfig = params.workspaceId
