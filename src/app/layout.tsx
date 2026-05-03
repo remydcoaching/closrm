@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import ThemeProvider from '@/components/theme/ThemeProvider'
 import './globals.css'
@@ -16,6 +16,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'ClosRM — CRM pour coachs',
   description: 'Gérez vos leads, appels et conversions depuis un seul endroit.',
+}
+
+// viewport-fit=cover active env(safe-area-inset-*) sur iOS pour que les blocs
+// (hero, footer) puissent compenser le notch et la barre URL Safari.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
