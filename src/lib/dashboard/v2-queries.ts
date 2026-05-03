@@ -213,7 +213,7 @@ export async function getNextBooking(workspaceId: string): Promise<NextBooking |
 
   // On cherche n'importe quel prochain RDV futur (pas de fenêtre artificielle).
   // Inclut les bookings sans lead_id (perso / time block).
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('bookings')
     .select('id, title, scheduled_at, meet_url, location_type, lead_id, leads(id, first_name, last_name, source, email, phone)')
     .eq('workspace_id', workspaceId)
@@ -222,6 +222,14 @@ export async function getNextBooking(workspaceId: string): Promise<NextBooking |
     .order('scheduled_at', { ascending: true })
     .limit(1)
     .maybeSingle()
+
+  console.log('[dashboard.nextBooking] V2', {
+    workspaceId,
+    now,
+    found: !!data,
+    error: error?.message,
+    scheduled_at: data?.scheduled_at,
+  })
 
   if (!data) return null
 
@@ -385,6 +393,8 @@ export async function getFunnelData(workspaceId: string, period: number): Promis
   const supabase = await createClient()
   const since = new Date(Date.now() - period * 86400000).toISOString()
 
+  console.log('[dashboard.funnel] V2 cohort start', { workspaceId, period, since })
+
   // Cohort: leads créés dans la période
   const { data: leadsData } = await supabase
     .from('leads')
@@ -410,6 +420,14 @@ export async function getFunnelData(workspaceId: string, period: number): Promis
   const uniqBooked = new Set((bookingsRows.data ?? []).map(b => b.lead_id)).size
   const uniqShowed = new Set((callsRows.data ?? []).map(c => c.lead_id)).size
   const uniqClosed = new Set((dealsRows.data ?? []).map(d => d.lead_id)).size
+
+  console.log('[dashboard.funnel] V2 cohort result', {
+    leadsCount,
+    uniqBooked,
+    uniqShowed,
+    uniqClosed,
+    totalBookingRows: bookingsRows.data?.length ?? 0,
+  })
 
   return {
     leads: leadsCount,
