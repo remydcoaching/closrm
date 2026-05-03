@@ -61,6 +61,7 @@ export default function ConversionFunnel({ data }: { data: FunnelData }) {
 
   const totalLeads = stages[0].value || 1
   const globalConv = pct(data.closed, data.leads)
+  const allEmpty = stages.every(s => s.value === 0)
 
   return (
     <div
@@ -98,6 +99,19 @@ export default function ConversionFunnel({ data }: { data: FunnelData }) {
         </div>
       </div>
 
+      {allEmpty ? (
+        <div
+          style={{
+            padding: '32px 16px',
+            textAlign: 'center',
+            color: 'var(--text-muted)',
+            fontSize: 13,
+          }}
+        >
+          Pas encore assez de données sur cette période. Crée un lead pour démarrer le funnel.
+        </div>
+      ) : (
+        <>
       {/* Stacked visual flow bar */}
       <div
         style={{
@@ -138,6 +152,8 @@ export default function ConversionFunnel({ data }: { data: FunnelData }) {
           />
         ))}
       </div>
+        </>
+      )}
     </div>
   )
 }
