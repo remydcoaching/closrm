@@ -450,9 +450,14 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
                     background: isSelected ? accent : 'transparent',
                     color: !inMonth ? 'transparent'
                       : isSelected ? '#fff'
-                      : isPastDay ? 'rgba(var(--fnl-text-rgb, 0,0,0), 0.25)'
-                      : !hasSlots ? 'rgba(var(--fnl-text-rgb, 0,0,0), 0.35)'
                       : 'var(--fnl-text)',
+                    // Opacity adaptative au thème (claire ou sombre) sans rgba bloqué
+                    // sur var(--fnl-text-rgb) qui n'est pas défini par les presets.
+                    opacity: !inMonth ? 0
+                      : isSelected ? 1
+                      : isPastDay ? 0.35
+                      : !hasSlots ? 0.5
+                      : 1,
                     border: 'none', outline: 'none',
                     cursor: isClickable ? 'pointer' : 'default',
                     fontSize: 13, fontWeight: hasSlots && inMonth && !isPastDay ? 700 : 400,
