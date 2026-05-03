@@ -33,7 +33,7 @@ export default function NextCallCard({ booking, onGenerateBrief }: Props) {
         <div style={labelStyle}>PROCHAIN RDV</div>
         <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>🎯 À jour</div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>
-          Aucun RDV planifié dans les 7 prochains jours.
+          Aucun RDV à venir planifié.
         </div>
       </div>
     )
