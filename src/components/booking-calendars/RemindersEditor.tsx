@@ -63,7 +63,7 @@ export default function RemindersEditor({
   const [showPresets, setShowPresets] = useState(false)
   const [previewHtml, setPreviewHtml] = useState<string>('')
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [previewVariant, setPreviewVariant] = useState<'meet' | 'location'>('meet')
+  const [previewVariant, setPreviewVariant] = useState<'meet' | 'location' | 'phone'>('meet')
   const [previewError, setPreviewError] = useState<string | null>(null)
 
   // Live-refresh the preview whenever the expanded EMAIL reminder's message changes,
@@ -449,6 +449,16 @@ export default function RemindersEditor({
                             cursor: 'pointer', fontSize: 10, fontWeight: 600,
                           }}
                         >Présentiel</button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setPreviewVariant('phone') }}
+                          style={{
+                            padding: '3px 8px', borderRadius: 4, border: 'none',
+                            background: previewVariant === 'phone' ? 'var(--color-primary, #E53E3E)' : 'transparent',
+                            color: previewVariant === 'phone' ? '#fff' : 'var(--text-secondary)',
+                            cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                          }}
+                        >Téléphone</button>
                       </div>
                     </div>
                     <div style={{

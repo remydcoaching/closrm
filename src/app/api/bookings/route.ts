@@ -322,6 +322,7 @@ export async function POST(request: NextRequest) {
             meetUrl: result?.meetUrl ?? undefined,
             locationName: locationName ?? undefined,
             locationAddress: locationAddress ?? undefined,
+            isPhoneCall: locationName === 'Téléphone',
             template: calTemplate,
             accentColor: calAccent,
             customMessage,
