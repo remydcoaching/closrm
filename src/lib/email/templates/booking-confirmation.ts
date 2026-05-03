@@ -205,7 +205,7 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
 
           <!-- Body -->
           <tr>
-            <td style="padding: 36px 36px 8px;">
+            <td style="padding: 36px 36px 36px;">
               ${introBlock}
 
               <!-- Details card -->
