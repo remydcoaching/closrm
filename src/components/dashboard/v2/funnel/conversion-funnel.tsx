@@ -27,19 +27,22 @@ export default function ConversionFunnel({ data }: { data: FunnelData }) {
     { key: 'close', label: 'Closés',   value: data.closed,   href: '/leads?status=clos',  color: '#10b981' },
   ]
 
-  const max = Math.max(...stages.map(s => s.value), 1)
+  const max = stages[0].value || 1
 
-  // Dimensions du SVG : on garde un ratio largeur/hauteur fixe
+  // Dimensions du SVG
   const W = 760
   const H = 280
   const segmentH = H / stages.length
-  // Largeur min des segments du bas (pour ne pas devenir invisibles)
   const minWidthRatio = 0.18
 
-  // Calcule la largeur normalisée de chaque segment
+  // Calcule la largeur normalisée de chaque segment, clampée pour ne jamais s'élargir
+  let prevW = 1
   const widths = stages.map(s => {
-    const ratio = s.value / max
-    return Math.max(ratio, minWidthRatio)
+    const raw = s.value / max
+    const clamped = Math.min(raw, prevW)
+    const w = Math.max(clamped, minWidthRatio)
+    prevW = w
+    return w
   })
 
   return (

@@ -383,18 +383,37 @@ export async function getFunnelData(workspaceId: string, period: number): Promis
   const supabase = await createClient()
   const since = new Date(Date.now() - period * 86400000).toISOString()
 
-  const [leadsRes, bookingsRes, callsRes, dealsRes] = await Promise.all([
-    supabase.from('leads').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).gte('created_at', since),
-    supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).gte('created_at', since).neq('status', 'cancelled'),
-    supabase.from('calls').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).gte('scheduled_at', since).in('outcome', ['fait', 'closed', 'present']),
-    supabase.from('deals').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('status', 'active').gte('created_at', since),
+  // Cohort: leads créés dans la période
+  const { data: leadsData } = await supabase
+    .from('leads')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .gte('created_at', since)
+    .limit(5000)
+
+  const leadIds = (leadsData ?? []).map(l => l.id)
+  const leadsCount = leadIds.length
+
+  if (leadIds.length === 0) {
+    return { leads: 0, bookings: 0, showed: 0, closed: 0 }
+  }
+
+  // Pour ces leads, compter ceux qui ont booké / show / clos (uniques)
+  const [bookingsRows, callsRows, dealsRows] = await Promise.all([
+    supabase.from('bookings').select('lead_id').in('lead_id', leadIds).neq('status', 'cancelled'),
+    supabase.from('calls').select('lead_id').in('lead_id', leadIds).in('outcome', ['fait', 'closed', 'present']),
+    supabase.from('deals').select('lead_id').in('lead_id', leadIds).eq('status', 'active'),
   ])
 
+  const uniqBooked = new Set((bookingsRows.data ?? []).map(b => b.lead_id)).size
+  const uniqShowed = new Set((callsRows.data ?? []).map(c => c.lead_id)).size
+  const uniqClosed = new Set((dealsRows.data ?? []).map(d => d.lead_id)).size
+
   return {
-    leads: leadsRes.count ?? 0,
-    bookings: bookingsRes.count ?? 0,
-    showed: callsRes.count ?? 0,
-    closed: dealsRes.count ?? 0,
+    leads: leadsCount,
+    bookings: uniqBooked,
+    showed: uniqShowed,
+    closed: uniqClosed,
   }
 }
 
