@@ -126,10 +126,10 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
   // greeting + intro paragraph. Coach controls the tone of voice end-to-end.
   const introBlock = hasCustomMessage
     ? `
-              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background: #FFFBEB; border-left: 3px solid ${accent}; border-radius: 6px; margin-bottom: 28px;">
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background: ${hexToRgba(accent, 0.08)}; border-left: 3px solid ${accent}; border-radius: 6px; margin-bottom: 28px;">
                 <tr>
                   <td style="padding: 22px 24px;">
-                    <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; color: #92400E; letter-spacing: 0.8px; text-transform: uppercase;">Message de ${safeCoach || safeBrand}</p>
+                    <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; color: ${shiftColor(accent, -50)}; letter-spacing: 0.8px; text-transform: uppercase;">Message de ${safeCoach || safeBrand}</p>
                     <p style="margin: 0; font-size: 15px; color: #1F2937; line-height: 1.7; white-space: pre-wrap;">${escapeHtml(customMessage!.trim())}</p>
                   </td>
                 </tr>
