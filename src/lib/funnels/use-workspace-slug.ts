@@ -71,10 +71,10 @@ export function useWorkspaceSlug(): string | null {
  * Retourne `null` si un des slugs manque (workspace non configuré, funnel
  * sans page, etc.).
  *
- * Utilise `NEXT_PUBLIC_APP_URL` (défini dans .env.local et dans les env vars
- * Vercel) comme base URL. En dev = `http://localhost:3000`, en prod =
- * `https://closrm.vercel.app`. Fallback sur `window.location.origin` si la
- * variable d'env n'est pas définie.
+ * Priorité : `window.location.origin` (domaine actuel du browser, ex closrm.fr)
+ * puis `NEXT_PUBLIC_APP_URL` en fallback (utile en SSR ou tests). Cette
+ * priorité garantit que les liens partagés depuis le dashboard utilisent
+ * toujours le domaine canonique sur lequel le coach est connecté.
  */
 export function buildPublicFunnelUrl(
   workspaceSlug: string | null,
@@ -83,7 +83,8 @@ export function buildPublicFunnelUrl(
 ): string | null {
   if (!workspaceSlug || !funnelSlug || !pageSlug) return null
   const origin =
+    (typeof window !== 'undefined' ? window.location.origin : '') ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    (typeof window !== 'undefined' ? window.location.origin : '')
+    ''
   return `${origin}/f/${workspaceSlug}/${funnelSlug}/${pageSlug}`
 }
