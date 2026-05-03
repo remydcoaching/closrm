@@ -455,8 +455,8 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
                     // sur var(--fnl-text-rgb) qui n'est pas défini par les presets.
                     opacity: !inMonth ? 0
                       : isSelected ? 1
-                      : isPastDay ? 0.35
-                      : !hasSlots ? 0.5
+                      : isPastDay ? 0.5
+                      : !hasSlots ? 0.7
                       : 1,
                     border: 'none', outline: 'none',
                     cursor: isClickable ? 'pointer' : 'default',
