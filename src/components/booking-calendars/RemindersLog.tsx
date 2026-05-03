@@ -39,14 +39,13 @@ function formatDate(iso: string): string {
   })
 }
 
-const PAGE_SIZE = 15
+const LIST_MAX_HEIGHT = 480
 
 export default function RemindersLog({ calendarId }: { calendarId: string }) {
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -67,14 +66,7 @@ export default function RemindersLog({ calendarId }: { calendarId: string }) {
     load()
   }, [load])
 
-  // Reset pagination when filter or data changes
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE)
-  }, [statusFilter, reminders])
-
   const filtered = statusFilter === 'all' ? reminders : reminders.filter((r) => r.status === statusFilter)
-  const visible = filtered.slice(0, visibleCount)
-  const hasMore = filtered.length > visibleCount
 
   const counts = {
     all: reminders.length,
@@ -149,10 +141,11 @@ export default function RemindersLog({ calendarId }: { calendarId: string }) {
         <div style={{
           border: '1px solid var(--border-primary)',
           borderRadius: 10,
-          overflow: 'hidden',
+          overflow: 'hidden auto',
+          maxHeight: LIST_MAX_HEIGHT,
           background: 'var(--bg-input)',
         }}>
-          {visible.map((r, i) => {
+          {filtered.map((r, i) => {
             const channel = CHANNEL_META[r.channel] ?? CHANNEL_META.email
             const status = STATUS_META[r.status] ?? STATUS_META.pending
             const CIcon = channel.icon
@@ -167,7 +160,7 @@ export default function RemindersLog({ calendarId }: { calendarId: string }) {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 14px',
-                  borderBottom: i < visible.length - 1 ? '1px solid var(--border-primary)' : 'none',
+                  borderBottom: i < filtered.length - 1 ? '1px solid var(--border-primary)' : 'none',
                   fontSize: 13,
                 }}
               >
@@ -218,23 +211,6 @@ export default function RemindersLog({ calendarId }: { calendarId: string }) {
         </div>
       )}
 
-      {hasMore && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-          <button
-            type="button"
-            onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
-            style={{
-              padding: '8px 18px', borderRadius: 8,
-              border: '1px solid var(--border-primary)',
-              background: 'var(--bg-input)',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer', fontSize: 12, fontWeight: 500,
-            }}
-          >
-            Voir plus ({filtered.length - visibleCount} restant{filtered.length - visibleCount > 1 ? 's' : ''})
-          </button>
-        </div>
-      )}
     </div>
   )
 }
