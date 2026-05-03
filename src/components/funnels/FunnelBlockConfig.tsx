@@ -68,7 +68,7 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Pr
         <FormConfig config={block.config as Parameters<typeof FormConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />
       )}
       {block.type === 'booking' && (
-        <BookingConfig config={block.config as Parameters<typeof BookingConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
+        <BookingConfig config={block.config as Parameters<typeof BookingConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />
       )}
       {block.type === 'pricing' && (
         <PricingConfig config={block.config as Parameters<typeof PricingConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />

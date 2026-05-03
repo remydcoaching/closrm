@@ -640,6 +640,9 @@ export interface BookingBlockConfig {
   calendarId: string | null
   title: string
   subtitle: string
+  /** URL de redirection après réservation réussie (page funnel ou URL externe).
+   *  Si null/vide, on affiche la confirmation in-page (comportement par défaut). */
+  redirectUrl?: string | null
 }
 
 export interface PricingBlockConfig {
