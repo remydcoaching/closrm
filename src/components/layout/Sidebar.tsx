@@ -14,46 +14,40 @@ import { isRouteVisible } from '@/lib/permissions'
 import type { WorkspaceRole } from '@/types'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 
+// Top-level entries point to the FIRST tab of their group. The PageTabs
+// component on each page renders the tab bar to switch between sub-views.
 const NAV = [
   {
-    title: 'VENTES',
+    title: 'PRINCIPAL',
     items: [
-      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Agenda', href: '/agenda', icon: CalendarDays },
-      { label: 'Leads', href: '/leads', icon: Users },
-      { label: 'Closing', href: '/closing', icon: Phone },
-      { label: 'Relances', href: '/follow-ups', icon: Bell },
-      { label: 'Finance', href: '/finance', icon: Euro },
-      { label: 'Statistiques', href: '/statistiques', icon: BarChart2 },
-      { label: 'Base de données', href: '/base-de-donnees', icon: Database },
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, matchPaths: ['/dashboard'] },
+      { label: 'Agenda', href: '/agenda', icon: CalendarDays, matchPaths: ['/agenda', '/parametres/calendriers'] },
+      { label: 'Leads', href: '/leads', icon: Users, matchPaths: ['/leads', '/closing', '/follow-ups', '/base-de-donnees'] },
+      { label: 'Statistiques', href: '/statistiques', icon: BarChart2, matchPaths: ['/statistiques', '/finance'] },
     ],
   },
   {
     title: 'ACQUISITION',
     items: [
-      { label: 'Publicités', href: '/acquisition/publicites', icon: Megaphone },
-      { label: 'Funnels', href: '/acquisition/funnels', icon: Layers },
-      { label: 'Lead Magnets', href: '/acquisition/lead-magnets', icon: Link2 },
-      { label: 'Réseaux sociaux', href: '/acquisition/reseaux-sociaux', icon: Share2 },
-      { label: 'Messages', href: '/acquisition/messages', icon: MessageCircle },
-      { label: 'Emails', href: '/acquisition/emails', icon: Mail },
-      { label: 'Automations', href: '/acquisition/automations', icon: Zap },
-      { label: 'Assistant IA', href: '/parametres/assistant-ia', icon: Sparkles },
+      { label: 'Publicités', href: '/acquisition/publicites', icon: Megaphone, matchPaths: ['/acquisition/publicites'] },
+      { label: 'Funnels', href: '/acquisition/funnels', icon: Layers, matchPaths: ['/acquisition/funnels'] },
+      { label: 'Lead Magnets', href: '/acquisition/lead-magnets', icon: Link2, matchPaths: ['/acquisition/lead-magnets'] },
+      { label: 'Réseaux sociaux', href: '/acquisition/reseaux-sociaux', icon: Share2, matchPaths: ['/acquisition/reseaux-sociaux'] },
     ],
   },
   {
-    title: 'ÉQUIPE',
+    title: 'MARKETING',
     items: [
-      { label: 'Équipe', href: '/parametres/equipe', icon: Users2 },
-      { label: 'Chat équipe', href: '/equipe/messages', icon: MessagesSquare },
+      { label: 'Messages', href: '/acquisition/messages', icon: MessageCircle, matchPaths: ['/acquisition/messages'] },
+      { label: 'Emails', href: '/acquisition/emails', icon: Mail, matchPaths: ['/acquisition/emails'] },
+      { label: 'Automations', href: '/acquisition/automations', icon: Zap, matchPaths: ['/acquisition/automations'] },
     ],
   },
   {
     title: 'COMPTE',
     items: [
-      { label: 'Paramètres', href: '/parametres/reglages', icon: Settings },
-      { label: 'Intégrations', href: '/parametres/integrations', icon: Plug },
-      { label: 'Calendriers', href: '/parametres/calendriers', icon: CalendarRange },
+      { label: 'Équipe', href: '/parametres/equipe', icon: Users2, matchPaths: ['/parametres/equipe', '/equipe/messages'] },
+      { label: 'Paramètres', href: '/parametres/reglages', icon: Settings, matchPaths: ['/parametres/reglages', '/parametres/integrations', '/parametres/assistant-ia'] },
     ],
   },
 ]
@@ -157,7 +151,8 @@ export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: b
             )}
             {visibleItems.map((item) => {
               const Icon = item.icon
-              const active = pathname === item.href || pathname.startsWith(item.href + '/')
+              const matchPaths = (item as { matchPaths?: string[] }).matchPaths ?? [item.href]
+              const active = matchPaths.some((p) => pathname === p || pathname.startsWith(p + '/'))
               return (
                 <Link key={item.href} href={item.href} title={collapsed ? item.label : undefined} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '8px 0' : '7px 10px',

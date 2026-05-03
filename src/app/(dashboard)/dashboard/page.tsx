@@ -1,11 +1,19 @@
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
+
+import { unstable_noStore as noStore } from 'next/cache'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import {
-  fetchKpis,
-  fetchUpcomingCalls,
-  fetchOverdueFollowUps,
-  fetchRecentActivity,
-} from '@/lib/dashboard/queries'
-import DashboardClient from '@/components/dashboard/dashboard-client'
+  fetchKpisV2,
+  getNextBooking,
+  getDayPlan,
+  getRiskLeads,
+  getHotLeads,
+  getFunnelData,
+  getRecentBookings,
+} from '@/lib/dashboard/v2-queries'
+import DashboardClientV2 from '@/components/dashboard/v2/dashboard-client-v2'
 import SetterDashboard from '@/components/dashboard/SetterDashboard'
 import CloserDashboard from '@/components/dashboard/CloserDashboard'
 
@@ -17,6 +25,7 @@ interface Props {
 }
 
 export default async function DashboardPage({ searchParams }: Props) {
+  noStore()
   const params = await searchParams
   const periodParam = Number(params.period)
   const period: Period = (VALID_PERIODS.includes(periodParam as Period) ? periodParam : 30) as Period
@@ -33,7 +42,6 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Coach'
 
-  // Route par role : setter et closer ont leur propre dashboard
   if (role === 'setter') {
     return <SetterDashboard firstName={firstName} userId={userId} />
   }
@@ -42,22 +50,29 @@ export default async function DashboardPage({ searchParams }: Props) {
     return <CloserDashboard firstName={firstName} userId={userId} />
   }
 
-  // Admin : dashboard existant inchange
-  const [kpis, upcomingCalls, overdueFollowUps, recentActivity] = await Promise.all([
-    fetchKpis(workspaceId, period),
-    fetchUpcomingCalls(workspaceId),
-    fetchOverdueFollowUps(workspaceId),
-    fetchRecentActivity(workspaceId),
-  ])
+  // Admin → v2
+  const [kpis, nextBooking, dayPlan, riskLeads, hotLeads, funnelData, recentBookings] =
+    await Promise.all([
+      fetchKpisV2(workspaceId, period),
+      getNextBooking(workspaceId),
+      getDayPlan(workspaceId),
+      getRiskLeads(workspaceId),
+      getHotLeads(workspaceId),
+      getFunnelData(workspaceId, period),
+      getRecentBookings(workspaceId),
+    ])
 
   return (
-    <DashboardClient
+    <DashboardClientV2
       firstName={firstName}
       period={period}
       kpis={kpis}
-      upcomingCalls={upcomingCalls}
-      overdueFollowUps={overdueFollowUps}
-      recentActivity={recentActivity}
+      nextBooking={nextBooking}
+      dayPlan={dayPlan}
+      riskLeads={riskLeads}
+      hotLeads={hotLeads}
+      funnelData={funnelData}
+      recentBookings={recentBookings}
     />
   )
 }

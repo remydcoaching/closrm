@@ -141,4 +141,24 @@
 
 ---
 
-*Mis a jour le 2026-04-29 par Claude Code — ClosRM*
+## Session du 2026-05-02/03 — Resume des travaux Pierre
+
+### T-042 — Refonte email confirmation RDV + pg_cron Supabase
+
+| Element | Detail |
+|---------|--------|
+| **3 templates email** | premium / minimal / plain — choix par calendrier |
+| **Couleur d'accent custom** | color picker hex par calendrier, propage partout (header, accents, bulle message) |
+| **Apercu live** | iframe srcDoc qui se met a jour pendant l'edition (debounce 400ms) |
+| **Page publique de gestion** | `/booking/manage/[id]?token=xxx` — annuler ou rebook sans auth |
+| **Booking horizon** | `max_advance_days` par calendrier — bloque les reservations trop loin |
+| **Historique des envois** | Section dans la page calendrier, scrollable, filtres par status |
+| **pg_cron Supabase** | Contourne Vercel Hobby (1x/jour). Schedule `* * * * *` qui ping `/api/cron/booking-reminders`. Secrets dans Vault. |
+| **Migrations** | 056-060 (max_advance_days, email_template, manage_token, pg_cron, vault secrets) |
+| **PR mergees** | #322, #324, #326, #328, #330, #332, #334, #336, #338, #340, #342 |
+
+> Detail complet : `taches/tache-042-email-rdv-refonte.md`.
+
+---
+
+*Mis a jour le 2026-05-03 par Claude Code — ClosRM*
