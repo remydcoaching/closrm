@@ -111,7 +111,10 @@
 
 .fnl-root .fnl-hero {
   background: var(--fnl-hero-bg);
-  padding: 60px 20px 70px;
+  /* Le top respecte le safe-area iOS (notch / status bar) en ajoutant
+     env(safe-area-inset-top) au padding minimum, sinon le badge "APPEL OFFERT"
+     se retrouve sous la status bar de l'iPhone. */
+  padding: calc(60px + env(safe-area-inset-top)) 20px 70px;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -126,7 +129,7 @@
 
 @media (min-width: 768px) {
   .fnl-root .fnl-hero {
-    padding: 80px 40px 90px;
+    padding: calc(80px + env(safe-area-inset-top)) 40px 90px;
   }
 }
 
@@ -157,7 +160,9 @@
 
 .fnl-root .fnl-footer {
   background: var(--fnl-footer-bg);
-  padding: 50px 20px;
+  /* Le bottom respecte le safe-area iOS (home indicator / barre URL Safari)
+     pour que "© Tous droits réservés" ne soit pas masqué par la barre Safari. */
+  padding: 50px 20px calc(50px + env(safe-area-inset-bottom));
   text-align: center;
   margin-top: auto;
 }
