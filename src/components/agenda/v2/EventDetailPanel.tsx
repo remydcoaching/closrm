@@ -344,44 +344,78 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
           )}
         </Section>
 
-        {/* Lieu / Meet */}
-        {(meetUrl || location) && (
-          <Section title="Lieu">
-            {meetUrl && (
-              <Row>
-                <Video size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+        {/* Lieu / Meet / Phone call */}
+        {(meetUrl || location) && (() => {
+          const isPhoneLocation = location?.name === 'Téléphone'
+          return (
+            <Section title={isPhoneLocation ? 'À l\u2019heure du RDV' : 'Lieu'}>
+              {isPhoneLocation && lead?.phone ? (
                 <a
-                  href={meetUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={`tel:${lead.phone}`}
                   style={{
-                    fontSize: 13,
-                    color: 'var(--color-primary)',
-                    textDecoration: 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 10,
+                    padding: '10px 14px',
+                    borderRadius: 10,
+                    background: 'rgba(16,185,129,0.12)',
+                    border: '1px solid rgba(16,185,129,0.3)',
+                    textDecoration: 'none',
+                    color: '#10b981',
                   }}
                 >
-                  Ouvrir Google Meet <ExternalLink size={12} />
+                  <Phone size={16} />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>Appeler le prospect</span>
+                    <span style={{ fontSize: 12, fontFamily: 'var(--font-mono, monospace)' }}>
+                      {lead.phone}
+                    </span>
+                  </div>
                 </a>
-              </Row>
-            )}
-            {location && (
-              <Row>
-                <MapPin size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{location.name}</div>
-                  {location.address && (
-                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                      {location.address}
-                    </div>
-                  )}
-                </div>
-              </Row>
-            )}
-          </Section>
-        )}
+              ) : isPhoneLocation ? (
+                <Row>
+                  <Phone size={14} style={{ color: '#10b981', flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+                    Appel téléphonique — numéro non renseigné
+                  </span>
+                </Row>
+              ) : null}
+              {meetUrl && (
+                <Row>
+                  <Video size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                  <a
+                    href={meetUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--color-primary)',
+                      textDecoration: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    Ouvrir Google Meet <ExternalLink size={12} />
+                  </a>
+                </Row>
+              )}
+              {location && !isPhoneLocation && (
+                <Row>
+                  <MapPin size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{location.name}</div>
+                    {location.address && (
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                        {location.address}
+                      </div>
+                    )}
+                  </div>
+                </Row>
+              )}
+            </Section>
+          )
+        })()}
 
         {/* Lead */}
         {lead && (
