@@ -1,23 +1,18 @@
-'use client'
-
 /**
- * T-028c — Page publique de funnel migrée vers le design system v2.
+ * Page publique de funnel — Server Component (SSR direct).
  *
- * Modifications par rapport à la version d'avant T-028c :
- * 1. Consomme le champ `funnel` (preset_id, preset_override, effects_config)
- *    retourné par l'API publique en plus de `page` et `branding`
- * 2. Wrappe le rendu dans un container `.fnl-root` avec les CSS vars du
- *    preset injectées via `loadFunnelDesign()`
- * 3. Importe les CSS du design system pour que les classes `.fnl-*` soient
- *    disponibles partout
+ * Avant : Client Component qui fetch via API après hydratation → flash blanc
+ * de qql secondes (bg blanc + "Chargement...") avant que le contenu apparaisse.
  *
- * Les anciennes CSS vars `--color-primary` (palette branding workspace) sont
- * préservées au cas où des composants legacy y feraient encore référence,
- * mais les blocs migrés utilisent désormais `--fnl-primary` du preset.
+ * Après : SSR direct via createServiceClient. Pas de flash, le HTML rendu est
+ * complet dès la 1re réponse. SEO meta gérée par generateMetadata().
+ *
+ * Les blocks et FunnelRenderProvider/FunnelTracker restent des Client Components
+ * (importés dans un Server Component, Next.js gère la boundary automatiquement).
  */
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import type {
   FunnelPage,
   FunnelBlock,
@@ -54,11 +49,8 @@ import FooterBlock from '@/components/funnels/blocks/FooterBlock'
 import FunnelTracker from '@/components/funnels/FunnelTracker'
 import { FunnelRenderProvider } from '@/components/funnels/FunnelRenderContext'
 import { loadFunnelDesign } from '@/lib/funnels/load-funnel-design'
+import { createServiceClient } from '@/lib/supabase/service'
 
-// CSS du design system T-028a — chargés ici pour que toutes les classes
-// .fnl-* (et les pseudo-éléments des effets) soient disponibles dans le DOM
-// dès que la page publique est servie.
-// T-028 Phase 9 — Seuls les 9 effets encore au catalogue sont importés.
 import '@/styles/funnels/tokens.css'
 import '@/styles/funnels/base.css'
 import '@/styles/funnels/effects/e4-colored-shadow.css'
@@ -70,8 +62,6 @@ import '@/styles/funnels/effects/e2-hero-glow.css'
 import '@/styles/funnels/effects/e8-reveal-scroll.css'
 import '@/styles/funnels/effects/e12-noise.css'
 import '@/styles/funnels/effects/e15-sticky-cta.css'
-
-// ─── Types ──────────────────────────────────────────────────────────────────
 
 interface Branding {
   accentColor: string
@@ -85,14 +75,86 @@ interface FunnelDesignFromApi {
   effects_config: FunnelEffectsConfigJSON
 }
 
-interface ApiResponse {
+interface PageData {
   page: FunnelPage
   funnel: FunnelDesignFromApi
   branding: Branding
-  error?: string
 }
 
-// ─── Block Renderer ─────────────────────────────────────────────────────────
+interface PageProps {
+  params: Promise<{
+    workspaceSlug: string
+    funnelSlug: string
+    pageSlug: string
+  }>
+}
+
+async function loadFunnelPageData(
+  workspaceSlug: string,
+  funnelSlug: string,
+  pageSlug: string,
+): Promise<PageData | null> {
+  const supabase = createServiceClient()
+
+  const { data: ws } = await supabase
+    .from('workspace_slugs')
+    .select('workspace_id')
+    .eq('slug', workspaceSlug)
+    .single()
+
+  if (!ws) return null
+  const workspaceId = ws.workspace_id
+
+  const { data: funnel } = await supabase
+    .from('funnels')
+    .select('id, preset_id, preset_override, effects_config')
+    .eq('workspace_id', workspaceId)
+    .eq('slug', funnelSlug)
+    .eq('status', 'published')
+    .single()
+
+  if (!funnel) return null
+
+  const { data: page } = await supabase
+    .from('funnel_pages')
+    .select('*')
+    .eq('funnel_id', funnel.id)
+    .eq('slug', pageSlug)
+    .eq('is_published', true)
+    .single()
+
+  if (!page) return null
+
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('accent_color, logo_url, name')
+    .eq('id', workspaceId)
+    .single()
+
+  return {
+    page: page as FunnelPage,
+    funnel: {
+      preset_id: funnel.preset_id,
+      preset_override: funnel.preset_override,
+      effects_config: funnel.effects_config,
+    },
+    branding: {
+      accentColor: workspace?.accent_color ?? '#E53E3E',
+      logoUrl: workspace?.logo_url ?? null,
+      workspaceName: workspace?.name ?? '',
+    },
+  }
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { workspaceSlug, funnelSlug, pageSlug } = await params
+  const data = await loadFunnelPageData(workspaceSlug, funnelSlug, pageSlug)
+  if (!data) return {}
+  return {
+    title: data.page.seo_title || undefined,
+    description: data.page.seo_description || undefined,
+  }
+}
 
 function renderBlock(block: FunnelBlock) {
   let content: React.ReactNode
@@ -126,122 +188,22 @@ function renderBlock(block: FunnelBlock) {
     default:
       return null
   }
-  // Chaque bloc a un id HTML pour supporter les ancres internes (#block-{id}).
-  // Le footer a margin-top: auto pour coller au bas de la page (flex parent).
   const style = block.type === 'footer' ? { marginTop: 'auto' } : undefined
   return <div key={block.id} id={`block-${block.id}`} style={style}>{content}</div>
 }
 
-// ─── Page Component ─────────────────────────────────────────────────────────
+export default async function PublicFunnelPage({ params }: PageProps) {
+  const { workspaceSlug, funnelSlug, pageSlug } = await params
+  const data = await loadFunnelPageData(workspaceSlug, funnelSlug, pageSlug)
 
-export default function PublicFunnelPage() {
-  const params = useParams<{
-    workspaceSlug: string
-    funnelSlug: string
-    pageSlug: string
-  }>()
+  if (!data) notFound()
 
-  const [page, setPage] = useState<FunnelPage | null>(null)
-  const [funnelDesign, setFunnelDesign] = useState<FunnelDesignFromApi | null>(null)
-  const [branding, setBranding] = useState<Branding | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(
-          `/api/public/f/${params.workspaceSlug}/${params.funnelSlug}/${params.pageSlug}`,
-        )
-        if (!res.ok) {
-          setError('Page introuvable.')
-          return
-        }
-        const data: ApiResponse = await res.json()
-        if (data.error) {
-          setError(data.error)
-          return
-        }
-        setPage(data.page)
-        setFunnelDesign(data.funnel)
-        setBranding(data.branding)
-
-        // Set page title & description
-        if (data.page.seo_title) {
-          document.title = data.page.seo_title
-        }
-        if (data.page.seo_description) {
-          let meta = document.querySelector('meta[name="description"]')
-          if (!meta) {
-            meta = document.createElement('meta')
-            meta.setAttribute('name', 'description')
-            document.head.appendChild(meta)
-          }
-          meta.setAttribute('content', data.page.seo_description)
-        }
-      } catch {
-        setError('Erreur de chargement.')
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [params.workspaceSlug, params.funnelSlug, params.pageSlug])
-
-  // ─── Loading ────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#ffffff',
-          color: '#666',
-          fontSize: 15,
-        }}
-      >
-        Chargement...
-      </div>
-    )
-  }
-
-  // ─── Error / 404 ────────────────────────────────────────────────────────
-  if (error || !page) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#ffffff',
-          color: '#999',
-          fontSize: 16,
-          flexDirection: 'column',
-          gap: 8,
-        }}
-      >
-        <div style={{ fontSize: 48 }}>404</div>
-        <div>{error ?? 'Page introuvable.'}</div>
-      </div>
-    )
-  }
-
-  const accentColor = branding?.accentColor ?? '#E53E3E'
-
-  // Calcul du design system T-028a (CSS vars + classes fx-* d'effets activés).
-  // funnelDesign est garanti non-null à ce stade (set en même temps que page),
-  // mais on garde un fallback défensif au cas où l'API publique servirait une
-  // ancienne version sans les champs du funnel.
-  const design = funnelDesign ? loadFunnelDesign(funnelDesign) : null
+  const { page, funnel, branding } = data
+  const accentColor = branding.accentColor
+  const design = loadFunnelDesign(funnel)
 
   return (
     <>
-      {/* Inject l'ancien --color-primary (legacy branding workspace) pour les
-          composants qui ne sont pas encore migrés vers --fnl-primary du preset.
-          Background body neutre — les couleurs viennent maintenant du preset. */}
       <style>{`
         :root { --color-primary: ${accentColor}; }
         html { scroll-behavior: smooth; }
@@ -251,13 +213,11 @@ export default function PublicFunnelPage() {
       <FunnelRenderProvider isPreview={false} funnelPageId={page.id}>
         <FunnelTracker funnelPageId={page.id} />
 
-        {/* Container racine .fnl-root qui apporte les CSS vars du preset
-            et les classes fx-* pour activer les effets toggleables. */}
         <main
-          className={design ? `fnl-root ${design.effectsClassName}` : ''}
+          className={`fnl-root ${design.effectsClassName}`}
           style={{
             minHeight: '100vh',
-            ...(design?.cssVars ?? {}),
+            ...design.cssVars,
           }}
         >
           {(page.blocks ?? []).map((block) => renderBlock(block))}
