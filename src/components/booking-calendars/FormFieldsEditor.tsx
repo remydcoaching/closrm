@@ -44,14 +44,15 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
           key={field.key}
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: 10,
+            flexDirection: 'column',
+            gap: 8,
             background: 'var(--bg-subtle)',
             border: '1px solid var(--border-primary)',
             borderRadius: 8,
             padding: '8px 12px',
           }}
         >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Grip icon */}
           <div style={{ color: 'var(--text-muted)', cursor: 'grab', flexShrink: 0 }} title="Réorganiser">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -86,7 +87,12 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
           {/* Type select */}
           <select
             value={field.type}
-            onChange={e => updateField(idx, { type: e.target.value as FormFieldType })}
+            onChange={e => {
+              const newType = e.target.value as FormFieldType
+              const patch: Partial<FormField> = { type: newType }
+              if (newType === 'select' && !field.options) patch.options = ['']
+              updateField(idx, patch)
+            }}
             style={{
               background: 'var(--bg-input)',
               border: '1px solid var(--border-primary)',
@@ -131,6 +137,83 @@ export default function FormFieldsEditor({ fields, onChange }: FormFieldsEditorP
           >
             ×
           </button>
+          </div>
+
+          {/* Editor for select options — only when type === 'select' */}
+          {field.type === 'select' && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                paddingLeft: 28,
+                paddingTop: 4,
+              }}
+            >
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+                Options de la liste {field.required && <span>(le prospect choisit une réponse)</span>}
+              </span>
+              {(field.options ?? []).map((opt, optIdx) => (
+                <div key={optIdx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    placeholder={`Option ${optIdx + 1}`}
+                    value={opt}
+                    onChange={e => {
+                      const next = [...(field.options ?? [])]
+                      next[optIdx] = e.target.value
+                      updateField(idx, { options: next })
+                    }}
+                    style={{
+                      flex: 1,
+                      background: 'var(--bg-input)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: 6,
+                      padding: '5px 10px',
+                      fontSize: 13,
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      const next = (field.options ?? []).filter((_, i) => i !== optIdx)
+                      updateField(idx, { options: next })
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      fontSize: 16,
+                      padding: '0 6px',
+                    }}
+                    title="Retirer cette option"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  const next = [...(field.options ?? []), '']
+                  updateField(idx, { options: next })
+                }}
+                style={{
+                  background: 'none',
+                  border: '1px dashed var(--border-primary)',
+                  borderRadius: 6,
+                  padding: '4px 10px',
+                  fontSize: 12,
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                + Ajouter une option
+              </button>
+            </div>
+          )}
         </div>
       ))}
 
