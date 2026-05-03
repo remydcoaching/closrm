@@ -225,25 +225,18 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
               ${locationBlock}
               ${signOff}
 
-              ${params.manageUrl ? `
-              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 32px; border-top: 1px solid #F1F1F1;">
+              <!-- Bottom section: manage button (if available) + disclaimer -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 36px; border-top: 1px solid #F1F1F1;">
+                ${params.manageUrl ? `
                 <tr>
-                  <td style="padding-top: 24px; text-align: center;">
+                  <td style="padding: 28px 0 8px; text-align: center;">
                     <a href="${escapeHtml(params.manageUrl)}" target="_blank" style="display: inline-block; padding: 11px 22px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 10px; color: #374151; text-decoration: none; font-size: 13px; font-weight: 600;">
                       Reprogrammer ou annuler ce RDV
                     </a>
                   </td>
-                </tr>
-              </table>` : ''}
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 32px 36px 36px;">
-              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-top: 1px solid #F1F1F1;">
+                </tr>` : ''}
                 <tr>
-                  <td style="padding-top: 24px;">
+                  <td style="padding: ${params.manageUrl ? '8px 0 0' : '24px 0 0'}; text-align: center;">
                     <p style="margin: 0; font-size: 12px; color: #9CA3AF; line-height: 1.6;">
                       Vous recevez cet email car vous avez réservé un rendez-vous avec ${safeBrand}.${params.manageUrl ? '' : '<br/>Pour annuler ou reprogrammer, répondez simplement à cet email.'}
                     </p>
