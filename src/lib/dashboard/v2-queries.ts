@@ -210,32 +210,34 @@ export async function fetchKpisV2(workspaceId: string, period: number): Promise<
 export async function getNextBooking(workspaceId: string): Promise<NextBooking | null> {
   const supabase = await createClient()
   const now = new Date().toISOString()
-  const in7d = new Date(Date.now() + 7 * 86400000).toISOString()
 
+  // On cherche n'importe quel prochain RDV futur (pas de fenêtre artificielle).
+  // Inclut les bookings sans lead_id (perso / time block).
   const { data } = await supabase
     .from('bookings')
-    .select('id, scheduled_at, meet_url, location_type, leads(id, first_name, last_name, source, email, phone)')
+    .select('id, title, scheduled_at, meet_url, location_type, lead_id, leads(id, first_name, last_name, source, email, phone)')
     .eq('workspace_id', workspaceId)
     .gte('scheduled_at', now)
-    .lte('scheduled_at', in7d)
     .neq('status', 'cancelled')
     .order('scheduled_at', { ascending: true })
     .limit(1)
     .maybeSingle()
 
   if (!data) return null
-  const lead = data.leads as unknown as {
-    id: string; first_name: string; last_name: string; source: string | null; email: string | null; phone: string | null
-  }
 
+  const lead = data.leads as unknown as
+    | { id: string; first_name: string; last_name: string; source: string | null; email: string | null; phone: string | null }
+    | null
+
+  // Si pas de lead lié : utiliser le titre du booking comme nom
   return {
     id: data.id,
-    lead_id: lead.id,
-    lead_name: `${lead.first_name} ${lead.last_name}`,
+    lead_id: lead?.id ?? data.lead_id ?? '',
+    lead_name: lead ? `${lead.first_name} ${lead.last_name}` : (data.title ?? 'RDV'),
     scheduled_at: data.scheduled_at,
-    source: lead.source,
-    email: lead.email,
-    phone: lead.phone,
+    source: lead?.source ?? null,
+    email: lead?.email ?? null,
+    phone: lead?.phone ?? null,
     meet_url: data.meet_url,
     location_type: data.location_type,
   }

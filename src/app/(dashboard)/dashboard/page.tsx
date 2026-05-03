@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import {
   fetchKpisV2,
