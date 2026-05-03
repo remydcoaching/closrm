@@ -126,13 +126,31 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
     fetchCalendars()
   }, [fetchCalendars])
 
-  /* Sync GCal au mount, une seule fois — si fail, on stocke l'erreur. */
+  /* Sync GCal au mount, throttlé à 1× toutes les 5 min via localStorage.
+   * Évite le tap sur Google API à chaque clic sur /agenda (perf).
+   * Si la dernière sync date < 5 min, on skip et on considère syncDone direct. */
   useEffect(() => {
     let cancelled = false
+    const SYNC_TTL_MS = 5 * 60 * 1000
+    const lastSyncRaw = typeof window !== 'undefined' ? localStorage.getItem('agenda:gcal-last-sync') : null
+    const lastSync = lastSyncRaw ? Number(lastSyncRaw) : 0
+    const fresh = Date.now() - lastSync < SYNC_TTL_MS
+
+    if (fresh) {
+      setSyncDone(true)
+      return
+    }
+
     fetch('/api/integrations/google/sync', { method: 'POST' })
       .then(async (res) => {
         if (cancelled) return
-        if (!res.ok) {
+        if (res.ok) {
+          try {
+            localStorage.setItem('agenda:gcal-last-sync', String(Date.now()))
+          } catch {
+            // localStorage might be unavailable; non-fatal
+          }
+        } else {
           const body = await res.text().catch(() => '')
           setSyncError(
             body.length > 0 && body.length < 200
