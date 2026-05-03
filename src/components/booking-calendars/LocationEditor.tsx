@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { MapPin, Video, Link as LinkIcon, Info, AlertTriangle, Plus, X, Check } from 'lucide-react'
+import { MapPin, Video, Link as LinkIcon, Phone, Info, AlertTriangle, Plus, X, Check } from 'lucide-react'
 import { BookingLocation } from '@/types'
 
-type LocationMode = 'in_person' | 'google_meet' | 'custom_link'
+type LocationMode = 'in_person' | 'google_meet' | 'custom_link' | 'phone'
+
+const PHONE_LOCATION_NAME = 'Téléphone'
 
 interface LocationEditorProps {
   selectedLocationIds: string[]
@@ -26,6 +28,7 @@ const inputStyle: React.CSSProperties = {
 
 function locationToMode(loc: BookingLocation): LocationMode {
   if (loc.location_type === 'in_person') return 'in_person'
+  if (loc.name === PHONE_LOCATION_NAME) return 'phone'
   if (loc.address && loc.address.trim().length > 0) return 'custom_link'
   return 'google_meet'
 }
@@ -48,6 +51,12 @@ const CARDS: { mode: LocationMode; label: string; description: string; icon: Rea
     label: 'Visio personnalisée',
     description: 'Zoom, Teams ou autre lien de visio',
     icon: <LinkIcon size={20} />,
+  },
+  {
+    mode: 'phone',
+    label: 'Téléphone',
+    description: 'Tu appelles le prospect au numéro fourni à la réservation',
+    icon: <Phone size={20} />,
   },
 ]
 
@@ -117,10 +126,15 @@ export default function LocationEditor({
         return
       }
 
-      // For google_meet and custom_link: find or create a single location
+      // For google_meet, custom_link, phone: find or create a single location
       const locationType: 'in_person' | 'online' = 'online'
       const locationAddress: string | null = mode === 'custom_link' ? (customLink || null) : null
-      const locationName = mode === 'google_meet' ? 'Google Meet' : 'Visio personnalisée'
+      const locationName =
+        mode === 'google_meet'
+          ? 'Google Meet'
+          : mode === 'phone'
+            ? PHONE_LOCATION_NAME
+            : 'Visio personnalisée'
 
       const existing = locations.find((l) => locationToMode(l) === mode)
       if (existing) {
@@ -250,7 +264,9 @@ export default function LocationEditor({
                       ? '#3b82f6'
                       : card.mode === 'custom_link'
                         ? '#a78bfa'
-                        : 'var(--text-secondary)',
+                        : card.mode === 'phone'
+                          ? '#10b981'
+                          : 'var(--text-secondary)',
                   transition: 'all 0.15s',
                 }}
               >
@@ -514,6 +530,30 @@ export default function LocationEditor({
           <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
           <span>
             Un lien Google Meet sera généré automatiquement pour chaque réservation.
+          </span>
+        </div>
+      )}
+
+      {activeMode === 'phone' && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+            padding: '10px 12px',
+            borderRadius: 8,
+            background: 'rgba(16,185,129,0.06)',
+            border: '1px solid rgba(16,185,129,0.2)',
+            fontSize: 12,
+            color: '#10b981',
+            lineHeight: 1.5,
+          }}
+        >
+          <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>
+            Tu appelleras le prospect au numéro qu&apos;il aura renseigné dans le formulaire de
+            réservation. Pense à activer le champ <strong>Téléphone</strong> en requis dans le
+            formulaire ci-dessous.
           </span>
         </div>
       )}

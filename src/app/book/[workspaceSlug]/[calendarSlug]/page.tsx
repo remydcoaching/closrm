@@ -17,7 +17,7 @@ import {
   format,
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Clock, MapPin, Video } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, MapPin, Phone, Video } from 'lucide-react'
 import type { FormField } from '@/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -282,10 +282,16 @@ export default function PublicBookingPage() {
             </span>
             {locations.length > 0 && (() => {
               const hasInPerson = locations.some(l => l.location_type === 'in_person')
-              const hasOnline = locations.some(l => l.location_type === 'online')
+              const hasPhone = locations.some(l => l.name === 'Téléphone')
+              const hasOnline = locations.some(l => l.location_type === 'online' && l.name !== 'Téléphone')
               if (hasInPerson) return (
                 <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <MapPin size={12} /> Présentiel
+                </span>
+              )
+              if (hasPhone) return (
+                <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Phone size={12} /> Téléphone
                 </span>
               )
               if (hasOnline) return (
@@ -552,10 +558,16 @@ export default function PublicBookingPage() {
             </span>
             {locations.length > 0 && (() => {
               const hasInPerson = locations.some(l => l.location_type === 'in_person')
-              const hasOnline = locations.some(l => l.location_type === 'online')
+              const hasPhone = locations.some(l => l.name === 'Téléphone')
+              const hasOnline = locations.some(l => l.location_type === 'online' && l.name !== 'Téléphone')
               if (hasInPerson) return (
                 <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <MapPin size={12} /> Présentiel
+                </span>
+              )
+              if (hasPhone) return (
+                <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Phone size={12} /> Téléphone
                 </span>
               )
               if (hasOnline) return (
