@@ -18,6 +18,7 @@ create index if not exists ai_call_briefs_workspace_idx
 
 alter table ai_call_briefs enable row level security;
 
+drop policy if exists "ai_call_briefs_workspace_select" on ai_call_briefs;
 create policy "ai_call_briefs_workspace_select"
   on ai_call_briefs for select
   using (workspace_id in (
@@ -25,6 +26,7 @@ create policy "ai_call_briefs_workspace_select"
     where user_id = auth.uid() and status = 'active'
   ));
 
+drop policy if exists "ai_call_briefs_workspace_insert" on ai_call_briefs;
 create policy "ai_call_briefs_workspace_insert"
   on ai_call_briefs for insert
   with check (workspace_id in (
@@ -32,6 +34,7 @@ create policy "ai_call_briefs_workspace_insert"
     where user_id = auth.uid() and status = 'active'
   ));
 
+drop policy if exists "ai_call_briefs_workspace_update" on ai_call_briefs;
 create policy "ai_call_briefs_workspace_update"
   on ai_call_briefs for update
   using (workspace_id in (
