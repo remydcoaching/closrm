@@ -266,7 +266,8 @@ export async function POST(request: NextRequest) {
             start: { dateTime: scheduledAt.toISOString() },
             end: { dateTime: endAt.toISOString() },
           },
-          { withMeet: isOnlineLocation && !locationAddress },
+          // Phone (name='Téléphone') = online mais sans Meet
+          { withMeet: isOnlineLocation && !locationAddress && locationName !== 'Téléphone' },
         )
 
         if (result?.eventId) {

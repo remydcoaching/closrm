@@ -426,8 +426,10 @@ export async function POST(
   // after the response, so the serverless function isn't terminated mid-flight.
   const bookingStartDt = new Date(booking.scheduled_at)
   const bookingEndDt = addMinutes(bookingStartDt, booking.duration_minutes)
-  const withMeet = isOnlineLocation && !locationAddress
-  console.log('[public-booking] Google Calendar:', { isOnlineLocation, locationAddress, withMeet, location_id, calendarLocationIds: calendar.location_ids })
+  // Phone-type locations (name='Téléphone') sont online mais ne génèrent pas de Meet
+  const isPhoneLocation = locationName === 'Téléphone'
+  const withMeet = isOnlineLocation && !locationAddress && !isPhoneLocation
+  console.log('[public-booking] Google Calendar:', { isOnlineLocation, locationAddress, withMeet, isPhoneLocation, location_id, calendarLocationIds: calendar.location_ids })
 
   after(async () => {
     let meetUrl: string | undefined
