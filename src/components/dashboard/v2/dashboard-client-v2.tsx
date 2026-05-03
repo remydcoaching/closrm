@@ -8,6 +8,7 @@ import DayPlanCard from './hero/day-plan-card'
 import PreCallBriefModal from './hero/pre-call-brief-modal'
 import RiskLeadsCard from './lists/risk-leads-card'
 import HotLeadsCard from './lists/hot-leads-card'
+import RecentBookingsCard from './lists/recent-bookings-card'
 import ConversionFunnel from './funnel/conversion-funnel'
 import RealtimeActivityFeed from './activity/realtime-activity-feed'
 import type {
@@ -17,6 +18,7 @@ import type {
   PriorityLead,
   FunnelData,
   ActivityEventV2,
+  RecentBookingsBucket,
 } from '@/lib/dashboard/v2-queries'
 
 interface Props {
@@ -29,6 +31,7 @@ interface Props {
   riskLeads: PriorityLead[]
   hotLeads: PriorityLead[]
   funnelData: FunnelData
+  recentBookings: RecentBookingsBucket
   initialActivity: ActivityEventV2[]
 }
 
@@ -42,6 +45,7 @@ export default function DashboardClientV2({
   riskLeads,
   hotLeads,
   funnelData,
+  recentBookings,
   initialActivity,
 }: Props) {
   const [briefModal, setBriefModal] = useState<{
@@ -119,6 +123,9 @@ export default function DashboardClientV2({
 
       {/* Funnel */}
       <ConversionFunnel data={funnelData} />
+
+      {/* Réservations récentes */}
+      <RecentBookingsCard data={recentBookings} />
 
       {/* Activity feed */}
       <RealtimeActivityFeed workspaceId={workspaceId} initialEvents={initialActivity} />

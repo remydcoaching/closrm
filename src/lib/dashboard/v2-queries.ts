@@ -54,6 +54,21 @@ export interface FunnelData {
   closed: number
 }
 
+export interface RecentBooking {
+  id: string
+  lead_id: string | null
+  lead_name: string
+  scheduled_at: string
+  booked_at: string
+  source: string | null
+}
+
+export interface RecentBookingsBucket {
+  count_today: number
+  count_7d: number
+  bookings: RecentBooking[]
+}
+
 export interface ActivityEventV2 {
   id: string
   type: 'new_lead' | 'new_booking' | 'call_done' | 'deal_closed' | 'follow_up_done'
@@ -423,6 +438,44 @@ export async function getFunnelData(workspaceId: string, period: number): Promis
     showed: uniqShowed,
     closed: uniqClosed,
   }
+}
+
+// ─── Recent bookings ─────────────────────────────────────────────────────────
+
+export async function getRecentBookings(workspaceId: string): Promise<RecentBookingsBucket> {
+  const supabase = await createClient()
+  const since7d = new Date(Date.now() - 7 * 86400000).toISOString()
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  const { data } = await supabase
+    .from('bookings')
+    .select('id, lead_id, scheduled_at, created_at, title, leads(first_name, last_name, source)')
+    .eq('workspace_id', workspaceId)
+    .gte('created_at', since7d)
+    .neq('status', 'cancelled')
+    .neq('source', 'google_sync')
+    .eq('is_personal', false)
+    .order('created_at', { ascending: false })
+    .limit(15)
+
+  const bookings: RecentBooking[] = (data ?? []).map(b => {
+    const lead = b.leads as unknown as { first_name: string; last_name: string; source: string | null } | null
+    return {
+      id: b.id,
+      lead_id: b.lead_id,
+      lead_name: lead ? `${lead.first_name} ${lead.last_name}` : (b.title ?? 'RDV'),
+      scheduled_at: b.scheduled_at,
+      booked_at: b.created_at,
+      source: lead?.source ?? null,
+    }
+  })
+
+  const todayIso = todayStart.toISOString()
+  const count_today = bookings.filter(b => b.booked_at >= todayIso).length
+  const count_7d = bookings.length
+
+  return { count_today, count_7d, bookings }
 }
 
 // ─── Activity ─────────────────────────────────────────────────────────────────
