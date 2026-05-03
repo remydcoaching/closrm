@@ -407,7 +407,9 @@ export async function POST(
 
   const bookingStartDt = new Date(booking.scheduled_at)
   const bookingEndDt = addMinutes(bookingStartDt, booking.duration_minutes)
-  const withMeet = isOnlineLocation && !locationAddress
+  // Phone-type locations (name='Téléphone') sont online mais ne génèrent pas de Meet
+  const isPhoneLocation = locationName === 'Téléphone'
+  const withMeet = isOnlineLocation && !locationAddress && !isPhoneLocation
 
   // Schedule GCal event creation + confirmation email after the response,
   // so the serverless function isn't terminated mid-flight.
