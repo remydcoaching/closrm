@@ -72,7 +72,7 @@ export default function ConversionFunnel({ data }: { data: FunnelData }) {
             textTransform: 'uppercase',
           }}
         >
-          Funnel de conversion (cohort)
+          Funnel de conversion
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
           Conversion globale :{' '}
