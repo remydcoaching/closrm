@@ -34,7 +34,13 @@ function formatScheduled(iso: string): string {
   return `${target.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} ${time}`
 }
 
-export default function RecentBookingsCard({ data }: { data: RecentBookingsBucket }) {
+export default function RecentBookingsCard({
+  data,
+  onLeadClick,
+}: {
+  data: RecentBookingsBucket
+  onLeadClick: (leadId: string) => void
+}) {
   return (
     <div
       style={{
@@ -129,7 +135,7 @@ export default function RecentBookingsCard({ data }: { data: RecentBookingsBucke
                 <tr
                   key={b.id}
                   onClick={() => {
-                    if (b.lead_id) window.location.href = `/leads/${b.lead_id}`
+                    if (b.lead_id) onLeadClick(b.lead_id)
                   }}
                   style={{
                     cursor: b.lead_id ? 'pointer' : 'default',

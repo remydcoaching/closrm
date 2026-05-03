@@ -10,21 +10,19 @@ import RiskLeadsCard from './lists/risk-leads-card'
 import HotLeadsCard from './lists/hot-leads-card'
 import RecentBookingsCard from './lists/recent-bookings-card'
 import ConversionFunnel from './funnel/conversion-funnel'
-import RealtimeActivityFeed from './activity/realtime-activity-feed'
+import LeadSidePanel from '@/components/shared/LeadSidePanel'
 import type {
   DashboardKpisV2,
   NextBooking,
   DayPlanItem,
   PriorityLead,
   FunnelData,
-  ActivityEventV2,
   RecentBookingsBucket,
 } from '@/lib/dashboard/v2-queries'
 
 interface Props {
   firstName: string
   period: number
-  workspaceId: string
   kpis: DashboardKpisV2
   nextBooking: NextBooking | null
   dayPlan: DayPlanItem[]
@@ -32,13 +30,11 @@ interface Props {
   hotLeads: PriorityLead[]
   funnelData: FunnelData
   recentBookings: RecentBookingsBucket
-  initialActivity: ActivityEventV2[]
 }
 
 export default function DashboardClientV2({
   firstName,
   period,
-  workspaceId,
   kpis,
   nextBooking,
   dayPlan,
@@ -46,12 +42,12 @@ export default function DashboardClientV2({
   hotLeads,
   funnelData,
   recentBookings,
-  initialActivity,
 }: Props) {
   const [briefModal, setBriefModal] = useState<{
     bookingId: string | null
     leadId: string | null
   } | null>(null)
+  const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
 
   return (
     <div style={{ padding: 32, maxWidth: 1400, margin: '0 auto' }}>
@@ -125,10 +121,7 @@ export default function DashboardClientV2({
       <ConversionFunnel data={funnelData} />
 
       {/* Réservations récentes */}
-      <RecentBookingsCard data={recentBookings} />
-
-      {/* Activity feed */}
-      <RealtimeActivityFeed workspaceId={workspaceId} initialEvents={initialActivity} />
+      <RecentBookingsCard data={recentBookings} onLeadClick={setSidePanelLeadId} />
 
       <PreCallBriefModal
         open={briefModal !== null}
@@ -136,6 +129,10 @@ export default function DashboardClientV2({
         leadId={briefModal?.leadId ?? null}
         onClose={() => setBriefModal(null)}
       />
+
+      {sidePanelLeadId && (
+        <LeadSidePanel leadId={sidePanelLeadId} onClose={() => setSidePanelLeadId(null)} />
+      )}
     </div>
   )
 }

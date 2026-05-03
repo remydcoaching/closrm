@@ -12,7 +12,6 @@ import {
   getHotLeads,
   getFunnelData,
   getRecentBookings,
-  getRecentActivityV2,
 } from '@/lib/dashboard/v2-queries'
 import DashboardClientV2 from '@/components/dashboard/v2/dashboard-client-v2'
 import SetterDashboard from '@/components/dashboard/SetterDashboard'
@@ -52,7 +51,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   }
 
   // Admin → v2
-  const [kpis, nextBooking, dayPlan, riskLeads, hotLeads, funnelData, recentBookings, initialActivity] =
+  const [kpis, nextBooking, dayPlan, riskLeads, hotLeads, funnelData, recentBookings] =
     await Promise.all([
       fetchKpisV2(workspaceId, period),
       getNextBooking(workspaceId),
@@ -61,14 +60,12 @@ export default async function DashboardPage({ searchParams }: Props) {
       getHotLeads(workspaceId),
       getFunnelData(workspaceId, period),
       getRecentBookings(workspaceId),
-      getRecentActivityV2(workspaceId),
     ])
 
   return (
     <DashboardClientV2
       firstName={firstName}
       period={period}
-      workspaceId={workspaceId}
       kpis={kpis}
       nextBooking={nextBooking}
       dayPlan={dayPlan}
@@ -76,7 +73,6 @@ export default async function DashboardPage({ searchParams }: Props) {
       hotLeads={hotLeads}
       funnelData={funnelData}
       recentBookings={recentBookings}
-      initialActivity={initialActivity}
     />
   )
 }
