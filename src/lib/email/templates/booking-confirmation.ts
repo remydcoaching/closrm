@@ -15,6 +15,8 @@ export interface BookingConfirmationParams {
   meetUrl?: string
   locationName?: string
   locationAddress?: string
+  /** Si true, affiche un block "RDV téléphonique — Vous serez appelé(e) à l'heure". */
+  isPhoneCall?: boolean
   workspaceId?: string
   brandName?: string
   customMessage?: string
@@ -53,7 +55,7 @@ function shiftColor(hex: string, amount: number): string {
 }
 
 function buildPremiumHtml(params: BookingConfirmationParams): string {
-  const { coachName, prospectName, date, time, meetUrl, locationName, locationAddress, brandName, customMessage } = params
+  const { coachName, prospectName, date, time, meetUrl, locationName, locationAddress, brandName, customMessage, isPhoneCall } = params
   const accent = params.accentColor || DEFAULT_ACCENT
   const accentDark = shiftColor(accent, -25)
   const accentTint = hexToRgba(accent, 0.06)
@@ -104,8 +106,21 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
           </table>`
     : ''
 
+  const phoneBlock = !meetUrl && isPhoneCall
+    ? `
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background: linear-gradient(135deg, #0A0A0A 0%, #1F1F1F 100%); border-radius: 14px; margin-top: 28px;">
+            <tr>
+              <td style="padding: 22px 24px;">
+                <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: ${accent}; letter-spacing: 0.8px; text-transform: uppercase;">Appel téléphonique</p>
+                <p style="margin: 0; font-size: 16px; font-weight: 600; color: #ffffff;">${safeCoach || 'Le coach'} vous appellera à l&rsquo;heure du rendez-vous</p>
+                <p style="margin: 6px 0 0; font-size: 13px; color: #B5B5B5;">Pensez à garder votre téléphone à portée 📞</p>
+              </td>
+            </tr>
+          </table>`
+    : ''
+
   const locationBlock =
-    safeLocationName && !meetUrl
+    safeLocationName && !meetUrl && !isPhoneCall
       ? `
           <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background: #FAFAFA; border: 1px solid #EFEFEF; border-left: 3px solid ${accent}; border-radius: 6px; margin-top: 28px;">
             <tr>
@@ -222,6 +237,7 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
               </table>
 
               ${meetBlock}
+              ${phoneBlock}
               ${locationBlock}
               ${signOff}
 
@@ -290,7 +306,11 @@ function buildMinimalHtml(params: BookingConfirmationParams): string {
        </p>`
     : ''
 
-  const locationBlock = safeLocationName && !meetUrl
+  const phoneBlock = !meetUrl && params.isPhoneCall
+    ? `<p style="margin: 24px 0 0; padding: 16px 18px; background: ${accentTint}; border-left: 3px solid ${accent}; border-radius: 6px; font-size: 14px; color: #111827; line-height: 1.55;"><strong>Appel téléphonique</strong> — ${safeCoach || 'Le coach'} vous appellera à l&rsquo;heure du rendez-vous. Pensez à garder votre téléphone à portée 📞</p>`
+    : ''
+
+  const locationBlock = safeLocationName && !meetUrl && !params.isPhoneCall
     ? `<p style="margin: 24px 0 0; font-size: 14px; color: #4B5563; line-height: 1.6;"><strong style="color: #111827;">Lieu :</strong> ${safeLocationName}${safeLocationAddress ? `<br/>${safeLocationAddress}` : ''}</p>`
     : ''
 
@@ -315,6 +335,7 @@ function buildMinimalHtml(params: BookingConfirmationParams): string {
             </td></tr>
           </table>
           ${meetBlock}
+          ${phoneBlock}
           ${locationBlock}
           ${params.manageUrl ? `<p style="margin: 36px 0 0; text-align: center;">
             <a href="${escapeHtml(params.manageUrl)}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 8px; color: #374151; text-decoration: none; font-size: 13px; font-weight: 600;">Reprogrammer ou annuler</a>
@@ -358,6 +379,9 @@ function buildPlainHtml(params: BookingConfirmationParams): string {
   if (meetUrl) {
     lines.push('')
     lines.push(`Lien de la réunion : <a href="${meetUrl}" style="color:#1d4ed8;">${meetUrl}</a>`)
+  } else if (params.isPhoneCall) {
+    lines.push('')
+    lines.push(`Appel téléphonique — ${safeCoach || 'Le coach'} vous appellera à l'heure du rendez-vous.`)
   } else if (safeLocationName) {
     lines.push('')
     lines.push(`Lieu : ${safeLocationName}${safeLocationAddress ? ' — ' + safeLocationAddress : ''}`)

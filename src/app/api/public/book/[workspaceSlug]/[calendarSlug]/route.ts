@@ -501,6 +501,7 @@ export async function POST(
           meetUrl,
           locationName: locationName ?? undefined,
           locationAddress: locationAddress ?? undefined,
+          isPhoneCall: locationName === 'Téléphone',
           template: calTemplate,
           accentColor: calAccent,
           customMessage,
