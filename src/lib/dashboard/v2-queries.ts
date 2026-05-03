@@ -213,12 +213,17 @@ export async function getNextBooking(workspaceId: string): Promise<NextBooking |
 
   // On cherche n'importe quel prochain RDV futur (pas de fenêtre artificielle).
   // Inclut les bookings sans lead_id (perso / time block).
+  // On veut UNIQUEMENT les vrais RDV du CRM (booking_page ou manual avec lead),
+  // pas les events Google Calendar syncés ni les blocs perso.
   const { data, error } = await supabase
     .from('bookings')
     .select('id, title, scheduled_at, meet_url, lead_id, leads(id, first_name, last_name, source, email, phone)')
     .eq('workspace_id', workspaceId)
     .gte('scheduled_at', now)
     .neq('status', 'cancelled')
+    .neq('source', 'google_sync')
+    .eq('is_personal', false)
+    .not('lead_id', 'is', null)
     .order('scheduled_at', { ascending: true })
     .limit(1)
     .maybeSingle()
