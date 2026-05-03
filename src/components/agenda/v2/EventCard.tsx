@@ -24,9 +24,11 @@ interface EventCardProps {
   style: CSSProperties
   /** Sélectionné au 1er clic — affichage avec un ring renforcé. */
   isHighlighted?: boolean
+  /** Si true, affiche les poignées de resize haut/bas (uniquement bookings). */
+  resizable?: boolean
 }
 
-export function EventCard({ event, onClick, style, isHighlighted }: EventCardProps) {
+export function EventCard({ event, onClick, style, isHighlighted, resizable }: EventCardProps) {
   const isShort = event.durationMinutes <= 30
   const isMedium = event.durationMinutes > 30 && event.durationMinutes < 60
   const start = isoToHHmm(event.start)
@@ -81,6 +83,34 @@ export function EventCard({ event, onClick, style, isHighlighted }: EventCardPro
         el.style.background = fillBg
       }}
     >
+      {resizable && (
+        <>
+          <div
+            data-resize-handle="top"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 6,
+              cursor: 'ns-resize',
+              zIndex: 1,
+            }}
+          />
+          <div
+            data-resize-handle="bottom"
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 6,
+              cursor: 'ns-resize',
+              zIndex: 1,
+            }}
+          />
+        </>
+      )}
       {isShort ? (
         <>
           <span

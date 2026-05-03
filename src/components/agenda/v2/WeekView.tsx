@@ -59,6 +59,9 @@ interface WeekViewProps {
    *  est l'ISO string de la nouvelle date+heure de début. Ne déclenche que
    *  pour les bookings (pas les calls). */
   onEventMove?: (event: AgendaEvent, newScheduledAt: string) => void
+  /** Resize : appelé quand un event a été redimensionné. Le parent reçoit
+   *  la nouvelle date de début et la nouvelle durée en minutes. */
+  onEventResize?: (event: AgendaEvent, newScheduledAt: string, newDurationMinutes: number) => void
   /** ID de l'event highlighted (sélectionné au 1er clic, panel pas encore
    *  ouvert). Affichage : ring renforcé sur la card. */
   highlightedEventId?: string | null
@@ -71,6 +74,17 @@ interface DragState {
   dayIdx: number
   startHour: number
   currentHour: number
+  isDragging: boolean
+}
+
+interface ResizeState {
+  event: AgendaEvent
+  edge: 'top' | 'bottom'
+  dayIdx: number
+  /** Heure courante de l'edge bougé (snappée à la demi-heure). */
+  currentHour: number
+  /** Heure de l'autre extrémité (fixe pendant le resize). */
+  anchorHour: number
   isDragging: boolean
 }
 
@@ -99,6 +113,7 @@ export function WeekView({
   onEventClick,
   onSlotClick,
   onEventMove,
+  onEventResize,
   highlightedEventId,
   onHoverChange,
 }: WeekViewProps) {
@@ -194,6 +209,58 @@ export function WeekView({
   //    drag = onEventClick. Drop sur une autre cellule = onEventMove(event, isoNewStart).
   const [dragMove, setDragMove] = useState<DragMoveState | null>(null)
   const justDragMovedRef = useRef(false)
+
+  // ── Resize : drag sur la poignée haut/bas d'une EventCard pour modifier
+  //    la durée (et la date de début si edge=top).
+  const [resize, setResize] = useState<ResizeState | null>(null)
+
+  // Resize : mousemove / mouseup au niveau document
+  useEffect(() => {
+    if (!resize) return
+    const col = colRefs.current[resize.dayIdx]
+    if (!col) return
+
+    function onMove(e: MouseEvent) {
+      if (!col) return
+      const rect = col.getBoundingClientRect()
+      const y = e.clientY - rect.top
+      const newHour = snapToHalf(pixelToHour(y))
+      setResize((prev) => {
+        if (!prev) return prev
+        if (prev.currentHour === newHour) return prev
+        return { ...prev, currentHour: newHour, isDragging: true }
+      })
+    }
+
+    function onUp() {
+      setResize((prev) => {
+        if (!prev) return null
+        if (prev.isDragging && onEventResize) {
+          // Calcul nouvelle plage [start, end] avec garde-fous
+          const start = Math.min(prev.currentHour, prev.anchorHour)
+          const end = Math.max(prev.currentHour, prev.anchorHour)
+          const minutes = Math.max(15, Math.round((end - start) * 60))
+          if (minutes !== prev.event.durationMinutes || start !== prev.anchorHour) {
+            const evDate = parseISO(prev.event.start)
+            const newDate = new Date(evDate)
+            const h = Math.floor(start)
+            const m = Math.round((start - h) * 60)
+            newDate.setHours(h, m, 0, 0)
+            justDragMovedRef.current = true
+            onEventResize(prev.event, newDate.toISOString(), minutes)
+          }
+        }
+        return null
+      })
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+  }, [resize, onEventResize])
 
   const handleEventCardClick = useCallback((ev: AgendaEvent) => {
     // Si on vient de finir un drag-move, on suppress le click qui suit
@@ -467,6 +534,33 @@ export function WeekView({
                   if (e.button !== 0) return
                   const target = e.target as HTMLElement
 
+                  // Resize : mousedown sur une poignée haut/bas ?
+                  const resizeHandle = target.closest('[data-resize-handle]') as HTMLElement | null
+                  if (resizeHandle && onEventResize) {
+                    const eventEl = resizeHandle.closest('[data-agenda-event]')
+                    const eventId = eventEl?.getAttribute('data-agenda-event')
+                    const ev = dayEvents.find((x) => x.id === eventId)
+                    if (ev && ev.kind === 'booking') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const evStart = parseISO(ev.start)
+                      const startHour = evStart.getHours() + evStart.getMinutes() / 60
+                      const endHour = startHour + ev.durationMinutes / 60
+                      const edge = resizeHandle.getAttribute('data-resize-handle') as 'top' | 'bottom'
+                      const anchorHour = edge === 'top' ? endHour : startHour
+                      const currentHour = edge === 'top' ? startHour : endHour
+                      setResize({
+                        event: ev,
+                        edge,
+                        dayIdx,
+                        anchorHour,
+                        currentHour,
+                        isDragging: false,
+                      })
+                      return
+                    }
+                  }
+
                   // Drag-to-move : mousedown sur une EventCard ?
                   const eventEl = target.closest('[data-agenda-event]')
                   if (eventEl && onEventMove) {
@@ -535,16 +629,36 @@ export function WeekView({
                   const ovr = layout.get(ev.id) ?? { column: 0, groupSize: 1 }
                   const widthPct = 100 / ovr.groupSize
                   const isBeingDragged = dragMove?.isDragging && dragMove.event.id === ev.id
+                  const isBeingResized = resize?.isDragging && resize.event.id === ev.id
                   const isHighlighted = highlightedEventId === ev.id
+
+                  // Preview pendant resize : recalcule top/height à la volée
+                  let previewStyle = { top: pos.top, height: pos.height }
+                  if (isBeingResized && resize) {
+                    const start = Math.min(resize.currentHour, resize.anchorHour)
+                    const end = Math.max(resize.currentHour, resize.anchorHour)
+                    const minutes = Math.max(15, Math.round((end - start) * 60))
+                    const previewPos = eventToPosition(
+                      (() => {
+                        const d = parseISO(ev.start)
+                        d.setHours(Math.floor(start), Math.round((start - Math.floor(start)) * 60), 0, 0)
+                        return d.toISOString()
+                      })(),
+                      minutes,
+                    )
+                    if (previewPos) previewStyle = { top: previewPos.top, height: previewPos.height }
+                  }
+
                   return (
                     <EventTooltip key={ev.id} event={ev}>
                       <EventCard
                         event={ev}
                         onClick={handleEventCardClick}
                         isHighlighted={isHighlighted}
+                        resizable={ev.kind === 'booking' && !!onEventResize}
                         style={{
-                          top: pos.top,
-                          height: pos.height,
+                          top: previewStyle.top,
+                          height: previewStyle.height,
                           left: `calc(${ovr.column * widthPct}% + 2px)`,
                           width: `calc(${widthPct}% - 4px)`,
                           opacity: isBeingDragged ? 0.3 : 1,
