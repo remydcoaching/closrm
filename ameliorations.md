@@ -721,4 +721,41 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-*Mis a jour le 2026-04-24 par Claude Code — ClosRM*
+### A-042-01 · Logo image custom uploadé par coach pour l'email
+- **Contexte :** Identifié pendant T-042. Aujourd'hui le header de l'email premium affiche l'initiale du brand dans un carré coloré. Pour des coachs avec une vraie identité visuelle, un logo image rendrait l'email beaucoup plus pro.
+- **Description :** Ajouter un champ `email_logo_url` à `booking_calendars` (ou au workspace), permettre l'upload via Supabase Storage, et l'afficher en `<img>` dans le header en remplacement de l'initiale.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Moyen (upload + storage + UI + template)
+- **Statut :** En attente de validation
+
+### A-042-02 · Tracking delivery réel via SNS bounces/complaints AWS
+- **Contexte :** Identifié pendant T-042. Aujourd'hui dans l'historique, "Envoyé" = SES a accepté l'email pour livraison, mais on ne sait pas s'il est arrivé en boîte (vs bounce/spam). Un coach pourrait voir "envoyé" alors que le prospect n'a rien reçu.
+- **Description :** Brancher le webhook SNS bounce/complaint AWS (déjà code dans `src/lib/email/sns-verify.ts`) sur `booking_reminders` pour update le status réel : `delivered` / `bounced` / `complained`.
+- **Priorité estimée :** Haute (impact visible sur fiabilité perçue)
+- **Effort estimé :** Moyen (webhook handler + UI status + migration enum)
+- **Statut :** En attente de validation
+
+### A-042-03 · Timezone par workspace au lieu d'Europe/Paris hardcodé
+- **Contexte :** Identifié pendant T-042. `formatBookingDateFR/TimeFR` hardcode `Europe/Paris`. Si Rémy onboard un coach dans une autre TZ (Belgique, Suisse, Canada FR…), les heures dans les emails seront fausses.
+- **Description :** Ajouter `timezone` à la table `workspaces` (default `Europe/Paris`), passer le tz du workspace aux helpers de formatage.
+- **Priorité estimée :** Basse (90% des coachs FR sont en France métropolitaine)
+- **Effort estimé :** Faible (migration + propagation aux call sites)
+- **Statut :** En attente de validation
+
+### A-042-04 · Reschedule "linké" en un seul flow
+- **Contexte :** Identifié pendant T-042. Aujourd'hui sur `/booking/manage/[id]`, "Reprogrammer" envoie le prospect sur le calendrier public — il crée donc un NOUVEAU booking, et l'ancien reste actif (sauf s'il clique manuellement sur "Annuler" avant). Risque : doublon visible côté coach jusqu'à ce qu'il nettoie.
+- **Description :** Sur le clic "Reprogrammer", auto-cancel l'ancien booking avant le redirect (et passer un flag dans l'URL pour pré-remplir le prospect), OU une fois le nouveau booking créé, lier les deux et cancel l'ancien automatiquement.
+- **Priorité estimée :** Moyenne (UX un peu confuse sinon)
+- **Effort estimé :** Faible-moyen
+- **Statut :** En attente de validation
+
+### A-042-05 · Cleanup section 6 commentée du workflow-scheduler
+- **Contexte :** Identifié pendant T-042. La section 6 (booking reminders) du workflow-scheduler a été déléguée à `/api/cron/booking-reminders`. Le code est resté commenté en bloc dans `workflow-scheduler/route.ts` au lieu d'être supprimé. Dette technique mineure.
+- **Description :** Supprimer le bloc commenté ~218 lignes dans `src/app/api/cron/workflow-scheduler/route.ts` lignes 338-556 + nettoyer les imports devenus inutiles (`buildBookingConfirmationHtml`, certains date-fns).
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+---
+
+*Mis a jour le 2026-05-03 par Claude Code — ClosRM*
