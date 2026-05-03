@@ -210,14 +210,14 @@ export async function fetchKpisV2(workspaceId: string, period: number): Promise<
 export async function getNextBooking(workspaceId: string): Promise<NextBooking | null> {
   const supabase = await createClient()
   const now = new Date().toISOString()
-  const in24h = new Date(Date.now() + 24 * 86400000).toISOString()
+  const in7d = new Date(Date.now() + 7 * 86400000).toISOString()
 
   const { data } = await supabase
     .from('bookings')
     .select('id, scheduled_at, meet_url, location_type, leads(id, first_name, last_name, source, email, phone)')
     .eq('workspace_id', workspaceId)
     .gte('scheduled_at', now)
-    .lte('scheduled_at', in24h)
+    .lte('scheduled_at', in7d)
     .neq('status', 'cancelled')
     .order('scheduled_at', { ascending: true })
     .limit(1)

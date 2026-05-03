@@ -10,12 +10,15 @@ function useCountdown(targetIso: string) {
     const id = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(id)
   }, [])
-  const diff = new Date(targetIso).getTime() - now
+  const target = new Date(targetIso)
+  const diff = target.getTime() - now
   if (diff <= 0) return 'maintenant'
   const mins = Math.floor(diff / 60000)
   if (mins < 60) return `dans ${mins} min`
   const hrs = Math.floor(mins / 60)
-  return `dans ${hrs}h${(mins % 60).toString().padStart(2, '0')}`
+  if (hrs < 24) return `dans ${hrs}h${(mins % 60).toString().padStart(2, '0')}`
+  const days = Math.floor(hrs / 24)
+  return `dans ${days} jour${days > 1 ? 's' : ''}`
 }
 
 interface Props {
@@ -30,7 +33,7 @@ export default function NextCallCard({ booking, onGenerateBrief }: Props) {
         <div style={labelStyle}>PROCHAIN RDV</div>
         <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>🎯 À jour</div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>
-          Aucun RDV dans les 24 prochaines heures.
+          Aucun RDV planifié dans les 7 prochains jours.
         </div>
       </div>
     )
@@ -47,10 +50,12 @@ function ActiveCard({
   onGenerateBrief: (b: string, l: string) => void
 }) {
   const countdown = useCountdown(booking.scheduled_at)
-  const time = new Date(booking.scheduled_at).toLocaleTimeString('fr-FR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const target = new Date(booking.scheduled_at)
+  const isToday = target.toDateString() === new Date().toDateString()
+  const time = target.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const dateLabel = isToday
+    ? `Aujourd'hui ${time}`
+    : target.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' }) + ` · ${time}`
 
   return (
     <div style={cardStyle}>
@@ -66,7 +71,7 @@ function ActiveCard({
           marginTop: 4,
         }}
       >
-        {time} · {countdown}
+        {dateLabel} · {countdown}
       </div>
       <div
         style={{
