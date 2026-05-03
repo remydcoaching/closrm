@@ -223,13 +223,7 @@ export async function getNextBooking(workspaceId: string): Promise<NextBooking |
     .limit(1)
     .maybeSingle()
 
-  console.log('[dashboard.nextBooking] V2', {
-    workspaceId,
-    now,
-    found: !!data,
-    error: error?.message,
-    scheduled_at: data?.scheduled_at,
-  })
+  console.log(`[dashboard.nextBooking] V2 ws=${workspaceId} now=${now} found=${!!data} error=${error?.message ?? 'none'} scheduled_at=${data?.scheduled_at ?? 'none'} hasLead=${!!data?.leads}`)
 
   if (!data) return null
 
@@ -393,7 +387,7 @@ export async function getFunnelData(workspaceId: string, period: number): Promis
   const supabase = await createClient()
   const since = new Date(Date.now() - period * 86400000).toISOString()
 
-  console.log('[dashboard.funnel] V2 cohort start', { workspaceId, period, since })
+  console.log(`[dashboard.funnel] V2 cohort start ws=${workspaceId} period=${period} since=${since}`)
 
   // Cohort: leads créés dans la période
   const { data: leadsData } = await supabase
@@ -421,13 +415,7 @@ export async function getFunnelData(workspaceId: string, period: number): Promis
   const uniqShowed = new Set((callsRows.data ?? []).map(c => c.lead_id)).size
   const uniqClosed = new Set((dealsRows.data ?? []).map(d => d.lead_id)).size
 
-  console.log('[dashboard.funnel] V2 cohort result', {
-    leadsCount,
-    uniqBooked,
-    uniqShowed,
-    uniqClosed,
-    totalBookingRows: bookingsRows.data?.length ?? 0,
-  })
+  console.log(`[dashboard.funnel] V2 cohort result leadsCount=${leadsCount} uniqBooked=${uniqBooked} uniqShowed=${uniqShowed} uniqClosed=${uniqClosed} totalBookingRows=${bookingsRows.data?.length ?? 0} firstBookingLeadIds=${JSON.stringify((bookingsRows.data ?? []).slice(0, 3).map(b => b.lead_id))} sampleLeadIds=${JSON.stringify(leadIds.slice(0, 3))}`)
 
   return {
     leads: leadsCount,
