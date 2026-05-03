@@ -68,41 +68,18 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
   const brandInitial = (safeBrand.charAt(0) || 'C').toUpperCase()
   const greeting = safeProspect ? `Bonjour ${safeProspect},` : 'Bonjour,'
 
-  // Inline SVG icons (supported by all major clients except old Outlook desktop,
-  // where the calendar still degrades gracefully because text labels remain).
-  const iconCalendar = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;"><rect x="3" y="5" width="18" height="16" rx="2" stroke="${accent}" stroke-width="1.8"/><path d="M3 9h18" stroke="${accent}" stroke-width="1.8"/><path d="M8 3v4M16 3v4" stroke="${accent}" stroke-width="1.8" stroke-linecap="round"/></svg>`
-  const iconClock = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;"><circle cx="12" cy="12" r="9" stroke="${accent}" stroke-width="1.8"/><path d="M12 7v5l3 2" stroke="${accent}" stroke-width="1.8" stroke-linecap="round"/></svg>`
-  const iconUser = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;"><circle cx="12" cy="8" r="4" stroke="${accent}" stroke-width="1.8"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7" stroke="${accent}" stroke-width="1.8" stroke-linecap="round"/></svg>`
-  const iconPin = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;"><path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" stroke="${accent}" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.5" stroke="${accent}" stroke-width="1.8"/></svg>`
-  const iconVideo = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;"><rect x="2" y="6" width="14" height="12" rx="2" stroke="#ffffff" stroke-width="1.8"/><path d="M16 10l6-3v10l-6-3z" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round"/></svg>`
-  const iconCheck = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;"><path d="M5 12.5l4.5 4.5L19 7" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`
-
-  const detailRow = (icon: string, label: string, value: string) => `
+  // No SVG icons — Gmail strips inline SVG. We use a colored vertical bar
+  // (left border) on each row instead, which renders identically everywhere.
+  const detailRow = (label: string, value: string) => `
     <tr>
-      <td style="padding: 14px 0; border-bottom: 1px solid #EFEFEF;">
-        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-          <tr>
-            <td width="36" style="vertical-align: middle; padding-right: 14px;">
-              <table cellpadding="0" cellspacing="0" role="presentation">
-                <tr>
-                  <td style="background: ${accentTint}; border-radius: 8px; width: 36px; height: 36px; text-align: center; vertical-align: middle;">
-                    <div style="display:inline-block; line-height: 0;">${icon}</div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-            <td style="vertical-align: middle;">
-              <p style="margin: 0 0 2px; font-size: 11px; font-weight: 600; color: #9CA3AF; letter-spacing: 0.6px; text-transform: uppercase;">${label}</p>
-              <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 600;">${value}</p>
-            </td>
-          </tr>
-        </table>
+      <td style="padding: 14px 16px; border-bottom: 1px solid #EFEFEF; border-left: 3px solid ${accent};">
+        <p style="margin: 0 0 2px; font-size: 11px; font-weight: 600; color: #9CA3AF; letter-spacing: 0.6px; text-transform: uppercase;">${label}</p>
+        <p style="margin: 0; font-size: 15px; color: #111827; font-weight: 600;">${value}</p>
       </td>
     </tr>`
 
-  // Last row: remove bottom border for clean finish
-  const detailRowLast = (icon: string, label: string, value: string) =>
-    detailRow(icon, label, value).replace('border-bottom: 1px solid #EFEFEF;', '')
+  const detailRowLast = (label: string, value: string) =>
+    detailRow(label, value).replace('border-bottom: 1px solid #EFEFEF;', '')
 
   const meetBlock = meetUrl
     ? `
@@ -117,7 +94,7 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
                     </td>
                     <td align="right" style="vertical-align: middle;">
                       <a href="${escapeHtml(meetUrl)}" target="_blank" style="display: inline-block; background: ${accent}; color: #ffffff; text-decoration: none; padding: 12px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px ${hexToRgba(accent, 0.35)};">
-                        <span style="display:inline-block; vertical-align: middle; margin-right: 8px;">${iconVideo}</span><span style="display:inline-block; vertical-align: middle;">Ouvrir le lien</span>
+                        Ouvrir le lien
                       </a>
                     </td>
                   </tr>
@@ -130,27 +107,12 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
   const locationBlock =
     safeLocationName && !meetUrl
       ? `
-          <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background: #FAFAFA; border: 1px solid #EFEFEF; border-radius: 14px; margin-top: 28px;">
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background: #FAFAFA; border: 1px solid #EFEFEF; border-left: 3px solid ${accent}; border-radius: 6px; margin-top: 28px;">
             <tr>
               <td style="padding: 20px 22px;">
-                <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-                  <tr>
-                    <td width="36" style="vertical-align: top; padding-right: 14px;">
-                      <table cellpadding="0" cellspacing="0" role="presentation">
-                        <tr>
-                          <td style="background: ${accentTint}; border-radius: 8px; width: 36px; height: 36px; text-align: center; vertical-align: middle;">
-                            <div style="display:inline-block; line-height: 0;">${iconPin}</div>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                    <td style="vertical-align: top;">
-                      <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #9CA3AF; letter-spacing: 0.8px; text-transform: uppercase;">Lieu du rendez-vous</p>
-                      <p style="margin: 0 0 ${safeLocationAddress ? '4px' : '0'}; font-size: 15px; color: #111827; font-weight: 600;">${safeLocationName}</p>
-                      ${safeLocationAddress ? `<p style="margin: 0; font-size: 14px; color: #6B7280; line-height: 1.5;">${safeLocationAddress}</p>` : ''}
-                    </td>
-                  </tr>
-                </table>
+                <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #9CA3AF; letter-spacing: 0.8px; text-transform: uppercase;">Lieu du rendez-vous</p>
+                <p style="margin: 0 0 ${safeLocationAddress ? '4px' : '0'}; font-size: 15px; color: #111827; font-weight: 600;">${safeLocationName}</p>
+                ${safeLocationAddress ? `<p style="margin: 0; font-size: 14px; color: #6B7280; line-height: 1.5;">${safeLocationAddress}</p>` : ''}
               </td>
             </tr>
           </table>
@@ -221,14 +183,7 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
                   <td align="right" style="vertical-align: middle;">
                     <table cellpadding="0" cellspacing="0" role="presentation" style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 999px;">
                       <tr>
-                        <td style="padding: 6px 12px 6px 10px; vertical-align: middle;">
-                          <table cellpadding="0" cellspacing="0" role="presentation">
-                            <tr>
-                              <td style="vertical-align: middle; padding-right: 6px;">${iconCheck}</td>
-                              <td style="vertical-align: middle; font-size: 12px; font-weight: 600; color: #22c55e; letter-spacing: 0.2px;">Confirmé</td>
-                            </tr>
-                          </table>
-                        </td>
+                        <td style="padding: 6px 14px; vertical-align: middle; font-size: 12px; font-weight: 600; color: #22c55e; letter-spacing: 0.2px;">Confirmé</td>
                       </tr>
                     </table>
                   </td>
@@ -258,9 +213,9 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
                 <tr>
                   <td style="padding: 8px 22px;">
                     <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-                      ${detailRow(iconCalendar, 'Date', safeDate)}
-                      ${detailRow(iconClock, 'Heure', safeTime)}
-                      ${detailRowLast(iconUser, 'Avec', safeCoach || safeBrand)}
+                      ${detailRow('Date', safeDate)}
+                      ${detailRow('Heure', safeTime)}
+                      ${detailRowLast('Avec', safeCoach || safeBrand)}
                     </table>
                   </td>
                 </tr>
