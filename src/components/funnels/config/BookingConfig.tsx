@@ -1,11 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { BookingBlockConfig } from '@/types'
+import type { BookingBlockConfig, FunnelPage, FunnelBlock } from '@/types'
+import RedirectPicker from './RedirectPicker'
 
 interface Props {
   config: BookingBlockConfig
   onChange: (config: BookingBlockConfig) => void
+  pages?: FunnelPage[]
+  blocks?: FunnelBlock[]
 }
 
 interface CalendarOption {
@@ -13,7 +16,7 @@ interface CalendarOption {
   name: string
 }
 
-export default function BookingConfig({ config, onChange }: Props) {
+export default function BookingConfig({ config, onChange, pages, blocks }: Props) {
   const [calendars, setCalendars] = useState<CalendarOption[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -67,6 +70,13 @@ export default function BookingConfig({ config, onChange }: Props) {
           </select>
         )}
       </div>
+      <RedirectPicker
+        value={config.redirectUrl ?? null}
+        onChange={val => onChange({ ...config, redirectUrl: val })}
+        pages={pages}
+        blocks={blocks}
+        label="Après réservation"
+      />
     </div>
   )
 }

@@ -30,6 +30,7 @@ import {
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { BookingBlockConfig } from '@/types'
+import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
 
 interface Props {
   config: BookingBlockConfig
@@ -196,6 +197,13 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
       if (!res.ok) {
         const data = await res.json()
         setError(data.error ?? 'Erreur lors de la réservation.')
+        return
+      }
+      // Si une URL de redirection est configurée → redirection (page suivante du
+      // funnel ou URL externe). Sinon, fallback sur la confirmation in-page.
+      const redirectUrl = config.redirectUrl
+      if (redirectUrl && redirectUrl.trim().length > 0) {
+        window.location.href = resolveFunnelUrl(redirectUrl)
         return
       }
       setPhase('confirmed')
