@@ -19,7 +19,7 @@ export const TAB_GROUPS: Record<string, TabGroup> = {
     label: 'Agenda',
     tabs: [
       { label: 'Vue calendrier', href: '/agenda' },
-      { label: 'Calendriers de RDV', href: '/parametres/calendriers' },
+      { label: 'Pages de réservation', href: '/parametres/calendriers' },
     ],
   },
   leads: {
@@ -40,14 +40,6 @@ export const TAB_GROUPS: Record<string, TabGroup> = {
       { label: 'Finance', href: '/finance' },
     ],
   },
-  pages: {
-    key: 'pages',
-    label: 'Pages',
-    tabs: [
-      { label: 'Funnels', href: '/acquisition/funnels' },
-      { label: 'Lead Magnets', href: '/acquisition/lead-magnets' },
-    ],
-  },
   equipe: {
     key: 'equipe',
     label: 'Équipe',
@@ -62,6 +54,7 @@ export const TAB_GROUPS: Record<string, TabGroup> = {
     tabs: [
       { label: 'Compte', href: '/parametres/reglages' },
       { label: 'Intégrations', href: '/parametres/integrations' },
+      { label: 'Assistant IA', href: '/parametres/assistant-ia' },
     ],
   },
 }

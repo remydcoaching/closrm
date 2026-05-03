@@ -18,10 +18,7 @@ export default function PageTabs({ tabs }: { tabs: Tab[] }) {
   return (
     <div
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '0 24px',
+        padding: '14px 24px 0',
         borderBottom: '1px solid var(--border-primary)',
         background: 'var(--bg-primary)',
         position: 'sticky',
@@ -29,28 +26,42 @@ export default function PageTabs({ tabs }: { tabs: Tab[] }) {
         zIndex: 5,
       }}
     >
-      {tabs.map((tab) => {
-        const active = pathname === tab.href || pathname.startsWith(tab.href + '/')
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            style={{
-              padding: '14px 16px',
-              fontSize: 13,
-              fontWeight: active ? 600 : 500,
-              color: active ? 'var(--color-primary)' : 'var(--text-tertiary)',
-              borderBottom: `2px solid ${active ? 'var(--color-primary)' : 'transparent'}`,
-              marginBottom: -1,
-              textDecoration: 'none',
-              transition: 'all 0.15s ease',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {tab.label}
-          </Link>
-        )
-      })}
+      <div
+        style={{
+          display: 'inline-flex',
+          gap: 2,
+          padding: 3,
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-primary)',
+          borderRadius: 10,
+          marginBottom: 14,
+        }}
+      >
+        {tabs.map((tab) => {
+          const active = pathname === tab.href || pathname.startsWith(tab.href + '/')
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              style={{
+                padding: '7px 14px',
+                fontSize: 13,
+                fontWeight: 500,
+                color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                background: active ? 'var(--bg-active)' : 'transparent',
+                border: active ? '1px solid var(--border-primary)' : '1px solid transparent',
+                borderRadius: 7,
+                textDecoration: 'none',
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+                boxShadow: active ? '0 1px 2px rgba(0,0,0,0.04)' : 'none',
+              }}
+            >
+              {tab.label}
+            </Link>
+          )
+        })}
+      </div>
     </div>
   )
 }

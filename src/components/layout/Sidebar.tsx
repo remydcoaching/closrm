@@ -30,24 +30,24 @@ const NAV = [
     title: 'ACQUISITION',
     items: [
       { label: 'Publicités', href: '/acquisition/publicites', icon: Megaphone, matchPaths: ['/acquisition/publicites'] },
-      { label: 'Pages', href: '/acquisition/funnels', icon: Layers, matchPaths: ['/acquisition/funnels', '/acquisition/lead-magnets'] },
+      { label: 'Funnels', href: '/acquisition/funnels', icon: Layers, matchPaths: ['/acquisition/funnels'] },
+      { label: 'Lead Magnets', href: '/acquisition/lead-magnets', icon: Link2, matchPaths: ['/acquisition/lead-magnets'] },
       { label: 'Réseaux sociaux', href: '/acquisition/reseaux-sociaux', icon: Share2, matchPaths: ['/acquisition/reseaux-sociaux'] },
-      { label: 'Messages', href: '/acquisition/messages', icon: MessageCircle, matchPaths: ['/acquisition/messages'] },
-      { label: 'Emails', href: '/acquisition/emails', icon: Mail, matchPaths: ['/acquisition/emails'] },
     ],
   },
   {
-    title: 'OUTILS',
+    title: 'MARKETING',
     items: [
+      { label: 'Messages', href: '/acquisition/messages', icon: MessageCircle, matchPaths: ['/acquisition/messages'] },
+      { label: 'Emails', href: '/acquisition/emails', icon: Mail, matchPaths: ['/acquisition/emails'] },
       { label: 'Automations', href: '/acquisition/automations', icon: Zap, matchPaths: ['/acquisition/automations'] },
-      { label: 'Assistant IA', href: '/parametres/assistant-ia', icon: Sparkles, matchPaths: ['/parametres/assistant-ia'] },
     ],
   },
   {
     title: 'COMPTE',
     items: [
       { label: 'Équipe', href: '/parametres/equipe', icon: Users2, matchPaths: ['/parametres/equipe', '/equipe/messages'] },
-      { label: 'Paramètres', href: '/parametres/reglages', icon: Settings, matchPaths: ['/parametres/reglages', '/parametres/integrations'] },
+      { label: 'Paramètres', href: '/parametres/reglages', icon: Settings, matchPaths: ['/parametres/reglages', '/parametres/integrations', '/parametres/assistant-ia'] },
     ],
   },
 ]
