@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  let body: { message?: string; calendarName?: string; variant?: 'meet' | 'location'; template?: 'premium' | 'minimal' | 'plain'; accentColor?: string }
+  let body: { message?: string; calendarName?: string; variant?: 'meet' | 'location' | 'phone'; template?: 'premium' | 'minimal' | 'plain'; accentColor?: string }
   try {
     body = await request.json()
   } catch {
@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
 
   const message = (body.message ?? '').trim()
   const calendarName = body.calendarName ?? 'Coaching'
-  const variant = body.variant === 'location' ? 'location' : 'meet'
+  const variant: 'meet' | 'location' | 'phone' =
+    body.variant === 'location' ? 'location' : body.variant === 'phone' ? 'phone' : 'meet'
   const template = body.template === 'minimal' || body.template === 'plain' ? body.template : 'premium'
   const accentColor = typeof body.accentColor === 'string' && /^#[0-9A-Fa-f]{6}$/.test(body.accentColor)
     ? body.accentColor
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
     meetUrl: variant === 'meet' ? 'https://meet.google.com/preview-link' : undefined,
     locationName: variant === 'location' ? 'Bureau ' + (ws?.name ?? 'Coaching') : undefined,
     locationAddress: variant === 'location' ? '12 rue de la Paix, 75002 Paris' : undefined,
+    isPhoneCall: variant === 'phone',
     customMessage: message ? resolveTemplate(message, { calendarName }) : undefined,
     template,
     accentColor,
