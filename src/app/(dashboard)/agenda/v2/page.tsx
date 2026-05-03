@@ -240,6 +240,34 @@ export default function AgendaV2Page() {
     }
   }
 
+  async function handleEventResize(ev: AgendaEvent, newScheduledAt: string, newDurationMinutes: number) {
+    if (ev.kind !== 'booking') return
+    // Optimistic update
+    patchEvent(ev.id, (e) => {
+      if (e.kind !== 'booking') return e
+      return {
+        ...e,
+        start: newScheduledAt,
+        durationMinutes: newDurationMinutes,
+        booking: { ...e.booking, scheduled_at: newScheduledAt, duration_minutes: newDurationMinutes },
+      }
+    })
+    try {
+      const res = await fetch(`/api/bookings/${ev.booking.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduled_at: newScheduledAt, duration_minutes: newDurationMinutes }),
+      })
+      if (!res.ok) {
+        alert('Redimensionnement échoué')
+        refetch()
+      }
+    } catch {
+      alert('Redimensionnement échoué (réseau)')
+      refetch()
+    }
+  }
+
   async function handleStatusChange(ev: AgendaEvent, status: string) {
     if (ev.kind !== 'booking') return
     const res = await fetch(`/api/bookings/${ev.booking.id}`, {
@@ -579,6 +607,7 @@ export default function AgendaV2Page() {
                 onEventClick={handleEventClick}
                 onSlotClick={handleSlotClick}
                 onEventMove={handleEventMove}
+                onEventResize={handleEventResize}
                 highlightedEventId={highlightedEventId}
                 onHoverChange={handleHoverChange}
               />
