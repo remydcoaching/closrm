@@ -24,9 +24,10 @@ function useCountdown(targetIso: string) {
 interface Props {
   booking: NextBooking | null
   onGenerateBrief: (bookingId: string, leadId: string) => void
+  onLeadClick: (leadId: string) => void
 }
 
-export default function NextCallCard({ booking, onGenerateBrief }: Props) {
+export default function NextCallCard({ booking, onGenerateBrief, onLeadClick }: Props) {
   if (!booking) {
     return (
       <div style={cardStyle}>
@@ -39,15 +40,17 @@ export default function NextCallCard({ booking, onGenerateBrief }: Props) {
     )
   }
 
-  return <ActiveCard booking={booking} onGenerateBrief={onGenerateBrief} />
+  return <ActiveCard booking={booking} onGenerateBrief={onGenerateBrief} onLeadClick={onLeadClick} />
 }
 
 function ActiveCard({
   booking,
   onGenerateBrief,
+  onLeadClick,
 }: {
   booking: NextBooking
   onGenerateBrief: (b: string, l: string) => void
+  onLeadClick: (leadId: string) => void
 }) {
   const countdown = useCountdown(booking.scheduled_at)
   const target = new Date(booking.scheduled_at)
@@ -109,9 +112,11 @@ function ActiveCard({
         >
           <Sparkles size={14} /> Générer brief IA
         </button>
-        <a href={`/leads/${booking.lead_id}`} style={ghostBtnStyle}>
-          <ExternalLink size={14} /> Fiche lead
-        </a>
+        {booking.lead_id && (
+          <button onClick={() => onLeadClick(booking.lead_id)} style={ghostBtnStyle}>
+            <ExternalLink size={14} /> Fiche lead
+          </button>
+        )}
       </div>
     </div>
   )
@@ -173,4 +178,5 @@ const ghostBtnStyle: React.CSSProperties = {
   fontWeight: 500,
   border: '1px solid var(--border-primary)',
   textDecoration: 'none',
+  cursor: 'pointer',
 }

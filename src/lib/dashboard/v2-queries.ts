@@ -336,7 +336,16 @@ export async function getDayPlan(workspaceId: string): Promise<DayPlanItem[]> {
     })
   }
 
-  return items.sort((a, b) => a.priority - b.priority).slice(0, 7)
+  return items
+    .sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority
+      // Au sein d'un même priority, tri par scheduled_at chrono (ou nom si pas de date)
+      const aTime = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0
+      const bTime = b.scheduled_at ? new Date(b.scheduled_at).getTime() : 0
+      if (aTime && bTime) return aTime - bTime
+      return a.lead_name.localeCompare(b.lead_name)
+    })
+    .slice(0, 7)
 }
 
 // ─── Listes prioritaires (algo pur) ──────────────────────────────────────────
@@ -372,28 +381,25 @@ export async function getHotLeads(workspaceId: string): Promise<PriorityLead[]> 
   const supabase = await createClient()
   const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString()
 
+  // Hot lead = activité récente (48h) ET (status nouveau_lead OU tag chaud/VIP)
   const { data } = await supabase
     .from('leads')
     .select('id, first_name, last_name, status, last_activity_at, tags')
     .eq('workspace_id', workspaceId)
     .gte('last_activity_at', twoDaysAgo)
     .not('status', 'in', '(clos,dead)')
+    .or('status.eq.nouveau_lead,tags.cs.{chaud},tags.cs.{VIP}')
     .order('last_activity_at', { ascending: false })
-    .limit(20)
+    .limit(5)
 
-  const filtered = (data ?? []).filter(l =>
-    (l.tags && (l.tags.includes('chaud') || l.tags.includes('VIP'))) ||
-    l.status === 'nouveau_lead'
-  ).slice(0, 5)
-
-  return filtered.map(l => {
+  return (data ?? []).map(l => {
     const hrs = l.last_activity_at
       ? Math.max(1, Math.floor((Date.now() - new Date(l.last_activity_at).getTime()) / 3600000))
       : 0
     return {
       id: l.id,
       name: `${l.first_name} ${l.last_name}`,
-      context: `Actif il y a ${hrs}h`,
+      context: hrs < 24 ? `Actif il y a ${hrs}h` : `Actif il y a ${Math.floor(hrs / 24)}j`,
       last_activity: l.last_activity_at,
       status: l.status,
     }

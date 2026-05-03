@@ -17,7 +17,13 @@ const COLORS = {
   hot_lead: '#f59e0b',
 } as const
 
-export default function DayPlanCard({ items }: { items: DayPlanItem[] }) {
+export default function DayPlanCard({
+  items,
+  onLeadClick,
+}: {
+  items: DayPlanItem[]
+  onLeadClick: (leadId: string) => void
+}) {
   return (
     <div
       style={{
@@ -60,17 +66,20 @@ export default function DayPlanCard({ items }: { items: DayPlanItem[] }) {
             const color = COLORS[item.type]
             return (
               <li key={`${item.type}-${item.lead_id}-${i}`}>
-                <a
-                  href={`/leads/${item.lead_id}`}
+                <button
+                  onClick={() => onLeadClick(item.lead_id)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
                     padding: '8px 10px',
                     borderRadius: 8,
-                    textDecoration: 'none',
                     color: 'var(--text-primary)',
                     background: 'transparent',
+                    border: 'none',
+                    width: '100%',
+                    textAlign: 'left',
+                    cursor: 'pointer',
                     transition: 'background 0.15s ease',
                   }}
                   onMouseEnter={e => {
@@ -93,7 +102,7 @@ export default function DayPlanCard({ items }: { items: DayPlanItem[] }) {
                   <Icon size={14} style={{ color, flexShrink: 0 }} />
                   <span style={{ fontSize: 13, fontWeight: 500, flex: 1 }}>{item.lead_name}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.context}</span>
-                </a>
+                </button>
               </li>
             )
           })}

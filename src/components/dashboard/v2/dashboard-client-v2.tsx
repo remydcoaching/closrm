@@ -6,8 +6,8 @@ import PeriodSelectorV2 from './period-selector-v2'
 import NextCallCard from './hero/next-call-card'
 import DayPlanCard from './hero/day-plan-card'
 import PreCallBriefModal from './hero/pre-call-brief-modal'
-import RiskLeadsCard from './lists/risk-leads-card'
-import HotLeadsCard from './lists/hot-leads-card'
+import { AlertTriangle, Flame } from 'lucide-react'
+import PriorityLeadsCard from './lists/priority-leads-card'
 import RecentBookingsCard from './lists/recent-bookings-card'
 import ConversionFunnel from './funnel/conversion-funnel'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
@@ -97,8 +97,9 @@ export default function DashboardClientV2({
         <NextCallCard
           booking={nextBooking}
           onGenerateBrief={(bookingId, leadId) => setBriefModal({ bookingId, leadId })}
+          onLeadClick={setSidePanelLeadId}
         />
-        <DayPlanCard items={dayPlan} />
+        <DayPlanCard items={dayPlan} onLeadClick={setSidePanelLeadId} />
       </div>
 
       {/* KPIs */}
@@ -113,8 +114,24 @@ export default function DashboardClientV2({
           marginBottom: 16,
         }}
       >
-        <RiskLeadsCard leads={riskLeads} />
-        <HotLeadsCard leads={hotLeads} />
+        <PriorityLeadsCard
+          title="Leads à risque"
+          Icon={AlertTriangle}
+          iconColor="var(--color-warning)"
+          contextColor="var(--color-warning)"
+          emptyLabel="Aucun lead à risque ✨"
+          leads={riskLeads}
+          onLeadClick={setSidePanelLeadId}
+        />
+        <PriorityLeadsCard
+          title="Leads chauds"
+          Icon={Flame}
+          iconColor="#f59e0b"
+          contextColor="#f59e0b"
+          emptyLabel="Aucun lead chaud actuellement"
+          leads={hotLeads}
+          onLeadClick={setSidePanelLeadId}
+        />
       </div>
 
       {/* Funnel */}

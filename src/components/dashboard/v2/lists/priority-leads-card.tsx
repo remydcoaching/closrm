@@ -1,11 +1,37 @@
 'use client'
 
-import { AlertTriangle, ChevronRight } from 'lucide-react'
+import { ChevronRight, type LucideIcon } from 'lucide-react'
 import type { PriorityLead } from '@/lib/dashboard/v2-queries'
 
-export default function RiskLeadsCard({ leads }: { leads: PriorityLead[] }) {
+interface Props {
+  title: string
+  Icon: LucideIcon
+  iconColor: string
+  contextColor: string
+  emptyLabel: string
+  leads: PriorityLead[]
+  onLeadClick: (leadId: string) => void
+}
+
+export default function PriorityLeadsCard({
+  title,
+  Icon,
+  iconColor,
+  contextColor,
+  emptyLabel,
+  leads,
+  onLeadClick,
+}: Props) {
   return (
-    <div style={cardStyle}>
+    <div
+      style={{
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border-primary)',
+        borderRadius: 12,
+        padding: 16,
+        minHeight: 180,
+      }}
+    >
       <div
         style={{
           display: 'flex',
@@ -15,7 +41,7 @@ export default function RiskLeadsCard({ leads }: { leads: PriorityLead[] }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <AlertTriangle size={14} color="var(--color-warning)" />
+          <Icon size={14} color={iconColor} />
           <span
             style={{
               fontSize: 11,
@@ -25,13 +51,13 @@ export default function RiskLeadsCard({ leads }: { leads: PriorityLead[] }) {
               textTransform: 'uppercase',
             }}
           >
-            Leads à risque
+            {title}
           </span>
         </div>
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{leads.length}</span>
       </div>
       {leads.length === 0 ? (
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Aucun lead à risque ✨</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{emptyLabel}</div>
       ) : (
         <ul
           style={{
@@ -45,9 +71,22 @@ export default function RiskLeadsCard({ leads }: { leads: PriorityLead[] }) {
         >
           {leads.map(l => (
             <li key={l.id}>
-              <a
-                href={`/leads/${l.id}`}
-                style={rowStyle}
+              <button
+                onClick={() => onLeadClick(l.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  background: 'transparent',
+                  border: 'none',
+                  width: '100%',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease',
+                  color: 'inherit',
+                }}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = 'var(--bg-hover)'
                 }}
@@ -68,31 +107,13 @@ export default function RiskLeadsCard({ leads }: { leads: PriorityLead[] }) {
                 >
                   {l.name}
                 </span>
-                <span style={{ fontSize: 11, color: 'var(--color-warning)' }}>{l.context}</span>
+                <span style={{ fontSize: 11, color: contextColor }}>{l.context}</span>
                 <ChevronRight size={12} color="var(--text-muted)" />
-              </a>
+              </button>
             </li>
           ))}
         </ul>
       )}
     </div>
   )
-}
-
-const cardStyle: React.CSSProperties = {
-  background: 'var(--bg-secondary)',
-  border: '1px solid var(--border-primary)',
-  borderRadius: 12,
-  padding: 16,
-  minHeight: 180,
-}
-
-const rowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '8px 10px',
-  borderRadius: 6,
-  textDecoration: 'none',
-  transition: 'background 0.15s ease',
 }
