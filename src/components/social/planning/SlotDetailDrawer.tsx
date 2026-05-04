@@ -299,21 +299,20 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               label="Production"
               color="#a78bfa"
               action={
-                <a
-                  href="/parametres/assistant-ia"
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  onClick={() => window.open('/parametres/assistant-ia', '_blank')}
                   title="Personnaliser l'IA (ton, niche, brief)"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 4,
                     padding: '4px 8px', fontSize: 10, fontWeight: 600,
-                    color: 'var(--text-tertiary)', textDecoration: 'none',
+                    color: 'var(--text-tertiary)',
                     background: 'var(--bg-secondary)',
                     border: '1px solid var(--border-primary)', borderRadius: 6,
+                    cursor: 'pointer',
                   }}
                 >
                   <Settings size={10} /> Personnaliser l'IA
-                </a>
+                </button>
               }
             />
 
@@ -590,19 +589,18 @@ function HookSuggestions({
           </div>
         ))}
       </div>
-      <a
-        href="/parametres/assistant-ia"
-        target="_blank"
-        rel="noreferrer"
+      <button
+        onClick={() => window.open('/parametres/assistant-ia', '_blank')}
         style={{
           display: 'flex', alignItems: 'center', gap: 4,
           marginTop: 8, padding: '4px 0',
           fontSize: 10, fontWeight: 600,
-          color: 'var(--text-tertiary)', textDecoration: 'none',
+          color: 'var(--text-tertiary)', textDecoration: 'underline',
+          background: 'transparent', border: 'none', cursor: 'pointer',
         }}
       >
         <Settings size={10} /> Pas content du résultat ? Personnalise l'IA
-      </a>
+      </button>
     </div>
   )
 }
