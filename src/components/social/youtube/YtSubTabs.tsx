@@ -1,10 +1,10 @@
 'use client'
 
 const TABS = [
-  { key: 'overview', label: 'Vue d\'ensemble' },
-  { key: 'videos',   label: 'Vidéos' },
-  { key: 'comments', label: 'Commentaires' },
-  { key: 'insights', label: 'Insights' },
+  { key: 'acquisition', label: 'Acquisition' },
+  { key: 'inbox',       label: 'Inbox' },
+  { key: 'videos',      label: 'Vidéos' },
+  { key: 'insights',    label: 'Insights' },
 ] as const
 
 interface Props {
@@ -27,12 +27,9 @@ export default function YtSubTabs({ selected, onChange }: Props) {
             style={{
               padding: '10px 16px', fontSize: 13, fontWeight: 600,
               color: isActive ? '#FF0000' : 'var(--text-tertiary)',
-              background: 'transparent',
-              border: 'none',
+              background: 'transparent', border: 'none',
               borderBottom: `2px solid ${isActive ? '#FF0000' : 'transparent'}`,
-              marginBottom: '-1px',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
+              marginBottom: '-1px', cursor: 'pointer', transition: 'all 0.15s',
             }}
           >
             {t.label}

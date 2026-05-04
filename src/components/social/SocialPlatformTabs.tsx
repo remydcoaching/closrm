@@ -1,11 +1,11 @@
 'use client'
 
-import { Camera, Video, Calendar } from 'lucide-react'
+import { Camera, Video, LayoutGrid } from 'lucide-react'
 
 const TABS = [
-  { key: 'instagram', label: 'Instagram', icon: Camera,   color: '#EC4899', active: true },
-  { key: 'youtube',   label: 'YouTube',   icon: Video,    color: '#FF0000', active: true },
-  { key: 'calendar',  label: 'Calendrier', icon: Calendar, color: '#5b9bf5', active: true },
+  { key: 'planning',  label: 'Planning',  icon: LayoutGrid, color: '#a78bfa', active: true },
+  { key: 'instagram', label: 'Instagram', icon: Camera,     color: '#EC4899', active: true },
+  { key: 'youtube',   label: 'YouTube',   icon: Video,      color: '#FF0000', active: true },
 ] as const
 
 interface Props {
@@ -15,7 +15,7 @@ interface Props {
 
 export default function SocialPlatformTabs({ selected, onChange }: Props) {
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+    <div style={{ display: 'flex', gap: 8 }}>
       {TABS.map(t => {
         const isActive = selected === t.key
         const Icon = t.icon
