@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
-    const { year, month, kinds, window, start_date } = parsed.data
+    const { year, month, kinds, window, start_date, end_date } = parsed.data
     const includePosts = kinds.includes('post')
     const includeStories = kinds.includes('story')
 
@@ -51,19 +51,35 @@ export async function POST(request: NextRequest) {
 
     // Détermine la liste des dates à générer selon window
     const datesToGenerate: { date: Date; planDate: string }[] = []
-    if (window === 'week') {
-      const start = start_date
-        ? new Date(start_date + 'T00:00:00')
-        : new Date()
+    const fmtDate = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+    if (window === 'range') {
+      if (!start_date || !end_date) {
+        return NextResponse.json({ error: 'start_date et end_date requis pour window=range' }, { status: 400 })
+      }
+      const start = new Date(start_date + 'T00:00:00')
+      const end = new Date(end_date + 'T00:00:00')
+      if (end < start) {
+        return NextResponse.json({ error: 'end_date doit être après start_date' }, { status: 400 })
+      }
+      const cursor = new Date(start)
+      while (cursor <= end) {
+        datesToGenerate.push({ date: new Date(cursor), planDate: fmtDate(cursor) })
+        cursor.setDate(cursor.getDate() + 1)
+      }
+    } else if (window === 'week') {
+      const start = start_date ? new Date(start_date + 'T00:00:00') : new Date()
       for (let i = 0; i < 7; i++) {
         const d = new Date(start)
         d.setDate(start.getDate() + i)
-        datesToGenerate.push({
-          date: d,
-          planDate: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-        })
+        datesToGenerate.push({ date: d, planDate: fmtDate(d) })
       }
     } else {
+      // window === 'month'
+      if (!year || !month) {
+        return NextResponse.json({ error: 'year et month requis pour window=month' }, { status: 400 })
+      }
       const daysInMonth = new Date(year, month, 0).getDate()
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(year, month - 1, day)
@@ -153,19 +169,21 @@ export async function POST(request: NextRequest) {
       createdCount = inserted?.length ?? 0
     }
 
-    await supabase
-      .from('content_trame_generations')
-      .upsert(
-        {
-          workspace_id: workspaceId,
-          year,
-          month,
-          generated_by: userId,
-          generated_at: new Date().toISOString(),
-          slots_created: createdCount,
-        },
-        { onConflict: 'workspace_id,year,month' }
-      )
+    if (year && month) {
+      await supabase
+        .from('content_trame_generations')
+        .upsert(
+          {
+            workspace_id: workspaceId,
+            year,
+            month,
+            generated_by: userId,
+            generated_at: new Date().toISOString(),
+            slots_created: createdCount,
+          },
+          { onConflict: 'workspace_id,year,month' }
+        )
+    }
 
     return NextResponse.json({
       data: {

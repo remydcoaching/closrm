@@ -1,35 +1,30 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Sparkles, KanbanSquare, Calendar as CalIcon, Plus, FileText, Camera } from 'lucide-react'
+import { Settings, KanbanSquare, Calendar as CalIcon, Plus, CalendarRange } from 'lucide-react'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
 import TrameEditorModal from './TrameEditorModal'
 import BoardView from './BoardView'
 import PlanningCalendarView from './PlanningCalendarView'
 import SlotDetailDrawer from './SlotDetailDrawer'
+import PlanModal from './PlanModal'
 
-const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
 export default function PlanningView() {
   const [view, setView] = useState<'calendar' | 'board'>('board')
   const [trame, setTrame] = useState<ContentTrame | null>(null)
-  const [generations, setGenerations] = useState<{ year: number; month: number; slots_created: number }[]>([])
   const [pillars, setPillars] = useState<ContentPillar[]>([])
   const [posts, setPosts] = useState<SocialPostWithPublications[]>([])
   const [structureLoading, setStructureLoading] = useState(true) // trame + pillars
   const [postsLoading, setPostsLoading] = useState(true)
   const [trameModalOpen, setTrameModalOpen] = useState(false)
+  const [planModalOpen, setPlanModalOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
   const [cursor, setCursor] = useState(() => {
     const d = new Date()
     return { year: d.getFullYear(), month: d.getMonth() + 1 }
   })
-
-  const targetMonth = (() => {
-    const m = cursor.month + 1
-    return m > 12 ? { year: cursor.year + 1, month: 1 } : { year: cursor.year, month: m }
-  })()
 
   const reloadStructure = useCallback(async () => {
     setStructureLoading(true)
@@ -41,7 +36,6 @@ export default function PlanningView() {
       const trameJson = await trameRes.json()
       const pillarsJson = await pillarsRes.json()
       setTrame(trameJson.data ?? null)
-      setGenerations(trameJson.generations ?? [])
       setPillars(pillarsJson.data ?? [])
     } finally {
       setStructureLoading(false)
@@ -66,32 +60,28 @@ export default function PlanningView() {
   useEffect(() => { reloadStructure() }, [reloadStructure])
   useEffect(() => { reloadPosts() }, [reloadPosts])
 
-  const targetMonthLabel = `${MONTHS_FR[targetMonth.month - 1]} ${targetMonth.year}`
-  const alreadyGenerated = generations.some(
-    (g) => g.year === targetMonth.year && g.month === targetMonth.month
-  )
-
-  const generate = async (kinds: ('post' | 'story')[], window: 'month' | 'week', label: string) => {
+  const planRange = async ({ kinds, start_date, end_date }: { kinds: ('post' | 'story')[]; start_date: string; end_date: string }) => {
     if (!trame) {
       setTrameModalOpen(true)
       return
     }
     setGenerating(true)
     try {
-      const today = new Date()
-      const fmtDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-      const body = window === 'week'
-        ? { year: today.getFullYear(), month: today.getMonth() + 1, kinds, window, start_date: fmtDate }
-        : { ...targetMonth, kinds, window }
       const res = await fetch('/api/social/trame/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          kinds,
+          window: 'range',
+          start_date,
+          end_date,
+        }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Erreur génération')
+      if (!res.ok) throw new Error(json.error ?? 'Erreur')
       const { slots_created, slots_skipped } = json.data
-      alert(`✓ ${slots_created} slots créés (${slots_skipped ?? 0} déjà existants) — ${label}`)
+      alert(`✓ ${slots_created} slots créés (${slots_skipped ?? 0} déjà existants)`)
+      setPlanModalOpen(false)
       await reload()
     } catch (e) {
       alert(`Erreur: ${(e as Error).message}`)
@@ -166,9 +156,9 @@ export default function PlanningView() {
             <Settings size={14} /> Trame
           </button>
           <button
-            onClick={() => generate(['post'], 'month', `posts de ${targetMonthLabel}`)}
+            onClick={() => setPlanModalOpen(true)}
             disabled={generating}
-            title="Génère uniquement les posts du mois prochain"
+            title="Préparer des slots vides à partir de la trame"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', fontSize: 12, fontWeight: 600,
@@ -179,25 +169,8 @@ export default function PlanningView() {
               opacity: generating ? 0.7 : 1,
             }}
           >
-            <FileText size={13} />
-            {generating ? '…' : `Posts ${targetMonthLabel.split(' ')[0]}`}
-          </button>
-          <button
-            onClick={() => generate(['story'], 'week', 'stories des 7 prochains jours')}
-            disabled={generating}
-            title="Génère les stories pour les 7 prochains jours seulement"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px', fontSize: 12, fontWeight: 600,
-              color: '#fff',
-              background: '#ec4899',
-              border: 'none', borderRadius: 8,
-              cursor: generating ? 'wait' : 'pointer',
-              opacity: generating ? 0.7 : 1,
-            }}
-          >
-            <Camera size={13} />
-            {generating ? '…' : 'Stories 7j'}
+            <CalendarRange size={13} />
+            {generating ? '…' : 'Planifier'}
           </button>
         </div>
       </div>
@@ -233,6 +206,13 @@ export default function PlanningView() {
           )}
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </>
+      )}
+
+      {planModalOpen && (
+        <PlanModal
+          onClose={() => setPlanModalOpen(false)}
+          onConfirm={planRange}
+        />
       )}
 
       {trameModalOpen && (
