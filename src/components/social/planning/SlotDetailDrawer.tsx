@@ -17,6 +17,7 @@ import {
   type SocialContentKind,
   PRODUCTION_STATUSES,
 } from '@/types'
+import { useToast } from '@/components/ui/Toast'
 
 const PLATFORMS: { key: SocialPlatform; label: string; color: string; icon: typeof Camera; disabled?: boolean }[] = [
   { key: 'instagram', label: 'Instagram', color: '#EC4899', icon: Camera },
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }: Props) {
+  const toast = useToast()
   const [slot, setSlot] = useState<SocialPostWithPublications | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -97,7 +99,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
   const handleSchedule = async () => {
     if (!slot || !slot.plan_date) {
-      alert('Une date prévue est requise pour programmer le slot.')
+      toast.error('Date requise', 'Une date prévue est requise pour programmer le slot.')
       return
     }
     if (!validateBeforePublish()) return
@@ -255,7 +257,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       onChange()
       onClose()
     } catch (e) {
-      alert(`Erreur publication : ${(e as Error).message}`)
+      toast.error('Erreur publication', (e as Error).message)
     } finally {
       setPublishingNow(false)
     }
@@ -265,19 +267,19 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     if (!slot) return false
     const platforms = Object.entries(enabledPlatforms).filter(([, on]) => on).map(([k]) => k as SocialPlatform)
     if (platforms.length === 0) {
-      alert('Sélectionne au moins une plateforme.')
+      toast.error('Plateforme manquante', 'Sélectionne au moins une plateforme.')
       return false
     }
     if (enabledPlatforms.youtube && !ytConfig.title?.trim()) {
-      alert('Le titre YouTube est requis.')
+      toast.error('Titre YouTube manquant', 'Le titre est requis pour publier sur YouTube.')
       return false
     }
     if (!slot.media_urls || slot.media_urls.length === 0) {
-      alert('Au moins un media est requis.')
+      toast.error('Media manquant', 'Au moins un media est requis.')
       return false
     }
     if (slot.production_status !== 'ready') {
-      alert('Le slot doit être en statut "Prêt".')
+      toast.error('Slot non prêt', 'Le slot doit être en statut Prêt.')
       return false
     }
     return true
@@ -301,7 +303,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       if (!res.ok) throw new Error(json.error ?? 'Erreur')
       setHookSuggestions(json.hooks ?? [])
     } catch (e) {
-      alert(`Erreur génération : ${(e as Error).message}`)
+      toast.error('Erreur génération', (e as Error).message)
     } finally {
       setGeneratingHooks(false)
     }
@@ -310,7 +312,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   const generateScript = async () => {
     if (!slot) return
     if (!slot.hook && !slot.title) {
-      alert('Renseigne un hook ou un titre avant de générer le script.')
+      toast.error('Hook manquant', 'Renseigne un hook ou un titre avant de générer le script.')
       return
     }
     setGeneratingScript(true)
@@ -329,7 +331,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       if (!res.ok) throw new Error(json.error ?? 'Erreur')
       await patch({ script: json.script })
     } catch (e) {
-      alert(`Erreur génération script : ${(e as Error).message}`)
+      toast.error('Erreur génération script', (e as Error).message)
     } finally {
       setGeneratingScript(false)
     }
@@ -1459,6 +1461,7 @@ function RefsList({ urls, onChange }: { urls: string[]; onChange: (urls: string[
 }
 
 function MediaList({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
+  const toast = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState<string | null>(null)
@@ -1481,7 +1484,7 @@ function MediaList({ urls, onChange }: { urls: string[]; onChange: (urls: string
           upsert: false,
         })
         if (error) {
-          alert(`Erreur upload ${file.name}: ${error.message}`)
+          toast.error(`Erreur upload ${file.name}`, error.message)
           continue
         }
         const { data: { publicUrl } } = supabase.storage.from('content-drafts').getPublicUrl(path)

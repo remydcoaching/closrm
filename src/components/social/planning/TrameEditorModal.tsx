@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { X, Plus, Trash2, Pencil, Sparkles, Wand2 } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 import {
   type ContentPillar,
   type ContentTrame,
@@ -85,6 +86,7 @@ function normalizeGrid(
 }
 
 export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: Props) {
+  const toast = useToast()
   const [storiesPerDay, setStoriesPerDay] = useState(trame?.stories_per_day ?? 5)
   const [postsPerDay, setPostsPerDay] = useState(trame?.posts_per_day ?? 2)
   const [storiesGrid, setStoriesGrid] = useState(() => normalizeGrid(trame?.stories_grid, trame?.stories_per_day ?? 5))
@@ -239,7 +241,7 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
       }
       onSaved()
     } catch (e) {
-      alert(`Erreur sauvegarde : ${(e as Error).message}`)
+      toast.error('Erreur sauvegarde', (e as Error).message)
     } finally {
       setSaving(false)
     }

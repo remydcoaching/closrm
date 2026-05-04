@@ -5,11 +5,15 @@ import { useRouter } from 'next/navigation'
 import { RefreshCw, Inbox } from 'lucide-react'
 import type { IgConversation, IgComment } from '@/types'
 import AcquisitionInbox, { type InboxItem } from '../AcquisitionInbox'
+import { useSocialLeadCreation } from '../_shared/useSocialLeadCreation'
+import { useToast } from '@/components/ui/Toast'
 
 const ACCENT = '#EC4899'
 
 export default function IgInboxTab() {
   const router = useRouter()
+  const createLead = useSocialLeadCreation()
+  const toast = useToast()
   const [conversations, setConversations] = useState<IgConversation[]>([])
   const [comments, setComments] = useState<IgComment[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,14 +43,14 @@ export default function IgInboxTab() {
   const handleSync = async () => {
     setSyncing(true)
     try {
-      // Trigger conversations sync (the route supports ?sync=true)
       await Promise.all([
         fetch('/api/instagram/conversations?sync=true&per_page=1'),
         fetch('/api/instagram/comments/sync', { method: 'POST' }),
       ])
       await fetchData()
+      toast.success('Inbox synchronisée')
     } catch {
-      alert('Erreur lors de la synchronisation')
+      toast.error('Erreur lors de la synchronisation')
     } finally {
       setSyncing(false)
     }
@@ -54,46 +58,28 @@ export default function IgInboxTab() {
 
   async function createLeadFromDM(c: IgConversation) {
     const username = c.participant_username ?? c.participant_name ?? ''
-    if (!username) return
-    const res = await fetch('/api/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        first_name: c.participant_name?.split(' ')[0] ?? username,
-        last_name:  c.participant_name?.split(' ').slice(1).join(' ') ?? '',
-        source: 'instagram_ads',
-        notes: `Importé depuis DM Instagram (@${username})`,
-      }),
+    await createLead({
+      username,
+      firstName: c.participant_name?.split(' ')[0] ?? username,
+      lastName:  c.participant_name?.split(' ').slice(1).join(' '),
+      source: 'instagram_ads',
+      notes: `Importé depuis DM Instagram (@${username})`,
+      afterCreate: async (leadId) => {
+        await fetch(`/api/instagram/conversations/${c.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lead_id: leadId }),
+        }).catch(() => null)
+      },
     })
-    const json = await res.json()
-    if (res.ok && json.data?.id) {
-      await fetch(`/api/instagram/conversations/${c.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_id: json.data.id }),
-      }).catch(() => null)
-      router.push(`/leads/${json.data.id}`)
-    } else {
-      alert(json.error ?? 'Impossible de créer le lead')
-    }
   }
 
   async function createLeadFromComment(c: IgComment) {
-    const username = c.username ?? ''
-    if (!username) return
-    const res = await fetch('/api/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        first_name: username,
-        last_name: '',
-        source: 'instagram_ads',
-        notes: `Commentaire Instagram : "${c.text}"\nSur post : ${c.media_caption ?? '—'}`,
-      }),
+    await createLead({
+      username: c.username ?? '',
+      source: 'instagram_ads',
+      notes: `Commentaire Instagram : "${c.text}"\nSur post : ${c.media_caption ?? '—'}`,
     })
-    const json = await res.json()
-    if (res.ok && json.data?.id) router.push(`/leads/${json.data.id}`)
-    else alert(json.error ?? 'Impossible de créer le lead')
   }
 
   const items: InboxItem[] = useMemo(() => {

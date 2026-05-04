@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useToast } from '@/components/ui/Toast'
 import SocialPlatformTabs from '@/components/social/SocialPlatformTabs'
 import IgSubTabs from '@/components/social/instagram/IgSubTabs'
 import IgNotConnected from '@/components/social/instagram/IgNotConnected'
@@ -37,10 +39,56 @@ function LoadingSkeleton() {
   )
 }
 
+const VALID_PLATFORMS = new Set(['planning', 'instagram', 'youtube'])
+const VALID_IG_TABS = new Set(['acquisition', 'inbox', 'stories', 'reels'])
+const VALID_YT_TABS = new Set(['acquisition', 'inbox', 'videos', 'insights'])
+
 export default function ReseauxSociauxPage() {
-  const [platform, setPlatform] = useState('planning')
-  const [igTab, setIgTab] = useState('acquisition')
-  const [ytTab, setYtTab] = useState('acquisition')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const toast = useToast()
+
+  const initialPlatform = (() => {
+    const p = searchParams.get('platform')
+    return p && VALID_PLATFORMS.has(p) ? p : 'planning'
+  })()
+  const initialIgTab = (() => {
+    const t = searchParams.get('tab')
+    return t && VALID_IG_TABS.has(t) ? t : 'acquisition'
+  })()
+  const initialYtTab = (() => {
+    const t = searchParams.get('tab')
+    return t && VALID_YT_TABS.has(t) ? t : 'acquisition'
+  })()
+
+  const [platform, setPlatformState] = useState<string>(initialPlatform)
+  const [igTab, setIgTabState] = useState<string>(initialIgTab)
+  const [ytTab, setYtTabState] = useState<string>(initialYtTab)
+
+  // Sync URL when state changes (replace, no history pollution)
+  const updateUrl = useCallback((nextPlatform: string, nextTab?: string) => {
+    const params = new URLSearchParams()
+    if (nextPlatform !== 'planning') params.set('platform', nextPlatform)
+    if (nextTab && nextTab !== 'acquisition') params.set('tab', nextTab)
+    const qs = params.toString()
+    router.replace(qs ? `/acquisition/reseaux-sociaux?${qs}` : '/acquisition/reseaux-sociaux', { scroll: false })
+  }, [router])
+
+  const setPlatform = useCallback((p: string) => {
+    setPlatformState(p)
+    const tab = p === 'instagram' ? igTab : p === 'youtube' ? ytTab : undefined
+    updateUrl(p, tab)
+  }, [igTab, ytTab, updateUrl])
+
+  const setIgTab = useCallback((t: string) => {
+    setIgTabState(t)
+    if (platform === 'instagram') updateUrl('instagram', t)
+  }, [platform, updateUrl])
+
+  const setYtTab = useCallback((t: string) => {
+    setYtTabState(t)
+    if (platform === 'youtube') updateUrl('youtube', t)
+  }, [platform, updateUrl])
 
   const [igAccount, setIgAccount] = useState<Record<string, unknown> | null>(null)
   const [ytAccount, setYtAccount] = useState<YtAccount | null>(null)
@@ -88,7 +136,7 @@ export default function ReseauxSociauxPage() {
       if (!res.ok) throw new Error(`Erreur ${res.status}`)
       await fetchAccounts()
     } catch {
-      alert('Erreur lors de la synchronisation')
+      toast.error('Erreur lors de la synchronisation')
     } finally {
       setSyncing(false)
     }

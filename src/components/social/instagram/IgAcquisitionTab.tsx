@@ -8,6 +8,7 @@ import AcquisitionInbox, { type InboxItem } from '../AcquisitionInbox'
 import { classifyIntent, intentSortValue } from '@/lib/social/intent-classifier'
 import { mediaIdToShortcode } from '@/lib/instagram/shortcode'
 import { fmt, CardShell, SectionHeader, KpiCard } from '../_shared/atoms'
+import { useSocialLeadCreation } from '../_shared/useSocialLeadCreation'
 
 interface Props {
   onSeeAllInbox: () => void
@@ -18,6 +19,7 @@ const ACCENT = '#EC4899'
 
 export default function IgAcquisitionTab({ onSeeAllInbox, onOpenPlanning }: Props) {
   const router = useRouter()
+  const createLead = useSocialLeadCreation()
   const [conversations, setConversations] = useState<IgConversation[]>([])
   const [comments, setComments] = useState<IgComment[]>([])
   const [reels, setReels] = useState<IgReel[]>([])
@@ -137,55 +139,28 @@ export default function IgAcquisitionTab({ onSeeAllInbox, onOpenPlanning }: Prop
 
   async function createLeadFromDM(c: IgConversation) {
     const username = c.participant_username ?? c.participant_name ?? ''
-    if (!username) return
-    try {
-      const res = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          first_name: c.participant_name?.split(' ')[0] ?? username,
-          last_name:  c.participant_name?.split(' ').slice(1).join(' ') ?? '',
-          source: 'instagram_ads',
-          notes: `Importé depuis DM Instagram (@${username})`,
-        }),
-      })
-      const json = await res.json()
-      if (res.ok && json.data?.id) {
-        // Link conversation -> lead
+    await createLead({
+      username,
+      firstName: c.participant_name?.split(' ')[0] ?? username,
+      lastName:  c.participant_name?.split(' ').slice(1).join(' '),
+      source: 'instagram_ads',
+      notes: `Importé depuis DM Instagram (@${username})`,
+      afterCreate: async (leadId) => {
         await fetch(`/api/instagram/conversations/${c.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lead_id: json.data.id }),
+          body: JSON.stringify({ lead_id: leadId }),
         }).catch(() => null)
-        router.push(`/leads/${json.data.id}`)
-      } else {
-        alert(json.error ?? 'Impossible de créer le lead')
-      }
-    } catch (e) {
-      alert((e as Error).message)
-    }
+      },
+    })
   }
 
   async function createLeadFromComment(c: IgComment) {
-    const username = c.username ?? ''
-    if (!username) return
-    try {
-      const res = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          first_name: username,
-          last_name: '',
-          source: 'instagram_ads',
-          notes: `Commentaire Instagram : "${c.text}"\nSur post : ${c.media_caption ?? '—'}`,
-        }),
-      })
-      const json = await res.json()
-      if (res.ok && json.data?.id) router.push(`/leads/${json.data.id}`)
-      else alert(json.error ?? 'Impossible de créer le lead')
-    } catch (e) {
-      alert((e as Error).message)
-    }
+    await createLead({
+      username: c.username ?? '',
+      source: 'instagram_ads',
+      notes: `Commentaire Instagram : "${c.text}"\nSur post : ${c.media_caption ?? '—'}`,
+    })
   }
 
   if (error) {

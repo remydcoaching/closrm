@@ -8,9 +8,11 @@ import BoardView from './BoardView'
 import PlanningCalendarView from './PlanningCalendarView'
 import SlotDetailDrawer from './SlotDetailDrawer'
 import PlanModal from './PlanModal'
+import { useToast } from '@/components/ui/Toast'
 
 
 export default function PlanningView() {
+  const toast = useToast()
   const [view, setView] = useState<'calendar' | 'board'>('board')
   const [trame, setTrame] = useState<ContentTrame | null>(null)
   const [pillars, setPillars] = useState<ContentPillar[]>([])
@@ -81,7 +83,7 @@ export default function PlanningView() {
       setSelectedSlotId(json.data.id)
       reload()
     } else {
-      alert(`Erreur création slot : ${json.error ?? 'inconnue'}`)
+      toast.error('Erreur création slot', json.error ?? 'inconnue')
     }
   }
 
@@ -105,11 +107,11 @@ export default function PlanningView() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Erreur')
       const { slots_created, slots_skipped } = json.data
-      alert(`✓ ${slots_created} slots créés (${slots_skipped ?? 0} déjà existants)`)
+      toast.success(`${slots_created} slots créés`, slots_skipped ? `${slots_skipped} déjà existants ignorés` : undefined)
       setPlanModalOpen(false)
       await reload()
     } catch (e) {
-      alert(`Erreur: ${(e as Error).message}`)
+      toast.error('Erreur', (e as Error).message)
     } finally {
       setGenerating(false)
     }

@@ -9,6 +9,7 @@ import {
   type SocialContentKind,
   PRODUCTION_STATUSES,
 } from '@/types'
+import { useToast } from '@/components/ui/Toast'
 
 interface Props {
   posts: SocialPostWithPublications[]
@@ -72,6 +73,7 @@ function weekLabel(monday: string): string {
 }
 
 export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Props) {
+  const toast = useToast()
   // Sélectionne automatiquement la période qui contient des slots
   const initialPeriod = useMemo<Period>(() => {
     const counts: Record<Period, number> = { this_week: 0, this_month: 0, next_month: 0, all: posts.length }
@@ -132,7 +134,7 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Pr
     const slot = posts.find((p) => p.id === draggedId)
     if (!slot) return
     if (status === 'ready' && (!slot.media_urls || slot.media_urls.length === 0)) {
-      alert('Pour passer en "Prêt", il faut au moins un media uploadé.')
+      toast.error('Media manquant', 'Pour passer en "Prêt", il faut au moins un media uploadé.')
       setDraggedId(null)
       return
     }

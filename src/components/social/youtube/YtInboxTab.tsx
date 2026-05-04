@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { RefreshCw, Inbox } from 'lucide-react'
 import AcquisitionInbox, { type InboxItem } from '../AcquisitionInbox'
+import { useSocialLeadCreation } from '../_shared/useSocialLeadCreation'
 
 const ACCENT = '#FF0000'
 
@@ -21,7 +21,7 @@ interface YtCommentRow {
 }
 
 export default function YtInboxTab({ onSync, syncing }: { onSync: () => void; syncing: boolean }) {
-  const router = useRouter()
+  const createLead = useSocialLeadCreation()
   const [comments, setComments] = useState<YtCommentRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -39,21 +39,11 @@ export default function YtInboxTab({ onSync, syncing }: { onSync: () => void; sy
   useEffect(() => { fetchData() }, [fetchData])
 
   async function createLeadFromComment(c: YtCommentRow) {
-    const username = c.author_name ?? ''
-    if (!username) return
-    const res = await fetch('/api/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        first_name: username,
-        last_name: '',
-        source: 'manuel',
-        notes: `Commentaire YouTube : "${c.text}"\nSur vidéo : ${c.yt_videos?.title ?? '—'}`,
-      }),
+    await createLead({
+      username: c.author_name ?? '',
+      source: 'manuel',
+      notes: `Commentaire YouTube : "${c.text}"\nSur vidéo : ${c.yt_videos?.title ?? '—'}`,
     })
-    const json = await res.json()
-    if (res.ok && json.data?.id) router.push(`/leads/${json.data.id}`)
-    else alert(json.error ?? 'Impossible de créer le lead')
   }
 
   const items: InboxItem[] = useMemo(() => {
