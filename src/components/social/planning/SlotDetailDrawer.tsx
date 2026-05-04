@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   X, Calendar as CalIcon, Send, Trash2, Plus, Image as ImgIcon,
-  Camera, Film, FileText, Sparkles, Hash, Link2,
+  Camera, Film, FileText, Sparkles, Hash, Link2, Check, ChevronDown,
 } from 'lucide-react'
 import {
   type ContentPillar,
@@ -205,17 +205,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
                 style={pillInputStyle}
               />
             </MetaPill>
-            <MetaPill icon={Sparkles} label="Statut" iconColor={statusColor(slot.production_status)}>
-              <select
-                value={slot.production_status ?? 'idea'}
-                onChange={(e) => patch({ production_status: e.target.value as SocialProductionStatus })}
-                style={pillInputStyle}
-              >
-                {PRODUCTION_STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </MetaPill>
+            <StatusPill
+              value={(slot.production_status ?? 'idea') as SocialProductionStatus}
+              onChange={(v) => patch({ production_status: v })}
+            />
             {slot.scheduled_at && (
               <MetaPill icon={Send} label="Programmé" iconColor="#a78bfa">
                 <span style={{ ...pillInputStyle, display: 'inline-block', cursor: 'default' }}>
@@ -401,6 +394,86 @@ function MetaPill({
         </span>
         {children}
       </div>
+    </div>
+  )
+}
+
+function StatusPill({ value, onChange }: {
+  value: SocialProductionStatus
+  onChange: (v: SocialProductionStatus) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    setTimeout(() => document.addEventListener('mousedown', handler), 0)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const current = PRODUCTION_STATUSES.find((s) => s.value === value)
+  const color = statusColor(value)
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '6px 12px',
+          background: color + '18',
+          border: `1px solid ${color}55`,
+          borderRadius: 999, cursor: 'pointer',
+          transition: 'all 0.15s',
+        }}
+      >
+        <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, boxShadow: `0 0 8px ${color}` }} />
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
+            Statut
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{current?.label}</span>
+        </div>
+        <ChevronDown size={12} color="var(--text-tertiary)" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, marginTop: 6,
+          minWidth: 200,
+          background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+          borderRadius: 10, padding: 4,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+          zIndex: 50,
+        }}>
+          {PRODUCTION_STATUSES.map((s) => {
+            const c = statusColor(s.value)
+            const active = s.value === value
+            return (
+              <button
+                key={s.value}
+                onClick={() => { onChange(s.value); setOpen(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '8px 10px',
+                  background: active ? c + '15' : 'transparent',
+                  border: 'none', borderRadius: 6, cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-secondary)' }}
+                onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+              >
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: c, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{s.label}</span>
+                {active && <Check size={13} color={c} />}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
