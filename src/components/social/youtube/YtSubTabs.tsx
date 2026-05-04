@@ -10,10 +10,9 @@ const TABS = [
 interface Props {
   selected: string
   onChange: (key: string) => void
-  hotCount?: number
 }
 
-export default function YtSubTabs({ selected, onChange, hotCount }: Props) {
+export default function YtSubTabs({ selected, onChange }: Props) {
   return (
     <div style={{
       display: 'flex', gap: 4, marginBottom: 24,
@@ -21,7 +20,6 @@ export default function YtSubTabs({ selected, onChange, hotCount }: Props) {
     }}>
       {TABS.map((t) => {
         const isActive = selected === t.key
-        const showBadge = t.key === 'inbox' && (hotCount ?? 0) > 0
         return (
           <button
             key={t.key}
@@ -32,17 +30,9 @@ export default function YtSubTabs({ selected, onChange, hotCount }: Props) {
               background: 'transparent', border: 'none',
               borderBottom: `2px solid ${isActive ? '#FF0000' : 'transparent'}`,
               marginBottom: '-1px', cursor: 'pointer', transition: 'all 0.15s',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
             }}
           >
             {t.label}
-            {showBadge && (
-              <span style={{
-                fontSize: 9, fontWeight: 800, color: '#fff',
-                background: '#f59e0b', padding: '2px 6px', borderRadius: 10,
-                minWidth: 16, textAlign: 'center',
-              }}>{hotCount}</span>
-            )}
           </button>
         )
       })}

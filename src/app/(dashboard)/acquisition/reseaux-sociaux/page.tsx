@@ -138,7 +138,10 @@ export default function ReseauxSociauxPage() {
           <>
             <IgSubTabs selected={igTab} onChange={setIgTab} />
             {igTab === 'acquisition' && (
-              <IgAcquisitionTab onSeeAllInbox={() => setIgTab('inbox')} />
+              <IgAcquisitionTab
+                onSeeAllInbox={() => setIgTab('inbox')}
+                onOpenPlanning={() => setPlatform('planning')}
+              />
             )}
             {igTab === 'inbox' && <IgInboxTab />}
             {igTab === 'stories' && <IgStoriesTab />}

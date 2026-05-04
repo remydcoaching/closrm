@@ -414,8 +414,8 @@ function DayPopover({ dateKey, posts, pillars, onClose, onSelectSlot }: {
                     {p.hook || p.title || <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>(sans accroche)</span>}
                   </div>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
-                  {p.production_status ?? 'idea'}
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  {STATUS_META[(p.production_status ?? 'idea') as SocialProductionStatus].label}
                 </span>
               </button>
             )

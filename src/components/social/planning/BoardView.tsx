@@ -459,8 +459,3 @@ const segmentBtnStyle = (active: boolean): React.CSSProperties => ({
   border: 'none', borderRadius: 6, cursor: 'pointer',
   transition: 'all 0.15s',
 })
-const selectStyle: React.CSSProperties = {
-  padding: '6px 10px', fontSize: 12,
-  color: 'var(--text-primary)', background: 'var(--bg-secondary)',
-  border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
-}

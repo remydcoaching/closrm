@@ -6,6 +6,7 @@ import { Inbox, TrendingUp, Users, Flame, ArrowRight, Eye, ThumbsUp, MessageCirc
 import type { YtAccount, YtVideo, YtSnapshot } from '@/types'
 import AcquisitionInbox, { type InboxItem } from '../AcquisitionInbox'
 import { classifyIntent, intentSortValue } from '@/lib/social/intent-classifier'
+import { fmt, CardShell, SectionHeader, KpiCard } from '../_shared/atoms'
 
 interface YtCommentRow {
   id: string
@@ -29,50 +30,6 @@ interface Props {
 
 const ACCENT = '#FF0000'
 
-function fmt(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace('.0', '') + 'M'
-  if (n >= 1_000)     return (n / 1_000).toFixed(1).replace('.0', '') + 'K'
-  return Math.round(n).toString()
-}
-
-function CardShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      background: 'var(--bg-secondary)',
-      border: '1px solid var(--border-primary)',
-      borderRadius: 12, padding: 18,
-    }}>{children}</div>
-  )
-}
-
-function SectionHeader({ icon: Icon, title, subtitle, action }: {
-  icon: React.ElementType
-  title: string
-  subtitle?: string
-  action?: React.ReactNode
-}) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: `${ACCENT}1a`, color: ACCENT,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon size={16} />
-        </div>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</div>
-          {subtitle && (
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{subtitle}</div>
-          )}
-        </div>
-      </div>
-      {action}
-    </div>
-  )
-}
-
 export default function YtAcquisitionTab({ account, onSync, syncing, onSeeAllInbox }: Props) {
   const router = useRouter()
   const [videos, setVideos] = useState<YtVideo[]>([])
@@ -80,8 +37,10 @@ export default function YtAcquisitionTab({ account, onSync, syncing, onSeeAllInb
   const [comments, setComments] = useState<YtCommentRow[]>([])
   const [loading, setLoading] = useState(true)
 
+  const [error, setError] = useState<string | null>(null)
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const [vidsRes, snapsRes, commentsRes] = await Promise.all([
         fetch('/api/youtube/videos?per_page=50'),
@@ -94,6 +53,8 @@ export default function YtAcquisitionTab({ account, onSync, syncing, onSeeAllInb
       setVideos(vidsJson.data ?? [])
       setSnapshots(snapsJson.data ?? [])
       setComments(commentsJson.data ?? [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur de chargement')
     } finally {
       setLoading(false)
     }
@@ -152,6 +113,17 @@ export default function YtAcquisitionTab({ account, onSync, syncing, onSeeAllInb
     const json = await res.json()
     if (res.ok && json.data?.id) router.push(`/leads/${json.data.id}`)
     else alert(json.error ?? 'Impossible de créer le lead')
+  }
+
+  if (error) {
+    return (
+      <div style={{ textAlign: 'center', padding: 60, color: '#ef4444', fontSize: 13 }}>
+        {error}
+        <button onClick={fetchData} style={{ display: 'block', margin: '12px auto 0', padding: '8px 20px', borderRadius: 8, border: '1px solid var(--border-primary)', background: 'var(--bg-elevated)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12 }}>
+          Réessayer
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -225,7 +197,7 @@ export default function YtAcquisitionTab({ account, onSync, syncing, onSeeAllInb
 
       {/* INBOX */}
       <CardShell>
-        <SectionHeader
+        <SectionHeader accent={ACCENT}
           icon={Inbox}
           title="Inbox d'acquisition"
           subtitle="Commentaires triés par intention d'achat"
@@ -254,7 +226,7 @@ export default function YtAcquisitionTab({ account, onSync, syncing, onSeeAllInb
 
       {/* TOP VIDEOS */}
       <CardShell>
-        <SectionHeader
+        <SectionHeader accent={ACCENT}
           icon={TrendingUp}
           title="Top vidéos (engagement)"
           subtitle="Vidéos qui génèrent le plus de réactions"
@@ -336,31 +308,3 @@ export default function YtAcquisitionTab({ account, onSync, syncing, onSeeAllInb
   )
 }
 
-function KpiCard({ label, value, hint, icon: Icon, accent, highlight }: {
-  label: string; value: string; hint?: string; icon: React.ElementType; accent: string; highlight?: boolean
-}) {
-  return (
-    <div style={{
-      background: highlight ? `linear-gradient(135deg, ${accent}1a, ${accent}05)` : 'var(--bg-secondary)',
-      border: `1px solid ${highlight ? accent + '60' : 'var(--border-primary)'}`,
-      borderRadius: 12, padding: 16,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 7,
-          background: `${accent}1a`, color: accent,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon size={14} />
-        </div>
-        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          {label}
-        </span>
-      </div>
-      <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>
-        {value}
-      </div>
-      {hint && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>{hint}</div>}
-    </div>
-  )
-}

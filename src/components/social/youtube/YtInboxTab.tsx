@@ -111,7 +111,7 @@ export default function YtInboxTab({ onSync, syncing }: { onSync: () => void; sy
         loading={loading}
         showFilters
         accentColor={ACCENT}
-        emptyLabel="Pas encore de commentaire YouTube. La sync viendra dans une prochaine itération."
+        emptyLabel="Aucun commentaire YouTube synchronisé pour l'instant. Lance une synchronisation depuis le bouton en haut à droite."
       />
     </div>
   )
