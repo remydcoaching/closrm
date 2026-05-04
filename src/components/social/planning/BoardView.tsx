@@ -72,7 +72,28 @@ function weekLabel(monday: string): string {
 }
 
 export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Props) {
-  const [period, setPeriod] = useState<Period>('this_month')
+  // Sélectionne automatiquement la période qui contient des slots
+  const initialPeriod = useMemo<Period>(() => {
+    const counts: Record<Period, number> = { this_week: 0, this_month: 0, next_month: 0, all: posts.length }
+    for (const p of posts) {
+      if (!p.plan_date) continue
+      for (const k of ['this_week', 'this_month', 'next_month'] as Period[]) {
+        const r = periodRange(k)
+        if (r.from && r.to && p.plan_date >= r.from && p.plan_date <= r.to) counts[k]++
+      }
+    }
+    if (counts.this_week > 0) return 'this_week'
+    if (counts.this_month > 0) return 'this_month'
+    if (counts.next_month > 0) return 'next_month'
+    return 'all'
+  }, [posts])
+  const [period, setPeriod] = useState<Period>(initialPeriod)
+  // Si la période choisie est vide mais une autre a des slots, suggérer
+  const periodHasSlots = useMemo(() => {
+    if (period === 'all') return posts.length > 0
+    const r = periodRange(period)
+    return posts.some((p) => p.plan_date && r.from && r.to && p.plan_date >= r.from && p.plan_date <= r.to)
+  }, [posts, period])
   const [filterKind, setFilterKind] = useState<SocialContentKind | 'all'>('all')
   const [filterPillar, setFilterPillar] = useState<string | 'all'>('all')
   const [showHistory, setShowHistory] = useState(false)
@@ -172,6 +193,15 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Pr
           {visiblePosts.length} slot{visiblePosts.length > 1 ? 's' : ''}
         </span>
       </div>
+
+      {!periodHasSlots && posts.length > 0 && (
+        <div style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Aucun slot pour cette période — {posts.length} slots existent ailleurs.</span>
+          <button onClick={() => setPeriod('all')} style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, color: '#fff', background: '#a78bfa', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+            Voir tout
+          </button>
+        </div>
+      )}
 
       {/* Columns */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(180px, 1fr))', gap: 12 }}>
