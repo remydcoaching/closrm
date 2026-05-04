@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   X, Calendar as CalIcon, Send, Trash2, Plus, Image as ImgIcon,
   Camera, Film, FileText, Sparkles, Hash, Link2, Check, ChevronDown,
-  ChevronLeft, ChevronRight, Upload, Loader,
+  ChevronLeft, ChevronRight, Upload, Loader, Wand2, BookOpen, Star, TrendingUp,
 } from 'lucide-react'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import {
@@ -29,6 +29,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   const [scheduling, setScheduling] = useState(false)
   const [scheduleTime, setScheduleTime] = useState('18:00')
   const [showScheduleConfirm, setShowScheduleConfirm] = useState(false)
+  const [hookSuggestions, setHookSuggestions] = useState<string[] | null>(null)
+  const [generatingHooks, setGeneratingHooks] = useState(false)
+  const [generatingScript, setGeneratingScript] = useState(false)
+  const [libraryOpen, setLibraryOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -105,6 +109,74 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   const handleUnschedule = async () => {
     if (!slot) return
     await patch({ status: 'draft', scheduled_at: null })
+  }
+
+  const generateHooks = async () => {
+    if (!slot) return
+    setGeneratingHooks(true)
+    try {
+      const res = await fetch('/api/social/generate-hooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pillar_id: slot.pillar_id,
+          content_kind: slot.content_kind,
+          topic: slot.title || undefined,
+          count: 5,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Erreur')
+      setHookSuggestions(json.hooks ?? [])
+    } catch (e) {
+      alert(`Erreur génération : ${(e as Error).message}`)
+    } finally {
+      setGeneratingHooks(false)
+    }
+  }
+
+  const generateScript = async () => {
+    if (!slot) return
+    if (!slot.hook && !slot.title) {
+      alert('Renseigne un hook ou un titre avant de générer le script.')
+      return
+    }
+    setGeneratingScript(true)
+    try {
+      const res = await fetch('/api/social/generate-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hook: slot.hook,
+          title: slot.title,
+          pillar_id: slot.pillar_id,
+          content_kind: slot.content_kind,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Erreur')
+      await patch({ script: json.script })
+    } catch (e) {
+      alert(`Erreur génération script : ${(e as Error).message}`)
+    } finally {
+      setGeneratingScript(false)
+    }
+  }
+
+  const saveHookToLibrary = async (content: string, source: 'manual' | 'ai_generated' = 'manual') => {
+    if (!slot) return
+    try {
+      await fetch('/api/social/hook-library', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content,
+          pillar_id: slot.pillar_id,
+          content_kind: slot.content_kind,
+          source,
+        }),
+      })
+    } catch {}
   }
 
   if (loading) {
@@ -224,14 +296,54 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
             <ColumnHeader icon={Sparkles} label="Production" color="#a78bfa" />
 
             <Field label="Accroche / Hook" hint="1 ligne percutante">
-              <input
-                type="text"
-                value={slot.hook ?? ''}
-                onChange={(e) => setSlot({ ...slot, hook: e.target.value })}
-                onBlur={() => patch({ hook: slot.hook })}
-                placeholder="Ex: Comment j'ai perdu 5kg en 2 semaines…"
-                style={inputStyle}
-              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="text"
+                  value={slot.hook ?? ''}
+                  onChange={(e) => setSlot({ ...slot, hook: e.target.value })}
+                  onBlur={() => patch({ hook: slot.hook })}
+                  placeholder="Ex: Comment j'ai perdu 5kg en 2 semaines…"
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  onClick={generateHooks}
+                  disabled={generatingHooks}
+                  title="Générer 5 hooks avec l'IA"
+                  style={aiBtnStyle(generatingHooks)}
+                >
+                  {generatingHooks ? <Loader size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Wand2 size={13} />}
+                  IA
+                </button>
+                <button
+                  onClick={() => setLibraryOpen(true)}
+                  title="Bibliothèque de hooks"
+                  style={libBtnStyle}
+                >
+                  <BookOpen size={13} />
+                </button>
+              </div>
+              {slot.hook && (
+                <button
+                  onClick={() => saveHookToLibrary(slot.hook!, 'manual')}
+                  style={{ marginTop: 6, fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                >
+                  <Star size={10} /> Sauver ce hook dans la bibliothèque
+                </button>
+              )}
+              {hookSuggestions && (
+                <HookSuggestions
+                  hooks={hookSuggestions}
+                  onPick={(h) => {
+                    setSlot({ ...slot, hook: h })
+                    patch({ hook: h })
+                    setHookSuggestions(null)
+                  }}
+                  onSave={(h) => saveHookToLibrary(h, 'ai_generated')}
+                  onClose={() => setHookSuggestions(null)}
+                  onRegenerate={generateHooks}
+                  regenerating={generatingHooks}
+                />
+              )}
             </Field>
 
             <Field label="Titre / Sujet">
@@ -246,14 +358,28 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
             </Field>
 
             <Field label="Script">
-              <textarea
-                value={slot.script ?? ''}
-                onChange={(e) => setSlot({ ...slot, script: e.target.value })}
-                onBlur={() => patch({ script: slot.script })}
-                placeholder="Plan de tournage, dialogues, points clés…"
-                rows={8}
-                style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
-              />
+              <div style={{ position: 'relative' }}>
+                <textarea
+                  value={slot.script ?? ''}
+                  onChange={(e) => setSlot({ ...slot, script: e.target.value })}
+                  onBlur={() => patch({ script: slot.script })}
+                  placeholder="Plan de tournage, dialogues, points clés…"
+                  rows={8}
+                  style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+                />
+                <button
+                  onClick={generateScript}
+                  disabled={generatingScript}
+                  title="Générer le script à partir du hook"
+                  style={{
+                    position: 'absolute', bottom: 8, right: 8,
+                    ...aiBtnStyle(generatingScript),
+                  }}
+                >
+                  {generatingScript ? <Loader size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Wand2 size={13} />}
+                  {generatingScript ? 'Génération…' : 'Générer le script'}
+                </button>
+              </div>
             </Field>
 
             <Field label="Références" icon={Link2} hint="Liens rushs, moodboard, inspirations">
@@ -352,6 +478,187 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               </span>
             )}
           </div>
+        </div>
+
+        {libraryOpen && (
+          <HookLibraryModal
+            pillarId={slot.pillar_id}
+            onPick={async (h, libId) => {
+              setSlot({ ...slot, hook: h })
+              await patch({ hook: h })
+              fetch(`/api/social/hook-library/${libId}`, { method: 'POST' }).catch(() => {})
+              setLibraryOpen(false)
+            }}
+            onClose={() => setLibraryOpen(false)}
+          />
+        )}
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  )
+}
+
+// ─── AI helpers ──────────────────────────────────────────────
+
+interface HookLibraryItem {
+  id: string
+  content: string
+  pillar_id: string | null
+  source: string
+  used_count: number
+  created_at: string
+}
+
+function HookSuggestions({
+  hooks, onPick, onSave, onClose, onRegenerate, regenerating,
+}: {
+  hooks: string[]
+  onPick: (h: string) => void
+  onSave: (h: string) => void
+  onClose: () => void
+  onRegenerate: () => void
+  regenerating: boolean
+}) {
+  return (
+    <div style={{
+      marginTop: 8, background: 'rgba(167,139,250,0.08)',
+      border: '1px solid rgba(167,139,250,0.3)', borderRadius: 8, padding: 10,
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: 0.4, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Sparkles size={11} /> Suggestions IA
+        </span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={onRegenerate} disabled={regenerating} style={{ padding: '3px 8px', fontSize: 10, fontWeight: 600, color: '#a78bfa', background: 'transparent', border: '1px solid rgba(167,139,250,0.4)', borderRadius: 4, cursor: regenerating ? 'wait' : 'pointer' }}>
+            {regenerating ? '…' : '↻ Regénérer'}
+          </button>
+          <button onClick={onClose} style={{ padding: '3px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}>
+            <X size={12} />
+          </button>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {hooks.map((h, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 6, background: 'var(--bg-primary)', borderRadius: 6 }}>
+            <button
+              onClick={() => onPick(h)}
+              style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0, lineHeight: 1.4 }}
+            >
+              {h}
+            </button>
+            <button
+              onClick={() => { onSave(h); }}
+              title="Sauver dans la bibliothèque"
+              style={{ padding: 4, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}
+            >
+              <Star size={12} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function HookLibraryModal({
+  pillarId, onPick, onClose,
+}: {
+  pillarId: string | null
+  onPick: (h: string, libId: string) => void
+  onClose: () => void
+}) {
+  const [items, setItems] = useState<HookLibraryItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filterByPillar, setFilterByPillar] = useState(true)
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    setLoading(true)
+    const url = filterByPillar && pillarId
+      ? `/api/social/hook-library?pillar_id=${pillarId}`
+      : '/api/social/hook-library'
+    fetch(url).then((r) => r.json()).then((j) => {
+      setItems(j.data ?? [])
+    }).finally(() => setLoading(false))
+  }, [filterByPillar, pillarId])
+
+  const filtered = useMemo(() => {
+    if (!search) return items
+    const q = search.toLowerCase()
+    return items.filter((i) => i.content.toLowerCase().includes(q))
+  }, [items, search])
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Supprimer ce hook de la bibliothèque ?')) return
+    await fetch(`/api/social/hook-library/${id}`, { method: 'DELETE' })
+    setItems(items.filter((i) => i.id !== id))
+  }
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: 'min(560px, 92vw)', maxHeight: '80vh',
+        background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+        borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid var(--border-primary)' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <BookOpen size={14} /> Bibliothèque de hooks
+          </h3>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <div style={{ padding: 12, borderBottom: '1px solid var(--border-primary)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un hook…"
+            style={inputStyle}
+          />
+          {pillarId && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={filterByPillar} onChange={(e) => setFilterByPillar(e.target.checked)} />
+              Uniquement le pillar de ce slot
+            </label>
+          )}
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>Chargement…</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
+              {items.length === 0 ? 'Bibliothèque vide. Sauvegarde des hooks depuis tes slots pour les retrouver ici.' : 'Aucun résultat.'}
+            </div>
+          ) : (
+            filtered.map((item) => (
+              <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 10, background: 'var(--bg-secondary)', borderRadius: 6, marginBottom: 4 }}>
+                <button
+                  onClick={() => onPick(item.content, item.id)}
+                  style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0, lineHeight: 1.4 }}
+                >
+                  {item.content}
+                </button>
+                {item.used_count > 0 && (
+                  <span title="Réutilisations" style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 10, color: 'var(--text-tertiary)' }}>
+                    <TrendingUp size={10} /> {item.used_count}
+                  </span>
+                )}
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  style={{ padding: 4, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}
+                >
+                  <Trash2 size={11} />
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -973,6 +1280,24 @@ const cancelBtnStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 6,
   padding: '8px 14px', fontSize: 12, fontWeight: 600,
   color: 'var(--text-secondary)', background: 'transparent',
+  border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
+}
+const aiBtnStyle = (loading: boolean): React.CSSProperties => ({
+  display: 'flex', alignItems: 'center', gap: 4,
+  padding: '8px 12px', fontSize: 11, fontWeight: 700,
+  color: '#fff',
+  background: 'linear-gradient(135deg, #a78bfa 0%, #ec4899 100%)',
+  border: 'none', borderRadius: 6,
+  cursor: loading ? 'wait' : 'pointer',
+  opacity: loading ? 0.7 : 1,
+  whiteSpace: 'nowrap',
+  boxShadow: '0 2px 8px rgba(167,139,250,0.3)',
+})
+const libBtnStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  padding: '8px 10px',
+  color: 'var(--text-secondary)',
+  background: 'var(--bg-secondary)',
   border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
 }
 const dangerBtnStyle: React.CSSProperties = {
