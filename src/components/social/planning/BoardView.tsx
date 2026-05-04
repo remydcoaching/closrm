@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Camera, FileText, Film } from 'lucide-react'
 import {
   type ContentPillar,
@@ -23,23 +23,80 @@ const KIND_ICON: Record<SocialContentKind, typeof Camera> = {
   reel: Film,
 }
 
+type Period = 'this_week' | 'this_month' | 'next_month' | 'all'
+
+const PERIOD_LABELS: Record<Period, string> = {
+  this_week: 'Cette semaine',
+  this_month: 'Ce mois',
+  next_month: 'Mois prochain',
+  all: 'Tout',
+}
+
+function periodRange(period: Period): { from: string | null; to: string | null } {
+  if (period === 'all') return { from: null, to: null }
+  const now = new Date()
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  if (period === 'this_week') {
+    const dow = (now.getDay() + 6) % 7 // monday-first
+    const monday = new Date(now); monday.setDate(now.getDate() - dow)
+    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6)
+    return { from: fmt(monday), to: fmt(sunday) }
+  }
+  if (period === 'this_month') {
+    return {
+      from: fmt(new Date(now.getFullYear(), now.getMonth(), 1)),
+      to: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+    }
+  }
+  // next_month
+  return {
+    from: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 1)),
+    to: fmt(new Date(now.getFullYear(), now.getMonth() + 2, 0)),
+  }
+}
+
+function weekKey(dateIso: string): string {
+  const d = new Date(dateIso)
+  const dow = (d.getDay() + 6) % 7
+  const monday = new Date(d); monday.setDate(d.getDate() - dow)
+  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`
+}
+
+function weekLabel(monday: string): string {
+  const d = new Date(monday)
+  const sunday = new Date(d); sunday.setDate(d.getDate() + 6)
+  const fmt = (x: Date) => `${x.getDate()}/${x.getMonth() + 1}`
+  return `Sem. ${fmt(d)}–${fmt(sunday)}`
+}
+
 export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Props) {
-  const [showAll, setShowAll] = useState(false)
+  const [period, setPeriod] = useState<Period>('this_month')
   const [filterKind, setFilterKind] = useState<SocialContentKind | 'all'>('all')
+  const [filterPillar, setFilterPillar] = useState<string | 'all'>('all')
+  const [showHistory, setShowHistory] = useState(false)
   const [draggedId, setDraggedId] = useState<string | null>(null)
 
+  const range = useMemo(() => periodRange(period), [period])
+
   const today = new Date()
-  const sevenDaysAgo = new Date(today)
-  sevenDaysAgo.setDate(today.getDate() - 7)
+  const sevenDaysAgo = new Date(today); sevenDaysAgo.setDate(today.getDate() - 7)
   const cutoff = `${sevenDaysAgo.getFullYear()}-${String(sevenDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysAgo.getDate()).padStart(2, '0')}`
 
-  const visiblePosts = posts.filter((p) => {
-    if (filterKind !== 'all' && p.content_kind !== filterKind) return false
-    if (showAll) return true
-    if (!['draft', 'scheduled', 'failed'].includes(p.status)) return false
-    if (p.plan_date && p.plan_date < cutoff) return false
-    return true
-  })
+  const visiblePosts = useMemo(() => {
+    return posts.filter((p) => {
+      if (filterKind !== 'all' && p.content_kind !== filterKind) return false
+      if (filterPillar !== 'all' && p.pillar_id !== filterPillar) return false
+      if (range.from && (!p.plan_date || p.plan_date < range.from)) return false
+      if (range.to && (!p.plan_date || p.plan_date > range.to)) return false
+      if (!showHistory) {
+        if (!['draft', 'scheduled', 'failed'].includes(p.status)) return false
+        if (p.plan_date && p.plan_date < cutoff && period !== 'all') return false
+      }
+      return true
+    })
+  }, [posts, filterKind, filterPillar, range, showHistory, cutoff, period])
 
   const grouped: Record<SocialProductionStatus, SocialPostWithPublications[]> = {
     idea: [], to_film: [], filmed: [], edited: [], ready: [],
@@ -69,8 +126,21 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Pr
 
   return (
     <div>
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+      {/* Filters bar */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        {/* Period segmented */}
+        <div style={segmentedStyle}>
+          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              style={segmentBtnStyle(period === p)}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          ))}
+        </div>
+
         <select
           value={filterKind}
           onChange={(e) => setFilterKind(e.target.value as SocialContentKind | 'all')}
@@ -81,68 +151,113 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Pr
           <option value="story">Stories</option>
           <option value="reel">Reels</option>
         </select>
+
+        <select
+          value={filterPillar}
+          onChange={(e) => setFilterPillar(e.target.value)}
+          style={selectStyle}
+        >
+          <option value="all">Tous pillars</option>
+          {pillars.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-          Tout l'historique
+          <input type="checkbox" checked={showHistory} onChange={(e) => setShowHistory(e.target.checked)} />
+          Inclure publié / ancien
         </label>
+
         <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
           {visiblePosts.length} slot{visiblePosts.length > 1 ? 's' : ''}
         </span>
       </div>
 
       {/* Columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, minWidth: 800, overflowX: 'auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(180px, 1fr))', gap: 12 }}>
         {PRODUCTION_STATUSES.map(({ value, label }) => (
-          <div
+          <Column
             key={value}
+            value={value}
+            label={label}
+            posts={grouped[value]}
+            pillars={pillars}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => handleDrop(value)}
-            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 10, padding: 10, minHeight: 200 }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                {label}
-              </h4>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{grouped[value].length}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {grouped[value].map((p) => {
-                const pillar = pillars.find((x) => x.id === p.pillar_id)
-                const Icon = KIND_ICON[(p.content_kind ?? 'post') as SocialContentKind]
-                return (
-                  <div
-                    key={p.id}
-                    draggable
-                    onDragStart={() => setDraggedId(p.id)}
-                    onClick={() => onSelectSlot(p.id)}
-                    style={{
-                      background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
-                      borderLeft: `3px solid ${pillar?.color ?? '#666'}`,
-                      borderRadius: 8, padding: 10, cursor: 'grab',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: pillar?.color ?? 'var(--text-tertiary)', textTransform: 'uppercase' }}>
-                        {pillar?.name ?? '—'}
-                      </span>
-                      <Icon size={12} color="var(--text-tertiary)" />
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, lineHeight: 1.3 }}>
-                      {p.hook ?? p.title ?? <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(sans titre)</span>}
-                    </div>
-                    {p.plan_date && (
-                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
-                        {formatDate(p.plan_date)}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-              {grouped[value].length === 0 && (
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', padding: 12, fontStyle: 'italic' }}>
-                  Vide
-                </div>
-              )}
+            onDragStart={setDraggedId}
+            onSelectSlot={onSelectSlot}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Column({
+  value, label, posts, pillars,
+  onDragOver, onDrop, onDragStart, onSelectSlot,
+}: {
+  value: SocialProductionStatus
+  label: string
+  posts: SocialPostWithPublications[]
+  pillars: ContentPillar[]
+  onDragOver: (e: React.DragEvent) => void
+  onDrop: () => void
+  onDragStart: (id: string) => void
+  onSelectSlot: (id: string) => void
+}) {
+  const grouped = useMemo(() => {
+    const map = new Map<string, SocialPostWithPublications[]>()
+    for (const p of posts) {
+      const k = p.plan_date ? weekKey(p.plan_date) : 'no_date'
+      const arr = map.get(k) ?? []
+      arr.push(p)
+      map.set(k, arr)
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => {
+      if (a === 'no_date') return 1
+      if (b === 'no_date') return -1
+      return a < b ? -1 : 1
+    })
+  }, [posts])
+
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      style={{
+        background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
+        borderRadius: 10, padding: 10,
+        display: 'flex', flexDirection: 'column',
+        height: 'calc(100vh - 280px)', minHeight: 400, maxHeight: 800,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
+        <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+          {label}
+        </h4>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', background: 'var(--bg-elevated)', padding: '2px 8px', borderRadius: 999 }}>
+          {posts.length}
+        </span>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
+        {posts.length === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', padding: 20, fontStyle: 'italic' }}>
+            Vide
+          </div>
+        )}
+        {grouped.map(([weekStart, weekPosts]) => (
+          <div key={weekStart}>
+            {grouped.length > 1 && (
+              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, padding: '4px 2px', borderBottom: '1px solid var(--border-primary)', marginBottom: 6 }}>
+                {weekStart === 'no_date' ? 'Sans date' : weekLabel(weekStart)} · {weekPosts.length}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {weekPosts.map((p) => (
+                <Card key={p.id} post={p} pillars={pillars} onDragStart={onDragStart} onClick={() => onSelectSlot(p.id)} />
+              ))}
             </div>
           </div>
         ))}
@@ -151,11 +266,67 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Pr
   )
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+function Card({
+  post, pillars, onDragStart, onClick,
+}: {
+  post: SocialPostWithPublications
+  pillars: ContentPillar[]
+  onDragStart: (id: string) => void
+  onClick: () => void
+}) {
+  const pillar = pillars.find((x) => x.id === post.pillar_id)
+  const Icon = KIND_ICON[(post.content_kind ?? 'post') as SocialContentKind]
+  const hasTitle = !!(post.hook ?? post.title)
+
+  return (
+    <div
+      draggable
+      onDragStart={() => onDragStart(post.id)}
+      onClick={onClick}
+      style={{
+        background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+        borderLeft: `3px solid ${pillar?.color ?? '#666'}`,
+        borderRadius: 6, padding: '6px 8px', cursor: 'grab',
+        display: 'flex', flexDirection: 'column', gap: 2,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: pillar?.color ?? 'var(--text-tertiary)', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          {pillar?.name ?? '—'}
+        </span>
+        <Icon size={10} color="var(--text-tertiary)" />
+      </div>
+      {hasTitle && (
+        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          {post.hook ?? post.title}
+        </div>
+      )}
+      {post.plan_date && (
+        <div style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>
+          {formatDate(post.plan_date)}
+        </div>
+      )}
+    </div>
+  )
 }
 
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })
+}
+
+const segmentedStyle: React.CSSProperties = {
+  display: 'flex', gap: 2,
+  background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
+  borderRadius: 8, padding: 2,
+}
+const segmentBtnStyle = (active: boolean): React.CSSProperties => ({
+  padding: '5px 10px', fontSize: 11, fontWeight: 600,
+  color: active ? '#fff' : 'var(--text-tertiary)',
+  background: active ? '#a78bfa' : 'transparent',
+  border: 'none', borderRadius: 6, cursor: 'pointer',
+  transition: 'all 0.15s',
+})
 const selectStyle: React.CSSProperties = {
   padding: '6px 10px', fontSize: 12,
   color: 'var(--text-primary)', background: 'var(--bg-secondary)',
