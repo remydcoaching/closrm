@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   X, Calendar as CalIcon, Send, Trash2, Plus, Image as ImgIcon,
   Camera, Film, FileText, Sparkles, Hash, Link2, Check, ChevronDown,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Upload, Loader,
 } from 'lucide-react'
+import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import {
   type ContentPillar,
   type SocialPostWithPublications,
@@ -270,7 +271,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           <div style={columnStyle}>
             <ColumnHeader icon={Send} label="Publication" color="#10b981" />
 
-            <Field label="Media" icon={ImgIcon} hint="Vidéo finale, image, carrousel">
+            <Field label="Media" icon={ImgIcon} hint="Drop ou click pour upload (image / vidéo)">
               <MediaList
                 urls={slot.media_urls ?? []}
                 onChange={(urls) => patch({ media_urls: urls })}
@@ -733,51 +734,126 @@ function RefsList({ urls, onChange }: { urls: string[]; onChange: (urls: string[
 }
 
 function MediaList({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
-  const [input, setInput] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+
+  const uploadFiles = async (files: FileList | File[]) => {
+    const arr = Array.from(files)
+    if (arr.length === 0) return
+    setUploading(true)
+    const supabase = createBrowserClient()
+    const uploadedUrls: string[] = []
+    try {
+      for (let i = 0; i < arr.length; i++) {
+        const file = arr[i]
+        setProgress(`Upload ${i + 1}/${arr.length} (${formatSize(file.size)})…`)
+        const ext = file.name.split('.').pop() ?? 'bin'
+        const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+        const { error } = await supabase.storage.from('content-drafts').upload(path, file, {
+          contentType: file.type,
+          upsert: false,
+        })
+        if (error) {
+          alert(`Erreur upload ${file.name}: ${error.message}`)
+          continue
+        }
+        const { data: { publicUrl } } = supabase.storage.from('content-drafts').getPublicUrl(path)
+        uploadedUrls.push(publicUrl)
+      }
+      if (uploadedUrls.length > 0) onChange([...urls, ...uploadedUrls])
+    } finally {
+      setUploading(false)
+      setProgress(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      uploadFiles(e.dataTransfer.files)
+    }
+  }
+
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-        {urls.map((u, i) => (
-          <div key={i} style={{ position: 'relative', width: 90, height: 90, background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 8, overflow: 'hidden' }}>
-            <img src={u} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-            <button onClick={() => onChange(urls.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 4, right: 4, padding: 4, background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', display: 'flex' }}>
-              <Trash2 size={11} />
-            </button>
-          </div>
-        ))}
-        {urls.length === 0 && (
-          <div style={{ width: 90, height: 90, background: 'var(--bg-secondary)', border: '1px dashed var(--border-primary)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--text-tertiary)' }}>
-            <ImgIcon size={20} />
-            <span style={{ fontSize: 9 }}>Vide</span>
-          </div>
+      {urls.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+          {urls.map((u, i) => {
+            const isVideo = /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u)
+            return (
+              <div key={i} style={{ position: 'relative', width: 90, height: 90, background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 8, overflow: 'hidden' }}>
+                {isVideo ? (
+                  <video src={u} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                ) : (
+                  <img src={u} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                )}
+                {isVideo && (
+                  <div style={{ position: 'absolute', bottom: 4, left: 4, padding: '1px 5px', background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: 9, fontWeight: 600, borderRadius: 3 }}>VIDEO</div>
+                )}
+                <button onClick={() => onChange(urls.filter((_, j) => j !== i))} style={{ position: 'absolute', top: 4, right: 4, padding: 4, background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', display: 'flex' }}>
+                  <Trash2 size={11} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div
+        onClick={() => !uploading && fileInputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        style={{
+          padding: 16,
+          background: dragOver ? 'rgba(167,139,250,0.1)' : 'var(--bg-secondary)',
+          border: `1.5px dashed ${dragOver ? '#a78bfa' : 'var(--border-primary)'}`,
+          borderRadius: 8,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+          cursor: uploading ? 'wait' : 'pointer',
+          transition: 'all 0.15s',
+          textAlign: 'center',
+        }}
+      >
+        {uploading ? (
+          <>
+            <Loader size={20} color="#a78bfa" style={{ animation: 'spin 0.8s linear infinite' }} />
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{progress ?? 'Upload…'}</span>
+          </>
+        ) : (
+          <>
+            <Upload size={20} color="var(--text-tertiary)" />
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Click ou drop des fichiers
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+              Image (JPG, PNG, WebP) ou Vidéo (MP4, MOV)
+            </span>
+          </>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <input
-          type="url"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && input) {
-              onChange([...urls, input])
-              setInput('')
-            }
-          }}
-          placeholder="URL média (image/vidéo)…"
-          style={{ ...inputStyle, flex: 1 }}
-        />
-        <button
-          onClick={() => {
-            if (input) {
-              onChange([...urls, input])
-              setInput('')
-            }
-          }}
-          style={addInlineBtnStyle}
-        ><Plus size={14} /></button>
-      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+        multiple
+        onChange={(e) => e.target.files && uploadFiles(e.target.files)}
+        style={{ display: 'none' }}
+      />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
 function HashtagsInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
