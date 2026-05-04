@@ -365,23 +365,37 @@ function PillarChip({ pillar, onEdit, onDelete }: { pillar: ContentPillar; onEdi
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      onClick={onEdit}
+      title="Cliquer pour modifier"
       style={{
+        position: 'relative',
         display: 'flex', alignItems: 'center', gap: 6,
         padding: '5px 10px',
         background: pillar.color + '22',
         border: `1px solid ${pillar.color}55`,
         borderRadius: 999,
+        cursor: 'pointer',
         transition: 'all 0.15s',
       }}
     >
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: pillar.color }} />
       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{pillar.name}</span>
-      {hover && (
-        <div style={{ display: 'flex', gap: 2, marginLeft: 2 }}>
-          <button onClick={onEdit} style={chipActionStyle}><Pencil size={11} /></button>
-          <button onClick={onDelete} style={{ ...chipActionStyle, color: '#ef4444' }}><Trash2 size={11} /></button>
-        </div>
-      )}
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete() }}
+        title="Supprimer"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 16, height: 16, marginLeft: 2,
+          background: hover ? 'rgba(239,68,68,0.15)' : 'transparent',
+          border: 'none', borderRadius: '50%',
+          color: hover ? '#ef4444' : 'var(--text-tertiary)',
+          cursor: 'pointer', padding: 0,
+          opacity: hover ? 1 : 0.4,
+          transition: 'all 0.15s',
+        }}
+      >
+        <X size={11} />
+      </button>
     </div>
   )
 }
