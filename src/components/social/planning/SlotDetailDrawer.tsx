@@ -5,6 +5,7 @@ import {
   X, Calendar as CalIcon, Send, Trash2, Plus, Image as ImgIcon,
   Camera, Film, FileText, Sparkles, Hash, Link2, Check, ChevronDown,
   ChevronLeft, ChevronRight, Upload, Loader, Wand2, BookOpen, Star, TrendingUp,
+  Settings,
 } from 'lucide-react'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import {
@@ -293,7 +294,28 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
         <div style={bodyStyle}>
           {/* LEFT COLUMN — Production */}
           <div style={columnStyle}>
-            <ColumnHeader icon={Sparkles} label="Production" color="#a78bfa" />
+            <ColumnHeader
+              icon={Sparkles}
+              label="Production"
+              color="#a78bfa"
+              action={
+                <a
+                  href="/parametres/assistant-ia"
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Personnaliser l'IA (ton, niche, brief)"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '4px 8px', fontSize: 10, fontWeight: 600,
+                    color: 'var(--text-tertiary)', textDecoration: 'none',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-primary)', borderRadius: 6,
+                  }}
+                >
+                  <Settings size={10} /> Personnaliser l'IA
+                </a>
+              }
+            />
 
             <Field
               label="Accroche / Hook"
@@ -568,6 +590,19 @@ function HookSuggestions({
           </div>
         ))}
       </div>
+      <a
+        href="/parametres/assistant-ia"
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          marginTop: 8, padding: '4px 0',
+          fontSize: 10, fontWeight: 600,
+          color: 'var(--text-tertiary)', textDecoration: 'none',
+        }}
+      >
+        <Settings size={10} /> Pas content du résultat ? Personnalise l'IA
+      </a>
     </div>
   )
 }
@@ -976,7 +1011,12 @@ function statusColor(status: SocialProductionStatus | null | undefined): string 
   }
 }
 
-function ColumnHeader({ icon: Icon, label, color }: { icon: typeof Send; label: string; color: string }) {
+function ColumnHeader({ icon: Icon, label, color, action }: {
+  icon: typeof Send
+  label: string
+  color: string
+  action?: React.ReactNode
+}) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
       <div style={{ width: 28, height: 28, borderRadius: 8, background: color + '22', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -985,6 +1025,7 @@ function ColumnHeader({ icon: Icon, label, color }: { icon: typeof Send; label: 
       <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
         {label}
       </h3>
+      {action && <div style={{ marginLeft: 'auto' }}>{action}</div>}
     </div>
   )
 }
