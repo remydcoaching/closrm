@@ -59,7 +59,8 @@
 |---|-------|----------|--------|
 | T-021 | Instagram Automations (comment/dm keyword) | Moyenne | ⬜ |
 | A-010 | Linktree interne (liens trackables) | Moyenne | ⬜ |
+| T-043 | Session marathon 2026-05-03/04 (sidebar refacto, dashboard v2 command center, agenda resize, RDV phone, funnel SSR, lead add booking) | — | ✅ |
 
 ---
 
-*Mis a jour le 2026-04-08 — ClosRM*
+*Mis a jour le 2026-05-04 — ClosRM*

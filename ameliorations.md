@@ -758,4 +758,92 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-*Mis a jour le 2026-05-03 par Claude Code — ClosRM*
+## Améliorations identifiées session T-043 (2026-05-03 → 04)
+
+### A-043-01 · Pipeline previous + close rate previous (Dashboard v2)
+- **Contexte :** Sur le dashboard v2, KPIs Pipeline et Close rate ont `previous = 0` et `delta_pct = null` (pas de calcul historique). Le delta vs N-1 affiche "—" pour ces 2 cards.
+- **Description :** Pour close rate, calculer la même formule sur la période précédente. Pour pipeline, snapshot du pipeline à la date T-period (table `pipeline_snapshots` ou query historique sur deals).
+- **Priorité :** Moyenne
+- **Effort :** Moyen
+- **Statut :** En attente de validation
+
+### A-043-02 · Cost per booking (Dashboard v2)
+- **Contexte :** Card "Coût par RDV" toujours `null`. Nécessite jointure entre Meta Ads spend et bookings de la période.
+- **Description :** Si Meta Ads connecté, agréger `ads_spend` de la période / `count(bookings)` → coût par RDV.
+- **Priorité :** Moyenne
+- **Effort :** Faible (data déjà dispo)
+- **Statut :** En attente de validation
+
+### A-043-03 · Sparkline show rate + close rate
+- **Contexte :** Show rate et close rate ont `sparkline: []` vide.
+- **Description :** Étendre `fetchKpisV2` pour calculer les sparklines 14j sur ces 2 KPIs.
+- **Priorité :** Faible (polish)
+- **Effort :** Faible
+- **Statut :** En attente de validation
+
+### A-043-04 · Show rate / close rate par closer (dashboard équipe)
+- **Contexte :** Identifié vs iClosed. `/api/finance/team` retourne deals_as_closer + revenue_closed mais pas show rate ni close rate par membre.
+- **Description :** Étendre la query équipe pour calculer `show_rate` et `close_rate` par membre.
+- **Priorité :** Moyenne
+- **Effort :** Faible
+- **Statut :** En attente de validation
+
+### A-043-05 · Logique conditionnelle dans formulaire booking
+- **Contexte :** iClosed a des forms de qualification avec branching (si "budget < 5k€" → skip + tag disqualifié). ClosRM = FormFieldsEditor linéaire.
+- **Description :** Ajouter `show_if` à `FormField` (ex `{ field: 'budget', op: 'gte', value: 5000 }`).
+- **Priorité :** Moyenne (différenciateur)
+- **Effort :** Moyen
+- **Statut :** En attente de validation
+
+### A-043-06 · NEXT_PUBLIC_APP_URL côté Vercel
+- **Contexte :** Env var Vercel prod = `https://closrm.vercel.app`. Les emails (manage URL, unsubscribe) utilisent cette URL au lieu de `closrm.fr`.
+- **Description :** Pierre doit changer manuellement la variable Vercel `NEXT_PUBLIC_APP_URL` à `https://closrm.fr` (mon CLI Vercel est linké sur un autre projet).
+- **Priorité :** Haute (impact pro des emails sortants)
+- **Effort :** 30 secondes côté Pierre
+- **Statut :** Action utilisateur requise
+
+### A-043-07 · Historique des envois email global (pas que reminders)
+- **Contexte :** Sur page calendrier, "Historique des envois" affiche uniquement les `booking_reminders`. Les emails de confirmation (sent à la création) ne sont pas listés.
+- **Description :** Étendre la query pour UNIONer avec `email_sends` filtrés par `source = 'booking_confirmation'` joints au calendar via lead → bookings → calendar_id.
+- **Priorité :** Moyenne
+- **Effort :** Moyen (jointure complexe)
+- **Statut :** En attente de validation
+
+### A-043-08 · Resize RDV sur DayView agenda
+- **Contexte :** PR #349 ajout du resize sur WeekView. DayView n'a pas reçu le même traitement.
+- **Description :** Porter la logique resize de WeekView dans DayView.
+- **Priorité :** Faible
+- **Effort :** Faible
+- **Statut :** En attente de validation
+
+### A-043-09 · Background AI agents pour leads (Dashboard v2 V2)
+- **Contexte :** Identifié pendant analyse concurrentielle (Attio/Clay). Dashboard v2 surface des leads à risque/chauds par algo seul.
+- **Description :** Job nocturne IA qui enrichit les leads (research/score) et surface "X leads enrichis pendant la nuit, 3 high-fit".
+- **Priorité :** Faible (gros chantier V2)
+- **Effort :** Élevé
+- **Statut :** En attente de validation
+
+### A-043-10 · Show-rate optimization (confirmation interactive)
+- **Contexte :** Identifié vs iClosed. Aujourd'hui rappels = message simple. iClosed envoie "are you still coming?" avec bouton confirmer/reprogrammer (réduit no-shows ~40%).
+- **Description :** Reminders interactifs avec bouton confirmer / reprogrammer en 1 clic depuis SMS/email.
+- **Priorité :** Haute (impact direct revenue)
+- **Effort :** Moyen-élevé
+- **Statut :** En attente de validation
+
+### A-043-11 · Paiement à la réservation (deposit Stripe)
+- **Contexte :** iClosed permet de bloquer un créneau avec un dépôt Stripe (réduit no-shows ~40%).
+- **Description :** Option "Demander un dépôt de XX€" sur calendrier → checkout Stripe avant confirmation booking.
+- **Priorité :** Haute pour coachs premium
+- **Effort :** Élevé (Stripe Connect par workspace + UI)
+- **Statut :** En attente de validation
+
+### A-043-12 · A/B testing pages de réservation
+- **Contexte :** iClosed permet plusieurs variantes d'une page de booking. ClosRM = 1 page par calendrier.
+- **Description :** Variantes A/B avec tracking conversion par variante.
+- **Priorité :** Faible
+- **Effort :** Élevé
+- **Statut :** En attente de validation
+
+---
+
+*Mis a jour le 2026-05-04 par Claude Code — ClosRM*
