@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import { ChevronLeft, ChevronRight, Camera, FileText, Film, X } from 'lucide-react'
 import type {
   ContentPillar,
   SocialPostWithPublications,
   SocialProductionStatus,
+  SocialContentKind,
 } from '@/types'
 
 interface Props {
@@ -20,19 +21,26 @@ const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet'
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 const STATUS_OPACITY: Record<SocialProductionStatus, number> = {
-  idea: 0.25, to_film: 0.4, filmed: 0.6, edited: 0.8, ready: 1,
+  idea: 0.4, to_film: 0.55, filmed: 0.7, edited: 0.85, ready: 1,
+}
+const KIND_ICON: Record<SocialContentKind, typeof Camera> = {
+  post: FileText, story: Camera, reel: Film,
 }
 
+const MAX_VISIBLE_PER_CELL = 4
+
 export default function PlanningCalendarView({ posts, pillars, cursor, onCursorChange, onSelectSlot }: Props) {
+  const [dayPopover, setDayPopover] = useState<string | null>(null)
+
   const cells = useMemo(() => {
     const first = new Date(cursor.year, cursor.month - 1, 1)
     const startOffset = (first.getDay() + 6) % 7
     const gridStart = new Date(cursor.year, cursor.month - 1, 1 - startOffset)
-    const days: { date: Date; inMonth: boolean }[] = []
+    const days: { date: Date; inMonth: boolean; key: string }[] = []
     for (let i = 0; i < 42; i++) {
-      const d = new Date(gridStart)
-      d.setDate(gridStart.getDate() + i)
-      days.push({ date: d, inMonth: d.getMonth() === cursor.month - 1 })
+      const d = new Date(gridStart); d.setDate(gridStart.getDate() + i)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      days.push({ date: d, inMonth: d.getMonth() === cursor.month - 1, key })
     }
     return days
   }, [cursor])
@@ -46,6 +54,16 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
       arr.push(p)
       map.set(key, arr)
     }
+    // Sort each day: posts first, then stories; by slot_index
+    for (const arr of map.values()) {
+      arr.sort((a, b) => {
+        if (a.content_kind !== b.content_kind) {
+          if (a.content_kind === 'post') return -1
+          if (b.content_kind === 'post') return 1
+        }
+        return (a.slot_index ?? 99) - (b.slot_index ?? 99)
+      })
+    }
     return map
   }, [posts])
 
@@ -56,15 +74,22 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
     else onCursorChange({ year: cursor.year, month: m })
   }
 
+  const today = new Date()
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
   return (
     <div>
-      {/* Header navigation */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <button onClick={() => navigate(-1)} style={navBtnStyle}><ChevronLeft size={16} /></button>
         <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', minWidth: 160 }}>
           {MONTHS[cursor.month - 1]} {cursor.year}
         </h3>
         <button onClick={() => navigate(1)} style={navBtnStyle}><ChevronRight size={16} /></button>
+        <button
+          onClick={() => onCursorChange({ year: today.getFullYear(), month: today.getMonth() + 1 })}
+          style={{ marginLeft: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer' }}
+        >Aujourd'hui</button>
       </div>
 
       {/* Weekday headers */}
@@ -78,67 +103,169 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
 
       {/* Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-        {cells.map((c, i) => {
-          const dateKey = `${c.date.getFullYear()}-${String(c.date.getMonth() + 1).padStart(2, '0')}-${String(c.date.getDate()).padStart(2, '0')}`
-          const dayPosts = postsByDate.get(dateKey) ?? []
-          const stories = dayPosts.filter((p) => p.content_kind === 'story')
-          const postsOfDay = dayPosts.filter((p) => p.content_kind === 'post')
-          const storiesReady = stories.filter((p) => p.production_status === 'ready' || p.status !== 'draft').length
-          const postsReady = postsOfDay.filter((p) => p.production_status === 'ready' || p.status !== 'draft').length
+        {cells.map((c) => {
+          const dayPosts = postsByDate.get(c.key) ?? []
+          const isToday = c.key === todayKey
+          const visible = dayPosts.slice(0, MAX_VISIBLE_PER_CELL)
+          const overflow = dayPosts.length - visible.length
 
           return (
             <div
-              key={i}
+              key={c.key}
               style={{
-                minHeight: 110, padding: 8,
-                background: c.inMonth ? 'var(--bg-secondary)' : 'transparent',
-                border: '1px solid var(--border-primary)', borderRadius: 8,
+                position: 'relative',
+                minHeight: 130, padding: 6,
+                background: isToday ? 'rgba(167,139,250,0.06)' : (c.inMonth ? 'var(--bg-secondary)' : 'transparent'),
+                border: isToday ? '1px solid rgba(167,139,250,0.4)' : '1px solid var(--border-primary)',
+                borderRadius: 8,
                 opacity: c.inMonth ? 1 : 0.4,
+                display: 'flex', flexDirection: 'column', gap: 3,
               }}
             >
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                {c.date.getDate()}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: isToday ? '#a78bfa' : 'var(--text-secondary)' }}>
+                  {c.date.getDate()}
+                </span>
+                {dayPosts.length > 0 && (
+                  <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>
+                    {dayPosts.length}
+                  </span>
+                )}
               </div>
-              {dayPosts.length > 0 && (
-                <>
-                  {postsOfDay.length > 0 && (
-                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 2 }}>
-                      📰 {postsReady}/{postsOfDay.length}
-                    </div>
-                  )}
-                  {stories.length > 0 && (
-                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 6 }}>
-                      📱 {storiesReady}/{stories.length}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                    {dayPosts.slice(0, 8).map((p) => {
-                      const pillar = pillars.find((x) => x.id === p.pillar_id)
-                      const op = STATUS_OPACITY[(p.production_status ?? 'idea') as SocialProductionStatus]
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => onSelectSlot(p.id)}
-                          title={`${pillar?.name ?? ''} — ${p.production_status ?? 'idea'}`}
-                          style={{
-                            width: 14, height: 14, borderRadius: '50%',
-                            background: pillar?.color ?? '#666',
-                            opacity: p.status === 'published' ? 0.5 : op,
-                            border: p.status === 'published' ? '1.5px solid #10b981' : 'none',
-                            cursor: 'pointer', padding: 0,
-                          }}
-                        />
-                      )
-                    })}
-                    {dayPosts.length > 8 && (
-                      <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>+{dayPosts.length - 8}</span>
-                    )}
-                  </div>
-                </>
+
+              {visible.map((p) => {
+                const pillar = pillars.find((x) => x.id === p.pillar_id)
+                const op = STATUS_OPACITY[(p.production_status ?? 'idea') as SocialProductionStatus]
+                const Icon = KIND_ICON[(p.content_kind ?? 'post') as SocialContentKind]
+                const isPublished = p.status === 'published'
+                const color = pillar?.color ?? '#666'
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => onSelectSlot(p.id)}
+                    title={`${pillar?.name ?? '—'} · ${p.production_status ?? 'idea'}`}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '3px 6px',
+                      background: color + (isPublished ? '15' : '22'),
+                      border: `1px solid ${color}${isPublished ? '40' : '55'}`,
+                      borderLeft: `3px solid ${color}`,
+                      borderRadius: 4, cursor: 'pointer',
+                      opacity: op,
+                      width: '100%', overflow: 'hidden',
+                      transition: 'all 0.1s',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}
+                  >
+                    <Icon size={9} color={color} style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'left' }}>
+                      {pillar?.name ?? '—'}
+                    </span>
+                  </button>
+                )
+              })}
+
+              {overflow > 0 && (
+                <button
+                  onClick={() => setDayPopover(c.key)}
+                  style={{
+                    fontSize: 10, fontWeight: 600,
+                    color: 'var(--text-tertiary)',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    padding: '2px 4px', textAlign: 'left',
+                  }}
+                >
+                  +{overflow} autre{overflow > 1 ? 's' : ''}…
+                </button>
               )}
             </div>
           )
         })}
+      </div>
+
+      {/* Day popover */}
+      {dayPopover && (
+        <DayPopover
+          dateKey={dayPopover}
+          posts={postsByDate.get(dayPopover) ?? []}
+          pillars={pillars}
+          onClose={() => setDayPopover(null)}
+          onSelectSlot={(id) => { setDayPopover(null); onSelectSlot(id) }}
+        />
+      )}
+    </div>
+  )
+}
+
+function DayPopover({ dateKey, posts, pillars, onClose, onSelectSlot }: {
+  dateKey: string
+  posts: SocialPostWithPublications[]
+  pillars: ContentPillar[]
+  onClose: () => void
+  onSelectSlot: (id: string) => void
+}) {
+  const date = new Date(dateKey + 'T00:00:00')
+  const label = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(520px, 92vw)', maxHeight: '80vh',
+          background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+          borderRadius: 12, overflow: 'hidden',
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid var(--border-primary)' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{label}</h3>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }}>
+            <X size={16} />
+          </button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
+          {posts.map((p) => {
+            const pillar = pillars.find((x) => x.id === p.pillar_id)
+            const Icon = KIND_ICON[(p.content_kind ?? 'post') as SocialContentKind]
+            return (
+              <button
+                key={p.id}
+                onClick={() => onSelectSlot(p.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '10px 12px',
+                  background: 'var(--bg-secondary)',
+                  borderLeft: `3px solid ${pillar?.color ?? '#666'}`,
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 8, cursor: 'pointer',
+                  marginBottom: 4,
+                  textAlign: 'left',
+                }}
+              >
+                <Icon size={14} color={pillar?.color ?? 'var(--text-tertiary)'} />
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: pillar?.color ?? 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                    {pillar?.name ?? '—'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.hook || p.title || <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>(sans accroche)</span>}
+                  </div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>
+                  {p.production_status ?? 'idea'}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
