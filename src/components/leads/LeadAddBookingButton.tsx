@@ -94,21 +94,39 @@ export default function LeadAddBookingButton({ lead, variant = 'default', onCrea
         fontFamily: 'inherit',
         transition: 'all 0.15s',
       }
-    : {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: isSmall ? 4 : 6,
-        padding: isSmall ? '4px 10px' : '6px 12px',
-        borderRadius: 8,
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-primary)',
-        color: 'var(--text-primary)',
-        fontSize: isSmall ? 11 : 12,
-        fontWeight: 500,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        transition: 'all 0.15s',
-      }
+    : isSmall
+      ? {
+          // Style violet aligné avec "Planifier un appel" sur la page lead :
+          // tinté + bordure assortie, taille compacte pour le header du side panel.
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '5px 12px',
+          borderRadius: 8,
+          background: 'rgba(168,85,247,0.12)',
+          border: '1px solid rgba(168,85,247,0.3)',
+          color: '#a855f7',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          transition: 'all 0.15s',
+        }
+      : {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '6px 12px',
+          borderRadius: 8,
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-primary)',
+          color: 'var(--text-primary)',
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          transition: 'all 0.15s',
+        }
 
   return (
     <>
@@ -123,11 +141,11 @@ export default function LeadAddBookingButton({ lead, variant = 'default', onCrea
           cursor: loading ? 'wait' : 'pointer',
         }}
         onMouseEnter={e => {
-          if (loading || isLarge) return
+          if (loading || isLarge || isSmall) return
           e.currentTarget.style.borderColor = 'var(--color-primary)'
         }}
         onMouseLeave={e => {
-          if (isLarge) return
+          if (isLarge || isSmall) return
           e.currentTarget.style.borderColor = 'var(--border-primary)'
         }}
       >
