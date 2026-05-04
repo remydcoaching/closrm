@@ -128,10 +128,12 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   }
 
   // ─── Platform helpers ────────────────────────────────────
+  // enabledPlatforms reflète UNIQUEMENT les publications réellement persistées.
+  // Pas de "default on" cosmétique : si l'utilisateur n'a rien activé, rien n'est on.
   const enabledPlatforms = useMemo<Record<SocialPlatform, boolean>>(() => {
     const set = new Set((slot?.publications ?? []).map((p) => p.platform))
     return {
-      instagram: set.has('instagram') || (set.size === 0),  // default IG on for new slots
+      instagram: set.has('instagram'),
       youtube: set.has('youtube'),
       tiktok: set.has('tiktok'),
     }
@@ -140,40 +142,42 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   const ytPub = useMemo(() => slot?.publications?.find((p) => p.platform === 'youtube'), [slot?.publications])
   const ytConfig = (ytPub?.config ?? {}) as { title?: string; description?: string; privacy_status?: 'public' | 'unlisted' | 'private' }
 
+  const makePub = (platform: SocialPlatform, slot: SocialPostWithPublications) => {
+    const config = platform === 'youtube'
+      ? { title: slot.title ?? '', description: slot.caption ?? '', privacy_status: 'public' as const }
+      : platform === 'instagram'
+        ? { caption: slot.caption ?? '', hashtags: slot.hashtags ?? [] }
+        : {}
+    return {
+      id: `tmp-${platform}-${Date.now()}`,
+      social_post_id: slot.id,
+      workspace_id: slot.workspace_id,
+      platform,
+      config,
+      scheduled_at: slot.scheduled_at,
+      status: 'pending' as const,
+      provider_post_id: null,
+      public_url: null,
+      published_at: null,
+      error_message: null,
+      retry_count: 0,
+      last_attempt_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+  }
+
   const togglePlatform = async (platform: SocialPlatform) => {
     if (!slot) return
     const isOn = enabledPlatforms[platform]
-    let pubs = slot.publications ?? []
+    let pubs = [...(slot.publications ?? [])]
     if (isOn) {
       pubs = pubs.filter((p) => p.platform !== platform)
     } else {
-      const config = platform === 'youtube'
-        ? { title: slot.title ?? '', description: slot.caption ?? '', privacy_status: 'public' as const }
-        : platform === 'instagram'
-          ? { caption: slot.caption ?? '', hashtags: slot.hashtags ?? [] }
-          : {}
-      pubs = [
-        ...pubs,
-        {
-          id: `tmp-${platform}`,
-          social_post_id: slot.id,
-          workspace_id: slot.workspace_id,
-          platform,
-          config,
-          scheduled_at: slot.scheduled_at,
-          status: 'pending',
-          provider_post_id: null,
-          public_url: null,
-          published_at: null,
-          error_message: null,
-          retry_count: 0,
-          last_attempt_at: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ]
+      pubs.push(makePub(platform, slot))
     }
     setSlot({ ...slot, publications: pubs })
+    setActivePlatformTab(platform)
     await fetch(`/api/social/posts/${slot.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
