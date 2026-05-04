@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Plus, Trash2, Pencil, Sparkles } from 'lucide-react'
+import { X, Plus, Trash2, Pencil, Sparkles, Wand2 } from 'lucide-react'
 import {
   type ContentPillar,
   type ContentTrame,
@@ -21,6 +21,49 @@ const PALETTE = [
   '#a78bfa', '#ec4899', '#3b82f6', '#06b6d4', '#10b981',
   '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316',
 ]
+
+// Template par défaut basé sur la trame coach standard
+const DEFAULT_PILLARS: { name: string; color: string }[] = [
+  { name: 'Viral',              color: '#ec4899' },
+  { name: 'Lead Magnet',        color: '#3b82f6' },
+  { name: 'Avant/Après',        color: '#10b981' },
+  { name: 'Bénéfices Coaching', color: '#a78bfa' },
+  { name: 'Call to Action',     color: '#f59e0b' },
+  { name: 'Value Asset',        color: '#06b6d4' },
+  { name: 'Preuve Sociale',     color: '#8b5cf6' },
+  { name: 'Entrainement',       color: '#ef4444' },
+  { name: 'Sondage',            color: '#14b8a6' },
+  { name: 'Bilan',              color: '#f97316' },
+  { name: 'Analyse Programme',  color: '#6366f1' },
+  { name: 'Opinion',            color: '#db2777' },
+  { name: 'Perso',              color: '#84cc16' },
+  { name: 'Facecam de Valeur',  color: '#0ea5e9' },
+  { name: 'Retour Client',      color: '#f43f5e' },
+]
+
+const DEFAULT_STORIES: Record<Weekday, string[]> = {
+  mon: ['Viral', 'Lead Magnet',  'Avant/Après',    'Bénéfices Coaching', 'Call to Action'],
+  tue: ['Viral', 'Value Asset',  'Preuve Sociale', 'Entrainement',       'Sondage'],
+  wed: ['Viral', 'Bilan',        'Avant/Après',    'Call to Action',     'Analyse Programme'],
+  thu: ['Viral', 'Lead Magnet',  'Preuve Sociale', 'Entrainement',       'Sondage'],
+  fri: ['Viral', 'Avant/Après',  'Bénéfices Coaching', 'Call to Action', 'Opinion'],
+  sat: ['Viral', 'Value Asset',  'Preuve Sociale', 'Opinion',            'Entrainement'],
+  sun: ['Viral', 'Avant/Après',  'Bénéfices Coaching', 'Call to Action', 'Sondage'],
+}
+
+const DEFAULT_POSTS: Record<Weekday, (string | null)[]> = {
+  mon: ['Viral', null],
+  tue: ['Viral', 'Avant/Après'],
+  wed: ['Viral', null],
+  thu: ['Facecam de Valeur', null],
+  fri: ['Viral', 'Avant/Après'],
+  sat: ['Retour Client', null],
+  sun: ['Viral', 'Facecam de Valeur'],
+}
+
+function hasAnyCellFilled(grid: Record<Weekday, (string | null)[]>): boolean {
+  return Object.values(grid).some((arr) => arr?.some((c) => c !== null))
+}
 
 function emptyGrid(perDay: number): Record<Weekday, (string | null)[]> {
   const out = {} as Record<Weekday, (string | null)[]>
@@ -50,6 +93,7 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
   const [saving, setSaving] = useState(false)
   const [pillarModal, setPillarModal] = useState<{ mode: 'create' | 'edit'; pillar?: ContentPillar } | null>(null)
   const [activePicker, setActivePicker] = useState<{ kind: 'story' | 'post'; wd: Weekday; idx: number } | null>(null)
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => { setLocalPillars(pillars) }, [pillars])
 
@@ -118,6 +162,53 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
     setPostsGrid(cleanGrid(postsGrid))
   }
 
+  const importTemplate = async () => {
+    if (localPillars.length > 0 || hasAnyCellFilled(storiesGrid) || hasAnyCellFilled(postsGrid)) {
+      if (!confirm('Cela va créer 15 pillars + remplir les grilles avec le template par défaut.\n\nLes pillars existants seront conservés. Continuer ?')) return
+    }
+    setImporting(true)
+    try {
+      // Crée les pillars manquants (par nom)
+      const existingNames = new Set(localPillars.map((p) => p.name.toLowerCase()))
+      const created: ContentPillar[] = []
+      for (const tmpl of DEFAULT_PILLARS) {
+        if (existingNames.has(tmpl.name.toLowerCase())) continue
+        const res = await fetch('/api/social/pillars', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(tmpl),
+        })
+        if (res.ok) {
+          const json = await res.json()
+          created.push(json.data)
+        }
+      }
+      const allPillars = [...localPillars, ...created]
+      setLocalPillars(allPillars)
+
+      const byName = new Map(allPillars.map((p) => [p.name.toLowerCase(), p.id]))
+      const lookup = (name: string) => byName.get(name.toLowerCase()) ?? null
+
+      // Stories : 5 slots/jour
+      setStoriesPerDay(5)
+      const newStories = {} as Record<Weekday, (string | null)[]>
+      for (const wd of WEEKDAYS_ORDERED) {
+        newStories[wd] = DEFAULT_STORIES[wd].map(lookup)
+      }
+      setStoriesGrid(newStories)
+
+      // Posts : 2 slots/jour
+      setPostsPerDay(2)
+      const newPosts = {} as Record<Weekday, (string | null)[]>
+      for (const wd of WEEKDAYS_ORDERED) {
+        newPosts[wd] = DEFAULT_POSTS[wd].map((n) => (n ? lookup(n) : null))
+      }
+      setPostsGrid(newPosts)
+    } finally {
+      setImporting(false)
+    }
+  }
+
   const handleSave = async () => {
     setSaving(true)
     try {
@@ -162,7 +253,17 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
         <div style={bodyStyle}>
           {/* Pillars library */}
           <section style={{ marginBottom: 28 }}>
-            <h3 style={sectionTitleStyle}>Bibliothèque de pillars</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h3 style={sectionTitleStyle}>Bibliothèque de pillars</h3>
+              <button
+                onClick={importTemplate}
+                disabled={importing}
+                style={templateBtnStyle(importing)}
+              >
+                <Wand2 size={12} />
+                {importing ? 'Import…' : 'Template par défaut'}
+              </button>
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {localPillars.map((p) => (
                 <PillarChip key={p.id} pillar={p} onEdit={() => setPillarModal({ mode: 'edit', pillar: p })} onDelete={() => deletePillar(p)} />
@@ -175,7 +276,7 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
               </button>
               {localPillars.length === 0 && (
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', alignSelf: 'center', marginLeft: 6 }}>
-                  Crée tes premiers types de contenu (Viral, Lead Magnet, Avant/Après…)
+                  Crée tes pillars un par un, ou clique <strong>Template par défaut</strong> pour démarrer rapidement.
                 </p>
               )}
             </div>
@@ -648,6 +749,13 @@ const cancelBtnStyle: React.CSSProperties = {
   color: 'var(--text-secondary)', background: 'transparent',
   border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
 }
+const templateBtnStyle = (loading: boolean): React.CSSProperties => ({
+  display: 'flex', alignItems: 'center', gap: 5,
+  padding: '5px 10px', fontSize: 11, fontWeight: 600,
+  color: '#a78bfa', background: 'rgba(167, 139, 250, 0.1)',
+  border: '1px solid rgba(167, 139, 250, 0.3)', borderRadius: 6,
+  cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
+})
 const saveBtnStyle = (saving: boolean, disabled = false): React.CSSProperties => ({
   padding: '8px 16px', fontSize: 12, fontWeight: 600,
   color: '#fff', background: disabled ? '#4b5563' : '#a78bfa',
