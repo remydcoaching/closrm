@@ -9,8 +9,6 @@ import AcquisitionInbox, { type InboxItem } from '../AcquisitionInbox'
 import { classifyIntent, intentSortValue } from '@/lib/social/intent-classifier'
 
 interface Props {
-  igHandle?: string | null
-  onLinkAccount: () => void
   onSeeAllInbox: () => void
 }
 
@@ -63,7 +61,7 @@ function SectionHeader({ icon: Icon, title, subtitle, action }: {
   )
 }
 
-export default function IgAcquisitionTab({ igHandle, onLinkAccount, onSeeAllInbox }: Props) {
+export default function IgAcquisitionTab({ onSeeAllInbox }: Props) {
   const router = useRouter()
   const [conversations, setConversations] = useState<IgConversation[]>([])
   const [comments, setComments] = useState<IgComment[]>([])
@@ -280,27 +278,6 @@ export default function IgAcquisitionTab({ igHandle, onLinkAccount, onSeeAllInbo
           accent="#3b82f6"
         />
       </div>
-
-      {/* Pas de compte connecté → CTA */}
-      {!igHandle && !loading && (
-        <div style={{
-          background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
-          borderRadius: 12, padding: 24, textAlign: 'center',
-        }}>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>
-            Connecte ton compte Instagram pour activer la sync DMs et commentaires.
-          </p>
-          <button
-            onClick={onLinkAccount}
-            style={{
-              padding: '8px 18px', fontSize: 12, fontWeight: 700,
-              color: '#fff', background: ACCENT, border: 'none', borderRadius: 8, cursor: 'pointer',
-            }}
-          >
-            Connecter Instagram
-          </button>
-        </div>
-      )}
 
       {/* INBOX D'ACQUISITION — preview top 6 */}
       <CardShell>

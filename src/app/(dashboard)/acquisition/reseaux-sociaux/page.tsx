@@ -94,18 +94,6 @@ export default function ReseauxSociauxPage() {
     }
   }
 
-  const handleLinkAccount = async () => {
-    try {
-      const res = await fetch('/api/instagram/account', { method: 'POST' })
-      if (!res.ok) throw new Error()
-      await fetchAccounts()
-    } catch {
-      alert('Erreur lors de la connexion du compte')
-    }
-  }
-
-  const igHandle = (igAccount?.username as string | undefined) ?? null
-
   return (
     <div style={{ padding: '32px 40px' }}>
       <style>{`@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; } } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -150,11 +138,7 @@ export default function ReseauxSociauxPage() {
           <>
             <IgSubTabs selected={igTab} onChange={setIgTab} />
             {igTab === 'acquisition' && (
-              <IgAcquisitionTab
-                igHandle={igHandle}
-                onLinkAccount={handleLinkAccount}
-                onSeeAllInbox={() => setIgTab('inbox')}
-              />
+              <IgAcquisitionTab onSeeAllInbox={() => setIgTab('inbox')} />
             )}
             {igTab === 'inbox' && <IgInboxTab />}
             {igTab === 'stories' && <IgStoriesTab />}
