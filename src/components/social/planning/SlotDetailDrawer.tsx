@@ -5,16 +5,33 @@ import {
   X, Calendar as CalIcon, Send, Trash2, Plus, Image as ImgIcon,
   Camera, Film, FileText, Sparkles, Hash, Link2, Check, ChevronDown,
   ChevronLeft, ChevronRight, Upload, Loader, Wand2, BookOpen, Star, TrendingUp,
-  Settings,
+  Settings, Video, Zap,
 } from 'lucide-react'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import {
   type ContentPillar,
   type SocialPostWithPublications,
+  type SocialPlatform,
+  type SocialPostMediaType,
   type SocialProductionStatus,
   type SocialContentKind,
   PRODUCTION_STATUSES,
 } from '@/types'
+
+const PLATFORMS: { key: SocialPlatform; label: string; color: string; icon: typeof Camera; disabled?: boolean }[] = [
+  { key: 'instagram', label: 'Instagram', color: '#EC4899', icon: Camera },
+  { key: 'youtube',   label: 'YouTube',   color: '#FF0000', icon: Video },
+  { key: 'tiktok',    label: 'TikTok',    color: '#000000', icon: Film, disabled: true },
+]
+
+function detectMediaType(urls: string[], firstIsVideo: boolean, durationSec: number | null): SocialPostMediaType | null {
+  if (urls.length === 0) return null
+  if (firstIsVideo) {
+    if (durationSec != null && durationSec <= 60) return 'SHORT'
+    return 'VIDEO'
+  }
+  return urls.length > 1 ? 'CAROUSEL' : 'IMAGE'
+}
 
 interface Props {
   slotId: string
@@ -34,6 +51,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   const [generatingHooks, setGeneratingHooks] = useState(false)
   const [generatingScript, setGeneratingScript] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [activePlatformTab, setActivePlatformTab] = useState<SocialPlatform>('instagram')
+  const [mediaIsVideo, setMediaIsVideo] = useState(false)
+  const [mediaDurationSec, setMediaDurationSec] = useState<number | null>(null)
+  const [publishingNow, setPublishingNow] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -75,28 +96,22 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
   const handleSchedule = async () => {
     if (!slot || !slot.plan_date) {
-      alert('Une date de plan est requise pour programmer le slot.')
+      alert('Une date prévue est requise pour programmer le slot.')
       return
     }
-    if (slot.production_status !== 'ready') {
-      alert('Le slot doit être en statut "Prêt".')
-      return
-    }
-    if (!slot.media_urls || slot.media_urls.length === 0) {
-      alert('Au moins un media doit être uploadé.')
-      return
-    }
+    if (!validateBeforePublish()) return
     setScheduling(true)
     try {
       const [hh, mm] = scheduleTime.split(':')
       const dt = new Date(slot.plan_date + 'T' + hh + ':' + mm + ':00')
+      const activePubs = (slot.publications ?? []).filter((p) => enabledPlatforms[p.platform as SocialPlatform])
       await fetch(`/api/social/posts/${slot.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'scheduled',
           scheduled_at: dt.toISOString(),
-          publications: [{ platform: 'instagram', scheduled_at: dt.toISOString() }],
+          publications: activePubs.map((p) => ({ platform: p.platform, config: p.config, scheduled_at: dt.toISOString() })),
         }),
       })
       setShowScheduleConfirm(false)
@@ -110,6 +125,157 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   const handleUnschedule = async () => {
     if (!slot) return
     await patch({ status: 'draft', scheduled_at: null })
+  }
+
+  // ─── Platform helpers ────────────────────────────────────
+  const enabledPlatforms = useMemo<Record<SocialPlatform, boolean>>(() => {
+    const set = new Set((slot?.publications ?? []).map((p) => p.platform))
+    return {
+      instagram: set.has('instagram') || (set.size === 0),  // default IG on for new slots
+      youtube: set.has('youtube'),
+      tiktok: set.has('tiktok'),
+    }
+  }, [slot?.publications])
+
+  const ytPub = useMemo(() => slot?.publications?.find((p) => p.platform === 'youtube'), [slot?.publications])
+  const ytConfig = (ytPub?.config ?? {}) as { title?: string; description?: string; privacy_status?: 'public' | 'unlisted' | 'private' }
+
+  const togglePlatform = async (platform: SocialPlatform) => {
+    if (!slot) return
+    const isOn = enabledPlatforms[platform]
+    let pubs = slot.publications ?? []
+    if (isOn) {
+      pubs = pubs.filter((p) => p.platform !== platform)
+    } else {
+      const config = platform === 'youtube'
+        ? { title: slot.title ?? '', description: slot.caption ?? '', privacy_status: 'public' as const }
+        : platform === 'instagram'
+          ? { caption: slot.caption ?? '', hashtags: slot.hashtags ?? [] }
+          : {}
+      pubs = [
+        ...pubs,
+        {
+          id: `tmp-${platform}`,
+          social_post_id: slot.id,
+          workspace_id: slot.workspace_id,
+          platform,
+          config,
+          scheduled_at: slot.scheduled_at,
+          status: 'pending',
+          provider_post_id: null,
+          public_url: null,
+          published_at: null,
+          error_message: null,
+          retry_count: 0,
+          last_attempt_at: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ]
+    }
+    setSlot({ ...slot, publications: pubs })
+    await fetch(`/api/social/posts/${slot.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        publications: pubs.map((p) => ({ platform: p.platform, config: p.config })),
+      }),
+    })
+    onChange()
+  }
+
+  const updatePlatformConfig = async (platform: SocialPlatform, patch: Record<string, unknown>) => {
+    if (!slot) return
+    const pubs = (slot.publications ?? []).map((p) =>
+      p.platform === platform ? { ...p, config: { ...(p.config as Record<string, unknown>), ...patch } } : p
+    )
+    setSlot({ ...slot, publications: pubs })
+    await fetch(`/api/social/posts/${slot.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        publications: pubs.map((p) => ({ platform: p.platform, config: p.config })),
+      }),
+    })
+  }
+
+  // ─── Auto-detect media type from media_urls ──────────────
+  useEffect(() => {
+    if (!slot?.media_urls || slot.media_urls.length === 0) return
+    const firstUrl = slot.media_urls[0]
+    const isVideo = /\.(mp4|mov|webm|m4v)(\?|$)/i.test(firstUrl)
+    setMediaIsVideo(isVideo)
+    if (isVideo && mediaDurationSec === null) {
+      const v = document.createElement('video')
+      v.preload = 'metadata'
+      v.src = firstUrl
+      v.onloadedmetadata = () => setMediaDurationSec(v.duration)
+      v.onerror = () => setMediaDurationSec(null)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot?.media_urls])
+
+  const computedMediaType = useMemo(
+    () => detectMediaType(slot?.media_urls ?? [], mediaIsVideo, mediaDurationSec),
+    [slot?.media_urls, mediaIsVideo, mediaDurationSec]
+  )
+
+  // Persist computed media_type when it changes
+  useEffect(() => {
+    if (slot && computedMediaType !== slot.media_type) {
+      patch({ media_type: computedMediaType })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computedMediaType])
+
+  const handlePublishNow = async () => {
+    if (!slot) return
+    if (!validateBeforePublish()) return
+    setPublishingNow(true)
+    try {
+      // First save: mark scheduled with now+1s
+      const now = new Date(Date.now() - 1000)
+      await fetch(`/api/social/posts/${slot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'scheduled',
+          scheduled_at: now.toISOString(),
+        }),
+      })
+      // Then trigger immediate publish
+      const pubRes = await fetch(`/api/social/posts/${slot.id}/publish`, { method: 'POST' })
+      const pubJson = await pubRes.json().catch(() => ({}))
+      if (!pubRes.ok) throw new Error(pubJson.error ?? `Erreur ${pubRes.status}`)
+      onChange()
+      onClose()
+    } catch (e) {
+      alert(`Erreur publication : ${(e as Error).message}`)
+    } finally {
+      setPublishingNow(false)
+    }
+  }
+
+  const validateBeforePublish = (): boolean => {
+    if (!slot) return false
+    const platforms = Object.entries(enabledPlatforms).filter(([, on]) => on).map(([k]) => k as SocialPlatform)
+    if (platforms.length === 0) {
+      alert('Sélectionne au moins une plateforme.')
+      return false
+    }
+    if (enabledPlatforms.youtube && !ytConfig.title?.trim()) {
+      alert('Le titre YouTube est requis.')
+      return false
+    }
+    if (!slot.media_urls || slot.media_urls.length === 0) {
+      alert('Au moins un media est requis.')
+      return false
+    }
+    if (slot.production_status !== 'ready') {
+      alert('Le slot doit être en statut "Prêt".')
+      return false
+    }
+    return true
   }
 
   const generateHooks = async () => {
@@ -430,30 +596,141 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           <div style={columnStyle}>
             <ColumnHeader icon={Send} label="Publication" color="#10b981" />
 
-            <Field label="Media" icon={ImgIcon} hint="Drop ou click pour upload (image / vidéo)">
+            {/* Platforms */}
+            <Field label="Plateformes" hint="≥ 1 obligatoire">
+              <div style={{ display: 'flex', gap: 6 }}>
+                {PLATFORMS.map((p) => {
+                  const on = enabledPlatforms[p.key]
+                  return (
+                    <button
+                      key={p.key}
+                      onClick={() => !p.disabled && togglePlatform(p.key)}
+                      disabled={p.disabled}
+                      title={p.disabled ? 'Bientôt disponible' : ''}
+                      style={{
+                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        padding: '8px 10px', fontSize: 11, fontWeight: 600,
+                        color: on ? '#fff' : 'var(--text-tertiary)',
+                        background: on ? p.color : 'var(--bg-secondary)',
+                        border: `1px solid ${on ? p.color : 'var(--border-primary)'}`,
+                        borderRadius: 8, cursor: p.disabled ? 'not-allowed' : 'pointer',
+                        opacity: p.disabled ? 0.45 : 1,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <p.icon size={12} />
+                      {p.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </Field>
+
+            {/* Media + auto-detected type */}
+            <Field
+              label="Media"
+              icon={ImgIcon}
+              hint="Drop ou click pour upload"
+              action={
+                computedMediaType ? (
+                  <span style={{ padding: '3px 8px', fontSize: 9, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.12)', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    {computedMediaType}
+                    {mediaDurationSec != null && ` · ${mediaDurationSec.toFixed(0)}s`}
+                  </span>
+                ) : null
+              }
+            >
               <MediaList
                 urls={slot.media_urls ?? []}
-                onChange={(urls) => patch({ media_urls: urls })}
+                onChange={(urls) => {
+                  setMediaDurationSec(null)
+                  patch({ media_urls: urls })
+                }}
               />
             </Field>
 
-            <Field label="Caption">
-              <textarea
-                value={slot.caption ?? ''}
-                onChange={(e) => setSlot({ ...slot, caption: e.target.value })}
-                onBlur={() => patch({ caption: slot.caption })}
-                placeholder="Caption finale qui sera publiée…"
-                rows={5}
-                style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+            {/* Per-platform tabs */}
+            <div style={{ marginTop: 4 }}>
+              <PlatformTabs
+                platforms={PLATFORMS.filter((p) => enabledPlatforms[p.key] && !p.disabled)}
+                active={activePlatformTab}
+                onChange={setActivePlatformTab}
               />
-            </Field>
 
-            <Field label="Hashtags" icon={Hash}>
-              <HashtagsInput
-                tags={slot.hashtags ?? []}
-                onChange={(tags) => patch({ hashtags: tags })}
-              />
-            </Field>
+              {activePlatformTab === 'instagram' && enabledPlatforms.instagram && (
+                <>
+                  <Field label="Caption Instagram">
+                    <textarea
+                      value={slot.caption ?? ''}
+                      onChange={(e) => setSlot({ ...slot, caption: e.target.value })}
+                      onBlur={() => patch({ caption: slot.caption })}
+                      placeholder="Caption finale qui sera publiée…"
+                      rows={5}
+                      style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+                    />
+                  </Field>
+
+                  <Field label="Hashtags" icon={Hash}>
+                    <HashtagsInput
+                      tags={slot.hashtags ?? []}
+                      onChange={(tags) => patch({ hashtags: tags })}
+                    />
+                  </Field>
+                </>
+              )}
+
+              {activePlatformTab === 'youtube' && enabledPlatforms.youtube && (
+                <>
+                  <Field label="Titre YouTube *" hint={`${(ytConfig.title ?? '').length}/100`}>
+                    <input
+                      type="text"
+                      value={ytConfig.title ?? ''}
+                      onChange={(e) => updatePlatformConfig('youtube', { title: e.target.value })}
+                      placeholder="Titre de la vidéo (max 100 char)"
+                      maxLength={100}
+                      style={inputStyle}
+                    />
+                  </Field>
+                  <Field label="Description YouTube">
+                    <textarea
+                      value={ytConfig.description ?? ''}
+                      onChange={(e) => updatePlatformConfig('youtube', { description: e.target.value })}
+                      placeholder="Description complète…"
+                      rows={5}
+                      style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+                    />
+                  </Field>
+                  <Field label="Visibilité">
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {(['public', 'unlisted', 'private'] as const).map((v) => {
+                        const active = (ytConfig.privacy_status ?? 'public') === v
+                        return (
+                          <button
+                            key={v}
+                            onClick={() => updatePlatformConfig('youtube', { privacy_status: v })}
+                            style={{
+                              flex: 1, padding: '7px', fontSize: 11, fontWeight: 600,
+                              color: active ? '#fff' : 'var(--text-secondary)',
+                              background: active ? '#FF0000' : 'var(--bg-secondary)',
+                              border: `1px solid ${active ? '#FF0000' : 'var(--border-primary)'}`,
+                              borderRadius: 6, cursor: 'pointer',
+                            }}
+                          >
+                            {v === 'public' ? 'Public' : v === 'unlisted' ? 'Non répertorié' : 'Privé'}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </Field>
+                </>
+              )}
+
+              {Object.values(enabledPlatforms).every((v) => !v) && (
+                <div style={{ padding: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, fontSize: 11, color: '#ef4444' }}>
+                  Active au moins une plateforme pour pouvoir programmer ce slot.
+                </div>
+              )}
+            </div>
 
             <Field label="Notes">
               <textarea
@@ -484,9 +761,19 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               </button>
             )}
             {slot.status === 'draft' && canSchedule && !showScheduleConfirm && (
-              <button onClick={() => setShowScheduleConfirm(true)} style={primaryBtnStyle}>
-                <Send size={14} /> Programmer
-              </button>
+              <>
+                <button
+                  onClick={handlePublishNow}
+                  disabled={publishingNow}
+                  style={publishNowBtnStyle(publishingNow)}
+                >
+                  {publishingNow ? <Loader size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Zap size={14} />}
+                  {publishingNow ? 'Publication…' : 'Publier maintenant'}
+                </button>
+                <button onClick={() => setShowScheduleConfirm(true)} style={primaryBtnStyle}>
+                  <Send size={14} /> Programmer
+                </button>
+              </>
             )}
             {showScheduleConfirm && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-secondary)', padding: '4px 6px', borderRadius: 8 }}>
@@ -1216,6 +1503,40 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+function PlatformTabs({ platforms, active, onChange }: {
+  platforms: { key: SocialPlatform; label: string; color: string; icon: typeof Camera }[]
+  active: SocialPlatform
+  onChange: (p: SocialPlatform) => void
+}) {
+  if (platforms.length === 0) return null
+  return (
+    <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '1px solid var(--border-primary)' }}>
+      {platforms.map((p) => {
+        const isActive = active === p.key
+        return (
+          <button
+            key={p.key}
+            onClick={() => onChange(p.key)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '7px 12px', fontSize: 11, fontWeight: 600,
+              color: isActive ? p.color : 'var(--text-tertiary)',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: `2px solid ${isActive ? p.color : 'transparent'}`,
+              marginBottom: -1,
+              cursor: 'pointer',
+            }}
+          >
+            <p.icon size={11} />
+            {p.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function HashtagsInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
   const [input, setInput] = useState('')
   const addTag = (raw: string) => {
@@ -1353,6 +1674,13 @@ const libBtnStyle: React.CSSProperties = {
   background: 'var(--bg-secondary)',
   border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
 }
+const publishNowBtnStyle = (loading: boolean): React.CSSProperties => ({
+  display: 'flex', alignItems: 'center', gap: 6,
+  padding: '8px 14px', fontSize: 12, fontWeight: 600,
+  color: '#22c55e', background: 'transparent',
+  border: '1px solid rgba(34,197,94,0.4)', borderRadius: 6,
+  cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.7 : 1,
+})
 const dangerBtnStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 6,
   padding: '8px 14px', fontSize: 12, fontWeight: 600,

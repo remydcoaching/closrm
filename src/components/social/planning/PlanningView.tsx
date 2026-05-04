@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Sparkles, KanbanSquare, Calendar as CalIcon } from 'lucide-react'
+import { Settings, Sparkles, KanbanSquare, Calendar as CalIcon, Plus } from 'lucide-react'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
 import TrameEditorModal from './TrameEditorModal'
 import BoardView from './BoardView'
@@ -116,6 +116,38 @@ export default function PlanningView() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={async () => {
+              const today = new Date()
+              const fmt = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+              const res = await fetch('/api/social/posts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  content_kind: 'post',
+                  production_status: 'idea',
+                  status: 'draft',
+                  plan_date: fmt,
+                  publications: [],
+                }),
+              })
+              const json = await res.json()
+              if (res.ok && json.data?.id) {
+                setSelectedSlotId(json.data.id)
+                reload()
+              } else {
+                alert(`Erreur création slot : ${json.error ?? 'inconnue'}`)
+              }
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', fontSize: 12, fontWeight: 600,
+              color: '#fff', background: '#5b9bf5',
+              border: 'none', borderRadius: 8, cursor: 'pointer',
+            }}
+          >
+            <Plus size={14} /> Nouveau slot
+          </button>
           <button
             onClick={() => setTrameModalOpen(true)}
             style={{
