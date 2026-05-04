@@ -410,13 +410,20 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
       {config.title && <h2 style={titleStyle}>{config.title}</h2>}
       {config.subtitle && <p style={subtitleStyle}>{config.subtitle}</p>}
 
-      {/* Responsive : stack vertical sous 640px (sinon le calendrier déborde
-          et la colonne créneaux écrase "Sélectionne une date..."). */}
+      {/* Responsive : container query sur la largeur du widget lui-même
+          (le viewport peut être large alors que le widget est étroit, p.ex.
+          funnel embarqué avec padding parent). Stack vertical sous 520px. */}
       <style>{`
-        @media (max-width: 640px) {
+        .fnl-booking-grid { container-type: inline-size; }
+        @container (max-width: 520px) {
           .fnl-booking-grid { grid-template-columns: 1fr !important; }
           .fnl-booking-cal { border-right: none !important; border-bottom: 1px solid rgba(var(--fnl-primary-rgb), 0.1) !important; }
           .fnl-booking-slots-empty { min-height: 80px; padding: 20px 16px !important; }
+        }
+        /* Fallback viewport pour navigateurs sans container queries (< Safari 16). */
+        @media (max-width: 640px) {
+          .fnl-booking-grid { grid-template-columns: 1fr !important; }
+          .fnl-booking-cal { border-right: none !important; border-bottom: 1px solid rgba(var(--fnl-primary-rgb), 0.1) !important; }
         }
       `}</style>
       <div className="fnl-booking-grid" style={widgetContainerStyle}>
