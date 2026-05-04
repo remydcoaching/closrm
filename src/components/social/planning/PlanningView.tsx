@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Sparkles, KanbanSquare, Calendar as CalIcon, Plus, FileText, Camera } from 'lucide-react'
+import { Settings, Sparkles, KanbanSquare, Calendar as CalIcon, Plus, FileText, Camera, Trash2 } from 'lucide-react'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
 import TrameEditorModal from './TrameEditorModal'
 import BoardView from './BoardView'
@@ -198,6 +198,35 @@ export default function PlanningView() {
           >
             <Camera size={13} />
             {generating ? '…' : 'Stories 7j'}
+          </button>
+          <button
+            onClick={async () => {
+              if (!confirm('Supprimer toutes les stories planifiées au-delà de J+7 (en statut "idée") ? Les stories sur lesquelles tu as déjà travaillé sont conservées.')) return
+              try {
+                const res = await fetch('/api/social/posts/cleanup-stories', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ days_ahead: 7 }),
+                })
+                const json = await res.json()
+                if (!res.ok) throw new Error(json.error ?? 'Erreur')
+                alert(`✓ ${json.deleted} stories supprimées`)
+                reload()
+              } catch (e) {
+                alert(`Erreur : ${(e as Error).message}`)
+              }
+            }}
+            title="Supprime les stories vides planifiées au-delà des 7 prochains jours"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 12px', fontSize: 11, fontWeight: 600,
+              color: '#ef4444',
+              background: 'transparent',
+              border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8,
+              cursor: 'pointer',
+            }}
+          >
+            <Trash2 size={12} /> Stories &gt; 7j
           </button>
         </div>
       </div>

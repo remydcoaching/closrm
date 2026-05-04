@@ -15,7 +15,7 @@ interface Props {
 
 export default function SocialPlatformTabs({ selected, onChange }: Props) {
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+    <div style={{ display: 'flex', gap: 8 }}>
       {TABS.map(t => {
         const isActive = selected === t.key
         const Icon = t.icon

@@ -108,10 +108,9 @@ export default function ReseauxSociauxPage() {
   return (
     <div style={{ padding: '32px 40px' }}>
       <style>{`@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; } } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>
-          Réseaux sociaux
-        </h1>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <SocialPlatformTabs selected={platform} onChange={setPlatform} />
         {((platform === 'instagram' && igAccount) || (platform === 'youtube' && ytAccount)) && (
           <button
             onClick={handleSync}
@@ -133,11 +132,6 @@ export default function ReseauxSociauxPage() {
           </button>
         )}
       </div>
-      <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 24 }}>
-        Gérez vos réseaux sociaux, stories, reels, vidéos YouTube et calendrier de publication
-      </p>
-
-      <SocialPlatformTabs selected={platform} onChange={setPlatform} />
 
       {loading ? (
         <LoadingSkeleton />
