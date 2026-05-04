@@ -35,7 +35,9 @@ Single source of truth = `social_posts`. Un slot = une row, du brouillon "idée"
 
 - `social_posts` (table principale, étendue)
 - `social_post_publications` (multi-plateforme, inchangé)
-- `ig_content_pillars` (existant, **non modifié** — voir section migration)
+- `ig_content_pillars` (existant, **réutilisé tel quel** — voir section migration)
+
+> **Décision révisée post-self-review** : on n'introduit PAS de nouvelle table `content_pillars`. On utilise directement `ig_content_pillars`. Renommage cosmétique différé pour éviter divergence de données entre 2 tables synchronisées. Audit des 2 consommateurs actuels confirmé (`api/instagram/pillars`, `api/instagram/reels`) — ils restent intacts, le Planning lit/écrit la même table.
 
 ### Nouvelles colonnes sur `social_posts`
 
@@ -55,14 +57,7 @@ Le `status` existant (`draft`/`scheduled`/`published`...) reste intact = état *
 ### Nouvelles tables
 
 ```sql
-content_pillars (
-  id UUID PK,
-  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#3b82f6',
-  created_at TIMESTAMPTZ DEFAULT now()
-)
--- RLS : workspace_members standard
+-- (content_pillars NON créée — on utilise ig_content_pillars existante)
 
 content_trame (
   id UUID PK,

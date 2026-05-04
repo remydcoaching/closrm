@@ -9,6 +9,7 @@ import IgStoriesTab from '@/components/social/instagram/IgStoriesTab'
 import IgReelsTab from '@/components/social/instagram/IgReelsTab'
 import IgCommentsTab from '@/components/social/instagram/IgCommentsTab'
 import SocialCalendarView from '@/components/social/calendar/SocialCalendarView'
+import PlanningView from '@/components/social/planning/PlanningView'
 import YtNotConnected from '@/components/social/youtube/YtNotConnected'
 import YtSubTabs from '@/components/social/youtube/YtSubTabs'
 import YtOverviewTab from '@/components/social/youtube/YtOverviewTab'
@@ -148,6 +149,8 @@ export default function ReseauxSociauxPage() {
         </div>
       ) : platform === 'calendar' ? (
         <SocialCalendarView />
+      ) : platform === 'planning' ? (
+        <PlanningView />
       ) : platform === 'instagram' ? (
         !igAccount ? (
           <IgNotConnected />
