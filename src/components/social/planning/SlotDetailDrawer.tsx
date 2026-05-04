@@ -295,33 +295,42 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           <div style={columnStyle}>
             <ColumnHeader icon={Sparkles} label="Production" color="#a78bfa" />
 
-            <Field label="Accroche / Hook" hint="1 ligne percutante">
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input
-                  type="text"
-                  value={slot.hook ?? ''}
-                  onChange={(e) => setSlot({ ...slot, hook: e.target.value })}
-                  onBlur={() => patch({ hook: slot.hook })}
-                  placeholder="Ex: Comment j'ai perdu 5kg en 2 semaines…"
-                  style={{ ...inputStyle, flex: 1 }}
-                />
-                <button
-                  onClick={generateHooks}
-                  disabled={generatingHooks}
-                  title="Générer 5 hooks avec l'IA"
-                  style={aiBtnStyle(generatingHooks)}
-                >
-                  {generatingHooks ? <Loader size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Wand2 size={13} />}
-                  IA
-                </button>
-                <button
-                  onClick={() => setLibraryOpen(true)}
-                  title="Bibliothèque de hooks"
-                  style={libBtnStyle}
-                >
-                  <BookOpen size={13} />
-                </button>
-              </div>
+            <Field
+              label="Accroche / Hook"
+              hint="1 ligne percutante"
+              action={
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    onClick={generateHooks}
+                    disabled={generatingHooks}
+                    title="Générer 5 hooks avec l'IA"
+                    style={aiBtnStyle(generatingHooks)}
+                  >
+                    {generatingHooks ? (
+                      <Loader size={11} style={{ animation: 'spin 0.8s linear infinite' }} />
+                    ) : (
+                      <Wand2 size={11} />
+                    )}
+                    Suggérer
+                  </button>
+                  <button
+                    onClick={() => setLibraryOpen(true)}
+                    title="Bibliothèque de hooks"
+                    style={libBtnStyle}
+                  >
+                    <BookOpen size={12} />
+                  </button>
+                </div>
+              }
+            >
+              <input
+                type="text"
+                value={slot.hook ?? ''}
+                onChange={(e) => setSlot({ ...slot, hook: e.target.value })}
+                onBlur={() => patch({ hook: slot.hook })}
+                placeholder="Ex: Comment j'ai perdu 5kg en 2 semaines…"
+                style={inputStyle}
+              />
               {slot.hook && (
                 <button
                   onClick={() => saveHookToLibrary(slot.hook!, 'manual')}
@@ -357,29 +366,32 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               />
             </Field>
 
-            <Field label="Script">
-              <div style={{ position: 'relative' }}>
-                <textarea
-                  value={slot.script ?? ''}
-                  onChange={(e) => setSlot({ ...slot, script: e.target.value })}
-                  onBlur={() => patch({ script: slot.script })}
-                  placeholder="Plan de tournage, dialogues, points clés…"
-                  rows={8}
-                  style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
-                />
+            <Field
+              label="Script"
+              action={
                 <button
                   onClick={generateScript}
                   disabled={generatingScript}
-                  title="Générer le script à partir du hook"
-                  style={{
-                    position: 'absolute', bottom: 8, right: 8,
-                    ...aiBtnStyle(generatingScript),
-                  }}
+                  title={slot.hook || slot.title ? 'Générer le script à partir du hook' : 'Renseigne un hook ou titre d\'abord'}
+                  style={aiBtnStyle(generatingScript)}
                 >
-                  {generatingScript ? <Loader size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Wand2 size={13} />}
-                  {generatingScript ? 'Génération…' : 'Générer le script'}
+                  {generatingScript ? (
+                    <Loader size={11} style={{ animation: 'spin 0.8s linear infinite' }} />
+                  ) : (
+                    <Wand2 size={11} />
+                  )}
+                  {generatingScript ? 'Génération…' : 'Générer'}
                 </button>
-              </div>
+              }
+            >
+              <textarea
+                value={slot.script ?? ''}
+                onChange={(e) => setSlot({ ...slot, script: e.target.value })}
+                onBlur={() => patch({ script: slot.script })}
+                placeholder="Plan de tournage, dialogues, points clés… ou clique 'Générer' pour un script structuré IA."
+                rows={8}
+                style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+              />
             </Field>
 
             <Field label="Références" icon={Link2} hint="Liens rushs, moodboard, inspirations">
@@ -978,11 +990,12 @@ function ColumnHeader({ icon: Icon, label, color }: { icon: typeof Send; label: 
 }
 
 function Field({
-  label, hint, icon: Icon, children,
+  label, hint, icon: Icon, action, children,
 }: {
   label: string
   hint?: string
   icon?: typeof Send
+  action?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
@@ -991,6 +1004,7 @@ function Field({
         {Icon && <Icon size={11} color="var(--text-tertiary)" />}
         <label style={labelStyle}>{label}</label>
         {hint && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {hint}</span>}
+        {action && <div style={{ marginLeft: 'auto' }}>{action}</div>}
       </div>
       {children}
     </div>
