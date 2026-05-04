@@ -97,6 +97,17 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
 
   useEffect(() => { setLocalPillars(pillars) }, [pillars])
 
+  // Auto-import du template si trame inexistante ET aucun pillar
+  const autoImportRan = useRef(false)
+  useEffect(() => {
+    if (autoImportRan.current) return
+    if (trame === null && pillars.length === 0) {
+      autoImportRan.current = true
+      importTemplate()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trame, pillars])
+
   const updateStoriesPerDay = (n: number) => {
     setStoriesPerDay(n)
     setStoriesGrid(normalizeGrid(storiesGrid, n))
