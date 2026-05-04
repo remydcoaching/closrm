@@ -321,54 +321,92 @@ export default function IgAcquisitionTab({ onSeeAllInbox }: Props) {
           ) : topReels.length === 0 ? (
             <EmptyState label="Aucun reel synchronisé pour l’instant." />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
               {topReels.map((r, idx) => {
                 const pillar = pillars.find(p => p.id === r.pillar_id)
+                const reelUrl = `https://www.instagram.com/reel/${r.ig_media_id}/`
                 return (
-                  <div key={r.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: 10,
-                    background: 'var(--bg-elevated)', borderRadius: 8,
-                  }}>
+                  <a
+                    key={r.id}
+                    href={reelUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={r.caption ?? 'Reel'}
+                    style={{
+                      position: 'relative',
+                      display: 'flex', flexDirection: 'column',
+                      background: 'var(--bg-elevated)', borderRadius: 10,
+                      overflow: 'hidden', textDecoration: 'none',
+                      border: '1px solid var(--border-primary)',
+                      transition: 'transform 0.15s, border-color 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)'
+                      e.currentTarget.style.borderColor = ACCENT
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'none'
+                      e.currentTarget.style.borderColor = 'var(--border-primary)'
+                    }}
+                  >
+                    {/* Vignette portrait 9:16 */}
                     <div style={{
-                      width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                      background: 'var(--bg-primary)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)',
-                    }}>{idx + 1}</div>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: 6, flexShrink: 0,
+                      position: 'relative', width: '100%', aspectRatio: '9/16',
                       background: r.thumbnail_url ? `url(${r.thumbnail_url})` : 'var(--bg-primary)',
                       backgroundSize: 'cover', backgroundPosition: 'center',
-                    }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                        {pillar && (
-                          <span style={{
-                            fontSize: 9, fontWeight: 700, color: pillar.color, textTransform: 'uppercase',
-                            background: `${pillar.color}1a`, padding: '1px 5px', borderRadius: 3,
-                            letterSpacing: 0.3,
-                          }}>{pillar.name}</span>
-                        )}
-                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                          {r.caption?.slice(0, 60) ?? 'Sans légende'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 12, fontSize: 10, color: 'var(--text-tertiary)' }}>
+                    }}>
+                      {/* Rank pill */}
+                      <span style={{
+                        position: 'absolute', top: 6, left: 6,
+                        width: 22, height: 22, borderRadius: 6,
+                        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 11, fontWeight: 800, color: '#fff',
+                      }}>#{idx + 1}</span>
+                      {/* Engagement pill */}
+                      <span style={{
+                        position: 'absolute', top: 6, right: 6,
+                        padding: '3px 7px', borderRadius: 6,
+                        background: 'rgba(16,185,129,0.95)', color: '#fff',
+                        fontSize: 10, fontWeight: 800,
+                      }}>{r.engagement_rate.toFixed(1)}%</span>
+                      {/* Pillar pill */}
+                      {pillar && (
+                        <span style={{
+                          position: 'absolute', bottom: 6, left: 6,
+                          padding: '3px 7px', borderRadius: 6,
+                          background: `${pillar.color}e6`, color: '#fff',
+                          fontSize: 9, fontWeight: 800, textTransform: 'uppercase',
+                          letterSpacing: 0.3,
+                        }}>{pillar.name}</span>
+                      )}
+                      {/* Bottom gradient + stats */}
+                      <div style={{
+                        position: 'absolute', left: 0, right: 0, bottom: 0,
+                        padding: '20px 8px 8px',
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
+                        display: 'flex', justifyContent: 'space-between',
+                        fontSize: 10, color: '#fff', fontWeight: 600,
+                      }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <Eye size={9} /> {fmt(r.views)}
+                          <Eye size={10} /> {fmt(r.views)}
                         </span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <Heart size={9} /> {fmt(r.likes)}
-                        </span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <MessageCircle size={9} /> {fmt(r.comments)}
+                          <Heart size={10} /> {fmt(r.likes)}
                         </span>
                       </div>
                     </div>
-                    <span style={{
-                      fontSize: 12, fontWeight: 700, color: '#10b981', whiteSpace: 'nowrap',
-                    }}>{r.engagement_rate.toFixed(1)}%</span>
-                  </div>
+                    {/* Caption */}
+                    <div style={{
+                      padding: '8px 10px', fontSize: 11, lineHeight: 1.35,
+                      color: 'var(--text-primary)',
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      minHeight: 36,
+                    }}>
+                      {r.caption ?? <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Sans légende</span>}
+                    </div>
+                  </a>
                 )
               })}
             </div>

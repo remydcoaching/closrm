@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { MessageSquare, MessageCircle, UserPlus, ExternalLink, Eye, EyeOff, ChevronDown, Flame, Filter } from 'lucide-react'
+import { MessageSquare, MessageCircle, UserPlus, ExternalLink, Eye, EyeOff, ChevronDown, Inbox as InboxIcon, CheckCircle2, Layers } from 'lucide-react'
 import { classifyIntent, INTENT_META, intentSortValue, type SocialIntent } from '@/lib/social/intent-classifier'
 
 export interface InboxItem {
@@ -27,17 +27,10 @@ interface Props {
   accentColor?: string
 }
 
-type ViewFilter = 'hot' | 'all' | SocialIntent
+type StatusFilter = 'todo' | 'linked' | 'all'
+type SourceFilter = 'all' | 'dm' | 'comment'
 
-const FILTER_OPTIONS: ({ key: ViewFilter; label: string; icon?: React.ElementType; color?: string })[] = [
-  { key: 'hot',       label: 'Chaud',     icon: Flame,  color: '#f59e0b' },
-  { key: 'all',       label: 'Tout' },
-  { key: 'rdv',       label: 'RDV',       color: INTENT_META.rdv.color },
-  { key: 'prix',      label: 'Prix',      color: INTENT_META.prix.color },
-  { key: 'info',      label: 'Info',      color: INTENT_META.info.color },
-  { key: 'objection', label: 'Objections', color: INTENT_META.objection.color },
-  { key: 'fan',       label: 'Fans',      color: INTENT_META.fan.color },
-]
+const HOT: SocialIntent[] = ['rdv', 'prix', 'info', 'objection']
 
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return ''
@@ -50,45 +43,45 @@ function timeAgo(dateStr: string | null): string {
   if (hours < 24) return `${hours}h`
   const days = Math.floor(hours / 24)
   if (days < 7) return `${days}j`
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
-const HOT: SocialIntent[] = ['rdv', 'prix', 'info', 'objection']
-
 export default function AcquisitionInbox({ items, loading, emptyLabel, previewLimit, showFilters, accentColor = '#a78bfa' }: Props) {
-  const [filter, setFilter] = useState<ViewFilter>('hot')
+  const [status, setStatus] = useState<StatusFilter>('todo')
+  const [source, setSource] = useState<SourceFilter>('all')
   const [showSpam, setShowSpam] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const enriched = useMemo(() => items.map(i => ({ ...i, intent: classifyIntent(i.text) })), [items])
 
   const counts = useMemo(() => {
-    const c: Record<ViewFilter, number> = {
-      hot: 0, all: 0, rdv: 0, prix: 0, info: 0, objection: 0, fan: 0, neutre: 0, spam: 0,
-    }
+    let todo = 0, linked = 0, spam = 0, dm = 0, comment = 0
     for (const it of enriched) {
-      c.all += 1
-      c[it.intent] += 1
-      if (HOT.includes(it.intent)) c.hot += 1
+      if (it.intent === 'spam') { spam += 1; continue }
+      if (it.hasLead) linked += 1
+      else todo += 1
+      if (it.source === 'dm') dm += 1
+      else comment += 1
     }
-    return c
+    return { todo, linked, all: enriched.length - spam, spam, dm, comment }
   }, [enriched])
 
   const filtered = useMemo(() => {
     let list = enriched
     if (!showSpam) list = list.filter(i => i.intent !== 'spam')
-    if (filter === 'hot') list = list.filter(i => HOT.includes(i.intent))
-    else if (filter !== 'all') list = list.filter(i => i.intent === filter)
+    if (status === 'todo')   list = list.filter(i => !i.hasLead)
+    if (status === 'linked') list = list.filter(i =>  i.hasLead)
+    if (source !== 'all') list = list.filter(i => i.source === source)
 
     return list.sort((a, b) => {
+      // Hot intent first within same status
       const di = intentSortValue(b.intent) - intentSortValue(a.intent)
       if (di !== 0) return di
       const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0
       const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0
       return tb - ta
     })
-  }, [enriched, filter, showSpam])
+  }, [enriched, status, source, showSpam])
 
   const display = previewLimit != null ? filtered.slice(0, previewLimit) : filtered
 
@@ -96,65 +89,101 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--bg-elevated)', borderRadius: 8, overflow: 'hidden' }}>
         {[1, 2, 3, 4].map(i => (
-          <div key={i} style={{
-            height: 44, background: 'var(--bg-secondary)',
-            animation: 'pulse 1.5s ease-in-out infinite',
-          }} />
+          <div key={i} style={{ height: 44, background: 'var(--bg-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
         ))}
       </div>
     )
   }
 
+  const STATUS_OPTIONS: { key: StatusFilter; label: string; icon: React.ElementType; count: number }[] = [
+    { key: 'todo',   label: 'À traiter',     icon: InboxIcon,     count: counts.todo },
+    { key: 'linked', label: 'Liés à un lead', icon: CheckCircle2, count: counts.linked },
+    { key: 'all',    label: 'Tout',          icon: Layers,        count: counts.all },
+  ]
+
   return (
     <div>
       {showFilters && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-          {FILTER_OPTIONS.map(opt => {
-            const active = filter === opt.key
-            const Icon = opt.icon
-            const count = counts[opt.key]
-            const isHot = opt.key === 'hot'
-            return (
-              <button
-                key={opt.key}
-                onClick={() => setFilter(opt.key)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  padding: '5px 11px', fontSize: 11, fontWeight: 700,
-                  color: active ? '#fff' : 'var(--text-secondary)',
-                  background: active ? (opt.color ?? accentColor) : 'var(--bg-elevated)',
-                  border: `1px solid ${active ? (opt.color ?? accentColor) : 'var(--border-primary)'}`,
-                  borderRadius: 14, cursor: 'pointer', transition: 'all 0.15s',
-                }}
-              >
-                {Icon && <Icon size={11} />}
-                {opt.label}
-                {isHot && count > 0 && !active && (
+        <div style={{
+          display: 'flex', gap: 16, alignItems: 'center', marginBottom: 14,
+          flexWrap: 'wrap',
+        }}>
+          {/* Status segmented control */}
+          <div style={{
+            display: 'flex', background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)', borderRadius: 8, padding: 2,
+          }}>
+            {STATUS_OPTIONS.map(opt => {
+              const active = status === opt.key
+              const Icon = opt.icon
+              return (
+                <button
+                  key={opt.key}
+                  onClick={() => setStatus(opt.key)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                    color: active ? '#fff' : 'var(--text-secondary)',
+                    background: active ? accentColor : 'transparent',
+                    border: 'none', borderRadius: 6, cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <Icon size={12} />
+                  {opt.label}
                   <span style={{
-                    fontSize: 9, fontWeight: 800, padding: '1px 5px',
-                    background: opt.color, color: '#fff', borderRadius: 8,
-                  }}>{count}</span>
-                )}
-                {!isHot && active && count > 0 && (
-                  <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.85 }}>{count}</span>
-                )}
-              </button>
-            )
-          })}
+                    fontSize: 10, fontWeight: 800,
+                    padding: '1px 6px', borderRadius: 8,
+                    background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg-secondary)',
+                    color: active ? '#fff' : 'var(--text-tertiary)',
+                  }}>{opt.count}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Source filter (only show if both DMs and comments exist) */}
+          {counts.dm > 0 && counts.comment > 0 && (
+            <div style={{
+              display: 'flex', background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-primary)', borderRadius: 8, padding: 2,
+            }}>
+              {(['all', 'dm', 'comment'] as SourceFilter[]).map(s => {
+                const active = source === s
+                const label = s === 'all' ? 'Tout' : s === 'dm' ? 'DMs' : 'Commentaires'
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setSource(s)}
+                    style={{
+                      padding: '6px 11px', fontSize: 11, fontWeight: 600,
+                      color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                      background: active ? 'var(--bg-secondary)' : 'transparent',
+                      border: 'none', borderRadius: 6, cursor: 'pointer',
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           <div style={{ flex: 1 }} />
+
           {counts.spam > 0 && (
             <button
               onClick={() => setShowSpam(s => !s)}
-              title={showSpam ? 'Masquer le bruit' : 'Afficher le bruit (emojis, "first"…)'}
+              title="Bruit = emojis seuls, 'first', 🔥🔥, etc."
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '5px 9px', fontSize: 10, fontWeight: 600,
+                padding: '5px 10px', fontSize: 10, fontWeight: 600,
                 color: 'var(--text-tertiary)', background: 'transparent',
                 border: '1px solid var(--border-primary)', borderRadius: 14, cursor: 'pointer',
               }}
             >
               {showSpam ? <EyeOff size={10} /> : <Eye size={10} />}
-              {showSpam ? 'Masquer' : 'Afficher'} bruit ({counts.spam})
+              Bruit ({counts.spam})
             </button>
           )}
         </div>
@@ -166,9 +195,9 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
           background: 'var(--bg-secondary)', border: '1px dashed var(--border-primary)',
           borderRadius: 10, fontSize: 12, color: 'var(--text-tertiary)',
         }}>
-          {filter === 'hot' && counts.all > 0
-            ? 'Aucun signal d\'achat pour l\'instant. Tu peux passer en "Tout" pour voir tous les messages.'
-            : (emptyLabel ?? 'Aucun message à traiter.')}
+          {status === 'todo'   ? 'Aucun message à traiter — tout est à jour 🎉' :
+           status === 'linked' ? 'Aucun message rattaché à un lead pour l’instant.' :
+           (emptyLabel ?? 'Aucun message.')}
         </div>
       ) : (
         <div style={{
@@ -191,7 +220,6 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
                   transition: 'background 0.1s',
                 }}
               >
-                {/* Compact row */}
                 <button
                   onClick={() => setExpanded(isExpanded ? null : item.id)}
                   className="inbox-row"
@@ -203,7 +231,6 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
                     color: 'var(--text-primary)',
                   }}
                 >
-                  {/* Avatar */}
                   <div style={{
                     width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                     background: item.avatarUrl ? `url(${item.avatarUrl})` : 'var(--bg-elevated)',
@@ -215,10 +242,8 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
                     {!item.avatarUrl && (item.username?.[0]?.toUpperCase() ?? '?')}
                   </div>
 
-                  {/* Source icon */}
                   <SourceIcon size={11} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
 
-                  {/* Username */}
                   <span style={{
                     fontSize: 12, fontWeight: 700, color: 'var(--text-primary)',
                     flexShrink: 0, maxWidth: 130, overflow: 'hidden',
@@ -227,28 +252,14 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
                     {item.username ?? 'Anonyme'}
                   </span>
 
-                  {/* Intent dot or badge — only for hot intents */}
-                  {isHot && (
-                    <span style={{
-                      fontSize: 9, fontWeight: 800, letterSpacing: 0.4, textTransform: 'uppercase',
-                      padding: '2px 6px', borderRadius: 3,
-                      color: intentMeta.color, background: `${intentMeta.color}1a`,
-                      border: `1px solid ${intentMeta.color}40`, flexShrink: 0,
-                    }}>
-                      {intentMeta.label}
-                    </span>
-                  )}
-
-                  {/* Lead badge */}
                   {item.hasLead && (
-                    <span style={{
+                    <span title="Rattaché à un lead" style={{
                       fontSize: 9, fontWeight: 700, color: '#10b981',
                       background: 'rgba(16,185,129,0.12)', padding: '1px 6px',
                       borderRadius: 3, letterSpacing: 0.3, textTransform: 'uppercase', flexShrink: 0,
                     }}>Lead</span>
                   )}
 
-                  {/* Text preview */}
                   <span style={{
                     fontSize: 12, color: 'var(--text-secondary)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -257,7 +268,6 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
                     {item.text ?? <em style={{ color: 'var(--text-tertiary)' }}>(vide)</em>}
                   </span>
 
-                  {/* Timestamp */}
                   <span style={{
                     fontSize: 10, color: 'var(--text-tertiary)',
                     flexShrink: 0, marginLeft: 'auto', minWidth: 36, textAlign: 'right',
@@ -272,7 +282,6 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
                   }} />
                 </button>
 
-                {/* Expanded panel */}
                 {isExpanded && (
                   <div style={{ padding: '4px 14px 14px 30px' }}>
                     <p style={{
@@ -330,14 +339,6 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
                           <ExternalLink size={11} /> Voir
                         </a>
                       )}
-                      {!isHot && (
-                        <span style={{
-                          marginLeft: 'auto', fontSize: 10, color: 'var(--text-tertiary)',
-                          fontStyle: 'italic',
-                        }}>
-                          Pas de signal d&apos;achat détecté
-                        </span>
-                      )}
                     </div>
                   </div>
                 )}
@@ -347,9 +348,7 @@ export default function AcquisitionInbox({ items, loading, emptyLabel, previewLi
         </div>
       )}
 
-      <style>{`
-        .inbox-row:hover { background: var(--bg-elevated) !important; }
-      `}</style>
+      <style>{`.inbox-row:hover { background: var(--bg-elevated) !important; }`}</style>
     </div>
   )
 }
