@@ -105,9 +105,11 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
         {cells.map((c) => {
           const dayPosts = postsByDate.get(c.key) ?? []
+          const posts = dayPosts.filter((p) => p.content_kind !== 'story')
+          const stories = dayPosts.filter((p) => p.content_kind === 'story')
           const isToday = c.key === todayKey
-          const visible = dayPosts.slice(0, MAX_VISIBLE_PER_CELL)
-          const overflow = dayPosts.length - visible.length
+          const visiblePosts = posts.slice(0, MAX_VISIBLE_PER_CELL)
+          const overflowPosts = posts.length - visiblePosts.length
 
           return (
             <div
@@ -126,14 +128,16 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                 <span style={{ fontSize: 11, fontWeight: 700, color: isToday ? '#a78bfa' : 'var(--text-secondary)' }}>
                   {c.date.getDate()}
                 </span>
-                {dayPosts.length > 0 && (
-                  <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>
-                    {dayPosts.length}
+                {(posts.length + stories.length) > 0 && (
+                  <span style={{ fontSize: 9, color: 'var(--text-tertiary)', display: 'flex', gap: 4 }}>
+                    {posts.length > 0 && <span>{posts.length}P</span>}
+                    {stories.length > 0 && <span style={{ color: '#ec4899' }}>{stories.length}S</span>}
                   </span>
                 )}
               </div>
 
-              {visible.map((p) => {
+              {/* Posts — full chips */}
+              {visiblePosts.map((p) => {
                 const pillar = pillars.find((x) => x.id === p.pillar_id)
                 const op = STATUS_OPACITY[(p.production_status ?? 'idea') as SocialProductionStatus]
                 const Icon = KIND_ICON[(p.content_kind ?? 'post') as SocialContentKind]
@@ -166,7 +170,7 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                 )
               })}
 
-              {overflow > 0 && (
+              {overflowPosts > 0 && (
                 <button
                   onClick={() => setDayPopover(c.key)}
                   style={{
@@ -176,7 +180,34 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                     padding: '2px 4px', textAlign: 'left',
                   }}
                 >
-                  +{overflow} autre{overflow > 1 ? 's' : ''}…
+                  +{overflowPosts} post{overflowPosts > 1 ? 's' : ''}…
+                </button>
+              )}
+
+              {/* Stories — pastilles compactes en bas */}
+              {stories.length > 0 && (
+                <button
+                  onClick={() => setDayPopover(c.key)}
+                  title={`${stories.length} stor${stories.length > 1 ? 'ies' : 'y'}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 3,
+                    marginTop: 'auto', padding: '3px 4px',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Camera size={9} color="#ec4899" style={{ flexShrink: 0 }} />
+                  {stories.slice(0, 6).map((s) => {
+                    const pillar = pillars.find((x) => x.id === s.pillar_id)
+                    const op = STATUS_OPACITY[(s.production_status ?? 'idea') as SocialProductionStatus]
+                    return (
+                      <span
+                        key={s.id}
+                        style={{ width: 6, height: 6, borderRadius: '50%', background: pillar?.color ?? '#666', opacity: op, flexShrink: 0 }}
+                      />
+                    )
+                  })}
+                  {stories.length > 6 && <span style={{ fontSize: 8, color: 'var(--text-tertiary)' }}>+{stories.length - 6}</span>}
                 </button>
               )}
             </div>

@@ -27,7 +27,9 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
-    const { year, month } = parsed.data
+    const { year, month, kinds, window, start_date } = parsed.data
+    const includePosts = kinds.includes('post')
+    const includeStories = kinds.includes('story')
 
     const supabase = await createClient()
 
@@ -47,45 +49,70 @@ export async function POST(request: NextRequest) {
     const storiesGrid = (trame.stories_grid ?? {}) as Record<Weekday, (string | null)[]>
     const postsGrid = (trame.posts_grid ?? {}) as Record<Weekday, (string | null)[]>
 
-    const daysInMonth = new Date(year, month, 0).getDate()
+    // Détermine la liste des dates à générer selon window
+    const datesToGenerate: { date: Date; planDate: string }[] = []
+    if (window === 'week') {
+      const start = start_date
+        ? new Date(start_date + 'T00:00:00')
+        : new Date()
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start)
+        d.setDate(start.getDate() + i)
+        datesToGenerate.push({
+          date: d,
+          planDate: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+        })
+      }
+    } else {
+      const daysInMonth = new Date(year, month, 0).getDate()
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month - 1, day)
+        datesToGenerate.push({
+          date,
+          planDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+        })
+      }
+    }
+
     const rows: SlotRow[] = []
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month - 1, day)
+    for (const { date, planDate } of datesToGenerate) {
       const wd = WEEKDAY_FROM_JS[date.getDay()]
-      const planDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
-      const storyCells = storiesGrid[wd] ?? []
-      storyCells.forEach((pillar_id, slot_index) => {
-        if (pillar_id) {
-          rows.push({
-            workspace_id: workspaceId,
-            content_kind: 'story',
-            pillar_id,
-            plan_date: planDate,
-            slot_index,
-            production_status: 'idea',
-            status: 'draft',
-            created_by: userId,
-          })
-        }
-      })
+      if (includeStories) {
+        const storyCells = storiesGrid[wd] ?? []
+        storyCells.forEach((pillar_id, slot_index) => {
+          if (pillar_id) {
+            rows.push({
+              workspace_id: workspaceId,
+              content_kind: 'story',
+              pillar_id,
+              plan_date: planDate,
+              slot_index,
+              production_status: 'idea',
+              status: 'draft',
+              created_by: userId,
+            })
+          }
+        })
+      }
 
-      const postCells = postsGrid[wd] ?? []
-      postCells.forEach((pillar_id, slot_index) => {
-        if (pillar_id) {
-          rows.push({
-            workspace_id: workspaceId,
-            content_kind: 'post',
-            pillar_id,
-            plan_date: planDate,
-            slot_index,
-            production_status: 'idea',
-            status: 'draft',
-            created_by: userId,
-          })
-        }
-      })
+      if (includePosts) {
+        const postCells = postsGrid[wd] ?? []
+        postCells.forEach((pillar_id, slot_index) => {
+          if (pillar_id) {
+            rows.push({
+              workspace_id: workspaceId,
+              content_kind: 'post',
+              pillar_id,
+              plan_date: planDate,
+              slot_index,
+              production_status: 'idea',
+              status: 'draft',
+              created_by: userId,
+            })
+          }
+        })
+      }
     }
 
     if (rows.length === 0) {

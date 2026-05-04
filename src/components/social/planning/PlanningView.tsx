@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Settings, Sparkles, KanbanSquare, Calendar as CalIcon, Plus } from 'lucide-react'
+import { Settings, Sparkles, KanbanSquare, Calendar as CalIcon, Plus, FileText, Camera } from 'lucide-react'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
 import TrameEditorModal from './TrameEditorModal'
 import BoardView from './BoardView'
@@ -71,23 +71,27 @@ export default function PlanningView() {
     (g) => g.year === targetMonth.year && g.month === targetMonth.month
   )
 
-  const handleGenerate = async (force = false) => {
+  const generate = async (kinds: ('post' | 'story')[], window: 'month' | 'week', label: string) => {
     if (!trame) {
       setTrameModalOpen(true)
       return
     }
-    if (alreadyGenerated && !force) return
     setGenerating(true)
     try {
+      const today = new Date()
+      const fmtDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      const body = window === 'week'
+        ? { year: today.getFullYear(), month: today.getMonth() + 1, kinds, window, start_date: fmtDate }
+        : { ...targetMonth, kinds, window }
       const res = await fetch('/api/social/trame/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(targetMonth),
+        body: JSON.stringify(body),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Erreur génération')
       const { slots_created, slots_skipped } = json.data
-      alert(`✓ ${slots_created} slots créés (${slots_skipped ?? 0} déjà existants) pour ${targetMonthLabel}`)
+      alert(`✓ ${slots_created} slots créés (${slots_skipped ?? 0} déjà existants) — ${label}`)
       await reload()
     } catch (e) {
       alert(`Erreur: ${(e as Error).message}`)
@@ -162,24 +166,38 @@ export default function PlanningView() {
             <Settings size={14} /> Trame
           </button>
           <button
-            onClick={() => handleGenerate(alreadyGenerated)}
+            onClick={() => generate(['post'], 'month', `posts de ${targetMonthLabel}`)}
             disabled={generating}
+            title="Génère uniquement les posts du mois prochain"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', fontSize: 12, fontWeight: 600,
               color: '#fff',
-              background: alreadyGenerated ? '#666' : '#a78bfa',
+              background: '#a78bfa',
               border: 'none', borderRadius: 8,
               cursor: generating ? 'wait' : 'pointer',
               opacity: generating ? 0.7 : 1,
             }}
           >
-            <Sparkles size={14} />
-            {generating
-              ? 'Génération…'
-              : alreadyGenerated
-                ? `Régénérer ${targetMonthLabel}`
-                : `Générer ${targetMonthLabel}`}
+            <FileText size={13} />
+            {generating ? '…' : `Posts ${targetMonthLabel.split(' ')[0]}`}
+          </button>
+          <button
+            onClick={() => generate(['story'], 'week', 'stories des 7 prochains jours')}
+            disabled={generating}
+            title="Génère les stories pour les 7 prochains jours seulement"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', fontSize: 12, fontWeight: 600,
+              color: '#fff',
+              background: '#ec4899',
+              border: 'none', borderRadius: 8,
+              cursor: generating ? 'wait' : 'pointer',
+              opacity: generating ? 0.7 : 1,
+            }}
+          >
+            <Camera size={13} />
+            {generating ? '…' : 'Stories 7j'}
           </button>
         </div>
       </div>

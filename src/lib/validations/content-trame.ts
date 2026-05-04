@@ -17,6 +17,10 @@ export const upsertTrameSchema = z.object({
 export const generateMonthSchema = z.object({
   year: z.number().int().min(2025).max(2050),
   month: z.number().int().min(1).max(12),
+  kinds: z.array(z.enum(['post', 'story'])).optional().default(['post', 'story']),
+  // window: 'month' = tout le mois ; 'week' = 7 jours à partir d'aujourd'hui
+  window: z.enum(['month', 'week']).optional().default('month'),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
 export type UpsertTrameInput = z.infer<typeof upsertTrameSchema>
