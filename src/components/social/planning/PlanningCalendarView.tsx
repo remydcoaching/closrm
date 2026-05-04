@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Camera, FileText, Film, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Camera, FileText, Film, X, Check, Lightbulb, Clapperboard, Scissors, Sparkles, CheckCircle2 } from 'lucide-react'
 import type {
   ContentPillar,
   SocialPostWithPublications,
@@ -21,7 +21,14 @@ const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet'
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
 const STATUS_OPACITY: Record<SocialProductionStatus, number> = {
-  idea: 0.4, to_film: 0.55, filmed: 0.7, edited: 0.85, ready: 1,
+  idea: 0.5, to_film: 0.65, filmed: 0.8, edited: 0.9, ready: 1,
+}
+const STATUS_META: Record<SocialProductionStatus, { icon: typeof Camera; color: string; label: string }> = {
+  idea:    { icon: Lightbulb,    color: '#94a3b8', label: 'Idée' },
+  to_film: { icon: Clapperboard, color: '#f59e0b', label: 'À filmer' },
+  filmed:  { icon: Camera,       color: '#06b6d4', label: 'Filmé' },
+  edited:  { icon: Scissors,     color: '#8b5cf6', label: 'Monté' },
+  ready:   { icon: Sparkles,     color: '#10b981', label: 'Prêt' },
 }
 const KIND_ICON: Record<SocialContentKind, typeof Camera> = {
   post: FileText, story: Camera, reel: Film,
@@ -92,6 +99,28 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
         >Aujourd'hui</button>
       </div>
 
+      {/* Status legend */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '8px 12px', marginBottom: 12, background: 'var(--bg-secondary)', borderRadius: 8, fontSize: 10, alignItems: 'center' }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>État :</span>
+        {(Object.entries(STATUS_META) as [SocialProductionStatus, typeof STATUS_META.idea][]).map(([key, meta]) => {
+          const Icon = meta.icon
+          return (
+            <span key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-tertiary)' }}>
+              <Icon size={10} color={meta.color} />
+              {meta.label}
+            </span>
+          )
+        })}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-tertiary)' }}>
+          <CheckCircle2 size={10} color="#10b981" />
+          Publié
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-tertiary)' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 5px #a78bfa' }} />
+          Programmé
+        </span>
+      </div>
+
       {/* Weekday headers */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
         {WEEKDAYS.map((wd) => (
@@ -116,7 +145,7 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
               key={c.key}
               style={{
                 position: 'relative',
-                minHeight: 130, padding: 6,
+                minHeight: 96, padding: 6,
                 background: isToday ? 'rgba(167,139,250,0.06)' : (c.inMonth ? 'var(--bg-secondary)' : 'transparent'),
                 border: isToday ? '1px solid rgba(167,139,250,0.4)' : '1px solid var(--border-primary)',
                 borderRadius: 8,
@@ -136,36 +165,48 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                 )}
               </div>
 
-              {/* Posts — full chips */}
+              {/* Posts — full chips with status indicator */}
               {visiblePosts.map((p) => {
                 const pillar = pillars.find((x) => x.id === p.pillar_id)
-                const op = STATUS_OPACITY[(p.production_status ?? 'idea') as SocialProductionStatus]
-                const Icon = KIND_ICON[(p.content_kind ?? 'post') as SocialContentKind]
+                const prodStatus = (p.production_status ?? 'idea') as SocialProductionStatus
+                const meta = STATUS_META[prodStatus]
+                const op = STATUS_OPACITY[prodStatus]
                 const isPublished = p.status === 'published'
+                const isScheduled = p.status === 'scheduled'
+                const isFailed = p.status === 'failed'
                 const color = pillar?.color ?? '#666'
+                const StatusIcon = isPublished ? CheckCircle2 : meta.icon
+                const statusColor = isPublished ? '#10b981' : isFailed ? '#ef4444' : meta.color
                 return (
                   <button
                     key={p.id}
                     onClick={() => onSelectSlot(p.id)}
-                    title={`${pillar?.name ?? '—'} · ${p.production_status ?? 'idea'}`}
+                    title={`${pillar?.name ?? '—'} · ${isPublished ? 'Publié' : isScheduled ? 'Programmé' : meta.label}`}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 4,
-                      padding: '3px 6px',
-                      background: color + (isPublished ? '15' : '22'),
-                      border: `1px solid ${color}${isPublished ? '40' : '55'}`,
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '4px 6px',
+                      background: color + (isPublished ? '12' : '20'),
+                      border: `1px solid ${color}${isPublished ? '35' : '50'}`,
                       borderLeft: `3px solid ${color}`,
                       borderRadius: 4, cursor: 'pointer',
-                      opacity: op,
+                      opacity: isPublished ? 0.75 : op,
                       width: '100%', overflow: 'hidden',
                       transition: 'all 0.1s',
+                      position: 'relative',
                     }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}
                   >
-                    <Icon size={9} color={color} style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'left' }}>
+                    <StatusIcon size={10} color={statusColor} style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'left', textDecoration: isPublished ? 'line-through' : 'none' }}>
                       {pillar?.name ?? '—'}
                     </span>
+                    {isScheduled && (
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 5px #a78bfa' }} />
+                    )}
+                    {isFailed && (
+                      <span style={{ fontSize: 8, fontWeight: 700, color: '#ef4444' }}>!</span>
+                    )}
                   </button>
                 )
               })}
