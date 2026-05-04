@@ -16,7 +16,8 @@ export default function PlanningView() {
   const [generations, setGenerations] = useState<{ year: number; month: number; slots_created: number }[]>([])
   const [pillars, setPillars] = useState<ContentPillar[]>([])
   const [posts, setPosts] = useState<SocialPostWithPublications[]>([])
-  const [loading, setLoading] = useState(true)
+  const [structureLoading, setStructureLoading] = useState(true) // trame + pillars
+  const [postsLoading, setPostsLoading] = useState(true)
   const [trameModalOpen, setTrameModalOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
@@ -30,27 +31,40 @@ export default function PlanningView() {
     return m > 12 ? { year: cursor.year + 1, month: 1 } : { year: cursor.year, month: m }
   })()
 
-  const reload = useCallback(async () => {
-    setLoading(true)
+  const reloadStructure = useCallback(async () => {
+    setStructureLoading(true)
     try {
-      const [trameRes, pillarsRes, postsRes] = await Promise.all([
+      const [trameRes, pillarsRes] = await Promise.all([
         fetch('/api/social/trame'),
         fetch('/api/social/pillars'),
-        fetch(buildPostsUrl(cursor)),
       ])
       const trameJson = await trameRes.json()
       const pillarsJson = await pillarsRes.json()
-      const postsJson = await postsRes.json()
       setTrame(trameJson.data ?? null)
       setGenerations(trameJson.generations ?? [])
       setPillars(pillarsJson.data ?? [])
-      setPosts(postsJson.data ?? [])
     } finally {
-      setLoading(false)
+      setStructureLoading(false)
+    }
+  }, [])
+
+  const reloadPosts = useCallback(async () => {
+    setPostsLoading(true)
+    try {
+      const res = await fetch(buildPostsUrl(cursor))
+      const json = await res.json()
+      setPosts(json.data ?? [])
+    } finally {
+      setPostsLoading(false)
     }
   }, [cursor])
 
-  useEffect(() => { reload() }, [reload])
+  const reload = useCallback(async () => {
+    await Promise.all([reloadStructure(), reloadPosts()])
+  }, [reloadStructure, reloadPosts])
+
+  useEffect(() => { reloadStructure() }, [reloadStructure])
+  useEffect(() => { reloadPosts() }, [reloadPosts])
 
   const targetMonthLabel = `${MONTHS_FR[targetMonth.month - 1]} ${targetMonth.year}`
   const alreadyGenerated = generations.some(
@@ -139,27 +153,36 @@ export default function PlanningView() {
       </div>
 
       {/* Content */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-tertiary)', fontSize: 13 }}>
-          Chargement…
-        </div>
+      {structureLoading ? (
+        <SkeletonBoard />
       ) : !trame ? (
         <EmptyTrame onCreate={() => setTrameModalOpen(true)} />
-      ) : view === 'board' ? (
-        <BoardView
-          posts={posts}
-          pillars={pillars}
-          onSelectSlot={setSelectedSlotId}
-          onChange={reload}
-        />
       ) : (
-        <PlanningCalendarView
-          posts={posts}
-          pillars={pillars}
-          cursor={cursor}
-          onCursorChange={setCursor}
-          onSelectSlot={setSelectedSlotId}
-        />
+        <>
+          {postsLoading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+              <span style={{ width: 10, height: 10, border: '2px solid #a78bfa', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              Chargement des slots…
+            </div>
+          )}
+          {view === 'board' ? (
+            <BoardView
+              posts={posts}
+              pillars={pillars}
+              onSelectSlot={setSelectedSlotId}
+              onChange={reload}
+            />
+          ) : (
+            <PlanningCalendarView
+              posts={posts}
+              pillars={pillars}
+              cursor={cursor}
+              onCursorChange={setCursor}
+              onSelectSlot={setSelectedSlotId}
+            />
+          )}
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </>
       )}
 
       {trameModalOpen && (
@@ -184,7 +207,8 @@ export default function PlanningView() {
 }
 
 function buildPostsUrl(cursor: { year: number; month: number }) {
-  const from = new Date(cursor.year, cursor.month - 2, 1)
+  // Fenêtre : mois courant + 1 mois suivant (suffisant pour board+calendrier en vue par défaut)
+  const from = new Date(cursor.year, cursor.month - 1, 1)
   const to = new Date(cursor.year, cursor.month + 1, 0)
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -200,6 +224,29 @@ function tabBtnStyle(active: boolean): React.CSSProperties {
     border: 'none', borderRadius: 6,
     cursor: 'pointer',
   }
+}
+
+function SkeletonBoard() {
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} style={{ width: 100, height: 30, background: 'var(--bg-secondary)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: 12, height: 320, animation: 'pulse 1.5s ease-in-out infinite' }}>
+            <div style={{ width: '50%', height: 12, background: 'var(--bg-elevated)', borderRadius: 4, marginBottom: 16 }} />
+            {[1, 2, 3].map((j) => (
+              <div key={j} style={{ height: 50, background: 'var(--bg-elevated)', borderRadius: 6, marginBottom: 8 }} />
+            ))}
+          </div>
+        ))}
+      </div>
+      <style>{`@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.8; } }`}</style>
+    </div>
+  )
 }
 
 function EmptyTrame({ onCreate }: { onCreate: () => void }) {
