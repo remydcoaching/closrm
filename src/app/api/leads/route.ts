@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         // Escape special PostgREST characters in search term
         const escaped = s.replace(/[%_]/g, '\\$&')
         query = query.or(
-          `first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%`
+          `first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%,instagram_handle.ilike.%${escaped}%`
         )
       }
     }

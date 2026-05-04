@@ -1400,6 +1400,64 @@ export interface SocialPost {
   created_by: string | null
   created_at: string
   updated_at: string
+  content_kind: SocialContentKind | null
+  production_status: SocialProductionStatus | null
+  plan_date: string | null
+  slot_index: number | null
+  hook: string | null
+  script: string | null
+  references_urls: string[]
+  notes: string | null
+}
+
+export type SocialContentKind = 'post' | 'story' | 'reel'
+
+export type SocialProductionStatus = 'idea' | 'to_film' | 'filmed' | 'edited' | 'ready'
+
+export const PRODUCTION_STATUSES: { value: SocialProductionStatus; label: string }[] = [
+  { value: 'idea', label: 'Idée' },
+  { value: 'to_film', label: 'À filmer' },
+  { value: 'filmed', label: 'Filmé' },
+  { value: 'edited', label: 'Monté' },
+  { value: 'ready', label: 'Prêt' },
+]
+
+export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+
+export const WEEKDAYS_ORDERED: Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+
+export const WEEKDAY_LABELS: Record<Weekday, string> = {
+  mon: 'Lundi', tue: 'Mardi', wed: 'Mercredi', thu: 'Jeudi',
+  fri: 'Vendredi', sat: 'Samedi', sun: 'Dimanche',
+}
+
+export interface ContentTrame {
+  id: string
+  workspace_id: string
+  stories_grid: Record<Weekday, (string | null)[]>
+  posts_grid: Record<Weekday, (string | null)[]>
+  stories_per_day: number
+  posts_per_day: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ContentTrameGeneration {
+  id: string
+  workspace_id: string
+  year: number
+  month: number
+  generated_at: string
+  generated_by: string | null
+  slots_created: number
+}
+
+export interface ContentPillar {
+  id: string
+  workspace_id: string
+  name: string
+  color: string
+  created_at: string
 }
 
 export type SocialPublicationStatus =

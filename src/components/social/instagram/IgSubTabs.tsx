@@ -1,10 +1,10 @@
 'use client'
 
 const TABS = [
-  { key: 'general', label: 'Général' },
-  { key: 'stories', label: 'Stories' },
-  { key: 'reels', label: 'Reels' },
-  { key: 'comments', label: 'Commentaires' },
+  { key: 'acquisition', label: 'Acquisition' },
+  { key: 'inbox',       label: 'Inbox' },
+  { key: 'stories',     label: 'Stories' },
+  { key: 'reels',       label: 'Reels' },
 ] as const
 
 interface Props {
