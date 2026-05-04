@@ -266,31 +266,73 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                 </button>
               )}
 
-              {/* Stories — pastilles compactes en bas */}
+              {/* Stories — chips compactes individuelles */}
               {stories.length > 0 && (
-                <button
-                  onClick={() => setDayPopover(c.key)}
-                  title={`${stories.length} stor${stories.length > 1 ? 'ies' : 'y'}`}
-                  style={{
+                <div style={{
+                  marginTop: 'auto',
+                  display: 'flex', flexDirection: 'column', gap: 2,
+                  paddingTop: 4, borderTop: '1px dashed var(--border-primary)',
+                }}>
+                  <div style={{
                     display: 'flex', alignItems: 'center', gap: 3,
-                    marginTop: 'auto', padding: '3px 4px',
-                    background: 'transparent', border: 'none', cursor: 'pointer',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <Camera size={9} color="#ec4899" style={{ flexShrink: 0 }} />
-                  {stories.slice(0, 6).map((s) => {
-                    const pillar = pillars.find((x) => x.id === s.pillar_id)
-                    const op = STATUS_OPACITY[(s.production_status ?? 'idea') as SocialProductionStatus]
-                    return (
-                      <span
-                        key={s.id}
-                        style={{ width: 6, height: 6, borderRadius: '50%', background: pillar?.color ?? '#666', opacity: op, flexShrink: 0 }}
-                      />
-                    )
-                  })}
-                  {stories.length > 6 && <span style={{ fontSize: 8, color: 'var(--text-tertiary)' }}>+{stories.length - 6}</span>}
-                </button>
+                    fontSize: 8, fontWeight: 700, color: '#ec4899',
+                    textTransform: 'uppercase', letterSpacing: 0.4,
+                  }}>
+                    <Camera size={8} />
+                    Stories ({stories.length})
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                    {stories.slice(0, 4).map((s) => {
+                      const pillar = pillars.find((x) => x.id === s.pillar_id)
+                      const prodStatus = (s.production_status ?? 'idea') as SocialProductionStatus
+                      const meta = STATUS_META[prodStatus]
+                      const isPublished = s.status === 'published'
+                      const isScheduled = s.status === 'scheduled'
+                      const StatusIcon = isPublished ? CheckCircle2 : meta.icon
+                      const color = pillar?.color ?? '#ec4899'
+                      const statusColor = isPublished ? '#10b981' : meta.color
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={(e) => { e.stopPropagation(); onSelectSlot(s.id) }}
+                          title={`${pillar?.name ?? 'Story'} · ${isPublished ? 'Publié' : isScheduled ? 'Programmé' : meta.label}`}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            padding: '2px 5px',
+                            background: `${color}22`,
+                            border: `1px solid ${color}55`,
+                            borderRadius: 3, cursor: 'pointer',
+                            fontSize: 8, fontWeight: 700, color,
+                            textTransform: 'uppercase', letterSpacing: 0.2,
+                            opacity: isPublished ? 0.6 : 1,
+                            position: 'relative',
+                          }}
+                        >
+                          <StatusIcon size={7} color={statusColor} />
+                          <span style={{
+                            maxWidth: 50, overflow: 'hidden',
+                            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {pillar?.name?.slice(0, 6) ?? '—'}
+                          </span>
+                          {isScheduled && (
+                            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 4px #a78bfa' }} />
+                          )}
+                        </button>
+                      )
+                    })}
+                    {stories.length > 4 && (
+                      <button
+                        onClick={() => setDayPopover(c.key)}
+                        style={{
+                          padding: '2px 5px', fontSize: 8, fontWeight: 700,
+                          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+                          borderRadius: 3, color: 'var(--text-tertiary)', cursor: 'pointer',
+                        }}
+                      >+{stories.length - 4}</button>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           )
