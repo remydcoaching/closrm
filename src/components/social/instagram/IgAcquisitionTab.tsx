@@ -325,6 +325,7 @@ export default function IgAcquisitionTab({ onSeeAllInbox }: Props) {
               {topReels.map((r, idx) => {
                 const pillar = pillars.find(p => p.id === r.pillar_id)
                 const reelUrl = `https://www.instagram.com/reel/${r.ig_media_id}/`
+                const accent = pillar?.color ?? ACCENT
                 return (
                   <a
                     key={r.id}
@@ -335,76 +336,89 @@ export default function IgAcquisitionTab({ onSeeAllInbox }: Props) {
                     style={{
                       position: 'relative',
                       display: 'flex', flexDirection: 'column',
-                      background: 'var(--bg-elevated)', borderRadius: 10,
+                      borderRadius: 12,
                       overflow: 'hidden', textDecoration: 'none',
                       border: '1px solid var(--border-primary)',
+                      aspectRatio: '9/16',
+                      background: r.thumbnail_url
+                        ? `linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.85)), url(${r.thumbnail_url}) center/cover`
+                        : `linear-gradient(160deg, ${accent}cc 0%, ${accent}33 60%, var(--bg-primary) 100%)`,
                       transition: 'transform 0.15s, border-color 0.15s',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'translateY(-2px)'
-                      e.currentTarget.style.borderColor = ACCENT
+                      e.currentTarget.style.borderColor = accent
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = 'none'
                       e.currentTarget.style.borderColor = 'var(--border-primary)'
                     }}
                   >
-                    {/* Vignette portrait 9:16 */}
+                    {/* Top row */}
                     <div style={{
-                      position: 'relative', width: '100%', aspectRatio: '9/16',
-                      background: r.thumbnail_url ? `url(${r.thumbnail_url})` : 'var(--bg-primary)',
-                      backgroundSize: 'cover', backgroundPosition: 'center',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                      padding: 8,
                     }}>
-                      {/* Rank pill */}
                       <span style={{
-                        position: 'absolute', top: 6, left: 6,
-                        width: 22, height: 22, borderRadius: 6,
-                        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+                        width: 24, height: 24, borderRadius: 6,
+                        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 11, fontWeight: 800, color: '#fff',
                       }}>#{idx + 1}</span>
-                      {/* Engagement pill */}
                       <span style={{
-                        position: 'absolute', top: 6, right: 6,
-                        padding: '3px 7px', borderRadius: 6,
-                        background: 'rgba(16,185,129,0.95)', color: '#fff',
+                        padding: '3px 8px', borderRadius: 6,
+                        background: '#10b981', color: '#fff',
                         fontSize: 10, fontWeight: 800,
                       }}>{r.engagement_rate.toFixed(1)}%</span>
-                      {/* Pillar pill */}
+                    </div>
+
+                    {/* Caption (dominant when no thumb) */}
+                    <div style={{
+                      flex: 1, padding: '4px 10px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      textAlign: 'center',
+                    }}>
+                      <span style={{
+                        fontSize: 13, fontWeight: 600, color: '#fff', lineHeight: 1.3,
+                        textShadow: '0 1px 6px rgba(0,0,0,0.6)',
+                        display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}>
+                        {r.caption?.replace(/^["“”']+|["“”']+$/g, '').trim() || (
+                          <span style={{ fontStyle: 'italic', opacity: 0.65 }}>Sans légende</span>
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Bottom : pillar + stats */}
+                    <div style={{
+                      padding: '8px 10px',
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.85) 50%, transparent)',
+                      display: 'flex', flexDirection: 'column', gap: 6,
+                    }}>
                       {pillar && (
                         <span style={{
-                          position: 'absolute', bottom: 6, left: 6,
-                          padding: '3px 7px', borderRadius: 6,
-                          background: `${pillar.color}e6`, color: '#fff',
+                          alignSelf: 'flex-start',
+                          padding: '2px 7px', borderRadius: 4,
+                          background: `${pillar.color}`, color: '#fff',
                           fontSize: 9, fontWeight: 800, textTransform: 'uppercase',
                           letterSpacing: 0.3,
                         }}>{pillar.name}</span>
                       )}
-                      {/* Bottom gradient + stats */}
                       <div style={{
-                        position: 'absolute', left: 0, right: 0, bottom: 0,
-                        padding: '20px 8px 8px',
-                        background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
-                        display: 'flex', justifyContent: 'space-between',
-                        fontSize: 10, color: '#fff', fontWeight: 600,
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        fontSize: 10, color: '#fff', fontWeight: 700,
                       }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <Eye size={10} /> {fmt(r.views)}
+                          <Eye size={11} /> {fmt(r.views)}
                         </span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <Heart size={10} /> {fmt(r.likes)}
+                          <Heart size={11} /> {fmt(r.likes)}
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                          <MessageCircle size={11} /> {fmt(r.comments)}
                         </span>
                       </div>
-                    </div>
-                    {/* Caption */}
-                    <div style={{
-                      padding: '8px 10px', fontSize: 11, lineHeight: 1.35,
-                      color: 'var(--text-primary)',
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      minHeight: 36,
-                    }}>
-                      {r.caption ?? <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Sans légende</span>}
                     </div>
                   </a>
                 )
