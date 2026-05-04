@@ -3,9 +3,9 @@
 import { Camera, Video, LayoutGrid } from 'lucide-react'
 
 const TABS = [
+  { key: 'planning',  label: 'Planning',  icon: LayoutGrid, color: '#a78bfa', active: true },
   { key: 'instagram', label: 'Instagram', icon: Camera,     color: '#EC4899', active: true },
   { key: 'youtube',   label: 'YouTube',   icon: Video,      color: '#FF0000', active: true },
-  { key: 'planning',  label: 'Planning',   icon: LayoutGrid, color: '#a78bfa', active: true },
 ] as const
 
 interface Props {

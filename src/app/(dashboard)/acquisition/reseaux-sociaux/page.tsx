@@ -38,7 +38,7 @@ function LoadingSkeleton() {
 }
 
 export default function ReseauxSociauxPage() {
-  const [platform, setPlatform] = useState('instagram')
+  const [platform, setPlatform] = useState('planning')
   const [igTab, setIgTab] = useState('acquisition')
   const [ytTab, setYtTab] = useState('acquisition')
 

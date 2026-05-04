@@ -7,6 +7,7 @@ import { Inbox, TrendingUp, Users, Flame, ArrowRight, Eye, Heart, MessageCircle 
 import type { IgConversation, IgComment, IgReel, IgSnapshot, IgContentPillar } from '@/types'
 import AcquisitionInbox, { type InboxItem } from '../AcquisitionInbox'
 import { classifyIntent, intentSortValue } from '@/lib/social/intent-classifier'
+import { mediaIdToShortcode } from '@/lib/instagram/shortcode'
 
 interface Props {
   onSeeAllInbox: () => void
@@ -322,107 +323,9 @@ export default function IgAcquisitionTab({ onSeeAllInbox }: Props) {
             <EmptyState label="Aucun reel synchronisé pour l’instant." />
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
-              {topReels.map((r, idx) => {
-                const pillar = pillars.find(p => p.id === r.pillar_id)
-                const reelUrl = `https://www.instagram.com/reel/${r.ig_media_id}/`
-                const accent = pillar?.color ?? ACCENT
-                return (
-                  <a
-                    key={r.id}
-                    href={reelUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={r.caption ?? 'Reel'}
-                    style={{
-                      position: 'relative',
-                      display: 'flex', flexDirection: 'column',
-                      borderRadius: 12,
-                      overflow: 'hidden', textDecoration: 'none',
-                      border: '1px solid var(--border-primary)',
-                      aspectRatio: '9/16',
-                      background: r.thumbnail_url
-                        ? `linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.85)), url(${r.thumbnail_url}) center/cover`
-                        : `linear-gradient(160deg, ${accent}cc 0%, ${accent}33 60%, var(--bg-primary) 100%)`,
-                      transition: 'transform 0.15s, border-color 0.15s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)'
-                      e.currentTarget.style.borderColor = accent
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'none'
-                      e.currentTarget.style.borderColor = 'var(--border-primary)'
-                    }}
-                  >
-                    {/* Top row */}
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                      padding: 8,
-                    }}>
-                      <span style={{
-                        width: 24, height: 24, borderRadius: 6,
-                        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 11, fontWeight: 800, color: '#fff',
-                      }}>#{idx + 1}</span>
-                      <span style={{
-                        padding: '3px 8px', borderRadius: 6,
-                        background: '#10b981', color: '#fff',
-                        fontSize: 10, fontWeight: 800,
-                      }}>{r.engagement_rate.toFixed(1)}%</span>
-                    </div>
-
-                    {/* Caption (dominant when no thumb) */}
-                    <div style={{
-                      flex: 1, padding: '4px 10px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      textAlign: 'center',
-                    }}>
-                      <span style={{
-                        fontSize: 13, fontWeight: 600, color: '#fff', lineHeight: 1.3,
-                        textShadow: '0 1px 6px rgba(0,0,0,0.6)',
-                        display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}>
-                        {r.caption?.replace(/^["“”']+|["“”']+$/g, '').trim() || (
-                          <span style={{ fontStyle: 'italic', opacity: 0.65 }}>Sans légende</span>
-                        )}
-                      </span>
-                    </div>
-
-                    {/* Bottom : pillar + stats */}
-                    <div style={{
-                      padding: '8px 10px',
-                      background: 'linear-gradient(to top, rgba(0,0,0,0.85) 50%, transparent)',
-                      display: 'flex', flexDirection: 'column', gap: 6,
-                    }}>
-                      {pillar && (
-                        <span style={{
-                          alignSelf: 'flex-start',
-                          padding: '2px 7px', borderRadius: 4,
-                          background: `${pillar.color}`, color: '#fff',
-                          fontSize: 9, fontWeight: 800, textTransform: 'uppercase',
-                          letterSpacing: 0.3,
-                        }}>{pillar.name}</span>
-                      )}
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        fontSize: 10, color: '#fff', fontWeight: 700,
-                      }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <Eye size={11} /> {fmt(r.views)}
-                        </span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <Heart size={11} /> {fmt(r.likes)}
-                        </span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          <MessageCircle size={11} /> {fmt(r.comments)}
-                        </span>
-                      </div>
-                    </div>
-                  </a>
-                )
-              })}
+              {topReels.map((r, idx) => (
+                <ReelThumbCard key={r.id} reel={r} rank={idx + 1} pillar={pillars.find(p => p.id === r.pillar_id)} />
+              ))}
             </div>
           )}
         </CardShell>
@@ -484,6 +387,129 @@ export default function IgAcquisitionTab({ onSeeAllInbox }: Props) {
         </CardShell>
       </div>
     </div>
+  )
+}
+
+function ReelThumbCard({ reel, rank, pillar }: { reel: IgReel; rank: number; pillar?: IgContentPillar }) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const shortcode = mediaIdToShortcode(reel.ig_media_id)
+  const reelUrl = shortcode ? `https://www.instagram.com/reel/${shortcode}/` : '#'
+  const accent = pillar?.color ?? ACCENT
+  const showImage = !!reel.thumbnail_url && !imgFailed
+
+  return (
+    <a
+      href={reelUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={reel.caption ?? 'Reel'}
+      style={{
+        position: 'relative',
+        display: 'block',
+        borderRadius: 12,
+        overflow: 'hidden', textDecoration: 'none',
+        border: '1px solid var(--border-primary)',
+        aspectRatio: '9/16',
+        background: showImage ? '#000' : `linear-gradient(160deg, ${accent}cc 0%, ${accent}33 60%, var(--bg-primary) 100%)`,
+        transition: 'transform 0.15s, border-color 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)'
+        e.currentTarget.style.borderColor = accent
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'none'
+        e.currentTarget.style.borderColor = 'var(--border-primary)'
+      }}
+    >
+      {/* Thumbnail */}
+      {showImage && (
+        <img
+          src={reel.thumbnail_url!}
+          alt=""
+          referrerPolicy="no-referrer"
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+          style={{
+            position: 'absolute', inset: 0,
+            width: '100%', height: '100%',
+            objectFit: 'cover', display: 'block',
+          }}
+        />
+      )}
+
+      {/* Caption fallback when no image */}
+      {!showImage && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          padding: '40px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          textAlign: 'center',
+        }}>
+          <span style={{
+            fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1.3,
+            textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+            display: '-webkit-box', WebkitLineClamp: 6, WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}>
+            {reel.caption?.replace(/^["“”']+|["“”']+$/g, '').trim() || (
+              <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Sans légende</span>
+            )}
+          </span>
+        </div>
+      )}
+
+      {/* Top row */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+        padding: 8, zIndex: 1,
+      }}>
+        <span style={{
+          width: 24, height: 24, borderRadius: 6,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 800, color: '#fff',
+        }}>#{rank}</span>
+        <span style={{
+          padding: '3px 8px', borderRadius: 6,
+          background: '#10b981', color: '#fff',
+          fontSize: 10, fontWeight: 800,
+        }}>{reel.engagement_rate.toFixed(1)}%</span>
+      </div>
+
+      {/* Bottom : pillar + stats */}
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0,
+        padding: '24px 10px 8px',
+        background: 'linear-gradient(to top, rgba(0,0,0,0.85) 50%, transparent)',
+        display: 'flex', flexDirection: 'column', gap: 6,
+        zIndex: 1,
+      }}>
+        {pillar && (
+          <span style={{
+            alignSelf: 'flex-start',
+            padding: '2px 7px', borderRadius: 4,
+            background: pillar.color, color: '#fff',
+            fontSize: 9, fontWeight: 800, textTransform: 'uppercase',
+            letterSpacing: 0.3,
+          }}>{pillar.name}</span>
+        )}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          fontSize: 10, color: '#fff', fontWeight: 700,
+        }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            <Eye size={11} /> {fmt(reel.views)}
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            <Heart size={11} /> {fmt(reel.likes)}
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            <MessageCircle size={11} /> {fmt(reel.comments)}
+          </span>
+        </div>
+      </div>
+    </a>
   )
 }
 
