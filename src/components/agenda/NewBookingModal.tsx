@@ -14,6 +14,8 @@ interface NewBookingModalProps {
   prefillDate: string   // "2026-04-01"
   prefillTime: string   // "14:00"
   prefillDuration?: number // minutes, from drag selection
+  /** Lead à pré-sélectionner — usage : ouverture depuis fiche/side panel lead. */
+  prefillLead?: Lead | null
   /** Si présent, le modal passe en mode édition : pré-remplit les champs depuis
    *  le booking existant et soumet en PATCH au lieu de POST. */
   editingBooking?: BookingWithCalendar | null
@@ -65,6 +67,7 @@ export default function NewBookingModal({
   prefillDate,
   prefillTime,
   prefillDuration,
+  prefillLead,
   editingBooking,
   onClose,
   onCreated,
@@ -78,9 +81,13 @@ export default function NewBookingModal({
   // Pour une création, on défaut sur "Horaire bloqué" : ça respecte la durée
   // sélectionnée par drag (sinon le calendrier par défaut écraserait la durée
   // avec sa propre `duration_minutes`).
+  // Si on ouvre depuis un lead (prefillLead), on default sur le 1er calendrier
+  // disponible plutôt que sur "Horaire bloqué" — c'est le cas d'usage attendu.
   const initialCalendarId = editingBooking
     ? (editingBooking.is_personal ? BLOCKED_CALENDAR_VALUE : editingBooking.calendar_id ?? '')
-    : BLOCKED_CALENDAR_VALUE
+    : prefillLead && calendars.length > 0
+      ? calendars[0].id
+      : BLOCKED_CALENDAR_VALUE
   const [calendarId, setCalendarId] = useState<string>(initialCalendarId)
   const isBlocked = calendarId === BLOCKED_CALENDAR_VALUE
 
@@ -96,7 +103,7 @@ export default function NewBookingModal({
           phone: editingBooking.lead.phone ?? null,
           email: editingBooking.lead.email ?? null,
         } as Lead)
-      : null,
+      : (prefillLead ?? null),
   )
 
   // Title — pour les "horaires bloqués" et l'édition de bookings perso

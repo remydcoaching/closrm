@@ -15,6 +15,7 @@ function InstagramIcon({ size = 13 }: { size?: number }) {
 import { Lead, Call, FollowUp, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import ClosingModal from '@/components/leads/ClosingModal'
+import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
 import StatusBadge from '@/components/leads/StatusBadge'
 import { useStatusConfig } from '@/lib/workspace/config-context'
 import SourceBadge from '@/components/leads/SourceBadge'
@@ -223,6 +224,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
         <div style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Profil du lead</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {lead && <LeadAddBookingButton lead={lead} variant="small" />}
             {lead && <Link href={`/leads/${lead.id}`} style={{ fontSize: 11, color: 'var(--text-tertiary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}><ExternalLink size={12} />Page complète</Link>}
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
           </div>
