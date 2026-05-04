@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Camera, FileText, Film } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { Camera, FileText, Film, ChevronDown, Check, Eye, EyeOff } from 'lucide-react'
 import {
   type ContentPillar,
   type SocialPostWithPublications,
@@ -162,32 +162,43 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Pr
           ))}
         </div>
 
-        <select
+        <FilterDropdown
+          label="Type"
           value={filterKind}
-          onChange={(e) => setFilterKind(e.target.value as SocialContentKind | 'all')}
-          style={selectStyle}
-        >
-          <option value="all">Tous types</option>
-          <option value="post">Posts</option>
-          <option value="story">Stories</option>
-          <option value="reel">Reels</option>
-        </select>
+          options={[
+            { value: 'all', label: 'Tous' },
+            { value: 'post', label: 'Posts' },
+            { value: 'story', label: 'Stories' },
+            { value: 'reel', label: 'Reels' },
+          ]}
+          onChange={(v) => setFilterKind(v as SocialContentKind | 'all')}
+        />
 
-        <select
+        <FilterDropdown
+          label="Pillar"
           value={filterPillar}
-          onChange={(e) => setFilterPillar(e.target.value)}
-          style={selectStyle}
-        >
-          <option value="all">Tous pillars</option>
-          {pillars.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+          options={[
+            { value: 'all', label: 'Tous' },
+            ...pillars.map((p) => ({ value: p.id, label: p.name, color: p.color })),
+          ]}
+          onChange={setFilterPillar}
+        />
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showHistory} onChange={(e) => setShowHistory(e.target.checked)} />
-          Inclure publié / ancien
-        </label>
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px', fontSize: 12, fontWeight: 600,
+            color: showHistory ? '#a78bfa' : 'var(--text-tertiary)',
+            background: showHistory ? 'rgba(167,139,250,0.1)' : 'var(--bg-secondary)',
+            border: `1px solid ${showHistory ? 'rgba(167,139,250,0.4)' : 'var(--border-primary)'}`,
+            borderRadius: 8, cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+        >
+          {showHistory ? <Eye size={13} /> : <EyeOff size={13} />}
+          Publiés / anciens
+        </button>
 
         <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
           {visiblePosts.length} slot{visiblePosts.length > 1 ? 's' : ''}
@@ -306,7 +317,8 @@ function Card({
 }) {
   const pillar = pillars.find((x) => x.id === post.pillar_id)
   const Icon = KIND_ICON[(post.content_kind ?? 'post') as SocialContentKind]
-  const hasTitle = !!(post.hook ?? post.title)
+  const hookText = post.hook || post.title
+  const color = pillar?.color ?? '#666'
 
   return (
     <div
@@ -315,25 +327,115 @@ function Card({
       onClick={onClick}
       style={{
         background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
-        borderLeft: `3px solid ${pillar?.color ?? '#666'}`,
-        borderRadius: 6, padding: '6px 8px', cursor: 'grab',
-        display: 'flex', flexDirection: 'column', gap: 2,
+        borderLeft: `3px solid ${color}`,
+        borderRadius: 8, padding: '10px 12px', cursor: 'grab',
+        display: 'flex', flexDirection: 'column', gap: 6,
+        transition: 'all 0.1s',
       }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-elevated)' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-primary)' }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 9, fontWeight: 700, color: pillar?.color ?? 'var(--text-tertiary)', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
           {pillar?.name ?? '—'}
         </span>
-        <Icon size={10} color="var(--text-tertiary)" />
+        <Icon size={11} color="var(--text-tertiary)" />
       </div>
-      {hasTitle && (
-        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-          {post.hook ?? post.title}
+      {hookText ? (
+        <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          {hookText}
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+          + Cliquer pour ajouter accroche
         </div>
       )}
       {post.plan_date && (
-        <div style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>
+        <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-tertiary)' }}>
           {formatDate(post.plan_date)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FilterDropdown({
+  label, value, options, onChange,
+}: {
+  label: string
+  value: string
+  options: { value: string; label: string; color?: string }[]
+  onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    setTimeout(() => document.addEventListener('mousedown', handler), 0)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const current = options.find((o) => o.value === value) ?? options[0]
+  const isFiltered = value !== 'all' && value !== options[0]?.value
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 12px', fontSize: 12, fontWeight: 600,
+          color: isFiltered ? '#a78bfa' : 'var(--text-secondary)',
+          background: isFiltered ? 'rgba(167,139,250,0.1)' : 'var(--bg-secondary)',
+          border: `1px solid ${isFiltered ? 'rgba(167,139,250,0.4)' : 'var(--border-primary)'}`,
+          borderRadius: 8, cursor: 'pointer',
+          transition: 'all 0.15s',
+        }}
+      >
+        {current?.color && (
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: current.color }} />
+        )}
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+          {label}:
+        </span>
+        <span>{current?.label}</span>
+        <ChevronDown size={12} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, marginTop: 6,
+          minWidth: 180, maxHeight: 320, overflowY: 'auto',
+          background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+          borderRadius: 10, padding: 4,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
+          zIndex: 30,
+        }}>
+          {options.map((o) => {
+            const active = o.value === value
+            return (
+              <button
+                key={o.value}
+                onClick={() => { onChange(o.value); setOpen(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', padding: '7px 10px',
+                  background: active ? 'rgba(167,139,250,0.15)' : 'transparent',
+                  border: 'none', borderRadius: 6, cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-secondary)' }}
+                onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+              >
+                {o.color && <span style={{ width: 9, height: 9, borderRadius: '50%', background: o.color }} />}
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{o.label}</span>
+                {active && <Check size={13} color="#a78bfa" />}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
