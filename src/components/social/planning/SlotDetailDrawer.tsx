@@ -52,6 +52,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   const [generatingScript, setGeneratingScript] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [activePlatformTab, setActivePlatformTab] = useState<SocialPlatform>('instagram')
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [mediaIsVideo, setMediaIsVideo] = useState(false)
   const [mediaDurationSec, setMediaDurationSec] = useState<number | null>(null)
   const [publishingNow, setPublishingNow] = useState(false)
@@ -88,8 +89,8 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
   const handleDelete = async () => {
     if (!slot) return
-    if (!confirm('Supprimer ce slot ?')) return
     await fetch(`/api/social/posts/${slot.id}`, { method: 'DELETE' })
+    setConfirmDelete(false)
     onChange()
     onClose()
   }
@@ -751,7 +752,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
         {/* FOOTER */}
         <div style={footerStyle}>
-          <button onClick={handleDelete} style={dangerBtnStyle}>
+          <button onClick={() => setConfirmDelete(true)} style={dangerBtnStyle}>
             <Trash2 size={14} /> Supprimer
           </button>
 
@@ -804,6 +805,21 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           </div>
         </div>
 
+        {confirmDelete && (
+          <ConfirmModal
+            title="Supprimer ce slot ?"
+            message={
+              slot.production_status !== 'idea' || (slot.media_urls?.length ?? 0) > 0 || slot.hook
+                ? 'Ce slot contient du travail (hook, script, media…). La suppression est définitive.'
+                : 'Ce slot est vide. La suppression est définitive.'
+            }
+            confirmLabel="Supprimer"
+            danger
+            onCancel={() => setConfirmDelete(false)}
+            onConfirm={handleDelete}
+          />
+        )}
+
         {libraryOpen && (
           <HookLibraryModal
             pillarId={slot.pillar_id}
@@ -817,6 +833,64 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           />
         )}
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  )
+}
+
+// ─── Confirm modal ───────────────────────────────────────────
+
+function ConfirmModal({
+  title, message, confirmLabel, danger, onCancel, onConfirm,
+}: {
+  title: string
+  message: string
+  confirmLabel: string
+  danger?: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div onClick={onCancel} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110, padding: 20,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        width: 'min(420px, 92vw)',
+        background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+        borderRadius: 12, overflow: 'hidden',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+      }}>
+        <div style={{ padding: '20px 22px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            {danger && (
+              <div style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: 'rgba(239,68,68,0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Trash2 size={16} color="#ef4444" />
+              </div>
+            )}
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h3>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, marginLeft: danger ? 42 : 0 }}>
+            {message}
+          </p>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '14px 22px', background: 'var(--bg-secondary)' }}>
+          <button onClick={onCancel} style={{
+            padding: '8px 16px', fontSize: 12, fontWeight: 600,
+            color: 'var(--text-secondary)', background: 'transparent',
+            border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
+          }}>Annuler</button>
+          <button onClick={onConfirm} style={{
+            padding: '8px 16px', fontSize: 12, fontWeight: 700,
+            color: '#fff',
+            background: danger ? '#ef4444' : '#a78bfa',
+            border: 'none', borderRadius: 6, cursor: 'pointer',
+          }}>{confirmLabel}</button>
+        </div>
       </div>
     </div>
   )
