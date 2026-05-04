@@ -1,14 +1,29 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-04-15
+> Derniere mise a jour : 2026-05-04
+
+---
+
+## Session 2026-05-03 → 04 — Récap (T-043)
+
+20 PRs cascadées en prod (#345 → #374). Détail complet dans `taches/tache-043-session-2026-05-03-04.md`. Highlights :
+
+- **Sidebar+Tabs** : 4 sections équilibrées, pill-style segmented control
+- **Dashboard v2 command center** : refonte complète après brainstorming + analyse de 24 dashboards (Stripe, Linear, Attio, GHL, iClosed…). Hero adaptatif, KPIs Stripe-style, listes algo, funnel cohorte horizontal, recent bookings. Pre-call brief IA sur bouton manuel. Spec + plan dans `docs/superpowers/`.
+- **Agenda** : resize RDV en drag (Google Calendar style) + perf throttle GCal sync 5min
+- **Booking type Téléphone** : 4ᵉ option (Présentiel/Meet/Visio/Téléphone). Email block dédié, CTA `tel:` agenda, no Meet auto. Form fields select avec éditeur d'options.
+- **Funnel** : SSR direct (plus de flash blanc), safe-area iOS, redirect après booking, URL canonique window.location.origin, middleware /f public, calendrier lisible, fix migration 062 source=funnel
+- **Lead add booking** : bouton "Planifier un RDV" depuis side panel + fiche lead
+
+**Migrations prod appliquées :** 061 (ai_call_briefs), 062 (bookings.source funnel idempotente)
 
 ---
 
 ## Statut global
 
-**Phase actuelle :** Developpement V1 (finalisation) + features avancees (IA)
-**Version :** 0.5
+**Phase actuelle :** Developpement V1 (finalisation) + features avancees (IA) + UX deep polish
+**Version :** 0.6 (post-session marathon 04/05)
 **Branche principale active :** `develop`
 
 ---
