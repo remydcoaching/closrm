@@ -195,33 +195,33 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
             <button onClick={onClose} style={iconBtnStyle}><X size={18} /></button>
           </div>
 
-          {/* Quick metadata row */}
-          <div style={{ display: 'flex', gap: 20, marginTop: 16, flexWrap: 'wrap' }}>
-            <MetaField label="Date prévue">
+          {/* Quick metadata row — pill chips */}
+          <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+            <MetaPill icon={CalIcon} label="Date prévue">
               <input
                 type="date"
                 value={slot.plan_date ?? ''}
                 onChange={(e) => patch({ plan_date: e.target.value || null })}
-                style={metaInputStyle}
+                style={pillInputStyle}
               />
-            </MetaField>
-            <MetaField label="Statut production">
+            </MetaPill>
+            <MetaPill icon={Sparkles} label="Statut" iconColor={statusColor(slot.production_status)}>
               <select
                 value={slot.production_status ?? 'idea'}
                 onChange={(e) => patch({ production_status: e.target.value as SocialProductionStatus })}
-                style={metaInputStyle}
+                style={pillInputStyle}
               >
                 {PRODUCTION_STATUSES.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>
-            </MetaField>
+            </MetaPill>
             {slot.scheduled_at && (
-              <MetaField label="Programmé pour">
-                <span style={{ ...metaInputStyle, display: 'inline-block', cursor: 'default' }}>
+              <MetaPill icon={Send} label="Programmé" iconColor="#a78bfa">
+                <span style={{ ...pillInputStyle, display: 'inline-block', cursor: 'default' }}>
                   {new Date(slot.scheduled_at).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </span>
-              </MetaField>
+              </MetaPill>
             )}
           </div>
         </div>
@@ -376,6 +376,44 @@ function MetaField({ label, children }: { label: string; children: React.ReactNo
       {children}
     </div>
   )
+}
+
+function MetaPill({
+  icon: Icon, label, iconColor, children,
+}: {
+  icon: typeof Send
+  label: string
+  iconColor?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 8,
+      padding: '6px 10px 6px 12px',
+      background: 'var(--bg-secondary)',
+      border: '1px solid var(--border-primary)',
+      borderRadius: 999,
+    }}>
+      <Icon size={12} color={iconColor ?? 'var(--text-tertiary)'} />
+      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
+          {label}
+        </span>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function statusColor(status: SocialProductionStatus | null | undefined): string {
+  switch (status) {
+    case 'idea':    return '#94a3b8'
+    case 'to_film': return '#f59e0b'
+    case 'filmed':  return '#06b6d4'
+    case 'edited':  return '#8b5cf6'
+    case 'ready':   return '#10b981'
+    default:        return '#94a3b8'
+  }
 }
 
 function ColumnHeader({ icon: Icon, label, color }: { icon: typeof Send; label: string; color: string }) {
@@ -591,6 +629,12 @@ const metaInputStyle: React.CSSProperties = {
   color: 'var(--text-primary)', background: 'var(--bg-secondary)',
   border: '1px solid var(--border-primary)', borderRadius: 6, outline: 'none',
   cursor: 'pointer',
+}
+const pillInputStyle: React.CSSProperties = {
+  padding: 0, fontSize: 12, fontWeight: 600,
+  color: 'var(--text-primary)', background: 'transparent',
+  border: 'none', outline: 'none', cursor: 'pointer',
+  appearance: 'none',
 }
 const iconBtnStyle: React.CSSProperties = {
   background: 'transparent', border: 'none', cursor: 'pointer',
