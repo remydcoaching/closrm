@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Plus, Trash2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { X, Plus, Trash2, Pencil, Sparkles } from 'lucide-react'
 import {
   type ContentPillar,
   type ContentTrame,
@@ -17,13 +17,14 @@ interface Props {
   onSaved: () => void
 }
 
-const PALETTE = ['#3b82f6', '#a78bfa', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#8b5cf6']
+const PALETTE = [
+  '#a78bfa', '#ec4899', '#3b82f6', '#06b6d4', '#10b981',
+  '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316',
+]
 
 function emptyGrid(perDay: number): Record<Weekday, (string | null)[]> {
   const out = {} as Record<Weekday, (string | null)[]>
-  for (const wd of WEEKDAYS_ORDERED) {
-    out[wd] = Array(perDay).fill(null)
-  }
+  for (const wd of WEEKDAYS_ORDERED) out[wd] = Array(perDay).fill(null)
   return out
 }
 
@@ -33,10 +34,9 @@ function normalizeGrid(
 ): Record<Weekday, (string | null)[]> {
   const out = {} as Record<Weekday, (string | null)[]>
   for (const wd of WEEKDAYS_ORDERED) {
-    const arr = grid?.[wd] ?? []
-    const fixed = arr.slice(0, perDay)
-    while (fixed.length < perDay) fixed.push(null)
-    out[wd] = fixed
+    const arr = (grid?.[wd] ?? []).slice(0, perDay)
+    while (arr.length < perDay) arr.push(null)
+    out[wd] = arr
   }
   return out
 }
@@ -44,14 +44,12 @@ function normalizeGrid(
 export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: Props) {
   const [storiesPerDay, setStoriesPerDay] = useState(trame?.stories_per_day ?? 5)
   const [postsPerDay, setPostsPerDay] = useState(trame?.posts_per_day ?? 2)
-  const [storiesGrid, setStoriesGrid] = useState<Record<Weekday, (string | null)[]>>(
-    () => normalizeGrid(trame?.stories_grid, trame?.stories_per_day ?? 5)
-  )
-  const [postsGrid, setPostsGrid] = useState<Record<Weekday, (string | null)[]>>(
-    () => normalizeGrid(trame?.posts_grid, trame?.posts_per_day ?? 2)
-  )
+  const [storiesGrid, setStoriesGrid] = useState(() => normalizeGrid(trame?.stories_grid, trame?.stories_per_day ?? 5))
+  const [postsGrid, setPostsGrid] = useState(() => normalizeGrid(trame?.posts_grid, trame?.posts_per_day ?? 2))
   const [localPillars, setLocalPillars] = useState<ContentPillar[]>(pillars)
   const [saving, setSaving] = useState(false)
+  const [pillarModal, setPillarModal] = useState<{ mode: 'create' | 'edit'; pillar?: ContentPillar } | null>(null)
+  const [activePicker, setActivePicker] = useState<{ kind: 'story' | 'post'; wd: Weekday; idx: number } | null>(null)
 
   useEffect(() => { setLocalPillars(pillars) }, [pillars])
 
@@ -71,66 +69,53 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
     setPostsGrid({ ...postsGrid, [wd]: postsGrid[wd].map((c, i) => (i === idx ? pid : c)) })
   }
 
-  const addPillar = async () => {
-    const name = prompt('Nom du pillar (ex: Viral, Lead Magnet, Avant/Après) ?')
-    if (!name) return
-    const color = PALETTE[localPillars.length % PALETTE.length]
-    const res = await fetch('/api/social/pillars', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, color }),
-    })
-    if (res.ok) {
-      const json = await res.json()
-      setLocalPillars([...localPillars, json.data])
+  const upsertPillar = async (data: { name: string; color: string }, id?: string) => {
+    if (id) {
+      const res = await fetch(`/api/social/pillars/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        setLocalPillars(localPillars.map((x) => (x.id === id ? json.data : x)))
+      }
     } else {
-      alert('Erreur création pillar')
+      const res = await fetch('/api/social/pillars', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        setLocalPillars([...localPillars, json.data])
+      }
     }
-  }
-
-  const renamePillar = async (p: ContentPillar) => {
-    const name = prompt('Nouveau nom ?', p.name)
-    if (!name || name === p.name) return
-    const res = await fetch(`/api/social/pillars/${p.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
-    })
-    if (res.ok) {
-      const json = await res.json()
-      setLocalPillars(localPillars.map((x) => (x.id === p.id ? json.data : x)))
-    }
+    setPillarModal(null)
   }
 
   const deletePillar = async (p: ContentPillar) => {
-    if (!confirm(`Supprimer le pillar "${p.name}" ?`)) return
     const res = await fetch(`/api/social/pillars/${p.id}`, { method: 'DELETE' })
     if (res.status === 409) {
       const json = await res.json()
-      const choice = confirm(
-        `Ce pillar est utilisé (${json.usage_count} slots, ${json.in_trame_count} cellules de trame).\n\n` +
-        `OK = détacher (cellules vidées, slots gardés sans pillar)\nAnnuler = ne pas supprimer`
+      const ok = confirm(
+        `"${p.name}" est utilisé (${json.usage_count} slots, ${json.in_trame_count} cellules).\n\nLe détacher (cellules vidées, slots gardés sans pillar) ?`
       )
-      if (!choice) return
+      if (!ok) return
       const res2 = await fetch(`/api/social/pillars/${p.id}?mode=detach`, { method: 'DELETE' })
-      if (res2.ok) {
-        setLocalPillars(localPillars.filter((x) => x.id !== p.id))
-        // clean local grids
-        const clean = (g: Record<Weekday, (string | null)[]>) => {
-          const out = {} as Record<Weekday, (string | null)[]>
-          for (const [k, v] of Object.entries(g)) {
-            out[k as Weekday] = v.map((c) => (c === p.id ? null : c))
-          }
-          return out
-        }
-        setStoriesGrid(clean(storiesGrid))
-        setPostsGrid(clean(postsGrid))
+      if (!res2.ok) return
+    } else if (!res.ok) return
+
+    setLocalPillars(localPillars.filter((x) => x.id !== p.id))
+    const cleanGrid = (g: Record<Weekday, (string | null)[]>) => {
+      const out = {} as Record<Weekday, (string | null)[]>
+      for (const [k, v] of Object.entries(g)) {
+        out[k as Weekday] = v.map((c) => (c === p.id ? null : c))
       }
-      return
+      return out
     }
-    if (res.ok) {
-      setLocalPillars(localPillars.filter((x) => x.id !== p.id))
-    }
+    setStoriesGrid(cleanGrid(storiesGrid))
+    setPostsGrid(cleanGrid(postsGrid))
   }
 
   const handleSave = async () => {
@@ -148,7 +133,7 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
       })
       if (!res.ok) {
         const json = await res.json()
-        throw new Error(JSON.stringify(json.error))
+        throw new Error(typeof json.error === 'string' ? json.error : JSON.stringify(json.error))
       }
       onSaved()
     } catch (e) {
@@ -159,87 +144,232 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
   }
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--border-primary)' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Ma trame de contenu</h2>
+        <div style={headerStyle}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={18} color="#a78bfa" /> Ma trame de contenu
+            </h2>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
+              Définis ton pattern hebdomadaire — il sera utilisé pour générer automatiquement les slots du mois.
+            </p>
+          </div>
           <button onClick={onClose} style={iconBtnStyle}><X size={18} /></button>
         </div>
 
-        <div style={{ overflowY: 'auto', padding: 24, flex: 1 }}>
+        <div style={bodyStyle}>
           {/* Pillars library */}
-          <section style={{ marginBottom: 32 }}>
+          <section style={{ marginBottom: 28 }}>
             <h3 style={sectionTitleStyle}>Bibliothèque de pillars</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {localPillars.map((p) => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 999 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color }} />
-                  <button onClick={() => renamePillar(p)} style={{ ...inlineBtnStyle, fontSize: 12, fontWeight: 600 }}>{p.name}</button>
-                  <button onClick={() => deletePillar(p)} style={{ ...inlineBtnStyle, color: '#ef4444', display: 'flex' }}><Trash2 size={12} /></button>
-                </div>
+                <PillarChip key={p.id} pillar={p} onEdit={() => setPillarModal({ mode: 'edit', pillar: p })} onDelete={() => deletePillar(p)} />
               ))}
               <button
-                onClick={addPillar}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', background: 'transparent', border: '1px dashed var(--border-primary)', borderRadius: 999, color: 'var(--text-tertiary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => setPillarModal({ mode: 'create' })}
+                style={addBtnStyle}
               >
                 <Plus size={12} /> Ajouter
               </button>
+              {localPillars.length === 0 && (
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', alignSelf: 'center', marginLeft: 6 }}>
+                  Crée tes premiers types de contenu (Viral, Lead Magnet, Avant/Après…)
+                </p>
+              )}
             </div>
           </section>
 
           {/* Stories grid */}
-          <section style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={sectionTitleStyle}>📱 Stories quotidiennes</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Slots / jour :</span>
-                <input
-                  type="number" min={0} max={10}
-                  value={storiesPerDay}
-                  onChange={(e) => updateStoriesPerDay(Number(e.target.value))}
-                  style={numInputStyle}
-                />
-              </div>
-            </div>
+          <Section
+            title="Stories quotidiennes"
+            emoji="📱"
+            perDay={storiesPerDay}
+            onPerDayChange={updateStoriesPerDay}
+            maxPerDay={10}
+          >
             <Grid
               perDay={storiesPerDay}
-              prefix="S"
+              prefix="Story"
               grid={storiesGrid}
               pillars={localPillars}
-              onChange={setStoryCell}
+              onCellClick={(wd, idx) => setActivePicker({ kind: 'story', wd, idx })}
+              onCellClear={(wd, idx) => setStoryCell(wd, idx, null)}
+              activePicker={activePicker?.kind === 'story' ? activePicker : null}
+              onPick={(pid) => {
+                if (activePicker?.kind === 'story') setStoryCell(activePicker.wd, activePicker.idx, pid)
+                setActivePicker(null)
+              }}
+              onPickerClose={() => setActivePicker(null)}
             />
-          </section>
+          </Section>
 
           {/* Posts grid */}
-          <section>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={sectionTitleStyle}>📰 Posts quotidiens</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Slots / jour :</span>
-                <input
-                  type="number" min={0} max={5}
-                  value={postsPerDay}
-                  onChange={(e) => updatePostsPerDay(Number(e.target.value))}
-                  style={numInputStyle}
-                />
-              </div>
-            </div>
+          <Section
+            title="Posts quotidiens"
+            emoji="📰"
+            perDay={postsPerDay}
+            onPerDayChange={updatePostsPerDay}
+            maxPerDay={5}
+          >
             <Grid
               perDay={postsPerDay}
-              prefix="P"
+              prefix="Post"
               grid={postsGrid}
               pillars={localPillars}
-              onChange={setPostCell}
+              onCellClick={(wd, idx) => setActivePicker({ kind: 'post', wd, idx })}
+              onCellClear={(wd, idx) => setPostCell(wd, idx, null)}
+              activePicker={activePicker?.kind === 'post' ? activePicker : null}
+              onPick={(pid) => {
+                if (activePicker?.kind === 'post') setPostCell(activePicker.wd, activePicker.idx, pid)
+                setActivePicker(null)
+              }}
+              onPickerClose={() => setActivePicker(null)}
             />
-          </section>
+          </Section>
         </div>
 
         {/* Footer */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 24px', borderTop: '1px solid var(--border-primary)' }}>
+        <div style={footerStyle}>
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            Click sur une cellule pour assigner un pillar — vide = pas de slot ce jour-là
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} style={cancelBtnStyle}>Annuler</button>
+            <button onClick={handleSave} disabled={saving} style={saveBtnStyle(saving)}>
+              {saving ? 'Sauvegarde…' : 'Sauvegarder'}
+            </button>
+          </div>
+        </div>
+
+        {pillarModal && (
+          <PillarModal
+            mode={pillarModal.mode}
+            pillar={pillarModal.pillar}
+            onClose={() => setPillarModal(null)}
+            onSave={(data) => upsertPillar(data, pillarModal.pillar?.id)}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Pillar chip ─────────────────────────────────────────────
+
+function PillarChip({ pillar, onEdit, onDelete }: { pillar: ContentPillar; onEdit: () => void; onDelete: () => void }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '5px 10px',
+        background: pillar.color + '22',
+        border: `1px solid ${pillar.color}55`,
+        borderRadius: 999,
+        transition: 'all 0.15s',
+      }}
+    >
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: pillar.color }} />
+      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{pillar.name}</span>
+      {hover && (
+        <div style={{ display: 'flex', gap: 2, marginLeft: 2 }}>
+          <button onClick={onEdit} style={chipActionStyle}><Pencil size={11} /></button>
+          <button onClick={onDelete} style={{ ...chipActionStyle, color: '#ef4444' }}><Trash2 size={11} /></button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Pillar create/edit modal ───────────────────────────────
+
+function PillarModal({ mode, pillar, onClose, onSave }: {
+  mode: 'create' | 'edit'
+  pillar?: ContentPillar
+  onClose: () => void
+  onSave: (data: { name: string; color: string }) => void
+}) {
+  const [name, setName] = useState(pillar?.name ?? '')
+  const [color, setColor] = useState(pillar?.color ?? PALETTE[0])
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  const handleSubmit = () => {
+    if (!name.trim()) return
+    onSave({ name: name.trim(), color })
+  }
+
+  return (
+    <div style={{ ...overlayStyle, zIndex: 110 }} onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(420px, 92vw)', background: 'var(--bg-primary)',
+          border: '1px solid var(--border-primary)', borderRadius: 12,
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+            {mode === 'create' ? 'Nouveau pillar' : 'Modifier le pillar'}
+          </h3>
+          <button onClick={onClose} style={iconBtnStyle}><X size={16} /></button>
+        </div>
+
+        <div style={{ padding: 20 }}>
+          <label style={labelStyle}>Nom</label>
+          <input
+            ref={inputRef}
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+            placeholder="ex: Viral, Lead Magnet, Avant/Après…"
+            style={inputStyle}
+          />
+
+          <label style={{ ...labelStyle, marginTop: 16 }}>Couleur</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {PALETTE.map((c) => (
+              <button
+                key={c}
+                onClick={() => setColor(c)}
+                style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  background: c,
+                  border: color === c ? '2px solid #fff' : '2px solid transparent',
+                  outline: color === c ? `2px solid ${c}` : 'none',
+                  outlineOffset: 1,
+                  cursor: 'pointer',
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Preview */}
+          <div style={{ marginTop: 20, padding: 12, background: 'var(--bg-secondary)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '5px 10px',
+              background: color + '22',
+              border: `1px solid ${color}55`,
+              borderRadius: 999,
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{name || 'Aperçu'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-primary)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onClose} style={cancelBtnStyle}>Annuler</button>
-          <button onClick={handleSave} disabled={saving} style={saveBtnStyle(saving)}>
-            {saving ? 'Sauvegarde…' : 'Sauvegarder'}
+          <button onClick={handleSubmit} disabled={!name.trim()} style={saveBtnStyle(false, !name.trim())}>
+            {mode === 'create' ? 'Créer' : 'Enregistrer'}
           </button>
         </div>
       </div>
@@ -247,59 +377,121 @@ export default function TrameEditorModal({ trame, pillars, onClose, onSaved }: P
   )
 }
 
+// ─── Section wrapper ─────────────────────────────────────────
+
+function Section({ title, emoji, perDay, onPerDayChange, maxPerDay, children }: {
+  title: string
+  emoji: string
+  perDay: number
+  onPerDayChange: (n: number) => void
+  maxPerDay: number
+  children: React.ReactNode
+}) {
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <h3 style={{ ...sectionTitleStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 14 }}>{emoji}</span> {title}
+        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Slots / jour :</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-secondary)', borderRadius: 6, padding: 2 }}>
+            <button
+              onClick={() => onPerDayChange(Math.max(0, perDay - 1))}
+              style={stepperBtnStyle}
+            >−</button>
+            <span style={{ minWidth: 24, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{perDay}</span>
+            <button
+              onClick={() => onPerDayChange(Math.min(maxPerDay, perDay + 1))}
+              style={stepperBtnStyle}
+            >+</button>
+          </div>
+        </div>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+// ─── Grid ────────────────────────────────────────────────────
+
 function Grid({
-  perDay, prefix, grid, pillars, onChange,
+  perDay, prefix, grid, pillars,
+  onCellClick, onCellClear,
+  activePicker, onPick, onPickerClose,
 }: {
   perDay: number
   prefix: string
   grid: Record<Weekday, (string | null)[]>
   pillars: ContentPillar[]
-  onChange: (wd: Weekday, idx: number, pillarId: string | null) => void
+  onCellClick: (wd: Weekday, idx: number) => void
+  onCellClear: (wd: Weekday, idx: number) => void
+  activePicker: { wd: Weekday; idx: number } | null
+  onPick: (pillarId: string | null) => void
+  onPickerClose: () => void
 }) {
   if (perDay === 0) {
-    return <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12, background: 'var(--bg-secondary)', borderRadius: 8 }}>Aucun slot configuré.</div>
+    return <div style={emptyStateStyle}>Aucun slot configuré pour ce type.</div>
   }
 
-  const cols = `100px repeat(${perDay}, minmax(110px, 1fr))`
+  const cols = `90px repeat(${perDay}, minmax(120px, 1fr))`
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 4, minWidth: 100 + perDay * 110 }}>
+    <div style={{ overflowX: 'auto', background: 'var(--bg-secondary)', borderRadius: 10, padding: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 4, minWidth: 90 + perDay * 130 }}>
         <div />
         {Array.from({ length: perDay }).map((_, i) => (
-          <div key={i} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textAlign: 'center', padding: 6 }}>
-            {prefix}{i + 1}
+          <div key={i} style={colHeaderStyle}>
+            {prefix} {i + 1}
           </div>
         ))}
         {WEEKDAYS_ORDERED.map((wd) => (
           <div key={wd} style={{ display: 'contents' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', padding: 8, alignSelf: 'center' }}>
-              {WEEKDAY_LABELS[wd]}
+            <div style={rowHeaderStyle}>
+              {WEEKDAY_LABELS[wd].slice(0, 3)}
             </div>
             {Array.from({ length: perDay }).map((_, idx) => {
               const pid = grid[wd][idx]
               const p = pid ? pillars.find((x) => x.id === pid) : null
+              const isActive = activePicker?.wd === wd && activePicker?.idx === idx
               return (
-                <select
-                  key={idx}
-                  value={pid ?? ''}
-                  onChange={(e) => onChange(wd, idx, e.target.value || null)}
-                  style={{
-                    padding: '8px 10px', fontSize: 11, fontWeight: 600,
-                    color: p ? '#fff' : 'var(--text-tertiary)',
-                    background: p ? p.color : 'var(--bg-secondary)',
-                    border: '1px solid var(--border-primary)', borderRadius: 6,
-                    cursor: 'pointer', appearance: 'none',
-                    width: '100%',
-                  }}
-                >
-                  <option value="" style={{ color: '#000', background: '#fff' }}>—</option>
-                  {pillars.map((px) => (
-                    <option key={px.id} value={px.id} style={{ color: '#000', background: '#fff' }}>
-                      {px.name}
-                    </option>
-                  ))}
-                </select>
+                <div key={idx} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => isActive ? onPickerClose() : onCellClick(wd, idx)}
+                    style={{
+                      width: '100%', minHeight: 36,
+                      padding: '6px 10px', fontSize: 11, fontWeight: 600,
+                      color: p ? '#fff' : 'var(--text-tertiary)',
+                      background: p ? p.color : 'var(--bg-primary)',
+                      border: `1px solid ${p ? p.color : 'var(--border-primary)'}`,
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 4,
+                      transition: 'all 0.1s',
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'left' }}>
+                      {p?.name ?? '+'}
+                    </span>
+                    {p && (
+                      <span
+                        onClick={(e) => { e.stopPropagation(); onCellClear(wd, idx) }}
+                        style={{ display: 'flex', opacity: 0.7, padding: 1 }}
+                      >
+                        <X size={10} />
+                      </span>
+                    )}
+                  </button>
+                  {isActive && (
+                    <CellPicker
+                      pillars={pillars}
+                      currentId={pid}
+                      onPick={onPick}
+                      onClose={onPickerClose}
+                    />
+                  )}
+                </div>
               )
             })}
           </div>
@@ -309,42 +501,157 @@ function Grid({
   )
 }
 
+function CellPicker({ pillars, currentId, onPick, onClose }: {
+  pillars: ContentPillar[]
+  currentId: string | null
+  onPick: (id: string | null) => void
+  onClose: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    setTimeout(() => document.addEventListener('mousedown', handler), 0)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: 'absolute', top: '100%', left: 0, marginTop: 4,
+        minWidth: 180, maxHeight: 260, overflowY: 'auto',
+        background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+        borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+        zIndex: 20, padding: 4,
+      }}
+    >
+      {pillars.length === 0 ? (
+        <div style={{ padding: 12, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>
+          Pas de pillar — ajoute en un dans la bibliothèque.
+        </div>
+      ) : (
+        <>
+          {pillars.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onPick(p.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                width: '100%', padding: '7px 10px', fontSize: 12, fontWeight: 600,
+                color: 'var(--text-primary)',
+                background: currentId === p.id ? p.color + '22' : 'transparent',
+                border: 'none', borderRadius: 6, cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.color }} />
+              {p.name}
+            </button>
+          ))}
+          {currentId && (
+            <>
+              <div style={{ height: 1, background: 'var(--border-primary)', margin: '4px 0' }} />
+              <button
+                onClick={() => onPick(null)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  width: '100%', padding: '7px 10px', fontSize: 11, fontWeight: 500,
+                  color: 'var(--text-tertiary)',
+                  background: 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <X size={11} /> Vider la cellule
+              </button>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Styles ──────────────────────────────────────────────────
+
 const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  zIndex: 100,
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
 }
 const modalStyle: React.CSSProperties = {
-  width: 'min(1100px, 95vw)', maxHeight: '90vh',
+  width: 'min(1100px, 95vw)', maxHeight: '92vh',
   background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
-  borderRadius: 12, display: 'flex', flexDirection: 'column',
+  borderRadius: 14, display: 'flex', flexDirection: 'column',
+  boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+}
+const headerStyle: React.CSSProperties = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+  padding: '20px 24px', borderBottom: '1px solid var(--border-primary)',
+}
+const bodyStyle: React.CSSProperties = {
+  overflowY: 'auto', padding: 24, flex: 1,
+}
+const footerStyle: React.CSSProperties = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+  padding: '14px 24px', borderTop: '1px solid var(--border-primary)',
+  background: 'var(--bg-secondary)',
+}
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)',
+  textTransform: 'uppercase', letterSpacing: 0.5,
+}
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)',
+  textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6,
+}
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '10px 12px', fontSize: 13,
+  color: 'var(--text-primary)', background: 'var(--bg-secondary)',
+  border: '1px solid var(--border-primary)', borderRadius: 8, outline: 'none',
 }
 const iconBtnStyle: React.CSSProperties = {
   background: 'transparent', border: 'none', cursor: 'pointer',
   color: 'var(--text-tertiary)', padding: 4,
 }
-const inlineBtnStyle: React.CSSProperties = {
+const chipActionStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
   background: 'transparent', border: 'none', cursor: 'pointer',
-  color: 'var(--text-primary)', padding: 0,
+  color: 'var(--text-secondary)', padding: 2, borderRadius: 4,
 }
-const sectionTitleStyle: React.CSSProperties = {
-  fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)',
-  textTransform: 'uppercase', letterSpacing: 0.5,
+const addBtnStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 4,
+  padding: '5px 12px', fontSize: 12, fontWeight: 600,
+  background: 'transparent', border: '1px dashed var(--border-primary)',
+  borderRadius: 999, color: 'var(--text-tertiary)', cursor: 'pointer',
 }
-const numInputStyle: React.CSSProperties = {
-  width: 50, padding: '4px 6px', fontSize: 12,
-  background: 'var(--bg-secondary)', color: 'var(--text-primary)',
-  border: '1px solid var(--border-primary)', borderRadius: 6,
+const colHeaderStyle: React.CSSProperties = {
+  fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
+  textAlign: 'center', padding: '6px 4px', textTransform: 'uppercase', letterSpacing: 0.4,
+}
+const rowHeaderStyle: React.CSSProperties = {
+  fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
+  padding: 10, alignSelf: 'center', textTransform: 'uppercase', letterSpacing: 0.5,
+}
+const stepperBtnStyle: React.CSSProperties = {
+  width: 22, height: 22, fontSize: 13, fontWeight: 700,
+  background: 'transparent', border: 'none', borderRadius: 4,
+  color: 'var(--text-secondary)', cursor: 'pointer',
+}
+const emptyStateStyle: React.CSSProperties = {
+  padding: 20, textAlign: 'center',
+  color: 'var(--text-tertiary)', fontSize: 12,
+  background: 'var(--bg-secondary)', borderRadius: 8,
 }
 const cancelBtnStyle: React.CSSProperties = {
   padding: '8px 16px', fontSize: 12, fontWeight: 600,
   color: 'var(--text-secondary)', background: 'transparent',
-  border: '1px solid var(--border-primary)', borderRadius: 6,
-  cursor: 'pointer',
+  border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
 }
-const saveBtnStyle = (saving: boolean): React.CSSProperties => ({
+const saveBtnStyle = (saving: boolean, disabled = false): React.CSSProperties => ({
   padding: '8px 16px', fontSize: 12, fontWeight: 600,
-  color: '#fff', background: '#a78bfa',
+  color: '#fff', background: disabled ? '#4b5563' : '#a78bfa',
   border: 'none', borderRadius: 6,
-  cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1,
+  cursor: saving || disabled ? 'not-allowed' : 'pointer',
+  opacity: saving ? 0.7 : 1,
 })
