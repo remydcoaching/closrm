@@ -197,14 +197,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
           {/* Quick metadata row — pill chips */}
           <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-            <MetaPill icon={CalIcon} label="Date prévue">
-              <input
-                type="date"
-                value={slot.plan_date ?? ''}
-                onChange={(e) => patch({ plan_date: e.target.value || null })}
-                style={pillInputStyle}
-              />
-            </MetaPill>
+            <DatePill
+              value={slot.plan_date}
+              onChange={(d) => patch({ plan_date: d })}
+            />
             <StatusPill
               value={(slot.production_status ?? 'idea') as SocialProductionStatus}
               onChange={(v) => patch({ production_status: v })}
@@ -394,6 +390,69 @@ function MetaPill({
         </span>
         {children}
       </div>
+    </div>
+  )
+}
+
+function DatePill({ value, onChange }: {
+  value: string | null
+  onChange: (v: string | null) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const display = value
+    ? new Date(value + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+    : 'Pas de date'
+
+  const open = () => {
+    const el = inputRef.current
+    if (!el) return
+    if (typeof el.showPicker === 'function') {
+      try { el.showPicker(); return } catch {}
+    }
+    el.click()
+    el.focus()
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={open}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '6px 12px',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-primary)',
+          borderRadius: 999, cursor: 'pointer',
+          transition: 'all 0.15s',
+        }}
+      >
+        <CalIcon size={12} color="var(--text-tertiary)" />
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
+            Date prévue
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: value ? 'var(--text-primary)' : 'var(--text-tertiary)', textTransform: 'capitalize' }}>{display}</span>
+        </div>
+        {value && (
+          <span
+            onClick={(e) => { e.stopPropagation(); onChange(null) }}
+            style={{ display: 'flex', padding: 2, marginLeft: 2, opacity: 0.5, cursor: 'pointer' }}
+          >
+            <X size={11} />
+          </span>
+        )}
+      </button>
+      <input
+        ref={inputRef}
+        type="date"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value || null)}
+        style={{
+          position: 'absolute', inset: 0,
+          opacity: 0, pointerEvents: 'none',
+        }}
+      />
     </div>
   )
 }
