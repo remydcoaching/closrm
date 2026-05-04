@@ -60,6 +60,31 @@ export default function PlanningView() {
   useEffect(() => { reloadStructure() }, [reloadStructure])
   useEffect(() => { reloadPosts() }, [reloadPosts])
 
+  const createPost = async (planDate?: string) => {
+    const fallback = (() => {
+      const d = new Date()
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    })()
+    const res = await fetch('/api/social/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content_kind: 'post',
+        production_status: 'idea',
+        status: 'draft',
+        plan_date: planDate ?? fallback,
+        publications: [],
+      }),
+    })
+    const json = await res.json()
+    if (res.ok && json.data?.id) {
+      setSelectedSlotId(json.data.id)
+      reload()
+    } else {
+      alert(`Erreur création slot : ${json.error ?? 'inconnue'}`)
+    }
+  }
+
   const planRange = async ({ kinds, start_date, end_date }: { kinds: ('post' | 'story')[]; start_date: string; end_date: string }) => {
     if (!trame) {
       setTrameModalOpen(true)
@@ -111,28 +136,7 @@ export default function PlanningView() {
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
-            onClick={async () => {
-              const today = new Date()
-              const fmt = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-              const res = await fetch('/api/social/posts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  content_kind: 'post',
-                  production_status: 'idea',
-                  status: 'draft',
-                  plan_date: fmt,
-                  publications: [],
-                }),
-              })
-              const json = await res.json()
-              if (res.ok && json.data?.id) {
-                setSelectedSlotId(json.data.id)
-                reload()
-              } else {
-                alert(`Erreur création slot : ${json.error ?? 'inconnue'}`)
-              }
-            }}
+            onClick={() => createPost(undefined)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', fontSize: 12, fontWeight: 600,
@@ -202,6 +206,7 @@ export default function PlanningView() {
               cursor={cursor}
               onCursorChange={setCursor}
               onSelectSlot={setSelectedSlotId}
+              onCreateSlot={createPost}
             />
           )}
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

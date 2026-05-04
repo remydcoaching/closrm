@@ -15,6 +15,7 @@ interface Props {
   cursor: { year: number; month: number }
   onCursorChange: (c: { year: number; month: number }) => void
   onSelectSlot: (id: string) => void
+  onCreateSlot?: (planDate: string) => void
 }
 
 const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
@@ -36,7 +37,8 @@ const KIND_ICON: Record<SocialContentKind, typeof Camera> = {
 
 const MAX_VISIBLE_PER_CELL = 4
 
-export default function PlanningCalendarView({ posts, pillars, cursor, onCursorChange, onSelectSlot }: Props) {
+export default function PlanningCalendarView({ posts, pillars, cursor, onCursorChange, onSelectSlot, onCreateSlot }: Props) {
+  const [hoverCell, setHoverCell] = useState<string | null>(null)
   const [dayPopover, setDayPopover] = useState<string | null>(null)
 
   const cells = useMemo(() => {
@@ -140,17 +142,29 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
           const visiblePosts = posts.slice(0, MAX_VISIBLE_PER_CELL)
           const overflowPosts = posts.length - visiblePosts.length
 
+          const isPast = c.key < todayKey
+          const isWeekend = c.date.getDay() === 0 || c.date.getDay() === 6
+          const isHovered = hoverCell === c.key
+          const isEmpty = posts.length + stories.length === 0
+
           return (
             <div
               key={c.key}
+              onMouseEnter={() => setHoverCell(c.key)}
+              onMouseLeave={() => setHoverCell(null)}
               style={{
                 position: 'relative',
                 minHeight: 96, padding: 6,
-                background: isToday ? 'rgba(167,139,250,0.06)' : (c.inMonth ? 'var(--bg-secondary)' : 'transparent'),
-                border: isToday ? '1px solid rgba(167,139,250,0.4)' : '1px solid var(--border-primary)',
+                background: isToday
+                  ? 'rgba(167,139,250,0.08)'
+                  : c.inMonth
+                    ? (isWeekend ? 'var(--bg-elevated)' : 'var(--bg-secondary)')
+                    : 'transparent',
+                border: isToday ? '1px solid rgba(167,139,250,0.5)' : '1px solid var(--border-primary)',
                 borderRadius: 8,
-                opacity: c.inMonth ? 1 : 0.4,
+                opacity: c.inMonth ? (isPast ? 0.55 : 1) : 0.3,
                 display: 'flex', flexDirection: 'column', gap: 3,
+                transition: 'all 0.15s',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
@@ -177,14 +191,15 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                 const color = pillar?.color ?? '#666'
                 const StatusIcon = isPublished ? CheckCircle2 : meta.icon
                 const statusColor = isPublished ? '#10b981' : isFailed ? '#ef4444' : meta.color
+                const hookText = p.hook || p.title
                 return (
                   <button
                     key={p.id}
                     onClick={() => onSelectSlot(p.id)}
-                    title={`${pillar?.name ?? '—'} · ${isPublished ? 'Publié' : isScheduled ? 'Programmé' : meta.label}`}
+                    title={`${pillar?.name ?? '—'} · ${isPublished ? 'Publié' : isScheduled ? 'Programmé' : meta.label}${hookText ? ` · ${hookText}` : ''}`}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      padding: '4px 6px',
+                      display: 'flex', flexDirection: 'column',
+                      padding: '4px 6px', gap: 1,
                       background: color + (isPublished ? '12' : '20'),
                       border: `1px solid ${color}${isPublished ? '35' : '50'}`,
                       borderLeft: `3px solid ${color}`,
@@ -193,19 +208,27 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                       width: '100%', overflow: 'hidden',
                       transition: 'all 0.1s',
                       position: 'relative',
+                      textAlign: 'left',
                     }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)' }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'none' }}
                   >
-                    <StatusIcon size={10} color={statusColor} style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'left', textDecoration: isPublished ? 'line-through' : 'none' }}>
-                      {pillar?.name ?? '—'}
-                    </span>
-                    {isScheduled && (
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 5px #a78bfa' }} />
-                    )}
-                    {isFailed && (
-                      <span style={{ fontSize: 8, fontWeight: 700, color: '#ef4444' }}>!</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, width: '100%' }}>
+                      <StatusIcon size={10} color={statusColor} style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: 9, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textDecoration: isPublished ? 'line-through' : 'none' }}>
+                        {pillar?.name ?? '—'}
+                      </span>
+                      {isScheduled && (
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 5px #a78bfa', flexShrink: 0 }} />
+                      )}
+                      {isFailed && (
+                        <span style={{ fontSize: 8, fontWeight: 700, color: '#ef4444' }}>!</span>
+                      )}
+                    </div>
+                    {hookText && (
+                      <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', lineHeight: 1.2 }}>
+                        {hookText}
+                      </span>
                     )}
                   </button>
                 )
@@ -222,6 +245,23 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                   }}
                 >
                   +{overflowPosts} post{overflowPosts > 1 ? 's' : ''}…
+                </button>
+              )}
+
+              {/* Empty cell hover affordance */}
+              {isEmpty && c.inMonth && !isPast && isHovered && onCreateSlot && (
+                <button
+                  onClick={() => onCreateSlot(c.key)}
+                  style={{
+                    position: 'absolute', inset: 6,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(167,139,250,0.08)',
+                    border: '1px dashed rgba(167,139,250,0.4)',
+                    borderRadius: 6, cursor: 'pointer',
+                    color: '#a78bfa', fontSize: 11, fontWeight: 700, gap: 4,
+                  }}
+                >
+                  + Nouveau post
                 </button>
               )}
 
