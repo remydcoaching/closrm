@@ -124,7 +124,7 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
       </div>
 
       {/* Weekday headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4, marginBottom: 4 }}>
         {WEEKDAYS.map((wd) => (
           <div key={wd} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textAlign: 'center', padding: 6 }}>
             {wd}
@@ -133,7 +133,7 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
       </div>
 
       {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
         {cells.map((c) => {
           const dayPosts = postsByDate.get(c.key) ?? []
           const posts = dayPosts.filter((p) => p.content_kind !== 'story')
@@ -154,7 +154,7 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
               onMouseLeave={() => setHoverCell(null)}
               style={{
                 position: 'relative',
-                minHeight: 96, padding: 6,
+                minHeight: 96, minWidth: 0, padding: 6,
                 background: isToday
                   ? 'rgba(167,139,250,0.08)'
                   : c.inMonth
@@ -164,6 +164,7 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                 borderRadius: 8,
                 opacity: c.inMonth ? (isPast ? 0.55 : 1) : 0.3,
                 display: 'flex', flexDirection: 'column', gap: 3,
+                overflow: 'hidden',
                 transition: 'all 0.15s',
               }}
             >
