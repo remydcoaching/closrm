@@ -12,6 +12,7 @@ import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadAttributionBlock from '@/components/leads/LeadAttributionBlock'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
+import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
 
 interface LeadWithRelations extends Lead {
   calls: Call[]
@@ -138,10 +139,12 @@ export default function LeadDetailPage() {
           <button onClick={() => setShowCallModal(true)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'var(--color-primary)', border: 'none', color: '#000', cursor: 'pointer',
+            background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.25)',
+            color: '#a855f7', cursor: 'pointer',
           }}>
-            <Calendar size={13} /> Planifier RDV
+            <Phone size={13} /> Planifier un appel
           </button>
+          <LeadAddBookingButton lead={lead} variant="large" onCreated={fetchLead} />
         </div>
       </div>
 
