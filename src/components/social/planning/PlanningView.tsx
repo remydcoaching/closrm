@@ -150,7 +150,7 @@ export default function PlanningView() {
               border: 'none', borderRadius: 8, cursor: 'pointer',
             }}
           >
-            <Plus size={14} /> Nouveau slot
+            <Plus size={14} /> Nouveau post
           </button>
           <button
             onClick={() => setTrameModalOpen(true)}
