@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   X, Calendar as CalIcon, Send, Trash2, Plus, Image as ImgIcon,
   Camera, Film, FileText, Sparkles, Hash, Link2, Check, ChevronDown,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import {
   type ContentPillar,
@@ -398,26 +399,26 @@ function DatePill({ value, onChange }: {
   value: string | null
   onChange: (v: string | null) => void
 }) {
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    setTimeout(() => document.addEventListener('mousedown', handler), 0)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
 
   const display = value
     ? new Date(value + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
     : 'Pas de date'
 
-  const open = () => {
-    const el = inputRef.current
-    if (!el) return
-    if (typeof el.showPicker === 'function') {
-      try { el.showPicker(); return } catch {}
-    }
-    el.click()
-    el.focus()
-  }
-
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={ref} style={{ position: 'relative' }}>
       <button
-        onClick={open}
+        onClick={() => setOpen(!open)}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
           padding: '6px 12px',
@@ -442,19 +443,126 @@ function DatePill({ value, onChange }: {
             <X size={11} />
           </span>
         )}
+        <ChevronDown size={12} color="var(--text-tertiary)" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
       </button>
-      <input
-        ref={inputRef}
-        type="date"
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value || null)}
-        style={{
-          position: 'absolute', inset: 0,
-          opacity: 0, pointerEvents: 'none',
-        }}
-      />
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, marginTop: 6,
+          background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+          borderRadius: 12, padding: 12,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+          zIndex: 50, width: 280,
+        }}>
+          <CustomCalendar
+            value={value}
+            onChange={(v) => { onChange(v); setOpen(false) }}
+          />
+        </div>
+      )}
     </div>
   )
+}
+
+function CustomCalendar({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
+  const initial = value ? new Date(value + 'T00:00:00') : new Date()
+  const [cursor, setCursor] = useState({ year: initial.getFullYear(), month: initial.getMonth() })
+
+  const cells = useMemo(() => {
+    const first = new Date(cursor.year, cursor.month, 1)
+    const startOffset = (first.getDay() + 6) % 7 // monday-first
+    const gridStart = new Date(cursor.year, cursor.month, 1 - startOffset)
+    const days: { date: Date; inMonth: boolean }[] = []
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(gridStart); d.setDate(gridStart.getDate() + i)
+      days.push({ date: d, inMonth: d.getMonth() === cursor.month })
+    }
+    return days
+  }, [cursor])
+
+  const monthLabel = new Date(cursor.year, cursor.month, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  const today = new Date()
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const todayStr = fmt(today)
+
+  const navigate = (delta: number) => {
+    const m = cursor.month + delta
+    if (m < 0) setCursor({ year: cursor.year - 1, month: 11 })
+    else if (m > 11) setCursor({ year: cursor.year + 1, month: 0 })
+    else setCursor({ year: cursor.year, month: m })
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <button onClick={() => navigate(-1)} style={calNavBtn}><ChevronLeft size={14} /></button>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+          {monthLabel}
+        </span>
+        <button onClick={() => navigate(1)} style={calNavBtn}><ChevronRight size={14} /></button>
+      </div>
+
+      {/* Weekdays */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+        {['L','M','M','J','V','S','D'].map((d, i) => (
+          <div key={i} style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textAlign: 'center', padding: 4 }}>
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Days grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+        {cells.map((c, i) => {
+          const dateStr = fmt(c.date)
+          const isSelected = value === dateStr
+          const isToday = dateStr === todayStr
+          return (
+            <button
+              key={i}
+              onClick={() => onChange(dateStr)}
+              style={{
+                aspectRatio: '1',
+                fontSize: 12, fontWeight: isSelected ? 700 : 500,
+                color: isSelected ? '#fff' : c.inMonth ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                background: isSelected ? '#a78bfa' : 'transparent',
+                border: isToday && !isSelected ? '1px solid #a78bfa' : 'none',
+                borderRadius: 6, cursor: 'pointer',
+                opacity: c.inMonth ? 1 : 0.35,
+                transition: 'all 0.1s',
+              }}
+              onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-secondary)' }}
+              onMouseLeave={(e) => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              {c.date.getDate()}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Quick actions */}
+      <div style={{ display: 'flex', gap: 4, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border-primary)' }}>
+        <button
+          onClick={() => onChange(todayStr)}
+          style={{ flex: 1, padding: '6px 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-secondary)', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+        >Aujourd'hui</button>
+        <button
+          onClick={() => {
+            const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
+            onChange(fmt(tomorrow))
+          }}
+          style={{ flex: 1, padding: '6px 8px', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-secondary)', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+        >Demain</button>
+      </div>
+    </div>
+  )
+}
+
+const calNavBtn: React.CSSProperties = {
+  width: 26, height: 26,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: 'var(--bg-secondary)', border: 'none',
+  borderRadius: 6, color: 'var(--text-secondary)', cursor: 'pointer',
 }
 
 function StatusPill({ value, onChange }: {
