@@ -410,9 +410,18 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
       {config.title && <h2 style={titleStyle}>{config.title}</h2>}
       {config.subtitle && <p style={subtitleStyle}>{config.subtitle}</p>}
 
-      <div style={widgetContainerStyle}>
+      {/* Responsive : stack vertical sous 640px (sinon le calendrier déborde
+          et la colonne créneaux écrase "Sélectionne une date..."). */}
+      <style>{`
+        @media (max-width: 640px) {
+          .fnl-booking-grid { grid-template-columns: 1fr !important; }
+          .fnl-booking-cal { border-right: none !important; border-bottom: 1px solid rgba(var(--fnl-primary-rgb), 0.1) !important; }
+          .fnl-booking-slots-empty { min-height: 80px; padding: 20px 16px !important; }
+        }
+      `}</style>
+      <div className="fnl-booking-grid" style={widgetContainerStyle}>
         {/* Left: month calendar */}
-        <div style={calendarColumnStyle}>
+        <div className="fnl-booking-cal" style={calendarColumnStyle}>
           {/* Month nav */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <button onClick={() => setViewMonth(subMonths(viewMonth, 1))} style={navButtonStyle} aria-label="Mois précédent">‹</button>
@@ -476,7 +485,7 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
         {/* Right: time slots */}
         <div style={slotsColumnStyle}>
           {!selectedDate ? (
-            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fnl-text-secondary)', fontSize: 13, textAlign: 'center', padding: '0 16px' }}>
+            <div className="fnl-booking-slots-empty" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fnl-text-secondary)', fontSize: 13, textAlign: 'center', padding: '0 16px' }}>
               Sélectionne une date pour voir les créneaux disponibles
             </div>
           ) : (
