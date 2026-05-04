@@ -104,6 +104,18 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Stack vertical sous 640px — détecté en JS plutôt que via @media/@container
+  // pour garantir la prise en compte (les @media sont parfois ignorées en
+  // mobile preview Chrome quand la page est rendue SSR sans hydratation viewport
+  // strict, et @container échoue si on tente de styler le container lui-même).
+  const [isNarrow, setIsNarrow] = useState(false)
+  useEffect(() => {
+    const check = () => setIsNarrow(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   const [viewMonth, setViewMonth] = useState<Date>(startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
@@ -410,25 +422,16 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
       {config.title && <h2 style={titleStyle}>{config.title}</h2>}
       {config.subtitle && <p style={subtitleStyle}>{config.subtitle}</p>}
 
-      {/* Responsive : container query sur la largeur du widget lui-même
-          (le viewport peut être large alors que le widget est étroit, p.ex.
-          funnel embarqué avec padding parent). Stack vertical sous 520px. */}
-      <style>{`
-        .fnl-booking-grid { container-type: inline-size; }
-        @container (max-width: 520px) {
-          .fnl-booking-grid { grid-template-columns: 1fr !important; }
-          .fnl-booking-cal { border-right: none !important; border-bottom: 1px solid rgba(var(--fnl-primary-rgb), 0.1) !important; }
-          .fnl-booking-slots-empty { min-height: 80px; padding: 20px 16px !important; }
-        }
-        /* Fallback viewport pour navigateurs sans container queries (< Safari 16). */
-        @media (max-width: 640px) {
-          .fnl-booking-grid { grid-template-columns: 1fr !important; }
-          .fnl-booking-cal { border-right: none !important; border-bottom: 1px solid rgba(var(--fnl-primary-rgb), 0.1) !important; }
-        }
-      `}</style>
-      <div className="fnl-booking-grid" style={widgetContainerStyle}>
+      <div style={{
+        ...widgetContainerStyle,
+        gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr',
+      }}>
         {/* Left: month calendar */}
-        <div className="fnl-booking-cal" style={calendarColumnStyle}>
+        <div style={{
+          ...calendarColumnStyle,
+          borderRight: isNarrow ? 'none' : '1px solid rgba(var(--fnl-primary-rgb), 0.1)',
+          borderBottom: isNarrow ? '1px solid rgba(var(--fnl-primary-rgb), 0.1)' : 'none',
+        }}>
           {/* Month nav */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <button onClick={() => setViewMonth(subMonths(viewMonth, 1))} style={navButtonStyle} aria-label="Mois précédent">‹</button>
@@ -492,7 +495,7 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
         {/* Right: time slots */}
         <div style={slotsColumnStyle}>
           {!selectedDate ? (
-            <div className="fnl-booking-slots-empty" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fnl-text-secondary)', fontSize: 13, textAlign: 'center', padding: '0 16px' }}>
+            <div style={{ minHeight: isNarrow ? 80 : '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fnl-text-secondary)', fontSize: 13, textAlign: 'center', padding: isNarrow ? '20px 16px' : '0 16px' }}>
               Sélectionne une date pour voir les créneaux disponibles
             </div>
           ) : (
