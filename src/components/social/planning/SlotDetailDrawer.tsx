@@ -400,33 +400,37 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <select
-                  value={slot.pillar_id ?? ''}
-                  onChange={(e) => patch({ pillar_id: e.target.value || null })}
-                  style={{
-                    padding: '4px 12px', fontSize: 11, fontWeight: 700,
-                    color: '#fff',
-                    background: headerColor,
-                    border: 'none', borderRadius: 999, cursor: 'pointer',
-                    appearance: 'none', textTransform: 'uppercase', letterSpacing: 0.4,
-                  }}
-                >
-                  <option value="" style={{ color: '#000', background: '#fff' }}>(aucun pillar)</option>
-                  {pillars.map((p) => (
-                    <option key={p.id} value={p.id} style={{ color: '#000', background: '#fff' }}>{p.name}</option>
-                  ))}
-                </select>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: 'var(--bg-secondary)', borderRadius: 999, border: '1px solid var(--border-primary)' }}>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <select
+                    value={slot.pillar_id ?? ''}
+                    onChange={(e) => patch({ pillar_id: e.target.value || null })}
+                    style={{
+                      padding: '4px 24px 4px 12px', fontSize: 11, fontWeight: 700,
+                      color: '#fff',
+                      background: headerColor,
+                      border: 'none', borderRadius: 999, cursor: 'pointer',
+                      appearance: 'none', textTransform: 'uppercase', letterSpacing: 0.4,
+                    }}
+                  >
+                    <option value="" style={{ color: '#000', background: '#fff' }}>(aucun pillar)</option>
+                    {pillars.map((p) => (
+                      <option key={p.id} value={p.id} style={{ color: '#000', background: '#fff' }}>{p.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={11} color="#fff" style={{ position: 'absolute', right: 8, pointerEvents: 'none' }} />
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4, padding: '3px 22px 3px 10px', background: 'var(--bg-secondary)', borderRadius: 999, border: '1px solid var(--border-primary)', cursor: 'pointer' }}>
                   <KindIcon size={11} color="var(--text-tertiary)" />
                   <select
                     value={slot.content_kind ?? 'post'}
                     onChange={(e) => patch({ content_kind: e.target.value as SocialContentKind })}
-                    style={{ background: 'transparent', border: 'none', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', appearance: 'none', textTransform: 'uppercase' }}
+                    style={{ background: 'transparent', border: 'none', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', appearance: 'none', textTransform: 'uppercase', paddingRight: 0 }}
                   >
                     <option value="post">Post</option>
                     <option value="story">Story</option>
                     <option value="reel">Reel</option>
                   </select>
+                  <ChevronDown size={10} color="var(--text-tertiary)" style={{ position: 'absolute', right: 7, pointerEvents: 'none' }} />
                 </div>
                 {isPublished && (
                   <span style={{ padding: '3px 10px', fontSize: 10, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.15)', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.4 }}>
