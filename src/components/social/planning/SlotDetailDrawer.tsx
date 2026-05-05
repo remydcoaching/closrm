@@ -421,6 +421,15 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
     return txt.length > 80 ? txt.slice(0, 77) + '…' : txt
   })()
 
+  const montageVisible = !!slot?.monteur_id || (slot?.production_status !== 'idea' && slot?.production_status != null)
+  const montageSummary = (() => {
+    if (!slot) return ''
+    const ps = slot.production_status
+    const status = ps === 'ready' ? 'Validé ✓✓' : ps === 'edited' ? 'Monté ✓' : ps === 'filmed' ? 'À monter' : 'Pas commencé'
+    const monteur = slot.monteur_id ? 'Assigné' : 'Non assigné'
+    return `${monteur} · ${status}`
+  })()
+
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
@@ -624,7 +633,16 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
             </Field>
             </DrawerSection>
 
-            <MontageSection slot={slot} setSlot={setSlot} patch={patch} />
+            {montageVisible && (
+              <DrawerSection
+                title="Montage"
+                summary={montageSummary}
+                open={montageOpen}
+                onToggle={() => setMontageOpen(o => !o)}
+              >
+                <MontageSection slot={slot} setSlot={setSlot} patch={patch} />
+              </DrawerSection>
+            )}
           </div>
 
           {/* DIVIDER */}
