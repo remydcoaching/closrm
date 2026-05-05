@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Scissors, Clapperboard, Scissors as Cut, Sparkles, ExternalLink, Loader2, Filter, RefreshCw } from 'lucide-react'
-import type { SocialPost, SocialProductionStatus, ContentPillar, WorkspaceRole } from '@/types'
+import { Scissors, Clapperboard, Scissors as Cut, Sparkles, ExternalLink, Loader2, Filter, RefreshCw, Receipt, KanbanSquare, CheckCircle2 } from 'lucide-react'
+import type { SocialPost, SocialProductionStatus, ContentPillar, WorkspaceRole, MonteurPricingTier } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 
@@ -26,9 +26,13 @@ export default function MontagePage() {
   const [role, setRole] = useState<WorkspaceRole>('admin')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [slots, setSlots] = useState<SlotWithMonteur[]>([])
+  const [billingSlots, setBillingSlots] = useState<SlotWithMonteur[]>([])
+  const [pricingTiers, setPricingTiers] = useState<MonteurPricingTier[]>([])
   const [pillars, setPillars] = useState<ContentPillar[]>([])
   const [monteurs, setMonteurs] = useState<MonteurOption[]>([])
   const [filterMonteur, setFilterMonteur] = useState<string | 'all'>('all')
+  const [view, setView] = useState<'board' | 'billing'>('board')
+  const [paidFilter, setPaidFilter] = useState<'all' | 'unpaid' | 'paid'>('unpaid')
   const [loading, setLoading] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<SlotWithMonteur | null>(null)
 
@@ -58,6 +62,18 @@ export default function MontagePage() {
       const allSlots = (slotsJson.data ?? []) as SlotWithMonteur[]
       const activeSlots = allSlots.filter(s => s.status !== 'published')
       setSlots(activeSlots)
+
+      // Fetch billing data (slots avec pricing_tier_id, tous status confondus)
+      // RLS scope automatiquement (le monteur ne voit que ses slots, le coach voit tout)
+      const billingRes = await fetch('/api/social/posts?per_page=500')
+      const billingJson = await billingRes.json()
+      const allSlotsForBilling = (billingJson.data ?? []) as SlotWithMonteur[]
+      setBillingSlots(allSlotsForBilling.filter(s => s.pricing_tier_id != null))
+
+      // Fetch pricing tiers (tous monteurs confondus pour pouvoir afficher le name + prix)
+      const tiersRes = await fetch('/api/monteur-pricing-tiers?include_archived=true')
+      const tiersJson = await tiersRes.json()
+      setPricingTiers(tiersJson.data ?? [])
 
       // Fetch pillars
       const pillarsRes = await fetch('/api/social/pillars')
@@ -146,7 +162,7 @@ export default function MontagePage() {
     <div style={{ padding: '32px 40px', maxWidth: 1600, margin: '0 auto' }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 16,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
@@ -163,12 +179,12 @@ export default function MontagePage() {
             <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
               {role === 'monteur'
                 ? 'Vidéos qui t\'attendent — clique pour voir le brief et le rush.'
-                : 'Suivi des vidéos en montage.'}
+                : 'Suivi des vidéos en montage et facturation.'}
             </p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {role === 'admin' && monteurs.length > 1 && (
+          {role === 'admin' && monteurs.length > 1 && view === 'board' && (
             <select
               value={filterMonteur}
               onChange={e => setFilterMonteur(e.target.value)}
@@ -201,10 +217,26 @@ export default function MontagePage() {
         </div>
       </div>
 
-      {/* Board */}
+      {/* Tabs Board / Facturation */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 18, padding: 3, background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 10, width: 'fit-content' }}>
+        <button
+          onClick={() => setView('board')}
+          style={tabStyle(view === 'board')}
+        >
+          <KanbanSquare size={13} /> Board
+        </button>
+        <button
+          onClick={() => setView('billing')}
+          style={tabStyle(view === 'billing')}
+        >
+          <Receipt size={13} /> Facturation
+        </button>
+      </div>
+
+      {/* Board view */}
+      {view === 'board' && (
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
-        marginTop: 24,
       }}>
         {COLUMNS.map(col => {
           const Icon = col.icon
@@ -299,6 +331,23 @@ export default function MontagePage() {
           )
         })}
       </div>
+      )}
+
+      {/* Billing view */}
+      {view === 'billing' && (
+        <BillingView
+          slots={billingSlots}
+          tiers={pricingTiers}
+          monteurs={monteurs}
+          role={role}
+          paidFilter={paidFilter}
+          onPaidFilterChange={setPaidFilter}
+          filterMonteur={filterMonteur}
+          onFilterMonteurChange={setFilterMonteur}
+          onUpdate={updateSlot}
+          loading={loading}
+        />
+      )}
 
       {/* Slot drawer */}
       {selectedSlot && (
@@ -579,6 +628,238 @@ function SlotMontageDrawer({
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Billing view — facturation des slots assignés aux monteurs
+// ────────────────────────────────────────────────────────────────────
+
+function tabStyle(active: boolean): React.CSSProperties {
+  return {
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    padding: '6px 14px', fontSize: 12, fontWeight: 600,
+    color: active ? '#fff' : 'var(--text-tertiary)',
+    background: active ? '#8b5cf6' : 'transparent',
+    border: 'none', borderRadius: 7, cursor: 'pointer',
+    transition: 'all 0.15s',
+  }
+}
+
+function fmtEuros(cents: number): string {
+  return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €'
+}
+
+interface BillingViewProps {
+  slots: SlotWithMonteur[]
+  tiers: MonteurPricingTier[]
+  monteurs: MonteurOption[]
+  role: WorkspaceRole
+  paidFilter: 'all' | 'unpaid' | 'paid'
+  onPaidFilterChange: (f: 'all' | 'unpaid' | 'paid') => void
+  filterMonteur: string | 'all'
+  onFilterMonteurChange: (id: string | 'all') => void
+  onUpdate: (id: string, patch: Partial<SocialPost>) => Promise<boolean>
+  loading: boolean
+}
+
+function BillingView({
+  slots, tiers, monteurs, role, paidFilter, onPaidFilterChange,
+  filterMonteur, onFilterMonteurChange, onUpdate, loading,
+}: BillingViewProps) {
+  const tierMap = useMemo(() => new Map(tiers.map(t => [t.id, t])), [tiers])
+  const monteurMap = useMemo(() => new Map(monteurs.map(m => [m.user_id, m])), [monteurs])
+
+  const filtered = useMemo(() => {
+    let list = slots
+    if (paidFilter === 'unpaid') list = list.filter(s => !s.paid_at)
+    else if (paidFilter === 'paid') list = list.filter(s => !!s.paid_at)
+    if (filterMonteur !== 'all') list = list.filter(s => s.monteur_id === filterMonteur)
+    return [...list].sort((a, b) => {
+      // Non-payés d'abord, puis par plan_date desc
+      if (!!a.paid_at !== !!b.paid_at) return a.paid_at ? 1 : -1
+      const ad = a.plan_date ?? a.created_at
+      const bd = b.plan_date ?? b.created_at
+      return bd.localeCompare(ad)
+    })
+  }, [slots, paidFilter, filterMonteur])
+
+  const totalUnpaid = useMemo(() => {
+    return slots
+      .filter(s => !s.paid_at && (filterMonteur === 'all' || s.monteur_id === filterMonteur))
+      .reduce((sum, s) => sum + (tierMap.get(s.pricing_tier_id ?? '')?.price_cents ?? 0), 0)
+  }, [slots, filterMonteur, tierMap])
+
+  const totalPaid = useMemo(() => {
+    return slots
+      .filter(s => s.paid_at && (filterMonteur === 'all' || s.monteur_id === filterMonteur))
+      .reduce((sum, s) => sum + (tierMap.get(s.pricing_tier_id ?? '')?.price_cents ?? 0), 0)
+  }, [slots, filterMonteur, tierMap])
+
+  return (
+    <div>
+      {/* Filters + totals */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+        marginBottom: 18,
+      }}>
+        <div style={{
+          padding: 16, borderRadius: 12,
+          background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(139,92,246,0.05))',
+          border: '1px solid rgba(139,92,246,0.3)',
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+            À payer
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>
+            {fmtEuros(totalUnpaid)}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6 }}>
+            {slots.filter(s => !s.paid_at && (filterMonteur === 'all' || s.monteur_id === filterMonteur)).length} prestation(s)
+          </div>
+        </div>
+        <div style={{
+          padding: 16, borderRadius: 12,
+          background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))',
+          border: '1px solid rgba(16,185,129,0.25)',
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+            Déjà payé (cumulé)
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>
+            {fmtEuros(totalPaid)}
+          </div>
+        </div>
+      </div>
+
+      {/* Filter buttons */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 8 }}>
+          {(['unpaid', 'paid', 'all'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => onPaidFilterChange(f)}
+              style={{
+                padding: '5px 12px', fontSize: 11, fontWeight: 600,
+                color: paidFilter === f ? '#fff' : 'var(--text-tertiary)',
+                background: paidFilter === f ? '#8b5cf6' : 'transparent',
+                border: 'none', borderRadius: 5, cursor: 'pointer',
+              }}
+            >
+              {f === 'unpaid' ? 'À payer' : f === 'paid' ? 'Payés' : 'Tout'}
+            </button>
+          ))}
+        </div>
+        {role === 'admin' && monteurs.length > 1 && (
+          <select
+            value={filterMonteur}
+            onChange={e => onFilterMonteurChange(e.target.value)}
+            style={{
+              padding: '6px 12px', fontSize: 12,
+              background: 'var(--bg-input)', color: 'var(--text-primary)',
+              border: '1px solid var(--border-primary)', borderRadius: 8, outline: 'none',
+            }}
+          >
+            <option value="all">Tous les monteurs</option>
+            {monteurs.map(m => (
+              <option key={m.user_id} value={m.user_id}>{m.email ?? m.user_id.slice(0, 8)}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div style={{ padding: 32, textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>
+          <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{
+          padding: 40, textAlign: 'center',
+          background: 'var(--bg-secondary)', border: '1px dashed var(--border-primary)',
+          borderRadius: 10, fontSize: 13, color: 'var(--text-tertiary)',
+        }}>
+          {paidFilter === 'unpaid' ? 'Rien à payer 🎉' : paidFilter === 'paid' ? 'Aucun paiement enregistré.' : 'Aucune prestation facturable.'}
+        </div>
+      ) : (
+        <div style={{
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-primary)',
+          borderRadius: 10, overflow: 'hidden',
+        }}>
+          <div style={{
+            display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 0.8fr 1fr 0.8fr',
+            padding: '10px 14px', fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
+            textTransform: 'uppercase', letterSpacing: 0.4,
+            borderBottom: '1px solid var(--border-primary)',
+            background: 'var(--bg-elevated)',
+          }}>
+            <span>Vidéo</span>
+            <span>Monteur</span>
+            <span>Prestation</span>
+            <span style={{ textAlign: 'right' }}>Montant</span>
+            <span>Date</span>
+            <span style={{ textAlign: 'center' }}>Statut</span>
+          </div>
+          {filtered.map(s => {
+            const tier = s.pricing_tier_id ? tierMap.get(s.pricing_tier_id) : null
+            const monteur = s.monteur_id ? monteurMap.get(s.monteur_id) : null
+            return (
+              <div key={s.id} style={{
+                display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 0.8fr 1fr 0.8fr',
+                padding: '12px 14px', fontSize: 12,
+                borderTop: '1px solid var(--border-primary)',
+                alignItems: 'center',
+                background: s.paid_at ? 'rgba(16,185,129,0.04)' : 'transparent',
+              }}>
+                <span style={{ color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {s.hook || s.title || <em style={{ color: 'var(--text-tertiary)' }}>(sans accroche)</em>}
+                </span>
+                <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {monteur?.email ?? '—'}
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }}>
+                  {tier?.name ?? '—'}
+                </span>
+                <span style={{ textAlign: 'right', fontWeight: 700, color: '#8b5cf6' }}>
+                  {tier ? fmtEuros(tier.price_cents) : '—'}
+                </span>
+                <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>
+                  {s.plan_date ? new Date(s.plan_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}
+                </span>
+                <span style={{ textAlign: 'center' }}>
+                  {role === 'monteur' ? (
+                    s.paid_at ? (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#10b981', padding: '3px 8px', borderRadius: 4, background: 'rgba(16,185,129,0.12)' }}>
+                        ✓ Payé
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)' }}>
+                        En attente
+                      </span>
+                    )
+                  ) : (
+                    <button
+                      onClick={() => onUpdate(s.id, { paid_at: s.paid_at ? null : new Date().toISOString() })}
+                      style={{
+                        padding: '4px 10px', fontSize: 10, fontWeight: 700,
+                        color: s.paid_at ? '#10b981' : '#fff',
+                        background: s.paid_at ? 'rgba(16,185,129,0.12)' : '#8b5cf6',
+                        border: s.paid_at ? '1px solid rgba(16,185,129,0.3)' : 'none',
+                        borderRadius: 5, cursor: 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                      }}
+                    >
+                      {s.paid_at ? <><CheckCircle2 size={10} /> Payé</> : 'Marquer payé'}
+                    </button>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

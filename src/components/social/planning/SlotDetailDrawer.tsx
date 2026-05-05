@@ -1423,6 +1423,17 @@ function Field({
 // Montage section — rush URL, monteur assignment, montage feedback view
 // ────────────────────────────────────────────────────────────────────
 
+interface PricingTier {
+  id: string
+  monteur_id: string
+  name: string
+  price_cents: number
+}
+
+function formatEuros(cents: number): string {
+  return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €'
+}
+
 function MontageSection({
   slot, setSlot, patch,
 }: {
@@ -1431,8 +1442,11 @@ function MontageSection({
   patch: (changes: Partial<SocialPostWithPublications>) => void
 }) {
   const [monteurs, setMonteurs] = useState<{ user_id: string; email: string | null }[]>([])
+  const [tiers, setTiers] = useState<PricingTier[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [tierPickerOpen, setTierPickerOpen] = useState(false)
   const pickerRef = useRef<HTMLDivElement | null>(null)
+  const tierPickerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     fetch('/api/workspaces/members?role=monteur')
@@ -1453,15 +1467,47 @@ function MontageSection({
     return () => document.removeEventListener('mousedown', onClick)
   }, [pickerOpen])
 
+  useEffect(() => {
+    if (!tierPickerOpen) return
+    function onClick(e: MouseEvent) {
+      if (tierPickerRef.current && !tierPickerRef.current.contains(e.target as Node)) setTierPickerOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [tierPickerOpen])
+
+  // Charge les tiers du monteur sélectionné
+  useEffect(() => {
+    if (!slot.monteur_id) { setTiers([]); return }
+    fetch(`/api/monteur-pricing-tiers?monteur_id=${slot.monteur_id}`)
+      .then(r => r.json())
+      .then((j: { data?: PricingTier[] }) => setTiers(j.data ?? []))
+      .catch(() => setTiers([]))
+  }, [slot.monteur_id])
+
   const selectedMonteur = monteurs.find(m => m.user_id === slot.monteur_id) ?? null
   const monteurLabel = selectedMonteur
     ? (selectedMonteur.email ?? selectedMonteur.user_id.slice(0, 8))
     : null
 
+  const selectedTier = tiers.find(t => t.id === slot.pricing_tier_id) ?? null
+
   function selectMonteur(id: string | null) {
-    setSlot({ ...slot, monteur_id: id })
-    patch({ monteur_id: id })
+    setSlot({ ...slot, monteur_id: id, pricing_tier_id: null })
+    patch({ monteur_id: id, pricing_tier_id: null })
     setPickerOpen(false)
+  }
+
+  function selectTier(tierId: string | null) {
+    setSlot({ ...slot, pricing_tier_id: tierId })
+    patch({ pricing_tier_id: tierId })
+    setTierPickerOpen(false)
+  }
+
+  function togglePaid() {
+    const newPaidAt = slot.paid_at ? null : new Date().toISOString()
+    setSlot({ ...slot, paid_at: newPaidAt })
+    patch({ paid_at: newPaidAt })
   }
 
   return (
@@ -1567,6 +1613,131 @@ function MontageSection({
           fontSize: 11, color: 'var(--text-tertiary)',
         }}>
           Aucun monteur dans ce workspace. <a href="/parametres/equipe" style={{ color: '#8b5cf6' }}>Inviter un monteur →</a>
+        </div>
+      )}
+
+      {/* Pricing tier picker — visible seulement si monteur assigné */}
+      {slot.monteur_id && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Prestation</span>
+            <a
+              href={`/parametres/equipe/${slot.monteur_id}/prestations`}
+              style={{ fontSize: 10, color: '#8b5cf6', textDecoration: 'none' }}
+            >
+              Gérer →
+            </a>
+          </div>
+          {tiers.length > 0 ? (
+            <div ref={tierPickerRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setTierPickerOpen(o => !o)}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  padding: '8px 10px', borderRadius: 8,
+                  background: 'var(--bg-input)',
+                  border: `1px solid ${tierPickerOpen ? '#8b5cf6' : 'var(--border-primary)'}`,
+                  color: selectedTier ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  fontSize: 13, cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                {selectedTier ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedTier.name}
+                    </span>
+                    <span style={{ color: '#8b5cf6', fontWeight: 700, flexShrink: 0 }}>
+                      {formatEuros(selectedTier.price_cents)}
+                    </span>
+                  </span>
+                ) : (
+                  <span>— Choisir une prestation —</span>
+                )}
+                <ChevronDown size={13} color="var(--text-tertiary)" style={{ flexShrink: 0, transform: tierPickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+              </button>
+              {tierPickerOpen && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 10,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 8, padding: 4,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                  maxHeight: 240, overflow: 'auto',
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => selectTier(null)}
+                    style={pickerOptionStyle(slot.pricing_tier_id == null)}
+                  >
+                    <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <X size={11} color="var(--text-tertiary)" />
+                    </span>
+                    <span>— Aucune —</span>
+                  </button>
+                  {tiers.map(t => {
+                    const active = slot.pricing_tier_id === t.id
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => selectTier(t.id)}
+                        style={pickerOptionStyle(active)}
+                      >
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+                        <span style={{ color: '#8b5cf6', fontWeight: 700, fontSize: 12 }}>
+                          {formatEuros(t.price_cents)}
+                        </span>
+                        {active && <Check size={12} color="#8b5cf6" style={{ flexShrink: 0 }} />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <a
+              href={`/parametres/equipe/${slot.monteur_id}/prestations`}
+              style={{
+                display: 'block', padding: '8px 10px',
+                background: 'var(--bg-secondary)', borderRadius: 6,
+                fontSize: 11, color: 'var(--text-tertiary)',
+                textDecoration: 'none',
+                border: '1px dashed var(--border-primary)',
+                textAlign: 'center',
+              }}
+            >
+              Aucune prestation pour ce monteur. <span style={{ color: '#8b5cf6' }}>Créer →</span>
+            </a>
+          )}
+
+          {/* Statut payé */}
+          {slot.pricing_tier_id && (
+            <div style={{
+              marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '6px 10px', borderRadius: 6,
+              background: slot.paid_at ? 'rgba(16,185,129,0.1)' : 'var(--bg-secondary)',
+              border: `1px solid ${slot.paid_at ? 'rgba(16,185,129,0.3)' : 'var(--border-primary)'}`,
+            }}>
+              <span style={{ fontSize: 11, color: slot.paid_at ? '#10b981' : 'var(--text-tertiary)', fontWeight: 600 }}>
+                {slot.paid_at ? `✓ Payé le ${new Date(slot.paid_at).toLocaleDateString('fr-FR')}` : 'Non payé'}
+              </span>
+              <button
+                type="button"
+                onClick={togglePaid}
+                style={{
+                  padding: '3px 10px', fontSize: 10, fontWeight: 700,
+                  color: slot.paid_at ? 'var(--text-tertiary)' : '#fff',
+                  background: slot.paid_at ? 'transparent' : '#10b981',
+                  border: slot.paid_at ? '1px solid var(--border-primary)' : 'none',
+                  borderRadius: 4, cursor: 'pointer',
+                }}
+              >
+                {slot.paid_at ? 'Annuler' : 'Marquer payé'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
