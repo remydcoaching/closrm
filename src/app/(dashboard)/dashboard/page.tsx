@@ -3,6 +3,7 @@ export const revalidate = 0
 export const fetchCache = 'force-no-store'
 
 import { unstable_noStore as noStore } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import {
   fetchKpisV2,
@@ -41,6 +42,11 @@ export default async function DashboardPage({ searchParams }: Props) {
     .single()
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Coach'
+
+  // Le monteur n'a accès qu'au module Montage — on redirige direct.
+  if (role === 'monteur') {
+    redirect('/montage')
+  }
 
   if (role === 'setter') {
     return <SetterDashboard firstName={firstName} userId={userId} />
