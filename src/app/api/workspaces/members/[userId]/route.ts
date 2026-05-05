@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import type { WorkspaceRole, MemberStatus } from '@/types'
 
-const VALID_ROLES: WorkspaceRole[] = ['setter', 'closer']
+const VALID_ROLES: WorkspaceRole[] = ['setter', 'closer', 'monteur']
 const VALID_STATUSES: MemberStatus[] = ['active', 'suspended']
 
 export async function PATCH(
@@ -44,7 +44,7 @@ export async function PATCH(
 
     if (newRole && !VALID_ROLES.includes(newRole as WorkspaceRole)) {
       return NextResponse.json(
-        { error: 'Le rôle doit être "setter" ou "closer"' },
+        { error: 'Le rôle doit être "setter", "closer" ou "monteur"' },
         { status: 400 }
       )
     }
