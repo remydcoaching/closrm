@@ -23,6 +23,8 @@ interface Props {
   currentUserId?: string
   /** Polling interval en ms pour rafraichir les messages. 0 = jamais. Default 15000 (15s). */
   pollMs?: number
+  /** Si true, le composant prend toute la hauteur disponible (au lieu de maxHeight 360). */
+  fillHeight?: boolean
 }
 
 function fmtTime(iso: string): string {
@@ -44,7 +46,7 @@ function authorName(m: SlotChatMessage): string {
   return m.author?.full_name || m.author?.email || 'Utilisateur'
 }
 
-export default function SlotChat({ slotId, currentUserId: propUserId, pollMs = 15000 }: Props) {
+export default function SlotChat({ slotId, currentUserId: propUserId, pollMs = 15000, fillHeight = false }: Props) {
   const [messages, setMessages] = useState<SlotChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [input, setInput] = useState('')
@@ -117,16 +119,19 @@ export default function SlotChat({ slotId, currentUserId: propUserId, pollMs = 1
     <div style={{
       display: 'flex', flexDirection: 'column',
       background: 'var(--bg-secondary)',
-      border: '1px solid var(--border-primary)',
-      borderRadius: 10,
-      maxHeight: 360,
+      border: fillHeight ? 'none' : '1px solid var(--border-primary)',
+      borderRadius: fillHeight ? 0 : 10,
+      maxHeight: fillHeight ? 'none' : 360,
+      flex: fillHeight ? 1 : undefined,
+      minHeight: fillHeight ? 0 : undefined,
       overflow: 'hidden',
     }}>
       {/* Messages list */}
       <div ref={scrollRef} style={{
         flex: 1, overflow: 'auto', padding: 12,
         display: 'flex', flexDirection: 'column', gap: 8,
-        minHeight: 120, maxHeight: 280,
+        minHeight: fillHeight ? 0 : 120,
+        maxHeight: fillHeight ? 'none' : 280,
       }}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 20, color: 'var(--text-tertiary)' }}>
