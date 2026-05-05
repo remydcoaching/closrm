@@ -78,5 +78,28 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // ─── Role gate : monteur ─────────────────────────────────────────────
+  // Les monteurs n'ont accès qu'à /montage. Tout le reste redirige.
+  // Vérifie une seule fois par requête (cookie role-cache pour économiser).
+  if (user && !isPublicRoute(pathname) && !pathname.startsWith('/montage')) {
+    const cachedRole = request.cookies.get('crm-role')?.value
+    let role: string | null = cachedRole ?? null
+    if (!role) {
+      const { data: member } = await supabase
+        .from('workspace_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle()
+      role = member?.role ?? null
+      if (role) supabaseResponse.cookies.set('crm-role', role, { maxAge: 60, httpOnly: true, sameSite: 'lax' })
+    }
+    if (role === 'monteur') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/montage'
+      return NextResponse.redirect(url)
+    }
+  }
+
   return supabaseResponse
 }

@@ -4,17 +4,23 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import type { WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
+    const roleFilter = request.nextUrl.searchParams.get('role')
+
     // Fetch members
-    const { data: members, error } = await supabase
+    let query = supabase
       .from('workspace_members')
       .select('id, workspace_id, user_id, role, status, permissions, invited_by, invited_at, activated_at, created_at')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: true })
+
+    if (roleFilter) query = query.eq('role', roleFilter)
+
+    const { data: members, error } = await query
 
     if (error) {
       console.error('[API /workspaces/members] GET error:', error.message)

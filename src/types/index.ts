@@ -22,7 +22,7 @@ export interface User {
 
 // ─── Team / Workspace Members ───────────────────────────────────────────────
 
-export type WorkspaceRole = 'admin' | 'setter' | 'closer'
+export type WorkspaceRole = 'admin' | 'setter' | 'closer' | 'monteur'
 export type MemberStatus = 'active' | 'invited' | 'suspended'
 
 export interface WorkspaceMember {
@@ -1408,6 +1408,12 @@ export interface SocialPost {
   script: string | null
   references_urls: string[]
   notes: string | null
+  monteur_id: string | null
+  rush_url: string | null
+  final_url: string | null
+  editor_notes: string | null
+  monteur_notified_at: string | null
+  coach_notified_at: string | null
 }
 
 export type SocialContentKind = 'post' | 'story' | 'reel'

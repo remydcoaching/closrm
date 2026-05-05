@@ -50,6 +50,10 @@ export const updateSocialPostSchema = z.object({
   script: z.string().max(20000).optional().nullable(),
   references_urls: z.array(z.string().url()).max(20).optional(),
   notes: z.string().max(5000).optional().nullable(),
+  monteur_id: z.string().uuid().optional().nullable(),
+  rush_url: z.string().url().max(2000).optional().nullable().or(z.literal('').transform(() => null)),
+  final_url: z.string().url().max(2000).optional().nullable().or(z.literal('').transform(() => null)),
+  editor_notes: z.string().max(5000).optional().nullable(),
 })
 
 export const socialPostFiltersSchema = z.object({
@@ -60,7 +64,7 @@ export const socialPostFiltersSchema = z.object({
   plan_date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   plan_date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   content_kind: z.enum(contentKinds).optional(),
-  production_status: z.enum(productionStatuses).optional(),
+  production_status: z.string().optional(), // single value or comma-separated
   pillar_id: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(500).default(25),
