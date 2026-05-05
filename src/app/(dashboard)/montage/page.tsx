@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import { Scissors, Clapperboard, Scissors as Cut, Sparkles, ExternalLink, Loader2, Filter, RefreshCw, Receipt, KanbanSquare, CheckCircle2 } from 'lucide-react'
+import { Scissors, Clapperboard, Scissors as Cut, Sparkles, ExternalLink, Loader2, Filter, RefreshCw, Receipt, KanbanSquare, CheckCircle2, ChevronDown, ChevronRight, MessageCircle, FileText, Link2, StickyNote } from 'lucide-react'
 import type { SocialPost, SocialProductionStatus, ContentPillar, WorkspaceRole, MonteurPricingTier } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
@@ -524,197 +524,168 @@ function SlotMontageDrawer({
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Prestation + statut paiement (read-only pour le monteur) */}
+        <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* ═══ ACTION ZONE — toujours en haut, visuellement marquée ═══ */}
+          <div style={{
+            padding: 16, borderRadius: 12,
+            background: status === 'ready'
+              ? 'linear-gradient(135deg, rgba(16,185,129,0.10), rgba(16,185,129,0.02))'
+              : 'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(139,92,246,0.02))',
+            border: `1px solid ${status === 'ready' ? 'rgba(16,185,129,0.3)' : 'rgba(139,92,246,0.3)'}`,
+            display: 'flex', flexDirection: 'column', gap: 14,
+          }}>
+            {/* Step indicator */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                width: 22, height: 22, borderRadius: '50%',
+                background: status === 'ready' ? '#10b981' : '#8b5cf6',
+                color: '#fff', fontSize: 11, fontWeight: 800,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {status === 'ready' ? <CheckCircle2 size={14} /> : (status === 'edited' ? '✓' : '!')}
+              </div>
+              <div style={{
+                fontSize: 13, fontWeight: 700,
+                color: status === 'ready' ? '#10b981' : status === 'edited' ? '#8b5cf6' : 'var(--text-primary)',
+              }}>
+                {status === 'ready' && 'Validé par le coach 🎉'}
+                {status === 'edited' && 'En attente de validation du coach'}
+                {status === 'filmed' && (slot.rush_url ? 'À toi de jouer — récupère le rush et monte la vidéo' : 'En attente du rush du coach')}
+              </div>
+            </div>
+
+            {/* Step 1: Rush button */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <ExternalLink size={10} /> Étape 1 — Rush brut
+              </div>
+              {slot.rush_url ? (
+                <a
+                  href={slot.rush_url} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '12px 16px', borderRadius: 10,
+                    background: 'linear-gradient(135deg, #06b6d4, #0891b2)',
+                    color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                  }}
+                >
+                  <ExternalLink size={15} />
+                  Ouvrir le rush dans le navigateur
+                </a>
+              ) : (
+                <div style={{
+                  padding: 12, textAlign: 'center', fontSize: 12,
+                  color: 'var(--text-tertiary)', fontStyle: 'italic',
+                  background: 'var(--bg-secondary)',
+                  border: '1px dashed var(--border-primary)', borderRadius: 8,
+                }}>
+                  Le coach n&apos;a pas encore mis le lien du rush.
+                </div>
+              )}
+            </div>
+
+            {/* Step 2: Final URL */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Link2 size={10} /> Étape 2 — Lien du montage final
+              </div>
+              <input
+                type="url"
+                value={finalUrl}
+                onChange={e => setFinalUrl(e.target.value)}
+                disabled={!canEditFinal || status === 'ready'}
+                placeholder="Colle ici le lien Drive / Dropbox / WeTransfer…"
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  background: 'var(--bg-input)',
+                  border: `1px solid ${finalUrl ? 'rgba(139,92,246,0.4)' : 'var(--border-primary)'}`,
+                  borderRadius: 8, padding: '10px 12px', fontSize: 13,
+                  color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace',
+                }}
+              />
+            </div>
+
+            {/* Step 3: Notes monteur (compact) */}
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <StickyNote size={10} /> Notes pour le coach <span style={{ color: 'var(--text-tertiary)', textTransform: 'none', fontWeight: 400, letterSpacing: 0 }}>(optionnel)</span>
+              </div>
+              <textarea
+                value={editorNotes}
+                onChange={e => setEditorNotes(e.target.value)}
+                disabled={!canEditFinal || status === 'ready'}
+                rows={2}
+                placeholder="Ex : j'ai zappé le passage 1:23, ajoute un B-roll si possible."
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  background: 'var(--bg-input)', border: '1px solid var(--border-primary)',
+                  borderRadius: 8, padding: '10px 12px', fontSize: 13,
+                  color: 'var(--text-primary)', outline: 'none', resize: 'vertical', fontFamily: 'inherit',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* ═══ Prestation (compacte, badge inline) ═══ */}
           {tier && (
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '12px 14px', borderRadius: 10,
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.04))',
-              border: '1px solid rgba(139,92,246,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              padding: '10px 14px', borderRadius: 10,
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-primary)',
             }}>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>
-                  Prestation
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {tier.name}
-                  </span>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: '#8b5cf6' }}>
-                    {(tier.price_cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €
-                  </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Receipt size={15} color="#8b5cf6" />
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3, lineHeight: 1 }}>
+                    Prestation
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 3 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{tier.name}</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#8b5cf6' }}>
+                      {(tier.price_cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €
+                    </span>
+                  </div>
                 </div>
               </div>
               {slot.paid_at ? (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '5px 10px', borderRadius: 6,
+                  padding: '4px 10px', borderRadius: 6,
                   fontSize: 11, fontWeight: 700, color: '#10b981',
                   background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
                 }}>
-                  <CheckCircle2 size={12} /> Payé
+                  <CheckCircle2 size={11} /> Payé
                 </span>
               ) : (
                 <span style={{
-                  padding: '5px 10px', borderRadius: 6,
-                  fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)',
-                  background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
+                  padding: '4px 10px', borderRadius: 6,
+                  fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)',
                 }}>
-                  Paiement en attente
+                  Paiement à venir
                 </span>
               )}
             </div>
           )}
 
-          {/* Hook & Title — read-only display, toujours visibles */}
-          <Section label="Accroche / Hook">
-            <ReadOnlyText value={slot.hook} placeholder="Le coach n'a pas encore défini d'accroche." loading={fullLoading} />
-          </Section>
-          <Section label="Titre / Sujet">
-            <ReadOnlyText value={slot.title} placeholder="Pas de titre." loading={fullLoading} />
-          </Section>
+          {/* ═══ Brief du coach (collapsible) ═══ */}
+          <CollapsibleBrief
+            slot={slot}
+            loading={fullLoading}
+          />
 
-          {/* Script — toujours visible */}
-          <Section label="Script">
-            <ReadOnlyText
-              value={slot.script}
-              placeholder="Le coach n'a pas encore écrit le script."
-              loading={fullLoading}
-              multiline
-            />
-          </Section>
-
-          {/* Caption */}
-          <Section label="Caption">
-            <ReadOnlyText
-              value={slot.caption}
-              placeholder="Pas de caption pour ce post."
-              loading={fullLoading}
-              multiline
-            />
-          </Section>
-
-          {/* Hashtags */}
-          <Section label="Hashtags">
-            {fullLoading ? (
-              <div style={{ height: 28, background: 'var(--bg-secondary)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
-            ) : slot.hashtags && slot.hashtags.length > 0 ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {slot.hashtags.map((tag, i) => (
-                  <span key={i} style={{
-                    fontSize: 11, fontWeight: 600, color: '#3b82f6',
-                    padding: '3px 8px', borderRadius: 5,
-                    background: 'rgba(59,130,246,0.1)',
-                  }}>
-                    #{tag.replace(/^#/, '')}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <ReadOnlyText value={null} placeholder="Aucun hashtag." loading={false} />
-            )}
-          </Section>
-
-          {/* References */}
-          {slot.references_urls && slot.references_urls.length > 0 && (
-            <Section label="Références / inspirations">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {slot.references_urls.map((url, i) => (
-                  <a
-                    key={i} href={url} target="_blank" rel="noopener noreferrer"
-                    style={{
-                      fontSize: 12, color: '#3b82f6',
-                      padding: '6px 10px', background: 'var(--bg-secondary)',
-                      borderRadius: 6, textDecoration: 'none',
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      wordBreak: 'break-all',
-                    }}
-                  >
-                    <ExternalLink size={11} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</span>
-                  </a>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {/* Notes coach — toujours visibles */}
-          <Section label="Notes du coach">
-            <ReadOnlyText
-              value={slot.notes}
-              placeholder="Aucune note du coach."
-              loading={fullLoading}
-              multiline
-            />
-          </Section>
-
-          {/* Rush URL — readonly, big button */}
-          <Section label="Rush brut">
-            {slot.rush_url ? (
-              <a
-                href={slot.rush_url} target="_blank" rel="noopener noreferrer"
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  padding: '14px 16px', borderRadius: 10,
-                  background: 'linear-gradient(135deg, #06b6d4, #0891b2)',
-                  color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
-                }}
-              >
-                <ExternalLink size={16} />
-                Ouvrir le rush
-              </a>
-            ) : (
-              <div style={{
-                padding: 14, textAlign: 'center', fontSize: 12,
-                color: 'var(--text-tertiary)', fontStyle: 'italic',
-                background: 'var(--bg-secondary)',
-                border: '1px dashed var(--border-primary)', borderRadius: 8,
-              }}>
-                Le coach n&apos;a pas encore mis le lien du rush
-              </div>
-            )}
-          </Section>
-
-          {/* Final URL */}
-          <Section label="Lien du montage final">
-            <input
-              type="url"
-              value={finalUrl}
-              onChange={e => setFinalUrl(e.target.value)}
-              disabled={!canEditFinal || status === 'ready'}
-              placeholder="https://drive.google.com/..."
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                background: 'var(--bg-input)', border: '1px solid var(--border-primary)',
-                borderRadius: 8, padding: '10px 12px', fontSize: 13,
-                color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace',
-              }}
-            />
-          </Section>
-
-          {/* Editor notes */}
-          <Section label="Notes du monteur">
-            <textarea
-              value={editorNotes}
-              onChange={e => setEditorNotes(e.target.value)}
-              disabled={!canEditFinal || status === 'ready'}
-              rows={4}
-              placeholder="« j'ai zappé le passage 1:23, ajoute un B-roll si possible »"
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                background: 'var(--bg-input)', border: '1px solid var(--border-primary)',
-                borderRadius: 8, padding: '10px 12px', fontSize: 13,
-                color: 'var(--text-primary)', outline: 'none', resize: 'vertical', fontFamily: 'inherit',
-              }}
-            />
-          </Section>
-
-          {/* Mini chat coach <-> monteur */}
+          {/* ═══ Discussion (toujours visible) ═══ */}
           {currentUserId && (
-            <Section label="Discussion">
+            <div>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
+                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
+              }}>
+                <MessageCircle size={11} /> Discussion avec le coach
+              </div>
               <SlotChat slotId={slot.id} currentUserId={currentUserId} />
-            </Section>
+            </div>
           )}
         </div>
 
@@ -1012,6 +983,112 @@ function BillingView({
               </div>
             )
           })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CollapsibleBrief({ slot, loading }: { slot: SlotWithMonteur; loading: boolean }) {
+  const [open, setOpen] = useState(false)
+
+  // Compte les champs renseignés pour donner une idée au monteur sans avoir à ouvrir
+  const filled = [
+    slot.hook,
+    slot.title,
+    slot.script,
+    slot.caption,
+    (slot.hashtags && slot.hashtags.length > 0) ? 'h' : null,
+    (slot.references_urls && slot.references_urls.length > 0) ? 'r' : null,
+    slot.notes,
+  ].filter(Boolean).length
+
+  return (
+    <div style={{
+      borderRadius: 10, border: '1px solid var(--border-primary)',
+      background: 'var(--bg-secondary)', overflow: 'hidden',
+    }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          padding: '12px 14px',
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          color: 'var(--text-primary)', textAlign: 'left',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <FileText size={15} color="var(--text-secondary)" />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1 }}>Brief du coach</div>
+            <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 3 }}>
+              {loading ? 'Chargement…' : filled === 0 ? 'Aucun brief renseigné' : `${filled} champ${filled > 1 ? 's' : ''} renseigné${filled > 1 ? 's' : ''} sur 7`}
+            </div>
+          </div>
+        </div>
+        {open ? <ChevronDown size={15} color="var(--text-tertiary)" /> : <ChevronRight size={15} color="var(--text-tertiary)" />}
+      </button>
+
+      {open && (
+        <div style={{
+          padding: '4px 14px 14px',
+          borderTop: '1px solid var(--border-primary)',
+          display: 'flex', flexDirection: 'column', gap: 14,
+        }}>
+          <Section label="Accroche / Hook">
+            <ReadOnlyText value={slot.hook} placeholder="Pas d'accroche définie." loading={loading} />
+          </Section>
+          <Section label="Titre / Sujet">
+            <ReadOnlyText value={slot.title} placeholder="Pas de titre." loading={loading} />
+          </Section>
+          <Section label="Script">
+            <ReadOnlyText value={slot.script} placeholder="Pas de script." loading={loading} multiline />
+          </Section>
+          <Section label="Caption">
+            <ReadOnlyText value={slot.caption} placeholder="Pas de caption." loading={loading} multiline />
+          </Section>
+          <Section label="Hashtags">
+            {loading ? (
+              <div style={{ height: 28, background: 'var(--bg-elevated)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            ) : slot.hashtags && slot.hashtags.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {slot.hashtags.map((tag, i) => (
+                  <span key={i} style={{
+                    fontSize: 11, fontWeight: 600, color: '#3b82f6',
+                    padding: '3px 8px', borderRadius: 5,
+                    background: 'rgba(59,130,246,0.1)',
+                  }}>#{tag.replace(/^#/, '')}</span>
+                ))}
+              </div>
+            ) : (
+              <ReadOnlyText value={null} placeholder="Aucun hashtag." loading={false} />
+            )}
+          </Section>
+          {slot.references_urls && slot.references_urls.length > 0 && (
+            <Section label="Références / inspirations">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {slot.references_urls.map((url, i) => (
+                  <a
+                    key={i} href={url} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      fontSize: 12, color: '#3b82f6',
+                      padding: '6px 10px', background: 'var(--bg-elevated)',
+                      borderRadius: 6, textDecoration: 'none',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      wordBreak: 'break-all',
+                    }}
+                  >
+                    <ExternalLink size={11} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</span>
+                  </a>
+                ))}
+              </div>
+            </Section>
+          )}
+          <Section label="Notes du coach">
+            <ReadOnlyText value={slot.notes} placeholder="Aucune note du coach." loading={loading} multiline />
+          </Section>
         </div>
       )}
     </div>
