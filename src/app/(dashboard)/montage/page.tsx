@@ -474,8 +474,19 @@ function SlotMontageDrawer({
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
       zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
+      <style>{`
+        @media (max-width: 900px) {
+          .monteur-drawer-body {
+            grid-template-columns: 1fr !important;
+          }
+          .monteur-drawer-body > div:first-child {
+            border-right: none !important;
+            border-bottom: 1px solid var(--border-primary);
+          }
+        }
+      `}</style>
       <div onClick={e => e.stopPropagation()} style={{
-        width: 'min(720px, 100%)', maxHeight: '92vh',
+        width: 'min(1180px, 100%)', maxHeight: '92vh',
         background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
         borderRadius: 16,
         display: 'flex', flexDirection: 'column',
@@ -523,8 +534,19 @@ function SlotMontageDrawer({
           >×</button>
         </div>
 
-        {/* Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Body — 2 colonnes : gauche (action + brief) / droite (chat) */}
+        <div className="monteur-drawer-body" style={{
+          flex: 1, overflow: 'hidden',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)',
+          gap: 0,
+        }}>
+        {/* ═══════════════ COLONNE GAUCHE ═══════════════ */}
+        <div style={{
+          overflow: 'auto', padding: '20px 24px',
+          display: 'flex', flexDirection: 'column', gap: 16,
+          borderRight: '1px solid var(--border-primary)',
+        }}>
           {/* ═══ ACTION ZONE — toujours en haut, visuellement marquée ═══ */}
           <div style={{
             padding: 16, borderRadius: 12,
@@ -668,25 +690,33 @@ function SlotMontageDrawer({
             </div>
           )}
 
-          {/* ═══ Brief du coach (collapsible) ═══ */}
-          <CollapsibleBrief
-            slot={slot}
-            loading={fullLoading}
-          />
+          {/* ═══ Brief du coach — toujours déplié, en grand ═══ */}
+          <BriefFull slot={slot} loading={fullLoading} />
+        </div>
 
-          {/* ═══ Discussion (toujours visible) ═══ */}
-          {currentUserId && (
-            <div>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
-                textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
-              }}>
-                <MessageCircle size={11} /> Discussion avec le coach
+        {/* ═══════════════ COLONNE DROITE — Chat ═══════════════ */}
+        <div style={{
+          display: 'flex', flexDirection: 'column',
+          background: 'var(--bg-secondary)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            padding: '14px 20px', borderBottom: '1px solid var(--border-primary)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)',
+            background: 'var(--bg-primary)',
+          }}>
+            <MessageCircle size={14} color="#8b5cf6" />
+            Discussion avec le coach
+          </div>
+          <div style={{ flex: 1, overflow: 'hidden', padding: 12, display: 'flex', flexDirection: 'column' }}>
+            {currentUserId && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <SlotChat slotId={slot.id} currentUserId={currentUserId} fillHeight />
               </div>
-              <SlotChat slotId={slot.id} currentUserId={currentUserId} />
-            </div>
-          )}
+            )}
+          </div>
+        </div>
         </div>
 
         {/* Footer actions */}
@@ -985,6 +1015,77 @@ function BillingView({
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// Brief en grand, toujours déplié — utilisé en layout 2 colonnes
+function BriefFull({ slot, loading }: { slot: SlotWithMonteur; loading: boolean }) {
+  return (
+    <div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)',
+        marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border-primary)',
+      }}>
+        <FileText size={14} color="var(--text-secondary)" />
+        Brief du coach
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Section label="Accroche / Hook">
+          <ReadOnlyText value={slot.hook} placeholder="Pas d'accroche définie." loading={loading} />
+        </Section>
+        <Section label="Titre / Sujet">
+          <ReadOnlyText value={slot.title} placeholder="Pas de titre." loading={loading} />
+        </Section>
+        <Section label="Script">
+          <ReadOnlyText value={slot.script} placeholder="Pas de script." loading={loading} multiline />
+        </Section>
+        <Section label="Caption">
+          <ReadOnlyText value={slot.caption} placeholder="Pas de caption." loading={loading} multiline />
+        </Section>
+        <Section label="Hashtags">
+          {loading ? (
+            <div style={{ height: 28, background: 'var(--bg-secondary)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+          ) : slot.hashtags && slot.hashtags.length > 0 ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {slot.hashtags.map((tag, i) => (
+                <span key={i} style={{
+                  fontSize: 11, fontWeight: 600, color: '#3b82f6',
+                  padding: '3px 8px', borderRadius: 5,
+                  background: 'rgba(59,130,246,0.1)',
+                }}>#{tag.replace(/^#/, '')}</span>
+              ))}
+            </div>
+          ) : (
+            <ReadOnlyText value={null} placeholder="Aucun hashtag." loading={false} />
+          )}
+        </Section>
+        {slot.references_urls && slot.references_urls.length > 0 && (
+          <Section label="Références / inspirations">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {slot.references_urls.map((url, i) => (
+                <a
+                  key={i} href={url} target="_blank" rel="noopener noreferrer"
+                  style={{
+                    fontSize: 12, color: '#3b82f6',
+                    padding: '6px 10px', background: 'var(--bg-secondary)',
+                    borderRadius: 6, textDecoration: 'none',
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    wordBreak: 'break-all',
+                  }}
+                >
+                  <ExternalLink size={11} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</span>
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
+        <Section label="Notes du coach">
+          <ReadOnlyText value={slot.notes} placeholder="Aucune note du coach." loading={loading} multiline />
+        </Section>
+      </div>
     </div>
   )
 }
