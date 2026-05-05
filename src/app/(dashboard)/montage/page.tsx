@@ -1,10 +1,15 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { Scissors, Clapperboard, Scissors as Cut, Sparkles, ExternalLink, Loader2, Filter, RefreshCw, Receipt, KanbanSquare, CheckCircle2 } from 'lucide-react'
 import type { SocialPost, SocialProductionStatus, ContentPillar, WorkspaceRole, MonteurPricingTier } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
+
+// Drawer complet du coach (avec script/caption/hashtags/prestation/etc.)
+// Lazy : ~2k lignes, ne charge que si l'admin clique sur un slot.
+const SlotDetailDrawer = dynamic(() => import('@/components/social/planning/SlotDetailDrawer'), { ssr: false })
 
 interface SlotWithMonteur extends SocialPost {
   monteur_email?: string | null
@@ -346,8 +351,19 @@ export default function MontagePage() {
         />
       )}
 
-      {/* Slot drawer */}
-      {selectedSlot && (
+      {/* Slot drawer
+          - admin/coach : drawer complet du planning (script, prestation, payment, etc.)
+          - monteur : drawer simplifié focalisé sur rush + final_url + notes monteur
+       */}
+      {selectedSlot && role !== 'monteur' && (
+        <SlotDetailDrawer
+          slotId={selectedSlot.id}
+          pillars={pillars}
+          onClose={() => setSelectedSlot(null)}
+          onChange={fetchAll}
+        />
+      )}
+      {selectedSlot && role === 'monteur' && (
         <SlotMontageDrawer
           slot={selectedSlot}
           pillar={pillars.find(p => p.id === selectedSlot.pillar_id) ?? null}
