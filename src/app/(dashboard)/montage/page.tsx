@@ -400,18 +400,20 @@ function SlotMontageDrawer({
 
   return (
     <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
-      zIndex: 100, display: 'flex', justifyContent: 'flex-end',
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+      zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: 'min(560px, 96vw)', height: '100%',
-        background: 'var(--bg-primary)', borderLeft: '1px solid var(--border-primary)',
+        width: 'min(720px, 100%)', maxHeight: '92vh',
+        background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
+        borderRadius: 16,
         display: 'flex', flexDirection: 'column',
-        boxShadow: '-8px 0 40px rgba(0,0,0,0.4)',
+        boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
+        overflow: 'hidden',
       }}>
         {/* Header */}
         <div style={{
-          padding: '16px 20px',
+          padding: '18px 24px',
           borderBottom: '1px solid var(--border-primary)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
         }}>
@@ -442,14 +444,16 @@ function SlotMontageDrawer({
             onClick={onClose}
             style={{
               background: 'transparent', border: '1px solid var(--border-primary)',
-              borderRadius: 6, padding: 6, cursor: 'pointer', color: 'var(--text-tertiary)',
+              borderRadius: 8, padding: 8, cursor: 'pointer', color: 'var(--text-tertiary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16,
             }}
+            aria-label="Fermer"
           >×</button>
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Script */}
           {slot.script && (
             <Section label="Script">
@@ -563,7 +567,7 @@ function SlotMontageDrawer({
 
         {/* Footer actions */}
         <div style={{
-          padding: '14px 20px', borderTop: '1px solid var(--border-primary)',
+          padding: '14px 24px', borderTop: '1px solid var(--border-primary)',
           display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center',
           background: 'var(--bg-secondary)',
         }}>
