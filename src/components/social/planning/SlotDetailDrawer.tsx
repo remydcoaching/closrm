@@ -415,6 +415,12 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
   // Color for header banner
   const headerColor = pillar?.color ?? '#666'
 
+  const briefSummary = (() => {
+    const txt = slot?.hook?.trim() || slot?.title?.trim() || ''
+    if (!txt) return '(vide)'
+    return txt.length > 80 ? txt.slice(0, 77) + '…' : txt
+  })()
+
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
@@ -503,28 +509,12 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
         <div style={bodyStyle}>
           {/* LEFT COLUMN — Production */}
           <div style={columnStyle}>
-            <ColumnHeader
-              icon={Sparkles}
-              label="Production"
-              color="#a78bfa"
-              action={hideAiActions ? null : (
-                <button
-                  onClick={() => window.open('/parametres/assistant-ia', '_blank')}
-                  title="Personnaliser l'IA (ton, niche, brief)"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    padding: '4px 8px', fontSize: 10, fontWeight: 600,
-                    color: 'var(--text-tertiary)',
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-primary)', borderRadius: 6,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Settings size={10} /> Personnaliser l'IA
-                </button>
-              )}
-            />
-
+            <DrawerSection
+              title="Brief"
+              summary={briefSummary}
+              open={briefOpen}
+              onToggle={() => setBriefOpen(o => !o)}
+            >
             <Field
               label="Accroche / Hook"
               hint="1 ligne percutante"
@@ -632,6 +622,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
                 onChange={(urls) => patch({ references_urls: urls })}
               />
             </Field>
+            </DrawerSection>
 
             <MontageSection slot={slot} setSlot={setSlot} patch={patch} />
           </div>
