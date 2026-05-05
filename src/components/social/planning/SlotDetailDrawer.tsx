@@ -8,6 +8,7 @@ import {
   Settings, Video, Zap,
 } from 'lucide-react'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
+import SlotChat from '@/components/social/SlotChat'
 import {
   type ContentPillar,
   type SocialPostWithPublications,
@@ -39,9 +40,11 @@ interface Props {
   pillars: ContentPillar[]
   onClose: () => void
   onChange: () => void
+  /** Cache les boutons IA (Suggérer/Générer/Personnaliser) — utile sur /montage où la production éditoriale est déjà finie */
+  hideAiActions?: boolean
 }
 
-export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }: Props) {
+export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, hideAiActions = false }: Props) {
   const toast = useToast()
   const [slot, setSlot] = useState<SocialPostWithPublications | null>(null)
   const [loading, setLoading] = useState(true)
@@ -471,7 +474,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               icon={Sparkles}
               label="Production"
               color="#a78bfa"
-              action={
+              action={hideAiActions ? null : (
                 <button
                   onClick={() => window.open('/parametres/assistant-ia', '_blank')}
                   title="Personnaliser l'IA (ton, niche, brief)"
@@ -486,7 +489,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
                 >
                   <Settings size={10} /> Personnaliser l'IA
                 </button>
-              }
+              )}
             />
 
             <Field
@@ -494,19 +497,21 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               hint="1 ligne percutante"
               action={
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button
-                    onClick={generateHooks}
-                    disabled={generatingHooks}
-                    title="Générer 5 hooks avec l'IA"
-                    style={aiBtnStyle(generatingHooks)}
-                  >
-                    {generatingHooks ? (
-                      <Loader size={11} style={{ animation: 'spin 0.8s linear infinite' }} />
-                    ) : (
-                      <Wand2 size={11} />
-                    )}
-                    Suggérer
-                  </button>
+                  {!hideAiActions && (
+                    <button
+                      onClick={generateHooks}
+                      disabled={generatingHooks}
+                      title="Générer 5 hooks avec l'IA"
+                      style={aiBtnStyle(generatingHooks)}
+                    >
+                      {generatingHooks ? (
+                        <Loader size={11} style={{ animation: 'spin 0.8s linear infinite' }} />
+                      ) : (
+                        <Wand2 size={11} />
+                      )}
+                      Suggérer
+                    </button>
+                  )}
                   <button
                     onClick={() => setLibraryOpen(true)}
                     title="Bibliothèque de hooks"
@@ -562,7 +567,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
             <Field
               label="Script"
-              action={
+              action={hideAiActions ? null : (
                 <button
                   onClick={generateScript}
                   disabled={generatingScript}
@@ -576,13 +581,13 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
                   )}
                   {generatingScript ? 'Génération…' : 'Générer'}
                 </button>
-              }
+              )}
             >
               <textarea
                 value={slot.script ?? ''}
                 onChange={(e) => setSlot({ ...slot, script: e.target.value })}
                 onBlur={() => patch({ script: slot.script })}
-                placeholder="Plan de tournage, dialogues, points clés… ou clique 'Générer' pour un script structuré IA."
+                placeholder={hideAiActions ? 'Plan de tournage, dialogues, points clés…' : 'Plan de tournage, dialogues, points clés… ou clique \'Générer\' pour un script structuré IA.'}
                 rows={8}
                 style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
               />
@@ -594,6 +599,8 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
                 onChange={(urls) => patch({ references_urls: urls })}
               />
             </Field>
+
+            <MontageSection slot={slot} setSlot={setSlot} patch={patch} />
           </div>
 
           {/* DIVIDER */}
@@ -748,6 +755,11 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
                 rows={3}
                 style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
               />
+            </Field>
+
+            {/* Mini chat coach <-> monteur */}
+            <Field label="Discussion (coach ↔ monteur)">
+              <SlotChat slotId={slot.id} />
             </Field>
           </div>
         </div>
@@ -1417,6 +1429,375 @@ function Field({
   )
 }
 
+// ────────────────────────────────────────────────────────────────────
+// Montage section — rush URL, monteur assignment, montage feedback view
+// ────────────────────────────────────────────────────────────────────
+
+interface PricingTier {
+  id: string
+  monteur_id: string
+  name: string
+  price_cents: number
+}
+
+function formatEuros(cents: number): string {
+  return (cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €'
+}
+
+function MontageSection({
+  slot, setSlot, patch,
+}: {
+  slot: SocialPostWithPublications
+  setSlot: (s: SocialPostWithPublications) => void
+  patch: (changes: Partial<SocialPostWithPublications>) => void
+}) {
+  const [monteurs, setMonteurs] = useState<{ user_id: string; email: string | null }[]>([])
+  const [tiers, setTiers] = useState<PricingTier[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [tierPickerOpen, setTierPickerOpen] = useState(false)
+  const pickerRef = useRef<HTMLDivElement | null>(null)
+  const tierPickerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    fetch('/api/workspaces/members?role=monteur')
+      .then(r => r.json())
+      .then((j: { data?: { user_id: string; user?: { email?: string | null } | null }[] }) => {
+        const list = (j.data ?? []).map(m => ({ user_id: m.user_id, email: m.user?.email ?? null }))
+        setMonteurs(list)
+      })
+      .catch(() => null)
+  }, [])
+
+  useEffect(() => {
+    if (!pickerOpen) return
+    function onClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [pickerOpen])
+
+  useEffect(() => {
+    if (!tierPickerOpen) return
+    function onClick(e: MouseEvent) {
+      if (tierPickerRef.current && !tierPickerRef.current.contains(e.target as Node)) setTierPickerOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [tierPickerOpen])
+
+  // Charge les tiers du monteur sélectionné
+  useEffect(() => {
+    if (!slot.monteur_id) { setTiers([]); return }
+    fetch(`/api/monteur-pricing-tiers?monteur_id=${slot.monteur_id}`)
+      .then(r => r.json())
+      .then((j: { data?: PricingTier[] }) => setTiers(j.data ?? []))
+      .catch(() => setTiers([]))
+  }, [slot.monteur_id])
+
+  const selectedMonteur = monteurs.find(m => m.user_id === slot.monteur_id) ?? null
+  const monteurLabel = selectedMonteur
+    ? (selectedMonteur.email ?? selectedMonteur.user_id.slice(0, 8))
+    : null
+
+  const selectedTier = tiers.find(t => t.id === slot.pricing_tier_id) ?? null
+
+  function selectMonteur(id: string | null) {
+    setSlot({ ...slot, monteur_id: id, pricing_tier_id: null })
+    patch({ monteur_id: id, pricing_tier_id: null })
+    setPickerOpen(false)
+  }
+
+  function selectTier(tierId: string | null) {
+    setSlot({ ...slot, pricing_tier_id: tierId })
+    patch({ pricing_tier_id: tierId })
+    setTierPickerOpen(false)
+  }
+
+  function togglePaid() {
+    const newPaidAt = slot.paid_at ? null : new Date().toISOString()
+    setSlot({ ...slot, paid_at: newPaidAt })
+    patch({ paid_at: newPaidAt })
+  }
+
+  return (
+    <div style={{
+      marginTop: 4, marginBottom: 18, padding: 12,
+      borderRadius: 10, border: '1px solid rgba(139,92,246,0.3)',
+      background: 'rgba(139,92,246,0.06)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <Wand2 size={11} color="#8b5cf6" />
+        <label style={{ ...labelStyle, color: '#8b5cf6' }}>Montage</label>
+      </div>
+
+      {monteurs.length > 0 ? (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4 }}>Assigné à</div>
+          <div ref={pickerRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(o => !o)}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                padding: '8px 10px', borderRadius: 8,
+                background: 'var(--bg-input)',
+                border: `1px solid ${pickerOpen ? '#8b5cf6' : 'var(--border-primary)'}`,
+                color: monteurLabel ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                fontSize: 13, cursor: 'pointer',
+                transition: 'border-color 0.15s',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                {monteurLabel ? (
+                  <>
+                    <span style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: '#8b5cf6', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, fontWeight: 700, flexShrink: 0,
+                    }}>
+                      {(monteurLabel[0] ?? '?').toUpperCase()}
+                    </span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{monteurLabel}</span>
+                  </>
+                ) : (
+                  <span>— Aucun monteur assigné —</span>
+                )}
+              </span>
+              <ChevronDown size={13} color="var(--text-tertiary)" style={{ flexShrink: 0, transform: pickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+            </button>
+
+            {pickerOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 10,
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: 8, padding: 4,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                maxHeight: 220, overflow: 'auto',
+              }}>
+                <button
+                  type="button"
+                  onClick={() => selectMonteur(null)}
+                  style={pickerOptionStyle(slot.monteur_id == null)}
+                >
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <X size={11} color="var(--text-tertiary)" />
+                  </span>
+                  <span>— Aucun —</span>
+                </button>
+                {monteurs.map(m => {
+                  const label = m.email ?? m.user_id.slice(0, 8)
+                  const active = slot.monteur_id === m.user_id
+                  return (
+                    <button
+                      key={m.user_id}
+                      type="button"
+                      onClick={() => selectMonteur(m.user_id)}
+                      style={pickerOptionStyle(active)}
+                    >
+                      <span style={{
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: '#8b5cf6', color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 700, flexShrink: 0,
+                      }}>
+                        {(label[0] ?? '?').toUpperCase()}
+                      </span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{label}</span>
+                      {active && <Check size={12} color="#8b5cf6" style={{ flexShrink: 0 }} />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          marginBottom: 10, padding: '8px 10px',
+          background: 'var(--bg-secondary)', borderRadius: 6,
+          fontSize: 11, color: 'var(--text-tertiary)',
+        }}>
+          Aucun monteur dans ce workspace. <a href="/parametres/equipe" style={{ color: '#8b5cf6' }}>Inviter un monteur →</a>
+        </div>
+      )}
+
+      {/* Pricing tier picker — visible seulement si monteur assigné */}
+      {slot.monteur_id && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Prestation</span>
+            <a
+              href={`/parametres/equipe/${slot.monteur_id}/prestations`}
+              style={{ fontSize: 10, color: '#8b5cf6', textDecoration: 'none' }}
+            >
+              Gérer →
+            </a>
+          </div>
+          {tiers.length > 0 ? (
+            <div ref={tierPickerRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setTierPickerOpen(o => !o)}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  padding: '8px 10px', borderRadius: 8,
+                  background: 'var(--bg-input)',
+                  border: `1px solid ${tierPickerOpen ? '#8b5cf6' : 'var(--border-primary)'}`,
+                  color: selectedTier ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  fontSize: 13, cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                {selectedTier ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedTier.name}
+                    </span>
+                    <span style={{ color: '#8b5cf6', fontWeight: 700, flexShrink: 0 }}>
+                      {formatEuros(selectedTier.price_cents)}
+                    </span>
+                  </span>
+                ) : (
+                  <span>— Choisir une prestation —</span>
+                )}
+                <ChevronDown size={13} color="var(--text-tertiary)" style={{ flexShrink: 0, transform: tierPickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+              </button>
+              {tierPickerOpen && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 10,
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 8, padding: 4,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                  maxHeight: 240, overflow: 'auto',
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => selectTier(null)}
+                    style={pickerOptionStyle(slot.pricing_tier_id == null)}
+                  >
+                    <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <X size={11} color="var(--text-tertiary)" />
+                    </span>
+                    <span>— Aucune —</span>
+                  </button>
+                  {tiers.map(t => {
+                    const active = slot.pricing_tier_id === t.id
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => selectTier(t.id)}
+                        style={pickerOptionStyle(active)}
+                      >
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+                        <span style={{ color: '#8b5cf6', fontWeight: 700, fontSize: 12 }}>
+                          {formatEuros(t.price_cents)}
+                        </span>
+                        {active && <Check size={12} color="#8b5cf6" style={{ flexShrink: 0 }} />}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <a
+              href={`/parametres/equipe/${slot.monteur_id}/prestations`}
+              style={{
+                display: 'block', padding: '8px 10px',
+                background: 'var(--bg-secondary)', borderRadius: 6,
+                fontSize: 11, color: 'var(--text-tertiary)',
+                textDecoration: 'none',
+                border: '1px dashed var(--border-primary)',
+                textAlign: 'center',
+              }}
+            >
+              Aucune prestation pour ce monteur. <span style={{ color: '#8b5cf6' }}>Créer →</span>
+            </a>
+          )}
+
+          {/* Statut payé */}
+          {slot.pricing_tier_id && (
+            <div style={{
+              marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '6px 10px', borderRadius: 6,
+              background: slot.paid_at ? 'rgba(16,185,129,0.1)' : 'var(--bg-secondary)',
+              border: `1px solid ${slot.paid_at ? 'rgba(16,185,129,0.3)' : 'var(--border-primary)'}`,
+            }}>
+              <span style={{ fontSize: 11, color: slot.paid_at ? '#10b981' : 'var(--text-tertiary)', fontWeight: 600 }}>
+                {slot.paid_at ? `✓ Payé le ${new Date(slot.paid_at).toLocaleDateString('fr-FR')}` : 'Non payé'}
+              </span>
+              <button
+                type="button"
+                onClick={togglePaid}
+                style={{
+                  padding: '3px 10px', fontSize: 10, fontWeight: 700,
+                  color: slot.paid_at ? 'var(--text-tertiary)' : '#fff',
+                  background: slot.paid_at ? 'transparent' : '#10b981',
+                  border: slot.paid_at ? '1px solid var(--border-primary)' : 'none',
+                  borderRadius: 4, cursor: 'pointer',
+                }}
+              >
+                {slot.paid_at ? 'Annuler' : 'Marquer payé'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4 }}>Lien du rush (Drive / SwissTransfer / WeTransfer…)</div>
+        <input
+          type="url"
+          value={slot.rush_url ?? ''}
+          onChange={(e) => setSlot({ ...slot, rush_url: e.target.value })}
+          onBlur={() => patch({ rush_url: slot.rush_url })}
+          placeholder="https://drive.google.com/..."
+          style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12 }}
+        />
+      </div>
+
+      {slot.final_url && (
+        <div style={{ marginTop: 10, padding: 10, background: 'var(--bg-secondary)', borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+            Montage final livré
+          </div>
+          <a
+            href={slot.final_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: 12, color: '#8b5cf6',
+              textDecoration: 'none', wordBreak: 'break-all',
+            }}
+          >
+            <Link2 size={11} /> {slot.final_url}
+          </a>
+          {slot.editor_notes && (
+            <div style={{
+              marginTop: 8, padding: '8px 10px',
+              background: 'var(--bg-elevated)', borderRadius: 6,
+              fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap',
+            }}>
+              <span style={{ fontWeight: 600, fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                Note du monteur ·{' '}
+              </span>
+              {slot.editor_notes}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function RefsList({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
   const [input, setInput] = useState('')
   return (
@@ -1689,6 +2070,18 @@ const footerStyle: React.CSSProperties = {
   padding: '14px 24px', borderTop: '1px solid var(--border-primary)',
   background: 'var(--bg-secondary)',
 }
+function pickerOptionStyle(active: boolean): React.CSSProperties {
+  return {
+    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+    padding: '7px 10px', borderRadius: 6,
+    background: active ? 'rgba(139,92,246,0.15)' : 'transparent',
+    border: 'none', cursor: 'pointer',
+    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+    fontSize: 12, textAlign: 'left',
+    transition: 'background 0.1s',
+  }
+}
+
 const labelStyle: React.CSSProperties = {
   fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
   textTransform: 'uppercase', letterSpacing: 0.5,

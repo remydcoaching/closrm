@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateSocialPostSchema } from '@/lib/validations/social-posts'
+import { notifyMonteurFilmed, notifyCoachEdited } from '@/lib/social/monteur-notifications'
 
 export async function GET(
   _request: NextRequest,
@@ -41,7 +42,9 @@ export async function PATCH(
 
     const supabase = await createClient()
     const { data: existing } = await supabase
-      .from('social_posts').select('id').eq('id', id).eq('workspace_id', workspaceId).single()
+      .from('social_posts')
+      .select('id, production_status, monteur_id, monteur_notified_at, coach_notified_at')
+      .eq('id', id).eq('workspace_id', workspaceId).single()
     if (!existing) return NextResponse.json({ error: 'Post introuvable' }, { status: 404 })
 
     const { data: updated, error } = await supabase
@@ -52,6 +55,32 @@ export async function PATCH(
       .select()
       .single()
     if (error) throw error
+
+    // Notifications monteur — déclenchées sur transition production_status
+    // OU sur réassignation alors que le slot est déjà filmed.
+    // Idempotence assurée par les colonnes *_notified_at (reset par le trigger
+    // DB quand on revient en filmed ou qu'on change de monteur).
+    if (updated && existing) {
+      const wasEdited = existing.production_status === 'edited'
+      const nowFilmed = updated.production_status === 'filmed'
+      const nowEdited = updated.production_status === 'edited'
+      const monteurChanged = updated.monteur_id !== existing.monteur_id
+
+      // Filmed avec un monteur assigné — soit transition, soit réassignation.
+      // monteur_notified_at est null (reseté par trigger si nécessaire), donc
+      // notifyMonteurFilmed ne renverra pas si déjà envoyé.
+      if (nowFilmed && updated.monteur_id && (existing.production_status !== 'filmed' || monteurChanged)) {
+        notifyMonteurFilmed(supabase, updated).catch(err =>
+          console.error('[social/posts PATCH] notify monteur failed:', err?.message)
+        )
+      }
+      // filmed → edited : prévenir le coach
+      if (!wasEdited && nowEdited) {
+        notifyCoachEdited(supabase, updated).catch(err =>
+          console.error('[social/posts PATCH] notify coach failed:', err?.message)
+        )
+      }
+    }
 
     if (publications) {
       // Strategy: upsert par (social_post_id, platform) — on remplace intégralement la liste

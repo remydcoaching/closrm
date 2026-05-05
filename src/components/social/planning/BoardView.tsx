@@ -16,6 +16,7 @@ interface Props {
   pillars: ContentPillar[]
   onSelectSlot: (id: string) => void
   onChange: () => void
+  onLocalMove?: (id: string, status: SocialProductionStatus) => void
 }
 
 const KIND_ICON: Record<SocialContentKind, typeof Camera> = {
@@ -72,7 +73,7 @@ function weekLabel(monday: string): string {
   return `Sem. ${fmt(d)}–${fmt(sunday)}`
 }
 
-export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Props) {
+export default function BoardView({ posts, pillars, onSelectSlot, onChange, onLocalMove }: Props) {
   const toast = useToast()
   // Sélectionne automatiquement la période qui contient des slots
   const initialPeriod = useMemo<Period>(() => {
@@ -121,13 +122,16 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Pr
     })
   }, [posts, filterKind, filterPillar, range, showHistory, cutoff, period])
 
-  const grouped: Record<SocialProductionStatus, SocialPostWithPublications[]> = {
-    idea: [], to_film: [], filmed: [], edited: [], ready: [],
-  }
-  for (const p of visiblePosts) {
-    const ps = (p.production_status ?? 'idea') as SocialProductionStatus
-    grouped[ps].push(p)
-  }
+  const grouped = useMemo(() => {
+    const acc: Record<SocialProductionStatus, SocialPostWithPublications[]> = {
+      idea: [], to_film: [], filmed: [], edited: [], ready: [],
+    }
+    for (const p of visiblePosts) {
+      const ps = (p.production_status ?? 'idea') as SocialProductionStatus
+      acc[ps].push(p)
+    }
+    return acc
+  }, [visiblePosts])
 
   const handleDrop = async (status: SocialProductionStatus) => {
     if (!draggedId) return
@@ -138,13 +142,34 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Pr
       setDraggedId(null)
       return
     }
+    if (slot.production_status === status) {
+      // Drop sur la même colonne, no-op
+      setDraggedId(null)
+      return
+    }
+    const previousStatus = (slot.production_status ?? 'idea') as SocialProductionStatus
     setDraggedId(null)
-    await fetch(`/api/social/posts/${draggedId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ production_status: status }),
-    })
-    onChange()
+    // Optimistic : la card bouge instantanément
+    onLocalMove?.(slot.id, status)
+    try {
+      const res = await fetch(`/api/social/posts/${slot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ production_status: status }),
+      })
+      if (!res.ok) {
+        // Revert si fail
+        onLocalMove?.(slot.id, previousStatus)
+        const err = await res.json().catch(() => ({}))
+        toast.error('Erreur', err?.error ?? 'Impossible de déplacer le slot')
+        return
+      }
+      // Silent reload pour synchro (au cas où le trigger DB modifie d'autres champs)
+      onChange()
+    } catch (e) {
+      onLocalMove?.(slot.id, previousStatus)
+      toast.error('Erreur réseau', (e as Error).message)
+    }
   }
 
   return (
@@ -352,11 +377,29 @@ function Card({
           + Cliquer pour ajouter accroche
         </div>
       )}
-      {post.plan_date && (
-        <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-tertiary)' }}>
-          {formatDate(post.plan_date)}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+        {post.plan_date && (
+          <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-tertiary)' }}>
+            {formatDate(post.plan_date)}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+          {post.rush_url && (
+            <span title="Rush attaché" style={{
+              fontSize: 9, fontWeight: 700, color: '#06b6d4',
+              padding: '1px 6px', borderRadius: 3,
+              background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.3)',
+            }}>RUSH</span>
+          )}
+          {post.final_url && (
+            <span title="Montage livré par le monteur" style={{
+              fontSize: 9, fontWeight: 700, color: '#8b5cf6',
+              padding: '1px 6px', borderRadius: 3,
+              background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)',
+            }}>MONTÉ ✓</span>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

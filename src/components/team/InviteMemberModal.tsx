@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Copy, Check, RefreshCw, PhoneOutgoing, Target } from 'lucide-react'
+import { X, Copy, Check, RefreshCw, PhoneOutgoing, Target, Scissors } from 'lucide-react'
 import type { WorkspaceRole } from '@/types'
 
 function generatePassword(): string {
@@ -203,6 +203,7 @@ export default function InviteMemberModal({ onClose, onSuccess }: InviteMemberMo
                 {([
                   { value: 'setter' as WorkspaceRole, label: 'Setter', desc: 'Qualifie les leads', icon: PhoneOutgoing, color: '#3b82f6' },
                   { value: 'closer' as WorkspaceRole, label: 'Closer', desc: 'Conclut les ventes', icon: Target, color: '#38A169' },
+                  { value: 'monteur' as WorkspaceRole, label: 'Monteur', desc: 'Monte les vidéos', icon: Scissors, color: '#8b5cf6' },
                 ] as const).map(opt => {
                   const selected = role === opt.value
                   const Icon = opt.icon

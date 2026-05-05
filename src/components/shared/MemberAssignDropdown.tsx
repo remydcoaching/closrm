@@ -8,6 +8,7 @@ const ROLE_COLORS: Record<WorkspaceRole, string> = {
   admin: '#E53E3E',
   setter: '#3b82f6',
   closer: '#38A169',
+  monteur: '#8b5cf6',
 }
 
 function getInitials(fullName: string | null | undefined, email: string): string {

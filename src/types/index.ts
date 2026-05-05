@@ -22,7 +22,7 @@ export interface User {
 
 // ─── Team / Workspace Members ───────────────────────────────────────────────
 
-export type WorkspaceRole = 'admin' | 'setter' | 'closer'
+export type WorkspaceRole = 'admin' | 'setter' | 'closer' | 'monteur'
 export type MemberStatus = 'active' | 'invited' | 'suspended'
 
 export interface WorkspaceMember {
@@ -1408,6 +1408,25 @@ export interface SocialPost {
   script: string | null
   references_urls: string[]
   notes: string | null
+  monteur_id: string | null
+  rush_url: string | null
+  final_url: string | null
+  editor_notes: string | null
+  monteur_notified_at: string | null
+  coach_notified_at: string | null
+  pricing_tier_id: string | null
+  paid_at: string | null
+}
+
+export interface MonteurPricingTier {
+  id: string
+  workspace_id: string
+  monteur_id: string
+  name: string
+  price_cents: number
+  archived_at: string | null
+  created_at: string
+  updated_at: string
 }
 
 export type SocialContentKind = 'post' | 'story' | 'reel'
@@ -1417,7 +1436,7 @@ export type SocialProductionStatus = 'idea' | 'to_film' | 'filmed' | 'edited' | 
 export const PRODUCTION_STATUSES: { value: SocialProductionStatus; label: string }[] = [
   { value: 'idea', label: 'Idée' },
   { value: 'to_film', label: 'À filmer' },
-  { value: 'filmed', label: 'Filmé' },
+  { value: 'filmed', label: 'À monter' },
   { value: 'edited', label: 'Monté' },
   { value: 'ready', label: 'Prêt' },
 ]

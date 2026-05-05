@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react'
 
 type ToastVariant = 'success' | 'error' | 'info'
@@ -21,14 +21,15 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
+// Stable no-op fallback referenced once at module level so consumers used
+// outside the provider still get a stable identity (avoids effect-loops when
+// useToast() is in a useCallback dependency array).
+const NOOP_TOAST: ToastContextValue = {
+  toast: () => {}, success: () => {}, error: () => {}, info: () => {},
+}
+
 export function useToast(): ToastContextValue {
-  const ctx = useContext(ToastContext)
-  if (!ctx) {
-    // SSR / outside provider: no-op fallback so calls never crash.
-    const noop = () => {}
-    return { toast: noop, success: noop, error: noop, info: noop }
-  }
-  return ctx
+  return useContext(ToastContext) ?? NOOP_TOAST
 }
 
 const VARIANT_META: Record<ToastVariant, { color: string; icon: typeof CheckCircle2 }> = {
@@ -60,8 +61,15 @@ export default function ToastProvider({ children }: { children: React.ReactNode 
   const error   = useCallback((m: string, d?: string) => toast(m, { description: d, variant: 'error' }),   [toast])
   const info    = useCallback((m: string, d?: string) => toast(m, { description: d, variant: 'info' }),    [toast])
 
+  // Memoize the value so consumers using useToast() in useCallback deps
+  // don't see a new reference on every render of the provider.
+  const value = useMemo(
+    () => ({ toast, success, error, info }),
+    [toast, success, error, info]
+  )
+
   return (
-    <ToastContext.Provider value={{ toast, success, error, info }}>
+    <ToastContext.Provider value={value}>
       {children}
       <div style={{
         position: 'fixed', bottom: 20, right: 20, zIndex: 9999,

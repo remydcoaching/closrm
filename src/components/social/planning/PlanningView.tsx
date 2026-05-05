@@ -1,14 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { Settings, KanbanSquare, Calendar as CalIcon, Plus, CalendarRange } from 'lucide-react'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
-import TrameEditorModal from './TrameEditorModal'
 import BoardView from './BoardView'
 import PlanningCalendarView from './PlanningCalendarView'
-import SlotDetailDrawer from './SlotDetailDrawer'
-import PlanModal from './PlanModal'
 import { useToast } from '@/components/ui/Toast'
+
+// Modals + drawer : conditionnel et lourd → import dynamique pour alléger le bundle initial
+const SlotDetailDrawer = dynamic(() => import('./SlotDetailDrawer'), { ssr: false })
+const TrameEditorModal = dynamic(() => import('./TrameEditorModal'), { ssr: false })
+const PlanModal = dynamic(() => import('./PlanModal'), { ssr: false })
 
 
 export default function PlanningView() {
@@ -44,17 +47,27 @@ export default function PlanningView() {
     }
   }, [])
 
-  const reloadPosts = useCallback(async () => {
-    setPostsLoading(true)
+  // `silent` skip le spinner — utilisé après un PATCH (drag-drop, edit slot)
+  // pour ne pas faire flicker la grille
+  const reloadPosts = useCallback(async (silent = false) => {
+    if (!silent) setPostsLoading(true)
     try {
       const res = await fetch(buildPostsUrl(cursor))
       const json = await res.json()
       setPosts(json.data ?? [])
     } finally {
-      setPostsLoading(false)
+      if (!silent) setPostsLoading(false)
     }
   }, [cursor])
 
+  // Reload light (juste posts en silence) pour drag-drop / edit slot.
+  // L'éditeur de trame ou la création de pillars utilisent reloadStructure
+  // séparément quand nécessaire.
+  const reloadSilent = useCallback(async () => {
+    await reloadPosts(true)
+  }, [reloadPosts])
+
+  // Reload complet (trame + pillars + posts) — utilisé quand la trame change
   const reload = useCallback(async () => {
     await Promise.all([reloadStructure(), reloadPosts()])
   }, [reloadStructure, reloadPosts])
@@ -199,7 +212,10 @@ export default function PlanningView() {
               posts={posts}
               pillars={pillars}
               onSelectSlot={setSelectedSlotId}
-              onChange={reload}
+              onChange={reloadSilent}
+              onLocalMove={(id, status) => {
+                setPosts(prev => prev.map(p => p.id === id ? { ...p, production_status: status } : p))
+              }}
             />
           ) : (
             <PlanningCalendarView
@@ -236,7 +252,7 @@ export default function PlanningView() {
           slotId={selectedSlotId}
           pillars={pillars}
           onClose={() => setSelectedSlotId(null)}
-          onChange={reload}
+          onChange={reloadSilent}
         />
       )}
     </div>
@@ -249,7 +265,8 @@ function buildPostsUrl(cursor: { year: number; month: number }) {
   const to = new Date(cursor.year, cursor.month + 1, 0)
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  return `/api/social/posts?plan_date_from=${fmt(from)}&plan_date_to=${fmt(to)}&per_page=500`
+  // slim=true : payload réduit (pas de script/caption/notes), board/calendar n'en ont pas besoin
+  return `/api/social/posts?plan_date_from=${fmt(from)}&plan_date_to=${fmt(to)}&per_page=500&slim=true`
 }
 
 function tabBtnStyle(active: boolean): React.CSSProperties {

@@ -50,6 +50,15 @@ export const updateSocialPostSchema = z.object({
   script: z.string().max(20000).optional().nullable(),
   references_urls: z.array(z.string().url()).max(20).optional(),
   notes: z.string().max(5000).optional().nullable(),
+  monteur_id: z.string().uuid().optional().nullable(),
+  // rush_url et final_url : on accepte n'importe quel string non-vide (pas
+  // de .url() strict pour ne pas rejeter "drive.google.com/..." sans https).
+  // L'utilisateur colle souvent l'URL sans protocole — on la stocke telle quelle.
+  rush_url: z.string().max(2000).optional().nullable().transform(v => v?.trim() || null),
+  final_url: z.string().max(2000).optional().nullable().transform(v => v?.trim() || null),
+  editor_notes: z.string().max(5000).optional().nullable(),
+  pricing_tier_id: z.string().uuid().optional().nullable(),
+  paid_at: z.string().datetime().optional().nullable(),
 })
 
 export const socialPostFiltersSchema = z.object({
@@ -60,7 +69,7 @@ export const socialPostFiltersSchema = z.object({
   plan_date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   plan_date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   content_kind: z.enum(contentKinds).optional(),
-  production_status: z.enum(productionStatuses).optional(),
+  production_status: z.string().optional(), // single value or comma-separated
   pillar_id: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(500).default(25),

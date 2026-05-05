@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, MoreVertical, Shield, PhoneOutgoing, Target, UserX, RefreshCw, Trash2, BarChart3, AlertTriangle, CheckCircle, Settings2, Save } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, MoreVertical, Shield, PhoneOutgoing, Target, UserX, RefreshCw, Trash2, BarChart3, AlertTriangle, CheckCircle, Settings2, Save, Scissors, Euro } from 'lucide-react'
 import type { WorkspaceMemberWithUser, WorkspaceRole, MemberStatus } from '@/types'
 import InviteMemberModal from '@/components/team/InviteMemberModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
@@ -107,6 +108,7 @@ const ROLE_CONFIG: Record<WorkspaceRole, { label: string; color: string; bg: str
   admin: { label: 'Admin', color: '#E53E3E', bg: 'rgba(229,62,62,0.12)', icon: Shield },
   setter: { label: 'Setter', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', icon: PhoneOutgoing },
   closer: { label: 'Closer', color: '#38A169', bg: 'rgba(56,161,105,0.12)', icon: Target },
+  monteur: { label: 'Monteur', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', icon: Scissors },
 }
 
 const STATUS_CONFIG: Record<MemberStatus, { label: string; color: string; bg: string }> = {
@@ -658,11 +660,36 @@ export default function EquipeClient() {
                         boxShadow: '0 12px 40px var(--shadow-dropdown)',
                       }}
                     >
+                      {/* Prestations (monteur only) */}
+                      {member.role === 'monteur' && (
+                        <>
+                          <Link
+                            href={`/parametres/equipe/${member.user_id}/prestations`}
+                            onClick={() => setOpenMenu(null)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                              padding: '8px 12px', borderRadius: 6, fontSize: 13,
+                              background: 'transparent', border: 'none',
+                              color: 'var(--text-secondary)', cursor: 'pointer',
+                              textDecoration: 'none',
+                              transition: 'background 0.1s',
+                              boxSizing: 'border-box',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                          >
+                            <Euro size={14} style={{ color: '#8b5cf6' }} />
+                            Gerer les prestations
+                          </Link>
+                          <div style={{ height: 1, background: 'var(--border-primary)', margin: '4px 8px' }} />
+                        </>
+                      )}
+
                       {/* Change role */}
                       <div style={{ padding: '6px 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                         Changer le role
                       </div>
-                      {(['setter', 'closer'] as WorkspaceRole[]).filter(r => r !== member.role).map(r => {
+                      {(['setter', 'closer', 'monteur'] as WorkspaceRole[]).filter(r => r !== member.role).map(r => {
                         const rc = ROLE_CONFIG[r]
                         const RcIcon = rc.icon
                         return (

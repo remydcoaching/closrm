@@ -115,10 +115,35 @@ const CLOSER_PERMISSIONS: PermissionSet = {
   viewAgenda: true,
 }
 
+const MONTEUR_PERMISSIONS: PermissionSet = {
+  viewAllLeads: false,
+  viewAssignedLeads: false,
+  createLead: false,
+  deleteLead: false,
+  assignLead: false,
+  viewAllCalls: false,
+  viewAssignedCalls: false,
+  createCall: false,
+  closeDeal: false,
+  viewFinancials: false,
+  manageTeam: false,
+  manageSettings: false,
+  manageIntegrations: false,
+  manageAutomations: false,
+  manageEmails: false,
+  manageFunnels: false,
+  viewGlobalStats: false,
+  viewPersonalStats: false,
+  useAiAssistant: false,
+  viewMessages: false,
+  viewAgenda: false,
+}
+
 const PERMISSIONS_BY_ROLE: Record<WorkspaceRole, PermissionSet> = {
   admin: ADMIN_PERMISSIONS,
   setter: SETTER_PERMISSIONS,
   closer: CLOSER_PERMISSIONS,
+  monteur: MONTEUR_PERMISSIONS,
 }
 
 /**
@@ -155,21 +180,26 @@ export const ROUTE_VISIBILITY: Record<string, WorkspaceRole[]> = {
   '/acquisition/reseaux-sociaux': ['admin'],
   '/acquisition/messages': ['admin', 'setter', 'closer'],
   '/acquisition/publicites': ['admin'],
-  '/parametres/reglages': ['admin'],
+  '/parametres/reglages': ['admin', 'monteur'],
   '/parametres/integrations': ['admin'],
   '/parametres/calendriers': ['admin'],
   '/parametres/equipe': ['admin'],
   '/parametres/assistant-ia': ['admin', 'setter', 'closer'],
   '/equipe/messages': ['admin', 'setter', 'closer'],
   '/equipe/formation': ['admin', 'setter', 'closer'],
+  '/montage': ['admin', 'monteur'],
 }
 
 /**
  * Check if a route is visible for a given role.
- * Routes not in ROUTE_VISIBILITY are visible to all.
+ * Routes not in ROUTE_VISIBILITY are visible to all (admin/setter/closer).
+ * For 'monteur', the default is NOT visible — must be explicitly allowed.
  */
 export function isRouteVisible(route: string, role: WorkspaceRole): boolean {
   const allowedRoles = ROUTE_VISIBILITY[route]
-  if (!allowedRoles) return true // not restricted
+  if (!allowedRoles) {
+    // Routes not in the matrix : monteur denied by default, others allowed
+    return role !== 'monteur'
+  }
   return allowedRoles.includes(role)
 }
