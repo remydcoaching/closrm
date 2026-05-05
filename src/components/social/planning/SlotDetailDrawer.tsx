@@ -8,6 +8,7 @@ import {
   Settings, Video, Zap,
 } from 'lucide-react'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
+import SlotChat from '@/components/social/SlotChat'
 import {
   type ContentPillar,
   type SocialPostWithPublications,
@@ -754,6 +755,11 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
                 rows={3}
                 style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
               />
+            </Field>
+
+            {/* Mini chat coach <-> monteur */}
+            <Field label="Discussion (coach ↔ monteur)">
+              <SlotChat slotId={slot.id} />
             </Field>
           </div>
         </div>

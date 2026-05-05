@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/Toast'
 // Drawer complet du coach (avec script/caption/hashtags/prestation/etc.)
 // Lazy : ~2k lignes, ne charge que si l'admin clique sur un slot.
 const SlotDetailDrawer = dynamic(() => import('@/components/social/planning/SlotDetailDrawer'), { ssr: false })
+const SlotChat = dynamic(() => import('@/components/social/SlotChat'), { ssr: false })
 
 interface SlotWithMonteur extends SocialPost {
   monteur_email?: string | null
@@ -40,6 +41,7 @@ export default function MontagePage() {
   const [paidFilter, setPaidFilter] = useState<'all' | 'unpaid' | 'paid'>('unpaid')
   const [loading, setLoading] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<SlotWithMonteur | null>(null)
+  const [unreadBySlot, setUnreadBySlot] = useState<Record<string, number>>({})
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -59,11 +61,18 @@ export default function MontagePage() {
       const userRole = (member?.role ?? 'admin') as WorkspaceRole
       setRole(userRole)
 
-      // 1 seul fetch (ex 2) en mode slim : on charge tous les slots du workspace
-      // puis on filtre côté client pour le board (filmed/edited/ready non publiés)
-      // et le tab Facturation (pricing_tier_id != null).
-      // Économise 1 round-trip + 1 pass RLS + ~80% de payload (pas de script/caption/notes).
-      const slotsRes = await fetch('/api/social/posts?per_page=500&slim=true')
+      // Tous les fetches indépendants en parallèle (au lieu de 4 appels
+      // séquentiels qui faisaient ramer la page 5-10s).
+      const [slotsRes, tiersRes, pillarsRes, monteursRes, unreadRes] = await Promise.all([
+        fetch('/api/social/posts?per_page=500&slim=true'),
+        fetch('/api/monteur-pricing-tiers?include_archived=true'),
+        fetch('/api/social/pillars'),
+        userRole === 'admin'
+          ? fetch('/api/workspaces/members?role=monteur')
+          : Promise.resolve(null),
+        fetch('/api/social/posts/messages-unread'),
+      ])
+
       const slotsJson = await slotsRes.json()
       const allRows = (slotsJson.data ?? []) as SlotWithMonteur[]
       setSlots(allRows.filter(s =>
@@ -72,24 +81,21 @@ export default function MontagePage() {
       ))
       setBillingSlots(allRows.filter(s => s.pricing_tier_id != null))
 
-      // Fetch pricing tiers (tous monteurs confondus pour pouvoir afficher le name + prix)
-      const tiersRes = await fetch('/api/monteur-pricing-tiers?include_archived=true')
       const tiersJson = await tiersRes.json()
       setPricingTiers(tiersJson.data ?? [])
 
-      // Fetch pillars
-      const pillarsRes = await fetch('/api/social/pillars')
       const pillarsJson = await pillarsRes.json()
       setPillars(pillarsJson.data ?? [])
 
-      // If admin, fetch monteurs for filter dropdown
-      if (userRole === 'admin') {
-        const monteursRes = await fetch('/api/workspaces/members?role=monteur')
+      if (monteursRes) {
         const monteursJson = await monteursRes.json()
         type MemberRow = { user_id: string; user?: { email?: string | null } | null }
         const list = (monteursJson.data ?? []) as MemberRow[]
         setMonteurs(list.map(m => ({ user_id: m.user_id, email: m.user?.email ?? null })))
       }
+
+      const unreadJson = await unreadRes.json()
+      setUnreadBySlot(unreadJson.data ?? {})
     } catch (err) {
       toast.error('Erreur de chargement', (err as Error).message)
     } finally {
@@ -285,10 +291,17 @@ export default function MontagePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {colSlots.map(slot => {
                     const pillar = pillars.find(p => p.id === slot.pillar_id)
+                    const unread = unreadBySlot[slot.id] ?? 0
                     return (
                       <button
                         key={slot.id}
-                        onClick={() => setSelectedSlot(slot)}
+                        onClick={() => {
+                          setSelectedSlot(slot)
+                          // clear optimistically — l'API marque comme lu au mount du chat
+                          if (unreadBySlot[slot.id]) {
+                            setUnreadBySlot(prev => { const n = { ...prev }; delete n[slot.id]; return n })
+                          }
+                        }}
                         style={{
                           textAlign: 'left', padding: 12,
                           background: 'var(--bg-elevated)',
@@ -296,10 +309,24 @@ export default function MontagePage() {
                           borderLeft: `3px solid ${pillar?.color ?? col.color}`,
                           borderRadius: 8, cursor: 'pointer',
                           transition: 'all 0.15s',
+                          position: 'relative',
                         }}
                         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.borderColor = col.color }}
                         onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = 'var(--border-primary)' }}
                       >
+                        {/* Badge non-lus */}
+                        {unread > 0 && (
+                          <div style={{
+                            position: 'absolute', top: 8, right: 8,
+                            minWidth: 18, height: 18, padding: '0 5px',
+                            background: '#ef4444', color: '#fff',
+                            borderRadius: 9, fontSize: 10, fontWeight: 800,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 2px 6px rgba(239,68,68,0.4)',
+                          }}>
+                            {unread > 99 ? '99+' : unread}
+                          </div>
+                        )}
                         {pillar && (
                           <div style={{
                             display: 'inline-block',
@@ -313,6 +340,7 @@ export default function MontagePage() {
                           lineHeight: 1.3, marginBottom: 6,
                           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                           overflow: 'hidden',
+                          paddingRight: unread > 0 ? 28 : 0,
                         }}>
                           {slot.hook || slot.title || <em style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>(sans accroche)</em>}
                         </div>
@@ -681,6 +709,13 @@ function SlotMontageDrawer({
               }}
             />
           </Section>
+
+          {/* Mini chat coach <-> monteur */}
+          {currentUserId && (
+            <Section label="Discussion">
+              <SlotChat slotId={slot.id} currentUserId={currentUserId} />
+            </Section>
+          )}
         </div>
 
         {/* Footer actions */}
