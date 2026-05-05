@@ -51,8 +51,11 @@ export const updateSocialPostSchema = z.object({
   references_urls: z.array(z.string().url()).max(20).optional(),
   notes: z.string().max(5000).optional().nullable(),
   monteur_id: z.string().uuid().optional().nullable(),
-  rush_url: z.string().url().max(2000).optional().nullable().or(z.literal('').transform(() => null)),
-  final_url: z.string().url().max(2000).optional().nullable().or(z.literal('').transform(() => null)),
+  // rush_url et final_url : on accepte n'importe quel string non-vide (pas
+  // de .url() strict pour ne pas rejeter "drive.google.com/..." sans https).
+  // L'utilisateur colle souvent l'URL sans protocole — on la stocke telle quelle.
+  rush_url: z.string().max(2000).optional().nullable().transform(v => v?.trim() || null),
+  final_url: z.string().max(2000).optional().nullable().transform(v => v?.trim() || null),
   editor_notes: z.string().max(5000).optional().nullable(),
 })
 

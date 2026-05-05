@@ -1431,6 +1431,8 @@ function MontageSection({
   patch: (changes: Partial<SocialPostWithPublications>) => void
 }) {
   const [monteurs, setMonteurs] = useState<{ user_id: string; email: string | null }[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const pickerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     fetch('/api/workspaces/members?role=monteur')
@@ -1441,6 +1443,26 @@ function MontageSection({
       })
       .catch(() => null)
   }, [])
+
+  useEffect(() => {
+    if (!pickerOpen) return
+    function onClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [pickerOpen])
+
+  const selectedMonteur = monteurs.find(m => m.user_id === slot.monteur_id) ?? null
+  const monteurLabel = selectedMonteur
+    ? (selectedMonteur.email ?? selectedMonteur.user_id.slice(0, 8))
+    : null
+
+  function selectMonteur(id: string | null) {
+    setSlot({ ...slot, monteur_id: id })
+    patch({ monteur_id: id })
+    setPickerOpen(false)
+  }
 
   return (
     <div style={{
@@ -1456,22 +1478,87 @@ function MontageSection({
       {monteurs.length > 0 ? (
         <div style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4 }}>Assigné à</div>
-          <select
-            value={slot.monteur_id ?? ''}
-            onChange={(e) => {
-              const v = e.target.value || null
-              setSlot({ ...slot, monteur_id: v })
-              patch({ monteur_id: v })
-            }}
-            style={{
-              ...inputStyle, width: '100%', cursor: 'pointer',
-            }}
-          >
-            <option value="">— Personne —</option>
-            {monteurs.map(m => (
-              <option key={m.user_id} value={m.user_id}>{m.email ?? m.user_id.slice(0, 8)}</option>
-            ))}
-          </select>
+          <div ref={pickerRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(o => !o)}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                padding: '8px 10px', borderRadius: 8,
+                background: 'var(--bg-input)',
+                border: `1px solid ${pickerOpen ? '#8b5cf6' : 'var(--border-primary)'}`,
+                color: monteurLabel ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                fontSize: 13, cursor: 'pointer',
+                transition: 'border-color 0.15s',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                {monteurLabel ? (
+                  <>
+                    <span style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: '#8b5cf6', color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, fontWeight: 700, flexShrink: 0,
+                    }}>
+                      {(monteurLabel[0] ?? '?').toUpperCase()}
+                    </span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{monteurLabel}</span>
+                  </>
+                ) : (
+                  <span>— Aucun monteur assigné —</span>
+                )}
+              </span>
+              <ChevronDown size={13} color="var(--text-tertiary)" style={{ flexShrink: 0, transform: pickerOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+            </button>
+
+            {pickerOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 10,
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-primary)',
+                borderRadius: 8, padding: 4,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                maxHeight: 220, overflow: 'auto',
+              }}>
+                <button
+                  type="button"
+                  onClick={() => selectMonteur(null)}
+                  style={pickerOptionStyle(slot.monteur_id == null)}
+                >
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <X size={11} color="var(--text-tertiary)" />
+                  </span>
+                  <span>— Aucun —</span>
+                </button>
+                {monteurs.map(m => {
+                  const label = m.email ?? m.user_id.slice(0, 8)
+                  const active = slot.monteur_id === m.user_id
+                  return (
+                    <button
+                      key={m.user_id}
+                      type="button"
+                      onClick={() => selectMonteur(m.user_id)}
+                      style={pickerOptionStyle(active)}
+                    >
+                      <span style={{
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: '#8b5cf6', color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 700, flexShrink: 0,
+                      }}>
+                        {(label[0] ?? '?').toUpperCase()}
+                      </span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{label}</span>
+                      {active && <Check size={12} color="#8b5cf6" style={{ flexShrink: 0 }} />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div style={{
@@ -1802,6 +1889,18 @@ const footerStyle: React.CSSProperties = {
   padding: '14px 24px', borderTop: '1px solid var(--border-primary)',
   background: 'var(--bg-secondary)',
 }
+function pickerOptionStyle(active: boolean): React.CSSProperties {
+  return {
+    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+    padding: '7px 10px', borderRadius: 6,
+    background: active ? 'rgba(139,92,246,0.15)' : 'transparent',
+    border: 'none', cursor: 'pointer',
+    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+    fontSize: 12, textAlign: 'left',
+    transition: 'background 0.1s',
+  }
+}
+
 const labelStyle: React.CSSProperties = {
   fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
   textTransform: 'uppercase', letterSpacing: 0.5,

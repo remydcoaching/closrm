@@ -1423,7 +1423,7 @@ export type SocialProductionStatus = 'idea' | 'to_film' | 'filmed' | 'edited' | 
 export const PRODUCTION_STATUSES: { value: SocialProductionStatus; label: string }[] = [
   { value: 'idea', label: 'Idée' },
   { value: 'to_film', label: 'À filmer' },
-  { value: 'filmed', label: 'Filmé' },
+  { value: 'filmed', label: 'À monter' },
   { value: 'edited', label: 'Monté' },
   { value: 'ready', label: 'Prêt' },
 ]
