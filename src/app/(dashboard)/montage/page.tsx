@@ -351,9 +351,9 @@ export default function MontagePage() {
         />
       )}
 
-      {/* Slot drawer
-          - admin/coach : drawer complet du planning (script, prestation, payment, etc.)
-          - monteur : drawer simplifié focalisé sur rush + final_url + notes monteur
+      {/* Drawer
+          - admin/coach : drawer complet du planning sans boutons IA
+          - monteur     : drawer simplifié read-only sur tout, sauf final_url + notes monteur
        */}
       {selectedSlot && role !== 'monteur' && (
         <SlotDetailDrawer
@@ -368,6 +368,7 @@ export default function MontagePage() {
         <SlotMontageDrawer
           slot={selectedSlot}
           pillar={pillars.find(p => p.id === selectedSlot.pillar_id) ?? null}
+          tier={pricingTiers.find(t => t.id === selectedSlot.pricing_tier_id) ?? null}
           role={role}
           currentUserId={currentUserId}
           onClose={() => setSelectedSlot(null)}
@@ -384,19 +385,45 @@ export default function MontagePage() {
 // ────────────────────────────────────────────────────────────────────
 
 function SlotMontageDrawer({
-  slot, pillar, role, currentUserId, onClose, onUpdate, onMove,
+  slot: slotProp, pillar, tier, role, currentUserId, onClose, onUpdate, onMove,
 }: {
   slot: SlotWithMonteur
   pillar: ContentPillar | null
+  tier: MonteurPricingTier | null
   role: WorkspaceRole
   currentUserId: string | null
   onClose: () => void
   onUpdate: (id: string, patch: Partial<SocialPost>) => Promise<boolean>
   onMove: (slot: SlotWithMonteur, target: SocialProductionStatus) => Promise<void>
 }) {
-  const [finalUrl, setFinalUrl] = useState(slot.final_url ?? '')
-  const [editorNotes, setEditorNotes] = useState(slot.editor_notes ?? '')
+  // Le slot vient du fetch slim (pas de script/caption/hashtags/notes/references).
+  // On refetch full ici pour afficher tous les détails read-only au monteur.
+  const [slot, setSlot] = useState<SlotWithMonteur>(slotProp)
+  const [fullLoading, setFullLoading] = useState(true)
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/social/posts/${slotProp.id}`)
+      .then(r => r.json())
+      .then(j => {
+        if (cancelled || !j.data) return
+        setSlot({ ...slotProp, ...j.data })
+      })
+      .finally(() => { if (!cancelled) setFullLoading(false) })
+    return () => { cancelled = true }
+  }, [slotProp])
+
+  const [finalUrl, setFinalUrl] = useState(slotProp.final_url ?? '')
+  const [editorNotes, setEditorNotes] = useState(slotProp.editor_notes ?? '')
   const [saving, setSaving] = useState(false)
+
+  // Sync les inputs avec les données fetched (au cas où final_url/editor_notes
+  // diffèrent entre le slim et la version full — théoriquement non, mais safe)
+  useEffect(() => {
+    if (!fullLoading) {
+      setFinalUrl(slot.final_url ?? '')
+      setEditorNotes(slot.editor_notes ?? '')
+    }
+  }, [fullLoading, slot.final_url, slot.editor_notes])
 
   const isMonteurOwner = role === 'monteur' && slot.monteur_id === currentUserId
   const canEditFinal = role === 'admin' || isMonteurOwner
@@ -471,8 +498,54 @@ function SlotMontageDrawer({
 
         {/* Body */}
         <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Prestation + statut paiement (read-only pour le monteur) */}
+          {tier && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 14px', borderRadius: 10,
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.04))',
+              border: '1px solid rgba(139,92,246,0.3)',
+            }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 }}>
+                  Prestation
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {tier.name}
+                  </span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: '#8b5cf6' }}>
+                    {(tier.price_cents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €
+                  </span>
+                </div>
+              </div>
+              {slot.paid_at ? (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '5px 10px', borderRadius: 6,
+                  fontSize: 11, fontWeight: 700, color: '#10b981',
+                  background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
+                }}>
+                  <CheckCircle2 size={12} /> Payé
+                </span>
+              ) : (
+                <span style={{
+                  padding: '5px 10px', borderRadius: 6,
+                  fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)',
+                  background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
+                }}>
+                  Paiement en attente
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Script */}
-          {slot.script && (
+          {fullLoading ? (
+            <Section label="Script">
+              <div style={{ height: 60, background: 'var(--bg-secondary)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            </Section>
+          ) : slot.script ? (
             <Section label="Script">
               <div style={{
                 fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5,
@@ -480,6 +553,34 @@ function SlotMontageDrawer({
                 whiteSpace: 'pre-wrap', wordBreak: 'break-word',
               }}>
                 {slot.script}
+              </div>
+            </Section>
+          ) : null}
+
+          {/* Caption + hashtags (read-only display pour le monteur) */}
+          {!fullLoading && slot.caption && (
+            <Section label="Caption">
+              <div style={{
+                fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5,
+                background: 'var(--bg-secondary)', padding: '10px 12px', borderRadius: 8,
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              }}>
+                {slot.caption}
+              </div>
+            </Section>
+          )}
+          {!fullLoading && slot.hashtags && slot.hashtags.length > 0 && (
+            <Section label="Hashtags">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {slot.hashtags.map((tag, i) => (
+                  <span key={i} style={{
+                    fontSize: 11, fontWeight: 600, color: '#3b82f6',
+                    padding: '3px 8px', borderRadius: 5,
+                    background: 'rgba(59,130,246,0.1)',
+                  }}>
+                    #{tag.replace(/^#/, '')}
+                  </span>
+                ))}
               </div>
             </Section>
           )}
