@@ -361,7 +361,6 @@ export default function MontagePage() {
           pillars={pillars}
           onClose={() => setSelectedSlot(null)}
           onChange={fetchAll}
-          hideAiActions
         />
       )}
       {selectedSlot && role === 'monteur' && (
