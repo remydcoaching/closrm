@@ -540,37 +540,39 @@ function SlotMontageDrawer({
             </div>
           )}
 
-          {/* Script */}
-          {fullLoading ? (
-            <Section label="Script">
-              <div style={{ height: 60, background: 'var(--bg-secondary)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
-            </Section>
-          ) : slot.script ? (
-            <Section label="Script">
-              <div style={{
-                fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5,
-                background: 'var(--bg-secondary)', padding: '10px 12px', borderRadius: 8,
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              }}>
-                {slot.script}
-              </div>
-            </Section>
-          ) : null}
+          {/* Hook & Title — read-only display, toujours visibles */}
+          <Section label="Accroche / Hook">
+            <ReadOnlyText value={slot.hook} placeholder="Le coach n'a pas encore défini d'accroche." loading={fullLoading} />
+          </Section>
+          <Section label="Titre / Sujet">
+            <ReadOnlyText value={slot.title} placeholder="Pas de titre." loading={fullLoading} />
+          </Section>
 
-          {/* Caption + hashtags (read-only display pour le monteur) */}
-          {!fullLoading && slot.caption && (
-            <Section label="Caption">
-              <div style={{
-                fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5,
-                background: 'var(--bg-secondary)', padding: '10px 12px', borderRadius: 8,
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              }}>
-                {slot.caption}
-              </div>
-            </Section>
-          )}
-          {!fullLoading && slot.hashtags && slot.hashtags.length > 0 && (
-            <Section label="Hashtags">
+          {/* Script — toujours visible */}
+          <Section label="Script">
+            <ReadOnlyText
+              value={slot.script}
+              placeholder="Le coach n'a pas encore écrit le script."
+              loading={fullLoading}
+              multiline
+            />
+          </Section>
+
+          {/* Caption */}
+          <Section label="Caption">
+            <ReadOnlyText
+              value={slot.caption}
+              placeholder="Pas de caption pour ce post."
+              loading={fullLoading}
+              multiline
+            />
+          </Section>
+
+          {/* Hashtags */}
+          <Section label="Hashtags">
+            {fullLoading ? (
+              <div style={{ height: 28, background: 'var(--bg-secondary)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            ) : slot.hashtags && slot.hashtags.length > 0 ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {slot.hashtags.map((tag, i) => (
                   <span key={i} style={{
@@ -582,8 +584,10 @@ function SlotMontageDrawer({
                   </span>
                 ))}
               </div>
-            </Section>
-          )}
+            ) : (
+              <ReadOnlyText value={null} placeholder="Aucun hashtag." loading={false} />
+            )}
+          </Section>
 
           {/* References */}
           {slot.references_urls && slot.references_urls.length > 0 && (
@@ -608,18 +612,15 @@ function SlotMontageDrawer({
             </Section>
           )}
 
-          {/* Notes */}
-          {slot.notes && (
-            <Section label="Notes du coach">
-              <div style={{
-                fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5,
-                background: 'var(--bg-secondary)', padding: '10px 12px', borderRadius: 8,
-                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              }}>
-                {slot.notes}
-              </div>
-            </Section>
-          )}
+          {/* Notes coach — toujours visibles */}
+          <Section label="Notes du coach">
+            <ReadOnlyText
+              value={slot.notes}
+              placeholder="Aucune note du coach."
+              loading={fullLoading}
+              multiline
+            />
+          </Section>
 
           {/* Rush URL — readonly, big button */}
           <Section label="Rush brut">
@@ -991,6 +992,33 @@ function Section({ label, children }: { label: string; children: React.ReactNode
         textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
       }}>{label}</div>
       {children}
+    </div>
+  )
+}
+
+function ReadOnlyText({ value, placeholder, loading, multiline = false }: {
+  value: string | null | undefined
+  placeholder: string
+  loading: boolean
+  multiline?: boolean
+}) {
+  if (loading) {
+    return <div style={{ height: multiline ? 60 : 36, background: 'var(--bg-secondary)', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+  }
+  const empty = !value || value.trim().length === 0
+  return (
+    <div style={{
+      fontSize: 13,
+      color: empty ? 'var(--text-tertiary)' : 'var(--text-primary)',
+      fontStyle: empty ? 'italic' : 'normal',
+      lineHeight: 1.5,
+      background: 'var(--bg-secondary)',
+      border: empty ? '1px dashed var(--border-primary)' : '1px solid var(--border-primary)',
+      padding: '10px 12px', borderRadius: 8,
+      whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+      minHeight: multiline ? 50 : 'auto',
+    }}>
+      {empty ? placeholder : value}
     </div>
   )
 }
