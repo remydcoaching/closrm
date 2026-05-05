@@ -44,17 +44,27 @@ export default function PlanningView() {
     }
   }, [])
 
-  const reloadPosts = useCallback(async () => {
-    setPostsLoading(true)
+  // `silent` skip le spinner — utilisé après un PATCH (drag-drop, edit slot)
+  // pour ne pas faire flicker la grille
+  const reloadPosts = useCallback(async (silent = false) => {
+    if (!silent) setPostsLoading(true)
     try {
       const res = await fetch(buildPostsUrl(cursor))
       const json = await res.json()
       setPosts(json.data ?? [])
     } finally {
-      setPostsLoading(false)
+      if (!silent) setPostsLoading(false)
     }
   }, [cursor])
 
+  // Reload light (juste posts en silence) pour drag-drop / edit slot.
+  // L'éditeur de trame ou la création de pillars utilisent reloadStructure
+  // séparément quand nécessaire.
+  const reloadSilent = useCallback(async () => {
+    await reloadPosts(true)
+  }, [reloadPosts])
+
+  // Reload complet (trame + pillars + posts) — utilisé quand la trame change
   const reload = useCallback(async () => {
     await Promise.all([reloadStructure(), reloadPosts()])
   }, [reloadStructure, reloadPosts])
@@ -199,7 +209,10 @@ export default function PlanningView() {
               posts={posts}
               pillars={pillars}
               onSelectSlot={setSelectedSlotId}
-              onChange={reload}
+              onChange={reloadSilent}
+              onLocalMove={(id, status) => {
+                setPosts(prev => prev.map(p => p.id === id ? { ...p, production_status: status } : p))
+              }}
             />
           ) : (
             <PlanningCalendarView

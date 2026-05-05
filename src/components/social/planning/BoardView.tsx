@@ -16,6 +16,7 @@ interface Props {
   pillars: ContentPillar[]
   onSelectSlot: (id: string) => void
   onChange: () => void
+  onLocalMove?: (id: string, status: SocialProductionStatus) => void
 }
 
 const KIND_ICON: Record<SocialContentKind, typeof Camera> = {
@@ -72,7 +73,7 @@ function weekLabel(monday: string): string {
   return `Sem. ${fmt(d)}–${fmt(sunday)}`
 }
 
-export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Props) {
+export default function BoardView({ posts, pillars, onSelectSlot, onChange, onLocalMove }: Props) {
   const toast = useToast()
   // Sélectionne automatiquement la période qui contient des slots
   const initialPeriod = useMemo<Period>(() => {
@@ -138,13 +139,34 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange }: Pr
       setDraggedId(null)
       return
     }
+    if (slot.production_status === status) {
+      // Drop sur la même colonne, no-op
+      setDraggedId(null)
+      return
+    }
+    const previousStatus = (slot.production_status ?? 'idea') as SocialProductionStatus
     setDraggedId(null)
-    await fetch(`/api/social/posts/${draggedId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ production_status: status }),
-    })
-    onChange()
+    // Optimistic : la card bouge instantanément
+    onLocalMove?.(slot.id, status)
+    try {
+      const res = await fetch(`/api/social/posts/${slot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ production_status: status }),
+      })
+      if (!res.ok) {
+        // Revert si fail
+        onLocalMove?.(slot.id, previousStatus)
+        const err = await res.json().catch(() => ({}))
+        toast.error('Erreur', err?.error ?? 'Impossible de déplacer le slot')
+        return
+      }
+      // Silent reload pour synchro (au cas où le trigger DB modifie d'autres champs)
+      onChange()
+    } catch (e) {
+      onLocalMove?.(slot.id, previousStatus)
+      toast.error('Erreur réseau', (e as Error).message)
+    }
   }
 
   return (
