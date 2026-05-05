@@ -1433,6 +1433,66 @@ function Field({
   )
 }
 
+function DrawerSection({
+  title,
+  summary,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string
+  summary?: string | null
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{
+      border: '1px solid var(--border-primary)',
+      borderRadius: 10,
+      background: 'var(--bg-secondary)',
+      overflow: 'hidden',
+      marginBottom: 12,
+    }}>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          padding: '12px 14px',
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          color: 'var(--text-primary)', textAlign: 'left',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+            {title}
+          </span>
+          {!open && summary && (
+            <span style={{
+              fontSize: 12, color: 'var(--text-tertiary)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              maxWidth: '100%',
+            }}>
+              {summary}
+            </span>
+          )}
+        </div>
+        {open ? <ChevronDown size={15} color="var(--text-tertiary)" /> : <ChevronRight size={15} color="var(--text-tertiary)" />}
+      </button>
+      {open && (
+        <div style={{
+          padding: '4px 14px 14px',
+          borderTop: '1px solid var(--border-primary)',
+          display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ────────────────────────────────────────────────────────────────────
 // Montage section — rush URL, monteur assignment, montage feedback view
 // ────────────────────────────────────────────────────────────────────
