@@ -1414,6 +1414,19 @@ export interface SocialPost {
   editor_notes: string | null
   monteur_notified_at: string | null
   coach_notified_at: string | null
+  pricing_tier_id: string | null
+  paid_at: string | null
+}
+
+export interface MonteurPricingTier {
+  id: string
+  workspace_id: string
+  monteur_id: string
+  name: string
+  price_cents: number
+  archived_at: string | null
+  created_at: string
+  updated_at: string
 }
 
 export type SocialContentKind = 'post' | 'story' | 'reel'

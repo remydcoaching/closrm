@@ -57,6 +57,8 @@ export const updateSocialPostSchema = z.object({
   rush_url: z.string().max(2000).optional().nullable().transform(v => v?.trim() || null),
   final_url: z.string().max(2000).optional().nullable().transform(v => v?.trim() || null),
   editor_notes: z.string().max(5000).optional().nullable(),
+  pricing_tier_id: z.string().uuid().optional().nullable(),
+  paid_at: z.string().datetime().optional().nullable(),
 })
 
 export const socialPostFiltersSchema = z.object({
