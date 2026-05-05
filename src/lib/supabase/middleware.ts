@@ -87,13 +87,20 @@ export async function updateSession(request: NextRequest) {
     const cachedRole = request.cookies.get('crm-role')?.value
     let role: string | null = cachedRole ?? null
     if (!role) {
-      const { data: member } = await supabase
+      // Récupère TOUS les memberships actifs — un user peut avoir plusieurs
+      // rows (auto-workspace + invitation par exemple). On considère qu'il
+      // est monteur dès qu'il l'est dans au moins un workspace.
+      const { data: members } = await supabase
         .from('workspace_members')
         .select('role')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .maybeSingle()
-      role = member?.role ?? null
+      const memberList = members ?? []
+      if (memberList.some((m: { role: string }) => m.role === 'monteur')) {
+        role = 'monteur'
+      } else if (memberList.length > 0) {
+        role = memberList[0].role
+      }
       if (role) supabaseResponse.cookies.set('crm-role', role, { maxAge: 60, httpOnly: true, sameSite: 'lax' })
     }
     if (role === 'monteur') {

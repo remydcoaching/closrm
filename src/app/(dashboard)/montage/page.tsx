@@ -377,6 +377,12 @@ function SlotMontageDrawer({
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>
               {slot.hook || slot.title || '(sans accroche)'}
             </h2>
+            {slot.title && slot.hook && slot.title !== slot.hook && (
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4, marginRight: 6 }}>Titre</span>
+                {slot.title}
+              </div>
+            )}
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
               {slot.plan_date ? `Prévu le ${new Date(slot.plan_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}` : 'Sans date'}
               {slot.content_kind && ` · ${slot.content_kind}`}

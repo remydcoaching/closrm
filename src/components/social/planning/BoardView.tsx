@@ -352,11 +352,29 @@ function Card({
           + Cliquer pour ajouter accroche
         </div>
       )}
-      {post.plan_date && (
-        <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-tertiary)' }}>
-          {formatDate(post.plan_date)}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+        {post.plan_date && (
+          <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-tertiary)' }}>
+            {formatDate(post.plan_date)}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+          {post.rush_url && (
+            <span title="Rush attaché" style={{
+              fontSize: 9, fontWeight: 700, color: '#06b6d4',
+              padding: '1px 6px', borderRadius: 3,
+              background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.3)',
+            }}>RUSH</span>
+          )}
+          {post.final_url && (
+            <span title="Montage livré par le monteur" style={{
+              fontSize: 9, fontWeight: 700, color: '#8b5cf6',
+              padding: '1px 6px', borderRadius: 3,
+              background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)',
+            }}>MONTÉ ✓</span>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

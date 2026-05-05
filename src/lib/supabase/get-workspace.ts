@@ -16,19 +16,28 @@ export async function getWorkspaceId(): Promise<WorkspaceContext> {
   }
 
   // Try workspace_members first (new team system)
-  const { data: member } = await supabase
+  // Un user peut avoir PLUSIEURS rows actives (auto-workspace + invitation).
+  // Ordre de priorité du rôle effectif : monteur > admin > closer > setter.
+  // En général le 'monteur' est dans le workspace de quelqu'un d'autre,
+  // donc c'est celui-là qu'on prend en priorité (sinon il verrait son propre
+  // workspace personnel auto-créé en admin).
+  const { data: members } = await supabase
     .from('workspace_members')
     .select('workspace_id, role')
     .eq('user_id', user.id)
     .eq('status', 'active')
-    .limit(1)
-    .maybeSingle()
 
-  if (member) {
+  const list = (members ?? []) as { workspace_id: string; role: string }[]
+  if (list.length > 0) {
+    const priority = ['monteur', 'admin', 'closer', 'setter']
+    const sorted = [...list].sort(
+      (a, b) => priority.indexOf(a.role) - priority.indexOf(b.role)
+    )
+    const primary = sorted[0]
     return {
       userId: user.id,
-      workspaceId: member.workspace_id,
-      role: member.role as WorkspaceRole,
+      workspaceId: primary.workspace_id,
+      role: primary.role as WorkspaceRole,
     }
   }
 
