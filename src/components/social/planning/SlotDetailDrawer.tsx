@@ -44,6 +44,20 @@ interface Props {
   hideAiActions?: boolean
 }
 
+type SectionExpansion = { brief: boolean; montage: boolean; publication: boolean }
+
+function getDefaultExpansion(slot: SocialPostWithPublications): SectionExpansion {
+  const ps = slot.production_status ?? 'idea'
+  const s  = slot.status ?? 'draft'
+  const isPublishedish = s === 'scheduled' || s === 'publishing' || s === 'published'
+
+  if (isPublishedish) return { brief: false, montage: false, publication: true }
+  if (ps === 'idea')   return { brief: true,  montage: false, publication: false }
+  if (ps === 'filmed' || ps === 'edited') return { brief: false, montage: true, publication: false }
+  // 'ready'
+  return { brief: false, montage: false, publication: true }
+}
+
 export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, hideAiActions = false }: Props) {
   const toast = useToast()
   const [slot, setSlot] = useState<SocialPostWithPublications | null>(null)
@@ -57,6 +71,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
   const [generatingScript, setGeneratingScript] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [activePlatformTab, setActivePlatformTab] = useState<SocialPlatform>('instagram')
+  const [briefOpen, setBriefOpen] = useState(false)
+  const [montageOpen, setMontageOpen] = useState(false)
+  const [pubOpen, setPubOpen] = useState(false)
+  const initSlotIdRef = useRef<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [mediaIsVideo, setMediaIsVideo] = useState(false)
   const [mediaDurationSec, setMediaDurationSec] = useState<number | null>(null)
@@ -355,6 +373,17 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
       })
     } catch {}
   }
+
+  // Init des accordéons une fois par slotId. Si seul le contenu de `slot`
+  // change (auto-save), on garde l'état utilisateur.
+  useEffect(() => {
+    if (!slot || initSlotIdRef.current === slot.id) return
+    const exp = getDefaultExpansion(slot)
+    setBriefOpen(exp.brief)
+    setMontageOpen(exp.montage)
+    setPubOpen(exp.publication)
+    initSlotIdRef.current = slot.id
+  }, [slot])
 
   if (loading) {
     return (
