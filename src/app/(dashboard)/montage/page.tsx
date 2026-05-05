@@ -54,21 +54,18 @@ export default function MontagePage() {
       const userRole = (member?.role ?? 'admin') as WorkspaceRole
       setRole(userRole)
 
-      // Fetch slots — RLS will scope automatically.
-      // On exclut les slots déjà publiés (anciens posts backfillés en 'ready'
-      // par la migration 063) pour ne montrer que les vraies tâches montage.
-      const slotsRes = await fetch('/api/social/posts?production_status=filmed,edited,ready&per_page=200')
+      // 1 seul fetch (ex 2) en mode slim : on charge tous les slots du workspace
+      // puis on filtre côté client pour le board (filmed/edited/ready non publiés)
+      // et le tab Facturation (pricing_tier_id != null).
+      // Économise 1 round-trip + 1 pass RLS + ~80% de payload (pas de script/caption/notes).
+      const slotsRes = await fetch('/api/social/posts?per_page=500&slim=true')
       const slotsJson = await slotsRes.json()
-      const allSlots = (slotsJson.data ?? []) as SlotWithMonteur[]
-      const activeSlots = allSlots.filter(s => s.status !== 'published')
-      setSlots(activeSlots)
-
-      // Fetch billing data (slots avec pricing_tier_id, tous status confondus)
-      // RLS scope automatiquement (le monteur ne voit que ses slots, le coach voit tout)
-      const billingRes = await fetch('/api/social/posts?per_page=500')
-      const billingJson = await billingRes.json()
-      const allSlotsForBilling = (billingJson.data ?? []) as SlotWithMonteur[]
-      setBillingSlots(allSlotsForBilling.filter(s => s.pricing_tier_id != null))
+      const allRows = (slotsJson.data ?? []) as SlotWithMonteur[]
+      setSlots(allRows.filter(s =>
+        ['filmed', 'edited', 'ready'].includes(s.production_status ?? '')
+        && s.status !== 'published'
+      ))
+      setBillingSlots(allRows.filter(s => s.pricing_tier_id != null))
 
       // Fetch pricing tiers (tous monteurs confondus pour pouvoir afficher le name + prix)
       const tiersRes = await fetch('/api/monteur-pricing-tiers?include_archived=true')

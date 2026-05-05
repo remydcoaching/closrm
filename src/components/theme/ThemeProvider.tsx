@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 type Theme = 'light' | 'dark'
 
@@ -55,14 +55,18 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     }
   }, [])
 
-  function setTheme(t: Theme) {
+  const setTheme = useCallback((t: Theme) => {
     setThemeState(t)
     applyTheme(t)
     localStorage.setItem('closrm-theme', t)
-  }
+  }, [])
+
+  // Memoize value pour éviter de re-render tous les consumers à chaque render
+  // du Provider (sinon useEffect deps avec useTheme() boucle, cf. Toast bug).
+  const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme])
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   )

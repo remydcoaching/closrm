@@ -122,13 +122,16 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange, onLo
     })
   }, [posts, filterKind, filterPillar, range, showHistory, cutoff, period])
 
-  const grouped: Record<SocialProductionStatus, SocialPostWithPublications[]> = {
-    idea: [], to_film: [], filmed: [], edited: [], ready: [],
-  }
-  for (const p of visiblePosts) {
-    const ps = (p.production_status ?? 'idea') as SocialProductionStatus
-    grouped[ps].push(p)
-  }
+  const grouped = useMemo(() => {
+    const acc: Record<SocialProductionStatus, SocialPostWithPublications[]> = {
+      idea: [], to_film: [], filmed: [], edited: [], ready: [],
+    }
+    for (const p of visiblePosts) {
+      const ps = (p.production_status ?? 'idea') as SocialProductionStatus
+      acc[ps].push(p)
+    }
+    return acc
+  }, [visiblePosts])
 
   const handleDrop = async (status: SocialProductionStatus) => {
     if (!draggedId) return
