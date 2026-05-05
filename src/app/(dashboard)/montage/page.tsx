@@ -990,8 +990,6 @@ function BillingView({
 }
 
 function CollapsibleBrief({ slot, loading }: { slot: SlotWithMonteur; loading: boolean }) {
-  const [open, setOpen] = useState(false)
-
   // Compte les champs renseignés pour donner une idée au monteur sans avoir à ouvrir
   const filled = [
     slot.hook,
@@ -1002,6 +1000,15 @@ function CollapsibleBrief({ slot, loading }: { slot: SlotWithMonteur; loading: b
     (slot.references_urls && slot.references_urls.length > 0) ? 'r' : null,
     slot.notes,
   ].filter(Boolean).length
+
+  // Ouvert par défaut s'il y a du contenu — le monteur veut voir le brief
+  // sans avoir à cliquer. Si tout est vide, replié pour économiser de la place.
+  const [open, setOpen] = useState(filled > 0)
+  // Re-open quand le slot fini de loader et qu'on découvre du contenu
+  useEffect(() => {
+    if (!loading && filled > 0) setOpen(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, filled])
 
   return (
     <div style={{
