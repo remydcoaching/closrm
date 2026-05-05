@@ -29,10 +29,12 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     // Cast en string générique car la string ternaire fait planter le parser TS de Supabase
     const selectExpr: string = slim ? slimFields : '*, publications:social_post_publications(*)'
+    // Pas de `count: 'exact'` : aucun consommateur ne lit `total` et un
+    // COUNT(*) full table avec RLS coûte plusieurs centaines de ms.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = supabase
       .from('social_posts')
-      .select(selectExpr as never, { count: 'exact' })
+      .select(selectExpr as never)
       .eq('workspace_id', workspaceId)
       .order('plan_date', { ascending: true, nullsFirst: false })
       .order('slot_index', { ascending: true, nullsFirst: false })
@@ -52,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
     if (pillar_id) query = query.eq('pillar_id', pillar_id)
 
-    const { data, count, error } = await query
+    const { data, error } = await query
     if (error) throw error
 
     type PostRow = { publications?: { platform: string }[] }
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ data: rows, total: count ?? rows.length, page, per_page })
+    return NextResponse.json({ data: rows, total: rows.length, page, per_page })
   } catch (e) {
     if (e instanceof Error && e.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
