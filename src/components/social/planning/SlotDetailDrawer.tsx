@@ -39,9 +39,11 @@ interface Props {
   pillars: ContentPillar[]
   onClose: () => void
   onChange: () => void
+  /** Cache les boutons IA (Suggérer/Générer/Personnaliser) — utile sur /montage où la production éditoriale est déjà finie */
+  hideAiActions?: boolean
 }
 
-export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }: Props) {
+export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, hideAiActions = false }: Props) {
   const toast = useToast()
   const [slot, setSlot] = useState<SocialPostWithPublications | null>(null)
   const [loading, setLoading] = useState(true)
@@ -471,7 +473,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               icon={Sparkles}
               label="Production"
               color="#a78bfa"
-              action={
+              action={hideAiActions ? null : (
                 <button
                   onClick={() => window.open('/parametres/assistant-ia', '_blank')}
                   title="Personnaliser l'IA (ton, niche, brief)"
@@ -486,7 +488,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
                 >
                   <Settings size={10} /> Personnaliser l'IA
                 </button>
-              }
+              )}
             />
 
             <Field
@@ -494,19 +496,21 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               hint="1 ligne percutante"
               action={
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button
-                    onClick={generateHooks}
-                    disabled={generatingHooks}
-                    title="Générer 5 hooks avec l'IA"
-                    style={aiBtnStyle(generatingHooks)}
-                  >
-                    {generatingHooks ? (
-                      <Loader size={11} style={{ animation: 'spin 0.8s linear infinite' }} />
-                    ) : (
-                      <Wand2 size={11} />
-                    )}
-                    Suggérer
-                  </button>
+                  {!hideAiActions && (
+                    <button
+                      onClick={generateHooks}
+                      disabled={generatingHooks}
+                      title="Générer 5 hooks avec l'IA"
+                      style={aiBtnStyle(generatingHooks)}
+                    >
+                      {generatingHooks ? (
+                        <Loader size={11} style={{ animation: 'spin 0.8s linear infinite' }} />
+                      ) : (
+                        <Wand2 size={11} />
+                      )}
+                      Suggérer
+                    </button>
+                  )}
                   <button
                     onClick={() => setLibraryOpen(true)}
                     title="Bibliothèque de hooks"
@@ -562,7 +566,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
             <Field
               label="Script"
-              action={
+              action={hideAiActions ? null : (
                 <button
                   onClick={generateScript}
                   disabled={generatingScript}
@@ -576,13 +580,13 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
                   )}
                   {generatingScript ? 'Génération…' : 'Générer'}
                 </button>
-              }
+              )}
             >
               <textarea
                 value={slot.script ?? ''}
                 onChange={(e) => setSlot({ ...slot, script: e.target.value })}
                 onBlur={() => patch({ script: slot.script })}
-                placeholder="Plan de tournage, dialogues, points clés… ou clique 'Générer' pour un script structuré IA."
+                placeholder={hideAiActions ? 'Plan de tournage, dialogues, points clés…' : 'Plan de tournage, dialogues, points clés… ou clique \'Générer\' pour un script structuré IA.'}
                 rows={8}
                 style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
               />
