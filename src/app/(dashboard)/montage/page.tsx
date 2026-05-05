@@ -50,10 +50,14 @@ export default function MontagePage() {
       const userRole = (member?.role ?? 'admin') as WorkspaceRole
       setRole(userRole)
 
-      // Fetch slots — RLS will scope automatically
+      // Fetch slots — RLS will scope automatically.
+      // On exclut les slots déjà publiés (anciens posts backfillés en 'ready'
+      // par la migration 063) pour ne montrer que les vraies tâches montage.
       const slotsRes = await fetch('/api/social/posts?production_status=filmed,edited,ready&per_page=200')
       const slotsJson = await slotsRes.json()
-      setSlots(slotsJson.data ?? [])
+      const allSlots = (slotsJson.data ?? []) as SlotWithMonteur[]
+      const activeSlots = allSlots.filter(s => s.status !== 'published')
+      setSlots(activeSlots)
 
       // Fetch pillars
       const pillarsRes = await fetch('/api/social/pillars')
