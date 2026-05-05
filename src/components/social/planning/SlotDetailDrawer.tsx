@@ -430,6 +430,13 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
     return `${monteur} · ${status}`
   })()
 
+  const pubSummary = (() => {
+    if (!slot) return ''
+    const active = (PLATFORMS.filter(p => enabledPlatforms[p.key]) ?? []).map(p => p.label)
+    if (active.length === 0) return 'Aucune plateforme'
+    return active.join(' · ')
+  })()
+
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
@@ -650,159 +657,165 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
 
           {/* RIGHT COLUMN — Publication */}
           <div style={columnStyle}>
-            <ColumnHeader icon={Send} label="Publication" color="#10b981" />
-
-            {/* Platforms */}
-            <Field label="Plateformes" hint="≥ 1 obligatoire">
-              <div style={{ display: 'flex', gap: 6 }}>
-                {PLATFORMS.map((p) => {
-                  const on = enabledPlatforms[p.key]
-                  return (
-                    <button
-                      key={p.key}
-                      onClick={() => !p.disabled && togglePlatform(p.key)}
-                      disabled={p.disabled}
-                      title={p.disabled ? 'Bientôt disponible' : ''}
-                      style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        padding: '8px 10px', fontSize: 11, fontWeight: 600,
-                        color: on ? '#fff' : 'var(--text-tertiary)',
-                        background: on ? p.color : 'var(--bg-secondary)',
-                        border: `1px solid ${on ? p.color : 'var(--border-primary)'}`,
-                        borderRadius: 8, cursor: p.disabled ? 'not-allowed' : 'pointer',
-                        opacity: p.disabled ? 0.45 : 1,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <p.icon size={12} />
-                      {p.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </Field>
-
-            {/* Media + auto-detected type */}
-            <Field
-              label="Media"
-              icon={ImgIcon}
-              hint="Drop ou click pour upload"
-              action={
-                computedMediaType ? (
-                  <span style={{ padding: '3px 8px', fontSize: 9, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.12)', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    {computedMediaType}
-                    {mediaDurationSec != null && ` · ${mediaDurationSec.toFixed(0)}s`}
-                  </span>
-                ) : null
-              }
+            <DrawerSection
+              title="Publication"
+              summary={pubSummary}
+              open={pubOpen}
+              onToggle={() => setPubOpen(o => !o)}
             >
-              <MediaList
-                urls={slot.media_urls ?? []}
-                onChange={(urls) => {
-                  setMediaDurationSec(null)
-                  patch({ media_urls: urls })
-                }}
-              />
-            </Field>
-
-            {/* Per-platform tabs */}
-            <div style={{ marginTop: 4 }}>
-              <PlatformTabs
-                platforms={PLATFORMS.filter((p) => enabledPlatforms[p.key] && !p.disabled)}
-                active={activePlatformTab}
-                onChange={setActivePlatformTab}
-              />
-
-              {activePlatformTab === 'instagram' && enabledPlatforms.instagram && (
-                <>
-                  <Field label="Caption Instagram">
-                    <textarea
-                      value={slot.caption ?? ''}
-                      onChange={(e) => setSlot({ ...slot, caption: e.target.value })}
-                      onBlur={() => patch({ caption: slot.caption })}
-                      placeholder="Caption finale qui sera publiée…"
-                      rows={5}
-                      style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
-                    />
-                  </Field>
-
-                  <Field label="Hashtags" icon={Hash}>
-                    <HashtagsInput
-                      tags={slot.hashtags ?? []}
-                      onChange={(tags) => patch({ hashtags: tags })}
-                    />
-                  </Field>
-                </>
-              )}
-
-              {activePlatformTab === 'youtube' && enabledPlatforms.youtube && (
-                <>
-                  <Field label="Titre YouTube *" hint={`${(ytConfig.title ?? '').length}/100`}>
-                    <input
-                      type="text"
-                      value={ytConfig.title ?? ''}
-                      onChange={(e) => updatePlatformConfig('youtube', { title: e.target.value })}
-                      placeholder="Titre de la vidéo (max 100 char)"
-                      maxLength={100}
-                      style={inputStyle}
-                    />
-                  </Field>
-                  <Field label="Description YouTube">
-                    <textarea
-                      value={ytConfig.description ?? ''}
-                      onChange={(e) => updatePlatformConfig('youtube', { description: e.target.value })}
-                      placeholder="Description complète…"
-                      rows={5}
-                      style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
-                    />
-                  </Field>
-                  <Field label="Visibilité">
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      {(['public', 'unlisted', 'private'] as const).map((v) => {
-                        const active = (ytConfig.privacy_status ?? 'public') === v
-                        return (
-                          <button
-                            key={v}
-                            onClick={() => updatePlatformConfig('youtube', { privacy_status: v })}
-                            style={{
-                              flex: 1, padding: '7px', fontSize: 11, fontWeight: 600,
-                              color: active ? '#fff' : 'var(--text-secondary)',
-                              background: active ? '#FF0000' : 'var(--bg-secondary)',
-                              border: `1px solid ${active ? '#FF0000' : 'var(--border-primary)'}`,
-                              borderRadius: 6, cursor: 'pointer',
-                            }}
-                          >
-                            {v === 'public' ? 'Public' : v === 'unlisted' ? 'Non répertorié' : 'Privé'}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </Field>
-                </>
-              )}
-
-              {Object.values(enabledPlatforms).every((v) => !v) && (
-                <div style={{ padding: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, fontSize: 11, color: '#ef4444' }}>
-                  Active au moins une plateforme pour pouvoir programmer ce slot.
+              {/* Platforms */}
+              <Field label="Plateformes" hint="≥ 1 obligatoire">
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {PLATFORMS.map((p) => {
+                    const on = enabledPlatforms[p.key]
+                    return (
+                      <button
+                        key={p.key}
+                        onClick={() => !p.disabled && togglePlatform(p.key)}
+                        disabled={p.disabled}
+                        title={p.disabled ? 'Bientôt disponible' : ''}
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          padding: '8px 10px', fontSize: 11, fontWeight: 600,
+                          color: on ? '#fff' : 'var(--text-tertiary)',
+                          background: on ? p.color : 'var(--bg-secondary)',
+                          border: `1px solid ${on ? p.color : 'var(--border-primary)'}`,
+                          borderRadius: 8, cursor: p.disabled ? 'not-allowed' : 'pointer',
+                          opacity: p.disabled ? 0.45 : 1,
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <p.icon size={12} />
+                        {p.label}
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
-            </div>
+              </Field>
 
-            <Field label="Notes">
-              <textarea
-                value={slot.notes ?? ''}
-                onChange={(e) => setSlot({ ...slot, notes: e.target.value })}
-                onBlur={() => patch({ notes: slot.notes })}
-                placeholder="Notes internes, todos…"
-                rows={3}
-                style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
-              />
-            </Field>
+              {/* Media + auto-detected type */}
+              <Field
+                label="Media"
+                icon={ImgIcon}
+                hint="Drop ou click pour upload"
+                action={
+                  computedMediaType ? (
+                    <span style={{ padding: '3px 8px', fontSize: 9, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.12)', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      {computedMediaType}
+                      {mediaDurationSec != null && ` · ${mediaDurationSec.toFixed(0)}s`}
+                    </span>
+                  ) : null
+                }
+              >
+                <MediaList
+                  urls={slot.media_urls ?? []}
+                  onChange={(urls) => {
+                    setMediaDurationSec(null)
+                    patch({ media_urls: urls })
+                  }}
+                />
+              </Field>
 
-            {/* Mini chat coach <-> monteur */}
-            <Field label="Discussion (coach ↔ monteur)">
-              <SlotChat slotId={slot.id} />
-            </Field>
+              {/* Per-platform tabs */}
+              <div style={{ marginTop: 4 }}>
+                <PlatformTabs
+                  platforms={PLATFORMS.filter((p) => enabledPlatforms[p.key] && !p.disabled)}
+                  active={activePlatformTab}
+                  onChange={setActivePlatformTab}
+                />
+
+                {activePlatformTab === 'instagram' && enabledPlatforms.instagram && (
+                  <>
+                    <Field label="Caption Instagram">
+                      <textarea
+                        value={slot.caption ?? ''}
+                        onChange={(e) => setSlot({ ...slot, caption: e.target.value })}
+                        onBlur={() => patch({ caption: slot.caption })}
+                        placeholder="Caption finale qui sera publiée…"
+                        rows={5}
+                        style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+                      />
+                    </Field>
+
+                    <Field label="Hashtags" icon={Hash}>
+                      <HashtagsInput
+                        tags={slot.hashtags ?? []}
+                        onChange={(tags) => patch({ hashtags: tags })}
+                      />
+                    </Field>
+                  </>
+                )}
+
+                {activePlatformTab === 'youtube' && enabledPlatforms.youtube && (
+                  <>
+                    <Field label="Titre YouTube *" hint={`${(ytConfig.title ?? '').length}/100`}>
+                      <input
+                        type="text"
+                        value={ytConfig.title ?? ''}
+                        onChange={(e) => updatePlatformConfig('youtube', { title: e.target.value })}
+                        placeholder="Titre de la vidéo (max 100 char)"
+                        maxLength={100}
+                        style={inputStyle}
+                      />
+                    </Field>
+                    <Field label="Description YouTube">
+                      <textarea
+                        value={ytConfig.description ?? ''}
+                        onChange={(e) => updatePlatformConfig('youtube', { description: e.target.value })}
+                        placeholder="Description complète…"
+                        rows={5}
+                        style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+                      />
+                    </Field>
+                    <Field label="Visibilité">
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {(['public', 'unlisted', 'private'] as const).map((v) => {
+                          const active = (ytConfig.privacy_status ?? 'public') === v
+                          return (
+                            <button
+                              key={v}
+                              onClick={() => updatePlatformConfig('youtube', { privacy_status: v })}
+                              style={{
+                                flex: 1, padding: '7px', fontSize: 11, fontWeight: 600,
+                                color: active ? '#fff' : 'var(--text-secondary)',
+                                background: active ? '#FF0000' : 'var(--bg-secondary)',
+                                border: `1px solid ${active ? '#FF0000' : 'var(--border-primary)'}`,
+                                borderRadius: 6, cursor: 'pointer',
+                              }}
+                            >
+                              {v === 'public' ? 'Public' : v === 'unlisted' ? 'Non répertorié' : 'Privé'}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </Field>
+                  </>
+                )}
+
+                {Object.values(enabledPlatforms).every((v) => !v) && (
+                  <div style={{ padding: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, fontSize: 11, color: '#ef4444' }}>
+                    Active au moins une plateforme pour pouvoir programmer ce slot.
+                  </div>
+                )}
+              </div>
+
+              <Field label="Notes">
+                <textarea
+                  value={slot.notes ?? ''}
+                  onChange={(e) => setSlot({ ...slot, notes: e.target.value })}
+                  onBlur={() => patch({ notes: slot.notes })}
+                  placeholder="Notes internes, todos…"
+                  rows={3}
+                  style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
+                />
+              </Field>
+            </DrawerSection>
+
+            {slot.monteur_id && (
+              <Field label="Discussion (coach ↔ monteur)">
+                <SlotChat slotId={slot.id} />
+              </Field>
+            )}
           </div>
         </div>
 
