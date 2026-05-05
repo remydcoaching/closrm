@@ -93,12 +93,15 @@ export default function ReseauxSociauxPage() {
   const [igAccount, setIgAccount] = useState<Record<string, unknown> | null>(null)
   const [ytAccount, setYtAccount] = useState<YtAccount | null>(null)
 
-  const [loading, setLoading] = useState(true)
+  // Loading n'est utile que pour les sous-vues IG/YT — la vue planning a son
+  // propre loader interne. On ne bloque donc pas le rendu de la page sur le
+  // fetch des comptes IG/YT (qui peuvent prendre 1-2s sur le cold start).
+  const [accountsLoading, setAccountsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
 
   const fetchAccounts = useCallback(async () => {
-    setLoading(true)
+    setAccountsLoading(true)
     setError(null)
     try {
       const [igRes, ytRes] = await Promise.all([
@@ -122,7 +125,7 @@ export default function ReseauxSociauxPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de charger les comptes')
     } finally {
-      setLoading(false)
+      setAccountsLoading(false)
     }
   }, [])
 
@@ -170,15 +173,16 @@ export default function ReseauxSociauxPage() {
         )}
       </div>
 
-      {loading ? (
+      {/* Planning ne dépend pas des comptes IG/YT — on l'affiche tout de suite */}
+      {platform === 'planning' ? (
+        <PlanningView />
+      ) : accountsLoading ? (
         <LoadingSkeleton />
       ) : error ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#ef4444', fontSize: 13, background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid rgba(239,68,68,0.2)' }}>
           {error}
           <button onClick={fetchAccounts} style={{ display: 'block', margin: '12px auto 0', padding: '8px 20px', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 8, cursor: 'pointer' }}>Réessayer</button>
         </div>
-      ) : platform === 'planning' ? (
-        <PlanningView />
       ) : platform === 'instagram' ? (
         !igAccount ? (
           <IgNotConnected />

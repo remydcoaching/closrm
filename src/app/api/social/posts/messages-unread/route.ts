@@ -18,14 +18,20 @@ export async function GET(_request: NextRequest) {
     const { workspaceId, userId } = await getWorkspaceId()
     const supabase = await createClient()
 
+    // Borne à 90 jours : un message vieux de 3 mois non lu est rarissime
+    // dans le contexte coach <-> monteur, et ça permet de profiter de
+    // l'index sur created_at pour éviter le full scan.
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+
     const [messagesRes, readsRes] = await Promise.all([
       supabase
         .from('social_post_messages')
-        .select('id, social_post_id, author_id, created_at')
+        .select('social_post_id, created_at')
         .eq('workspace_id', workspaceId)
         .neq('author_id', userId) // les messages de l'utilisateur sont toujours "lus"
+        .gte('created_at', since)
         .order('created_at', { ascending: false })
-        .limit(5000),
+        .limit(2000),
       supabase
         .from('social_post_message_reads')
         .select('social_post_id, last_read_at')
