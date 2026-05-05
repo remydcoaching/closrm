@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendThreadedEmail } from '@/lib/email/send-raw'
+import { createServiceClient } from '@/lib/supabase/service'
 
 interface SlotForNotif {
   id: string
@@ -45,7 +46,10 @@ export async function notifyMonteurFilmed(
 ): Promise<void> {
   if (!slot.monteur_id || slot.monteur_notified_at) return
 
-  const { data: monteur } = await supabase
+  // Service client pour bypasser la RLS sur `users` (le coach n'a pas
+  // forcément le droit de lire l'email du monteur via son client auth).
+  const admin = createServiceClient()
+  const { data: monteur } = await admin
     .from('users').select('id, email, full_name').eq('id', slot.monteur_id).single<UserRow>()
   if (!monteur?.email) return
 
@@ -93,12 +97,14 @@ export async function notifyCoachEdited(
 ): Promise<void> {
   if (slot.coach_notified_at) return
 
-  // Récupère le coach (admin du workspace)
-  const { data: workspace } = await supabase
+  // Service client pour bypasser RLS sur users (le monteur n'a pas le droit
+  // de lire les users du workspace via son client auth).
+  const admin = createServiceClient()
+  const { data: workspace } = await admin
     .from('workspaces').select('owner_id, name').eq('id', slot.workspace_id).single<{ owner_id: string; name: string | null }>()
   if (!workspace?.owner_id) return
 
-  const { data: owner } = await supabase
+  const { data: owner } = await admin
     .from('users').select('id, email, full_name').eq('id', workspace.owner_id).single<UserRow>()
   if (!owner?.email) return
 

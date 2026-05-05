@@ -1442,9 +1442,6 @@ function MontageSection({
       .catch(() => null)
   }, [])
 
-  // Hide entire section if no monteurs in workspace and no rush_url filled yet
-  if (monteurs.length === 0 && !slot.rush_url && !slot.final_url) return null
-
   return (
     <div style={{
       marginTop: 4, marginBottom: 18, padding: 12,
@@ -1456,7 +1453,7 @@ function MontageSection({
         <label style={{ ...labelStyle, color: '#8b5cf6' }}>Montage</label>
       </div>
 
-      {monteurs.length > 0 && (
+      {monteurs.length > 0 ? (
         <div style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4 }}>Assigné à</div>
           <select
@@ -1475,6 +1472,14 @@ function MontageSection({
               <option key={m.user_id} value={m.user_id}>{m.email ?? m.user_id.slice(0, 8)}</option>
             ))}
           </select>
+        </div>
+      ) : (
+        <div style={{
+          marginBottom: 10, padding: '8px 10px',
+          background: 'var(--bg-secondary)', borderRadius: 6,
+          fontSize: 11, color: 'var(--text-tertiary)',
+        }}>
+          Aucun monteur dans ce workspace. <a href="/parametres/equipe" style={{ color: '#8b5cf6' }}>Inviter un monteur →</a>
         </div>
       )}
 

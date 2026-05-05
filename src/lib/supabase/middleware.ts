@@ -79,9 +79,11 @@ export async function updateSession(request: NextRequest) {
   }
 
   // ─── Role gate : monteur ─────────────────────────────────────────────
-  // Les monteurs n'ont accès qu'à /montage. Tout le reste redirige.
-  // Vérifie une seule fois par requête (cookie role-cache pour économiser).
-  if (user && !isPublicRoute(pathname) && !pathname.startsWith('/montage')) {
+  // Les monteurs n'ont accès qu'à /montage et /parametres/reglages (leur
+  // profil). Tout le reste redirige.
+  const MONTEUR_ALLOWED = ['/montage', '/parametres/reglages']
+  const isMonteurAllowed = MONTEUR_ALLOWED.some(p => pathname === p || pathname.startsWith(p + '/'))
+  if (user && !isPublicRoute(pathname) && !isMonteurAllowed) {
     const cachedRole = request.cookies.get('crm-role')?.value
     let role: string | null = cachedRole ?? null
     if (!role) {

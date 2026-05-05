@@ -60,9 +60,21 @@ CREATE POLICY "social_posts_select" ON social_posts FOR SELECT
   );
 
 -- UPDATE : monteur peut update SEULEMENT ses slots filmed↔edited
+-- USING (vérif sur OLD) + WITH CHECK (vérif sur NEW) — sinon le monteur
+-- pourrait passer filmed→ready ou changer monteur_id
 DROP POLICY IF EXISTS "social_posts_update" ON social_posts;
 CREATE POLICY "social_posts_update" ON social_posts FOR UPDATE
   USING (
+    workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid() AND status = 'active')
+    AND (
+      NOT is_monteur_in_workspace(workspace_id)
+      OR (
+        monteur_id = auth.uid()
+        AND production_status IN ('filmed', 'edited')
+      )
+    )
+  )
+  WITH CHECK (
     workspace_id IN (SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid() AND status = 'active')
     AND (
       NOT is_monteur_in_workspace(workspace_id)
@@ -95,12 +107,14 @@ CREATE OR REPLACE FUNCTION prevent_monteur_unsafe_update()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
   IF is_monteur_in_workspace(NEW.workspace_id) THEN
-    -- Block edited → ready (réservé au coach)
-    IF OLD.production_status = 'edited' AND NEW.production_status = 'ready' THEN
-      RAISE EXCEPTION 'Le monteur ne peut pas valider un slot — réservé au coach';
+    -- Block toute transition de production_status hors filmed↔edited
+    -- (notamment filmed→ready, filmed→idea, edited→ready, etc.)
+    IF NEW.production_status NOT IN ('filmed', 'edited') THEN
+      RAISE EXCEPTION 'Le monteur ne peut transitionner qu''entre filmed et edited (tenté: %)', NEW.production_status;
     END IF;
     -- Block modification du brief / assignation
     IF NEW.hook IS DISTINCT FROM OLD.hook
@@ -122,6 +136,12 @@ BEGIN
   -- Reset coach_notified_at si le coach repasse à filmed (re-montage demandé)
   IF OLD.production_status = 'edited' AND NEW.production_status = 'filmed' THEN
     NEW.coach_notified_at := NULL;
+  END IF;
+  -- Reset monteur_notified_at si le coach change le monteur (réassignation)
+  -- ou repasse en filmed (re-montage). Le nouveau monteur reçoit l'email.
+  IF NEW.monteur_id IS DISTINCT FROM OLD.monteur_id
+     OR (OLD.production_status = 'edited' AND NEW.production_status = 'filmed') THEN
+    NEW.monteur_notified_at := NULL;
   END IF;
   RETURN NEW;
 END;

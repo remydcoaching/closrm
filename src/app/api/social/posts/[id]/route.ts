@@ -57,14 +57,19 @@ export async function PATCH(
     if (error) throw error
 
     // Notifications monteur — déclenchées sur transition production_status
+    // OU sur réassignation alors que le slot est déjà filmed.
+    // Idempotence assurée par les colonnes *_notified_at (reset par le trigger
+    // DB quand on revient en filmed ou qu'on change de monteur).
     if (updated && existing) {
-      const wasFilmed = existing.production_status === 'filmed'
       const wasEdited = existing.production_status === 'edited'
       const nowFilmed = updated.production_status === 'filmed'
       const nowEdited = updated.production_status === 'edited'
+      const monteurChanged = updated.monteur_id !== existing.monteur_id
 
-      // to_film → filmed : prévenir le monteur
-      if (!wasFilmed && nowFilmed && updated.monteur_id) {
+      // Filmed avec un monteur assigné — soit transition, soit réassignation.
+      // monteur_notified_at est null (reseté par trigger si nécessaire), donc
+      // notifyMonteurFilmed ne renverra pas si déjà envoyé.
+      if (nowFilmed && updated.monteur_id && (existing.production_status !== 'filmed' || monteurChanged)) {
         notifyMonteurFilmed(supabase, updated).catch(err =>
           console.error('[social/posts PATCH] notify monteur failed:', err?.message)
         )
