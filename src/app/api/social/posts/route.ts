@@ -32,7 +32,11 @@ export async function GET(request: NextRequest) {
     if (plan_date_from) query = query.gte('plan_date', plan_date_from)
     if (plan_date_to) query = query.lte('plan_date', plan_date_to)
     if (content_kind) query = query.eq('content_kind', content_kind)
-    if (production_status) query = query.eq('production_status', production_status)
+    if (production_status) {
+      const statuses = production_status.split(',').map(s => s.trim()).filter(Boolean)
+      if (statuses.length === 1) query = query.eq('production_status', statuses[0])
+      else if (statuses.length > 1) query = query.in('production_status', statuses)
+    }
     if (pillar_id) query = query.eq('pillar_id', pillar_id)
 
     const { data, count, error } = await query

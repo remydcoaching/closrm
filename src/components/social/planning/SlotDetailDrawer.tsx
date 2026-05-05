@@ -594,6 +594,8 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
                 onChange={(urls) => patch({ references_urls: urls })}
               />
             </Field>
+
+            <MontageSection slot={slot} setSlot={setSlot} patch={patch} />
           </div>
 
           {/* DIVIDER */}
@@ -1413,6 +1415,117 @@ function Field({
         {action && <div style={{ marginLeft: 'auto' }}>{action}</div>}
       </div>
       {children}
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Montage section — rush URL, monteur assignment, montage feedback view
+// ────────────────────────────────────────────────────────────────────
+
+function MontageSection({
+  slot, setSlot, patch,
+}: {
+  slot: SocialPostWithPublications
+  setSlot: (s: SocialPostWithPublications) => void
+  patch: (changes: Partial<SocialPostWithPublications>) => void
+}) {
+  const [monteurs, setMonteurs] = useState<{ user_id: string; email: string | null }[]>([])
+
+  useEffect(() => {
+    fetch('/api/workspaces/members?role=monteur')
+      .then(r => r.json())
+      .then((j: { data?: { user_id: string; user?: { email?: string | null } | null }[] }) => {
+        const list = (j.data ?? []).map(m => ({ user_id: m.user_id, email: m.user?.email ?? null }))
+        setMonteurs(list)
+      })
+      .catch(() => null)
+  }, [])
+
+  return (
+    <div style={{
+      marginTop: 4, marginBottom: 18, padding: 12,
+      borderRadius: 10, border: '1px solid rgba(139,92,246,0.3)',
+      background: 'rgba(139,92,246,0.06)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <Wand2 size={11} color="#8b5cf6" />
+        <label style={{ ...labelStyle, color: '#8b5cf6' }}>Montage</label>
+      </div>
+
+      {monteurs.length > 0 ? (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4 }}>Assigné à</div>
+          <select
+            value={slot.monteur_id ?? ''}
+            onChange={(e) => {
+              const v = e.target.value || null
+              setSlot({ ...slot, monteur_id: v })
+              patch({ monteur_id: v })
+            }}
+            style={{
+              ...inputStyle, width: '100%', cursor: 'pointer',
+            }}
+          >
+            <option value="">— Personne —</option>
+            {monteurs.map(m => (
+              <option key={m.user_id} value={m.user_id}>{m.email ?? m.user_id.slice(0, 8)}</option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div style={{
+          marginBottom: 10, padding: '8px 10px',
+          background: 'var(--bg-secondary)', borderRadius: 6,
+          fontSize: 11, color: 'var(--text-tertiary)',
+        }}>
+          Aucun monteur dans ce workspace. <a href="/parametres/equipe" style={{ color: '#8b5cf6' }}>Inviter un monteur →</a>
+        </div>
+      )}
+
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 4 }}>Lien du rush (Drive / SwissTransfer / WeTransfer…)</div>
+        <input
+          type="url"
+          value={slot.rush_url ?? ''}
+          onChange={(e) => setSlot({ ...slot, rush_url: e.target.value })}
+          onBlur={() => patch({ rush_url: slot.rush_url })}
+          placeholder="https://drive.google.com/..."
+          style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12 }}
+        />
+      </div>
+
+      {slot.final_url && (
+        <div style={{ marginTop: 10, padding: 10, background: 'var(--bg-secondary)', borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+            Montage final livré
+          </div>
+          <a
+            href={slot.final_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: 12, color: '#8b5cf6',
+              textDecoration: 'none', wordBreak: 'break-all',
+            }}
+          >
+            <Link2 size={11} /> {slot.final_url}
+          </a>
+          {slot.editor_notes && (
+            <div style={{
+              marginTop: 8, padding: '8px 10px',
+              background: 'var(--bg-elevated)', borderRadius: 6,
+              fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap',
+            }}>
+              <span style={{ fontWeight: 600, fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                Note du monteur ·{' '}
+              </span>
+              {slot.editor_notes}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

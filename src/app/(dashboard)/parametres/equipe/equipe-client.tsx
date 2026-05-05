@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, MoreVertical, Shield, PhoneOutgoing, Target, UserX, RefreshCw, Trash2, BarChart3, AlertTriangle, CheckCircle, Settings2, Save } from 'lucide-react'
+import { Plus, MoreVertical, Shield, PhoneOutgoing, Target, UserX, RefreshCw, Trash2, BarChart3, AlertTriangle, CheckCircle, Settings2, Save, Scissors } from 'lucide-react'
 import type { WorkspaceMemberWithUser, WorkspaceRole, MemberStatus } from '@/types'
 import InviteMemberModal from '@/components/team/InviteMemberModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
@@ -107,6 +107,7 @@ const ROLE_CONFIG: Record<WorkspaceRole, { label: string; color: string; bg: str
   admin: { label: 'Admin', color: '#E53E3E', bg: 'rgba(229,62,62,0.12)', icon: Shield },
   setter: { label: 'Setter', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', icon: PhoneOutgoing },
   closer: { label: 'Closer', color: '#38A169', bg: 'rgba(56,161,105,0.12)', icon: Target },
+  monteur: { label: 'Monteur', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', icon: Scissors },
 }
 
 const STATUS_CONFIG: Record<MemberStatus, { label: string; color: string; bg: string }> = {
