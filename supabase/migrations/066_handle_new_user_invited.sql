@@ -14,6 +14,14 @@
 -- et laisse l'API se débrouiller pour le reste.
 -- ═════════════════════════════════════════════════════════════════════
 
+-- ─── Étendre users.role pour accepter 'monteur' ──────────────────────
+-- La table users a un CHECK constraint historique qui n'inclut pas 'monteur'.
+-- L'API d'invite POST users(role: memberRole) avec memberRole='monteur'
+-- → violates "users_role_check". On élargit l'enum.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check
+  CHECK (role IN ('coach', 'setter', 'closer', 'monteur'));
+
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
