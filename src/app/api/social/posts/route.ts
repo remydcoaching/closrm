@@ -16,10 +16,23 @@ export async function GET(request: NextRequest) {
       page, per_page,
     } = parsed.data
 
+    // Mode `slim=true` : ne renvoie que les colonnes nécessaires au Board /
+    // Calendar / Montage (pas de script/caption/notes/editor_notes/hashtags
+    // qui peuvent peser plusieurs KB par slot). Pas de join publications.
+    // Les détails sont récupérés via GET /api/social/posts/[id] à l'ouverture
+    // du drawer.
+    const slim = searchParams.get('slim') === 'true'
+    // Mode slim : on saute la jointure publications + script/caption/notes
+    // (gain ~80% sur le payload). Format strict sans espaces pour le parser TS Supabase.
+    const slimFields = 'id,workspace_id,title,hook,status,scheduled_at,published_at,pillar_id,content_kind,production_status,plan_date,slot_index,media_urls,monteur_id,rush_url,final_url,monteur_notified_at,coach_notified_at,pricing_tier_id,paid_at,created_at,updated_at'
+
     const supabase = await createClient()
+    // Cast en string générique car la string ternaire fait planter le parser TS de Supabase
+    const selectExpr: string = slim ? slimFields : '*, publications:social_post_publications(*)'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = supabase
       .from('social_posts')
-      .select('*, publications:social_post_publications(*)', { count: 'exact' })
+      .select(selectExpr as never, { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .order('plan_date', { ascending: true, nullsFirst: false })
       .order('slot_index', { ascending: true, nullsFirst: false })
@@ -42,9 +55,11 @@ export async function GET(request: NextRequest) {
     const { data, count, error } = await query
     if (error) throw error
 
-    let rows = data ?? []
-    if (platform) {
-      rows = rows.filter((p: { publications?: { platform: string }[] }) =>
+    type PostRow = { publications?: { platform: string }[] }
+    let rows = (data ?? []) as unknown as PostRow[]
+    // Le filtre platform nécessite la jointure publications, ignoré en mode slim
+    if (platform && !slim) {
+      rows = rows.filter((p) =>
         (p.publications ?? []).some((pub) => pub.platform === platform)
       )
     }
