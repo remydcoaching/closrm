@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-const VALID_ROLES: WorkspaceRole[] = ['setter', 'closer']
+const VALID_ROLES: WorkspaceRole[] = ['setter', 'closer', 'monteur']
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
     if (!memberRole || !VALID_ROLES.includes(memberRole as WorkspaceRole)) {
       return NextResponse.json(
-        { error: 'Le rôle doit être "setter" ou "closer"' },
+        { error: 'Le rôle doit être "setter", "closer" ou "monteur"' },
         { status: 400 }
       )
     }
