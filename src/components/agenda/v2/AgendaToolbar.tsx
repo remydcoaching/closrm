@@ -284,21 +284,6 @@ export function AgendaToolbar({
         </div>
       )}
 
-      {/* Badge v2 — pour bien identifier qu'on est sur la nouvelle version */}
-      <span
-        style={{
-          padding: '2px 8px',
-          borderRadius: 4,
-          background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
-          color: 'var(--color-primary)',
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: 0.5,
-          textTransform: 'uppercase',
-        }}
-      >
-        Beta v2
-      </span>
     </div>
   )
 }

@@ -850,14 +850,11 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
           {/* DIVIDER */}
           <div style={{ width: 1, background: 'var(--border-primary)' }} />
 
-          {/* RIGHT COLUMN — Big media preview */}
-          <div style={{ ...columnStyle, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
-            <div style={{
-              fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
-              color: 'var(--text-tertiary)',
-            }}>
-              Preview
-            </div>
+          {/* RIGHT COLUMN — Big media preview, fills available height */}
+          <div style={{
+            padding: 16, minHeight: 0, minWidth: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
             <MediaPreview slot={slot} />
           </div>
         </div>
@@ -1630,23 +1627,58 @@ function MediaPreview({ slot }: { slot: SocialPostWithPublications }) {
   })()
   const embed = detectMediaEmbed(url)
 
-  // Aspect-ratio fixe sur le container pour éviter que le player saute de
-  // petit à grand quand les metadata vidéo arrivent. La majorité du contenu
-  // social moderne est vertical (Reels/Shorts/TikTok), donc default 9:16.
-  // Le content_kind 'post' utilisé pour de la vidéo IG feed peut quand même
-  // être vertical, donc on prend 9:16 sauf cas explicite contraire.
-  // object-fit: contain à l'intérieur letterbox proprement si la vidéo est
-  // en réalité horizontale.
-  const isVertical = true // default vertical, plus large public d'usage
+  // Pre-detection de l'aspect ratio avant d'afficher le player, pour que le
+  // frame match exactement la taille de la vidéo dès le 1er render. Sinon
+  // le frame avait une taille par defaut puis sautait à la taille reelle.
+  // - Native videos : on charge les metadata via un <video> caché.
+  // - Images : on charge via new Image().
+  // - Iframe (YouTube/Loom/Drive) : pas d'API native simple → on garde 9:16.
+  const [detectedRatio, setDetectedRatio] = useState<number | null>(null)
+  useEffect(() => {
+    setDetectedRatio(null)
+    if (!embed.src) return
+    let cancelled = false
+    if (embed.type === 'native') {
+      const v = document.createElement('video')
+      v.preload = 'metadata'
+      v.muted = true
+      v.onloadedmetadata = () => {
+        if (cancelled) return
+        if (v.videoWidth > 0 && v.videoHeight > 0) {
+          setDetectedRatio(v.videoWidth / v.videoHeight)
+        }
+      }
+      v.src = embed.src
+    } else if (embed.type === 'image') {
+      const img = new window.Image()
+      img.onload = () => {
+        if (cancelled) return
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          setDetectedRatio(img.naturalWidth / img.naturalHeight)
+        }
+      }
+      img.src = embed.src
+    }
+    return () => { cancelled = true }
+  }, [embed.src, embed.type])
+
+  // Default 9:16 (vertical) si pas encore detecté — la majorité du contenu
+  // social moderne est vertical. Une fois detecté, on snap à la vraie ratio.
+  const aspectRatio = detectedRatio != null ? `${detectedRatio}` : '9 / 16'
+  // Le frame remplit la hauteur disponible et adapte sa largeur via aspect-
+  // ratio. Si la largeur calculée depasse la column, max-width: 100% kick in
+  // et la hauteur se reduit. Donne le plus gros player possible dans l'espace
+  // disponible quelle que soit l'orientation video.
   const frameStyle: React.CSSProperties = {
-    width: '100%',
-    aspectRatio: isVertical ? '9 / 16' : '16 / 9',
-    maxHeight: '72vh',
+    aspectRatio,
+    height: '100%',
+    maxHeight: '100%',
+    maxWidth: '100%',
+    width: 'auto',
     background: '#000',
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
-    margin: '0 auto',
   }
   const fillStyle: React.CSSProperties = {
     width: '100%', height: '100%', objectFit: 'contain',
@@ -2156,9 +2188,22 @@ function MediaList({ urls, onChange }: { urls: string[]; onChange: (urls: string
   const [progress, setProgress] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
 
+  const MAX_FILE_BYTES = 250 * 1024 * 1024 // 250 MB — match bucket limit
   const uploadFiles = async (files: FileList | File[]) => {
     const arr = Array.from(files)
     if (arr.length === 0) return
+    // Pre-validation taille pour eviter erreur Supabase peu lisible
+    const oversized = arr.filter(f => f.size > MAX_FILE_BYTES)
+    if (oversized.length > 0) {
+      toast.error(
+        `Fichier${oversized.length > 1 ? 's' : ''} trop lourd${oversized.length > 1 ? 's' : ''}`,
+        `${oversized.map(f => `${f.name} (${formatSize(f.size)})`).join(', ')} — max 250 MB par fichier.`
+      )
+      const ok = arr.filter(f => f.size <= MAX_FILE_BYTES)
+      if (ok.length === 0) return
+      arr.length = 0
+      arr.push(...ok)
+    }
     setUploading(true)
     const supabase = createBrowserClient()
     const uploadedUrls: string[] = []
