@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
   Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
   CalendarDays, CalendarRange, Layers, Share2, MessageCircle, MessagesSquare, Sparkles, Users2,
-  GraduationCap, Link2, Euro, Scissors,
+  GraduationCap, Link2, Euro,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isRouteVisible } from '@/lib/permissions'
@@ -33,7 +33,6 @@ const NAV = [
       { label: 'Funnels', href: '/acquisition/funnels', icon: Layers, matchPaths: ['/acquisition/funnels'] },
       { label: 'Lead Magnets', href: '/acquisition/lead-magnets', icon: Link2, matchPaths: ['/acquisition/lead-magnets'] },
       { label: 'Réseaux sociaux', href: '/acquisition/reseaux-sociaux', icon: Share2, matchPaths: ['/acquisition/reseaux-sociaux'] },
-      { label: 'Montage', href: '/montage', icon: Scissors, matchPaths: ['/montage'] },
     ],
   },
   {
