@@ -147,16 +147,29 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
   const canEdit = isBooking && Boolean(onSave)
 
   return (
-    <aside
+    <div
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Détail de l'événement"
       style={{
-        width: 380,
-        flexShrink: 0,
-        height: '100%',
-        background: 'var(--bg-secondary)',
-        borderLeft: '1px solid var(--border-secondary)',
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20, zIndex: Z_AGENDA.detailPanel,
+      }}
+    >
+    <aside
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: 'min(520px, 100%)', maxHeight: '88vh',
+        background: 'var(--bg-primary)',
+        border: '1px solid var(--border-primary)',
+        borderRadius: 16,
         display: 'flex',
         flexDirection: 'column',
-        zIndex: Z_AGENDA.detailPanel,
+        boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
+        overflow: 'hidden',
       }}
       aria-label="Détail de l'événement"
     >
@@ -704,6 +717,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
         </div>
       )}
     </aside>
+    </div>
   )
 }
 
