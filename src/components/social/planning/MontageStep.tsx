@@ -78,39 +78,70 @@ export default function MontageStep({
       {/* Montage final */}
       <Field label="Montage final">
         <input
-          type="url"
-          value={slot.final_url ?? ''}
-          onChange={(e) => onUpdate({ final_url: e.target.value || null })}
-          placeholder="https://…"
-          style={inputStyle}
-        />
-        <input
           ref={fileInputRef}
           type="file"
           accept="video/*"
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          style={uploadBtnStyle}
-        >
-          {uploading ? 'Upload en cours…' : '📁 Uploader un fichier'}
-        </button>
+        {slot.final_url ? (
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <div style={videoWrapperStyle}>
+              <video
+                src={slot.final_url}
+                controls
+                preload="metadata"
+                style={{ width: '100%', height: '100%', display: 'block' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', wordBreak: 'break-all' }}>
+                {slot.final_url.split('/').pop()?.slice(0, 60) ?? '—'}
+              </span>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                style={uploadBtnStyle}
+              >
+                {uploading ? 'Upload en cours…' : 'Remplacer'}
+              </button>
+              <button
+                onClick={() => onUpdate({ final_url: null })}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '6px 10px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: 'var(--text-tertiary)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <input
+              type="url"
+              value={slot.final_url ?? ''}
+              onChange={(e) => onUpdate({ final_url: e.target.value || null })}
+              placeholder="Coller un lien ou uploader…"
+              style={inputStyle}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              style={uploadBtnStyle}
+            >
+              {uploading ? 'Upload en cours…' : '📁 Uploader un fichier'}
+            </button>
+          </>
+        )}
       </Field>
-
-      {/* Preview vidéo — only when final_url is set */}
-      {slot.final_url && (
-        <div style={videoWrapperStyle}>
-          <video
-            src={slot.final_url}
-            controls
-            preload="metadata"
-            style={{ width: '100%', height: '100%', display: 'block' }}
-          />
-        </div>
-      )}
 
       {/* Notes du monteur */}
       <Field label="Notes du monteur">
@@ -164,8 +195,16 @@ const inputStyle: React.CSSProperties = {
 
 const selectStyle: React.CSSProperties = {
   ...inputStyle,
-  appearance: 'auto',
+  appearance: 'none',
+  WebkitAppearance: 'none',
+  MozAppearance: 'none',
   cursor: 'pointer',
+  paddingRight: 28,
+  backgroundImage:
+    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/></svg>\")",
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 10px center',
+  colorScheme: 'dark',
 }
 
 const textareaStyle: React.CSSProperties = {
@@ -191,8 +230,8 @@ const videoWrapperStyle: React.CSSProperties = {
   overflow: 'hidden',
   background: '#000',
   aspectRatio: '9/16',
-  maxWidth: 320,
-  alignSelf: 'flex-start',
+  width: 140,
+  flexShrink: 0,
 }
 
 const transitionBtnStyle: React.CSSProperties = {

@@ -426,8 +426,16 @@ const textareaStyle: React.CSSProperties = {
 
 const selectStyle: React.CSSProperties = {
   ...inputStyle,
-  appearance: 'auto',
+  appearance: 'none',
+  WebkitAppearance: 'none',
+  MozAppearance: 'none',
   cursor: 'pointer',
+  paddingRight: 28,
+  backgroundImage:
+    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/></svg>\")",
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 10px center',
+  colorScheme: 'dark',
 }
 
 const uploadBtnStyle: React.CSSProperties = {
