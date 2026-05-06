@@ -74,6 +74,8 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
   const [briefOpen, setBriefOpen] = useState(false)
   const [montageOpen, setMontageOpen] = useState(false)
   const [pubOpen, setPubOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const initSlotIdRef = useRef<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [mediaIsVideo, setMediaIsVideo] = useState(false)
@@ -374,6 +376,31 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
     } catch {}
   }
 
+  // Fetch unread messages count pour ce slot. Polling 20s pour rafraichir
+  // quand l'accordéon Discussion est replié (sinon SlotChat marque tout lu
+  // au mount). Reset à 0 quand on ouvre le chat.
+  useEffect(() => {
+    if (!slot?.id) return
+    let cancelled = false
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch('/api/social/posts/messages-unread')
+        const json = await res.json()
+        if (cancelled) return
+        const map = (json?.data ?? {}) as Record<string, number>
+        setUnreadCount(map[slot.id] ?? 0)
+      } catch { /* silent */ }
+    }
+    if (!chatOpen) {
+      fetchUnread()
+      const id = setInterval(fetchUnread, 20000)
+      return () => { cancelled = true; clearInterval(id) }
+    } else {
+      setUnreadCount(0)
+    }
+    return () => { cancelled = true }
+  }, [slot?.id, chatOpen])
+
   // Init des accordéons une fois par slotId. Si seul le contenu de `slot`
   // change (auto-save), on garde l'état utilisateur.
   useEffect(() => {
@@ -650,13 +677,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
                 <MontageSection slot={slot} setSlot={setSlot} patch={patch} />
               </DrawerSection>
             )}
-          </div>
 
-          {/* DIVIDER */}
-          <div style={{ width: 1, background: 'var(--border-primary)' }} />
-
-          {/* RIGHT COLUMN — Publication */}
-          <div style={columnStyle}>
             <DrawerSection
               title="Publication"
               summary={pubSummary}
@@ -812,10 +833,32 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
             </DrawerSection>
 
             {slot.monteur_id && (
-              <Field label="Discussion (coach ↔ monteur)">
-                <SlotChat slotId={slot.id} />
-              </Field>
+              <DrawerSection
+                title="Discussion"
+                summary={chatOpen ? null : (unreadCount > 0 ? `${unreadCount} message${unreadCount > 1 ? 's' : ''} non lu${unreadCount > 1 ? 's' : ''}` : 'Échanger avec le monteur')}
+                open={chatOpen}
+                onToggle={() => setChatOpen(o => !o)}
+                badge={unreadCount}
+              >
+                <div style={{ height: 360 }}>
+                  <SlotChat slotId={slot.id} fillHeight />
+                </div>
+              </DrawerSection>
             )}
+          </div>
+
+          {/* DIVIDER */}
+          <div style={{ width: 1, background: 'var(--border-primary)' }} />
+
+          {/* RIGHT COLUMN — Big video preview */}
+          <div style={{ ...columnStyle, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
+              color: 'var(--text-tertiary)',
+            }}>
+              Preview
+            </div>
+            <VideoPreview slot={slot} />
           </div>
         </div>
 
@@ -1489,12 +1532,14 @@ function DrawerSection({
   summary,
   open,
   onToggle,
+  badge,
   children,
 }: {
   title: string
   summary?: string | null
   open: boolean
   onToggle: () => void
+  badge?: number
   children: React.ReactNode
 }) {
   return (
@@ -1516,8 +1561,17 @@ function DrawerSection({
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
             {title}
+            {badge != null && badge > 0 && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                minWidth: 18, height: 18, padding: '0 5px',
+                fontSize: 10, fontWeight: 800, color: '#fff',
+                background: '#ef4444', borderRadius: 9,
+                boxShadow: '0 2px 6px rgba(239,68,68,0.4)',
+              }}>{badge > 99 ? '99+' : badge}</span>
+            )}
           </span>
           {!open && summary && (
             <span style={{
@@ -1540,6 +1594,98 @@ function DrawerSection({
           {children}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Video preview helper + component ─────────────────────────────────
+type EmbedType = 'native' | 'youtube' | 'loom' | 'drive' | 'unsupported'
+function detectVideoEmbed(url: string | null | undefined): { type: EmbedType; src?: string } {
+  if (!url) return { type: 'unsupported' }
+  if (/\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i.test(url)) return { type: 'native', src: url }
+  const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]+)/)
+  if (yt) return { type: 'youtube', src: `https://www.youtube.com/embed/${yt[1]}` }
+  const loom = url.match(/loom\.com\/share\/([\w]+)/)
+  if (loom) return { type: 'loom', src: `https://www.loom.com/embed/${loom[1]}` }
+  const drive = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/)
+  if (drive) return { type: 'drive', src: `https://drive.google.com/file/d/${drive[1]}/preview` }
+  return { type: 'unsupported' }
+}
+
+function VideoPreview({ slot }: { slot: SocialPostWithPublications }) {
+  const videoUrl = (() => {
+    const firstMedia = (slot.media_urls ?? []).find((u) => /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(u))
+    if (firstMedia) return firstMedia
+    if (slot.final_url) return slot.final_url
+    if (slot.rush_url) return slot.rush_url
+    return null
+  })()
+  const embed = detectVideoEmbed(videoUrl)
+
+  if (!videoUrl) {
+    return (
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-secondary)', border: '1px dashed var(--border-primary)', borderRadius: 12,
+        padding: 32, textAlign: 'center', gap: 10, minHeight: 320,
+      }}>
+        <Video size={32} color="var(--text-tertiary)" />
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Aucune vidéo à prévisualiser</div>
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', maxWidth: 320, lineHeight: 1.4 }}>
+          Le rush du coach ou le montage final apparaîtront ici dès qu'un lien embeddable (YouTube, Loom, Drive) ou un fichier vidéo sera ajouté.
+        </div>
+      </div>
+    )
+  }
+
+  if (embed.type === 'native' && embed.src) {
+    return (
+      <video
+        src={embed.src}
+        controls
+        style={{ width: '100%', borderRadius: 12, background: '#000', maxHeight: '70vh' }}
+      />
+    )
+  }
+  if ((embed.type === 'youtube' || embed.type === 'loom' || embed.type === 'drive') && embed.src) {
+    return (
+      <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', borderRadius: 12, overflow: 'hidden', background: '#000' }}>
+        <iframe
+          src={embed.src}
+          allowFullScreen
+          allow="autoplay; encrypted-media; picture-in-picture"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+        />
+      </div>
+    )
+  }
+
+  // Unsupported (SwissTransfer, WeTransfer, Dropbox shared link, etc.)
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 12,
+      padding: 28, gap: 14, minHeight: 280,
+    }}>
+      <Video size={32} color="#a78bfa" />
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center' }}>
+        Lien non prévisualisable directement
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', maxWidth: 360, lineHeight: 1.5 }}>
+        SwissTransfer, WeTransfer, Dropbox… nécessitent un téléchargement. Pour une preview embarquée, utilise YouTube (unlisted), Loom ou Google Drive.
+      </div>
+      <a
+        href={videoUrl} target="_blank" rel="noopener noreferrer"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '10px 18px', fontSize: 13, fontWeight: 700,
+          color: '#fff', background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+          borderRadius: 10, textDecoration: 'none',
+          boxShadow: '0 4px 16px rgba(139,92,246,0.3)',
+        }}
+      >
+        Ouvrir le lien dans un nouvel onglet ↗
+      </a>
     </div>
   )
 }
@@ -2166,7 +2312,7 @@ const overlayStyle: React.CSSProperties = {
   zIndex: 100, padding: 20,
 }
 const modalStyle: React.CSSProperties = {
-  width: 'min(1100px, 100%)', maxHeight: '92vh',
+  width: 'min(1400px, 100%)', maxHeight: '92vh',
   background: 'var(--bg-primary)', border: '1px solid var(--border-primary)',
   borderRadius: 16,
   display: 'flex', flexDirection: 'column',
@@ -2174,11 +2320,11 @@ const modalStyle: React.CSSProperties = {
   overflow: 'hidden',
 }
 const bodyStyle: React.CSSProperties = {
-  flex: 1, overflowY: 'auto',
-  display: 'grid', gridTemplateColumns: '1fr 1px 1fr',
+  flex: 1, overflow: 'hidden',
+  display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1.4fr)',
 }
 const columnStyle: React.CSSProperties = {
-  padding: '20px 24px',
+  padding: '20px 24px', overflowY: 'auto',
 }
 const footerStyle: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
