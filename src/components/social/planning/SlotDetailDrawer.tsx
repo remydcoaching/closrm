@@ -1630,10 +1630,14 @@ function MediaPreview({ slot }: { slot: SocialPostWithPublications }) {
   })()
   const embed = detectMediaEmbed(url)
 
-  // Format vertical pour reel/story, horizontal pour post. Aspect-ratio fixe
-  // sur le container pour éviter que le player saute de petit à grand quand
-  // les metadata vidéo arrivent.
-  const isVertical = slot.content_kind === 'reel' || slot.content_kind === 'story'
+  // Aspect-ratio fixe sur le container pour éviter que le player saute de
+  // petit à grand quand les metadata vidéo arrivent. La majorité du contenu
+  // social moderne est vertical (Reels/Shorts/TikTok), donc default 9:16.
+  // Le content_kind 'post' utilisé pour de la vidéo IG feed peut quand même
+  // être vertical, donc on prend 9:16 sauf cas explicite contraire.
+  // object-fit: contain à l'intérieur letterbox proprement si la vidéo est
+  // en réalité horizontale.
+  const isVertical = true // default vertical, plus large public d'usage
   const frameStyle: React.CSSProperties = {
     width: '100%',
     aspectRatio: isVertical ? '9 / 16' : '16 / 9',
@@ -1642,7 +1646,7 @@ function MediaPreview({ slot }: { slot: SocialPostWithPublications }) {
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
-    margin: isVertical ? '0 auto' : undefined,
+    margin: '0 auto',
   }
   const fillStyle: React.CSSProperties = {
     width: '100%', height: '100%', objectFit: 'contain',
