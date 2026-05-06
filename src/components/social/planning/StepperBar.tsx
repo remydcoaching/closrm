@@ -11,6 +11,7 @@ interface StepperBarProps {
 
 const SUCCESS_COLOR = '#22c55e'
 const CIRCLE_SIZE = 32
+const LABEL_HEIGHT = 18 // align connecting line with circle centers
 
 export default function StepperBar({ active, completed, onSelect }: StepperBarProps) {
   return (
@@ -94,7 +95,7 @@ export default function StepperBar({ active, completed, onSelect }: StepperBarPr
                   flex: 1,
                   height: 2,
                   background: lineColor,
-                  marginBottom: 18, // align with circle centers (label offset)
+                  marginBottom: LABEL_HEIGHT,
                   transition: 'background 0.2s ease',
                 }}
               />
