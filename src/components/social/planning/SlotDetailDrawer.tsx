@@ -1630,12 +1630,33 @@ function MediaPreview({ slot }: { slot: SocialPostWithPublications }) {
   })()
   const embed = detectMediaEmbed(url)
 
+  // Format vertical pour reel/story, horizontal pour post. Aspect-ratio fixe
+  // sur le container pour éviter que le player saute de petit à grand quand
+  // les metadata vidéo arrivent.
+  const isVertical = slot.content_kind === 'reel' || slot.content_kind === 'story'
+  const frameStyle: React.CSSProperties = {
+    width: '100%',
+    aspectRatio: isVertical ? '9 / 16' : '16 / 9',
+    maxHeight: '72vh',
+    background: '#000',
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    margin: isVertical ? '0 auto' : undefined,
+  }
+  const fillStyle: React.CSSProperties = {
+    width: '100%', height: '100%', objectFit: 'contain',
+    display: 'block', border: 'none', background: '#000',
+  }
+
   if (!url) {
     return (
       <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg-secondary)', border: '1px dashed var(--border-primary)', borderRadius: 12,
-        padding: 32, textAlign: 'center', gap: 10, minHeight: 320,
+        ...frameStyle,
+        background: 'var(--bg-secondary)',
+        border: '1px dashed var(--border-primary)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: 32, textAlign: 'center', gap: 10,
       }}>
         <Video size={32} color="var(--text-tertiary)" />
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Aucun media à prévisualiser</div>
@@ -1648,39 +1669,33 @@ function MediaPreview({ slot }: { slot: SocialPostWithPublications }) {
 
   if (embed.type === 'image' && embed.src) {
     return (
-      <img
-        src={embed.src}
-        alt="Preview"
-        style={{
-          width: '100%', maxHeight: '70vh', objectFit: 'contain',
-          borderRadius: 12, background: '#000',
-        }}
-      />
+      <div style={frameStyle}>
+        <img src={embed.src} alt="Preview" style={fillStyle} />
+      </div>
     )
   }
 
   if (embed.type === 'native' && embed.src) {
     return (
-      <video
-        src={embed.src}
-        controls
-        preload="metadata"
-        playsInline
-        style={{
-          width: '100%', maxHeight: '70vh', objectFit: 'contain',
-          borderRadius: 12, background: '#000',
-        }}
-      />
+      <div style={frameStyle}>
+        <video
+          src={embed.src}
+          controls
+          preload="metadata"
+          playsInline
+          style={fillStyle}
+        />
+      </div>
     )
   }
   if ((embed.type === 'youtube' || embed.type === 'loom' || embed.type === 'drive') && embed.src) {
     return (
-      <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', borderRadius: 12, overflow: 'hidden', background: '#000' }}>
+      <div style={frameStyle}>
         <iframe
           src={embed.src}
           allowFullScreen
           allow="autoplay; encrypted-media; picture-in-picture"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+          style={fillStyle}
         />
       </div>
     )
@@ -1689,9 +1704,11 @@ function MediaPreview({ slot }: { slot: SocialPostWithPublications }) {
   // Unsupported (SwissTransfer, WeTransfer, Dropbox shared link, etc.)
   return (
     <div style={{
+      ...frameStyle,
+      background: 'var(--bg-secondary)',
+      border: '1px solid var(--border-primary)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 12,
-      padding: 28, gap: 14, minHeight: 280,
+      padding: 28, gap: 14,
     }}>
       <Video size={32} color="#a78bfa" />
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center' }}>
