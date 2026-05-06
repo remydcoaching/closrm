@@ -16,7 +16,11 @@ const PlanModal = dynamic(() => import('./PlanModal'), { ssr: false })
 
 export default function PlanningView() {
   const toast = useToast()
-  const [view, setView] = useState<'calendar' | 'board'>('board')
+  const [view, setView] = useState<'calendar' | 'board'>(() => {
+    if (typeof window === 'undefined') return 'calendar'
+    const stored = window.localStorage.getItem('social_planning_view_mode')
+    return stored === 'board' ? 'board' : 'calendar'
+  })
   const [trame, setTrame] = useState<ContentTrame | null>(null)
   const [pillars, setPillars] = useState<ContentPillar[]>([])
   const [posts, setPosts] = useState<SocialPostWithPublications[]>([])
@@ -74,6 +78,11 @@ export default function PlanningView() {
 
   useEffect(() => { reloadStructure() }, [reloadStructure])
   useEffect(() => { reloadPosts() }, [reloadPosts])
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('social_planning_view_mode', view)
+    }
+  }, [view])
 
   const createPost = async (planDate?: string) => {
     const fallback = (() => {
