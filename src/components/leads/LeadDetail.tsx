@@ -38,6 +38,21 @@ const FOLLOWUP_CHANNEL_LABEL: Record<string, string> = {
 }
 
 const sectionTitle = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.12em', marginBottom: 14 }
+
+// Group header — meme logique que LeadSidePanel pour coherence
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
+      letterSpacing: '0.1em', textTransform: 'uppercase',
+      margin: '8px 0 12px', paddingBottom: 6,
+      borderBottom: '1px solid var(--border-primary)',
+    }}>
+      {children}
+    </div>
+  )
+}
+
 const inputStyle = {
   width: '100%', boxSizing: 'border-box' as const,
   padding: '7px 10px',
@@ -118,39 +133,8 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
 
   return (
     <div>
-      {/* Infos contact */}
-      <div style={card}>
-        <p style={sectionTitle}>Informations de contact</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Téléphone</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
-              <Phone size={13} color="var(--text-muted)" />
-              {lead.phone || <span style={{ color: 'var(--text-label)' }}>Non renseigné</span>}
-            </div>
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Email</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
-              <Mail size={13} color="var(--text-muted)" />
-              {lead.email || <span style={{ color: 'var(--text-label)' }}>Non renseigné</span>}
-            </div>
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Tentatives d&apos;appel</label>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}</div>
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Joint</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
-              {lead.reached
-                ? <><CheckCircle size={13} color="var(--color-primary)" /><span style={{ color: 'var(--color-primary)' }}>Oui</span></>
-                : <><XCircle size={13} color="var(--text-muted)" /><span style={{ color: 'var(--text-muted)' }}>Non</span></>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* ─── ÉTAT DU LEAD ─── */}
+      <SectionHeader>État du lead</SectionHeader>
 
       {/* Statut */}
       <div style={card}>
@@ -187,6 +171,43 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
         </div>
       </div>
 
+      {/* ─── COORDONNÉES ─── */}
+      <SectionHeader>Coordonnées</SectionHeader>
+
+      {/* Infos contact */}
+      <div style={card}>
+        <p style={sectionTitle}>Informations de contact</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Téléphone</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
+              <Phone size={13} color="var(--text-muted)" />
+              {lead.phone || <span style={{ color: 'var(--text-label)' }}>Non renseigné</span>}
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Email</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
+              <Mail size={13} color="var(--text-muted)" />
+              {lead.email || <span style={{ color: 'var(--text-label)' }}>Non renseigné</span>}
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Tentatives d&apos;appel</label>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}</div>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Joint</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+              {lead.reached
+                ? <><CheckCircle size={13} color="var(--color-primary)" /><span style={{ color: 'var(--color-primary)' }}>Oui</span></>
+                : <><XCircle size={13} color="var(--text-muted)" /><span style={{ color: 'var(--text-muted)' }}>Non</span></>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Tags */}
       <div style={card}>
         <p style={sectionTitle}><Tag size={11} style={{ marginRight: 5 }} />Tags</p>
@@ -219,17 +240,8 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
         </div>
       </div>
 
-      {/* Notes */}
-      <div style={card}>
-        <p style={sectionTitle}><FileText size={11} style={{ marginRight: 5 }} />Notes</p>
-        <textarea value={notes} onChange={e => handleNotesChange(e.target.value)}
-          rows={5} placeholder="Notes libres sur ce lead..."
-          style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
-        <p style={{ fontSize: 10, color: 'var(--text-label)', marginTop: 6 }}>Sauvegarde automatique</p>
-      </div>
-
-      {/* Lead Magnets */}
-      <LeadMagnetsWidget leadId={lead.id} />
+      {/* ─── ACTIVITÉ COMMERCIALE ─── */}
+      <SectionHeader>Activité commerciale</SectionHeader>
 
       {/* Timeline */}
       <div style={card}>
@@ -282,6 +294,24 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* ─── ENRICHISSEMENT ─── */}
+      <SectionHeader>Enrichissement</SectionHeader>
+
+      {/* Notes */}
+      <div style={card}>
+        <p style={sectionTitle}><FileText size={11} style={{ marginRight: 5 }} />Notes</p>
+        <textarea value={notes} onChange={e => handleNotesChange(e.target.value)}
+          rows={5} placeholder="Notes libres sur ce lead..."
+          style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
+        <p style={{ fontSize: 10, color: 'var(--text-label)', marginTop: 6 }}>Sauvegarde automatique</p>
+      </div>
+
+      {/* Lead Magnets — wrappé en card pour spacing cohérent */}
+      <div style={card}>
+        <p style={sectionTitle}>Lead Magnets</p>
+        <LeadMagnetsWidget leadId={lead.id} />
       </div>
     </div>
   )

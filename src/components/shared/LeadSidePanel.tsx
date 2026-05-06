@@ -37,6 +37,21 @@ interface Props { leadId: string; onClose: () => void }
 
 const card: React.CSSProperties = { background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 12, padding: 16, marginBottom: 14 }
 const sectionTitle: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 12 }
+
+// Group header — visuellement plus marqué que sectionTitle, pour grouper
+// plusieurs cards par préoccupation (état / coordonnées / activité…)
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
+      letterSpacing: '0.1em', textTransform: 'uppercase',
+      margin: '8px 0 12px', paddingBottom: 6,
+      borderBottom: '1px solid var(--border-primary)',
+    }}>
+      {children}
+    </div>
+  )
+}
 const inputS: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12, outline: 'none' }
 const smallBtn: React.CSSProperties = { background: 'none', border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26 }
 
@@ -216,10 +231,30 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   }
 
   return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.4)' }} />
-
-      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '100%', maxWidth: 460, zIndex: 151, background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-primary)', boxShadow: '-10px 0 40px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column' }}>
+    <div
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Profil du lead"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 150,
+        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 'min(720px, 100%)', maxHeight: '90vh',
+          background: 'var(--bg-primary)',
+          border: '1px solid var(--border-primary)',
+          borderRadius: 16,
+          boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
         {/* Header */}
         <div style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Profil du lead</span>
@@ -275,16 +310,8 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             </div>
 
-            {/* Origine publicitaire (si Lead Ads) */}
-            {(lead.meta_campaign_id || lead.meta_adset_id || lead.meta_ad_id) && (
-              <div style={{ marginBottom: 14 }}>
-                <LeadAttributionBlock
-                  meta_campaign_id={lead.meta_campaign_id}
-                  meta_adset_id={lead.meta_adset_id}
-                  meta_ad_id={lead.meta_ad_id}
-                />
-              </div>
-            )}
+            {/* ─── ÉTAT DU LEAD ─── */}
+            <SectionHeader>État du lead</SectionHeader>
 
             {/* Status */}
             <div style={card}>
@@ -350,6 +377,9 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               />
             </div>
 
+            {/* ─── COORDONNÉES ─── */}
+            <SectionHeader>Coordonnées</SectionHeader>
+
             {/* Contact editable */}
             <div style={card}>
               <div style={sectionTitle}>Contact</div>
@@ -412,32 +442,8 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             </div>
 
-            {/* Paiements / Deals */}
-            <div style={card}>
-              <div style={sectionTitle}>Paiements</div>
-              <LeadDealsWidget leadId={leadId} />
-            </div>
-
-            {/* Notes multiples */}
-            <div style={card}>
-              <div style={sectionTitle}>Notes</div>
-              <LeadNotesWidget leadId={leadId} />
-            </div>
-
-            {/* AI Assistant */}
-            <div style={card}>
-              <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={12} color="#E53E3E" />
-                Assistant IA
-              </div>
-              <AiSuggestionPanel
-                leadId={leadId}
-                instagramHandle={lead.instagram_handle}
-              />
-            </div>
-
-            {/* Lead Magnets */}
-            <LeadMagnetsWidget leadId={leadId} />
+            {/* ─── ACTIVITÉ COMMERCIALE ─── */}
+            <SectionHeader>Activité commerciale</SectionHeader>
 
             {/* Calls — editable dates */}
             <div style={card}>
@@ -466,6 +472,51 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                 </div>
               )}
             </div>
+
+            {/* Paiements / Deals */}
+            <div style={card}>
+              <div style={sectionTitle}>Paiements</div>
+              <LeadDealsWidget leadId={leadId} />
+            </div>
+
+            {/* ─── ENRICHISSEMENT ─── */}
+            <SectionHeader>Enrichissement</SectionHeader>
+
+            {/* Notes multiples */}
+            <div style={card}>
+              <div style={sectionTitle}>Notes</div>
+              <LeadNotesWidget leadId={leadId} />
+            </div>
+
+            {/* AI Assistant */}
+            <div style={card}>
+              <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={12} color="#E53E3E" />
+                Assistant IA
+              </div>
+              <AiSuggestionPanel
+                leadId={leadId}
+                instagramHandle={lead.instagram_handle}
+              />
+            </div>
+
+            {/* Lead Magnets — le widget gère son propre card + title (cohérence avec LeadDetail) */}
+            <LeadMagnetsWidget leadId={leadId} />
+
+            {/* Origine publicitaire (si Lead Ads) — en bas car contextuel */}
+            {(lead.meta_campaign_id || lead.meta_adset_id || lead.meta_ad_id) && (
+              <>
+                <SectionHeader>Acquisition</SectionHeader>
+                <div style={card}>
+                  <div style={sectionTitle}>Origine publicitaire</div>
+                  <LeadAttributionBlock
+                    meta_campaign_id={lead.meta_campaign_id}
+                    meta_adset_id={lead.meta_adset_id}
+                    meta_ad_id={lead.meta_ad_id}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Supprimer */}
             <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-primary)' }}>
@@ -528,7 +579,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
           }}
         />
       )}
-    </>
+    </div>
   )
 }
 
