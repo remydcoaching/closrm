@@ -84,10 +84,8 @@ export default function BriefStep({
       {/* Notes coach */}
       <Field label="Notes (privées)">
         <textarea
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          value={(slot as any).notes_coach ?? ''}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          onChange={(e) => onUpdate({ notes_coach: e.target.value } as any)}
+          value={slot.notes ?? ''}
+          onChange={(e) => onUpdate({ notes: e.target.value })}
           placeholder="Notes internes…"
           rows={3}
           style={textareaStyle}
