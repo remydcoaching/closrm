@@ -531,9 +531,8 @@ export default function NewBookingModal({
                     rangeStart={0}
                     rangeEnd={23}
                   />
-                  <span style={{ color: 'var(--text-tertiary)', fontSize: 12, marginLeft: 4 }}>
-                    · {formatDuration(duration)}
-                  </span>
+                  <span style={{ color: 'var(--text-tertiary)', fontSize: 13, padding: '0 2px' }}>·</span>
+                  <DurationSelect value={duration} onChange={setDuration} />
                 </div>
               </Row>
 
@@ -1014,6 +1013,41 @@ function TimeSelect({
         const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
         return <option key={val} value={val}>{val}</option>
       })}
+    </select>
+  )
+}
+
+/** Sélecteur de durée — presets rapides (15min, 30min, 45min, 1h, 1h30, 2h…).
+ *  Affiche la durée courante même si elle n'est pas un preset. */
+function DurationSelect({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const presets = [15, 30, 45, 60, 75, 90, 105, 120, 150, 180, 240]
+  const options = presets.includes(value) ? presets : [...presets, value].sort((a, b) => a - b)
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      style={{
+        background: 'transparent',
+        border: '1px solid transparent',
+        color: 'var(--text-primary)',
+        fontSize: 13,
+        padding: '6px 8px',
+        borderRadius: 6,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        outline: 'none',
+        appearance: 'none',
+        WebkitAppearance: 'none',
+        textAlign: 'center',
+        colorScheme: 'dark',
+        transition: 'background 0.12s',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+    >
+      {options.map((m) => (
+        <option key={m} value={m}>{formatDuration(m)}</option>
+      ))}
     </select>
   )
 }
