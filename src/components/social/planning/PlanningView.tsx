@@ -145,16 +145,16 @@ export default function PlanningView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 6, background: 'var(--bg-secondary)', padding: 4, borderRadius: 10, border: '1px solid var(--border-primary)' }}>
           <button
-            onClick={() => setView('board')}
-            style={tabBtnStyle(view === 'board')}
-          >
-            <KanbanSquare size={14} /> Board
-          </button>
-          <button
             onClick={() => setView('calendar')}
             style={tabBtnStyle(view === 'calendar')}
           >
             <CalIcon size={14} /> Calendrier
+          </button>
+          <button
+            onClick={() => setView('board')}
+            style={tabBtnStyle(view === 'board')}
+          >
+            <KanbanSquare size={14} /> Board
           </button>
         </div>
 
