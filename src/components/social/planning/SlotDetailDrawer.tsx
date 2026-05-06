@@ -44,6 +44,20 @@ interface Props {
   hideAiActions?: boolean
 }
 
+type SectionExpansion = { brief: boolean; montage: boolean; publication: boolean }
+
+function getDefaultExpansion(slot: SocialPostWithPublications): SectionExpansion {
+  const ps = slot.production_status ?? 'idea'
+  const s  = slot.status ?? 'draft'
+  const isPublishedish = s === 'scheduled' || s === 'publishing' || s === 'published'
+
+  if (isPublishedish) return { brief: false, montage: false, publication: true }
+  if (ps === 'idea')   return { brief: true,  montage: false, publication: false }
+  if (ps === 'filmed' || ps === 'edited') return { brief: false, montage: true, publication: false }
+  // 'ready'
+  return { brief: false, montage: false, publication: true }
+}
+
 export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, hideAiActions = false }: Props) {
   const toast = useToast()
   const [slot, setSlot] = useState<SocialPostWithPublications | null>(null)
@@ -57,6 +71,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
   const [generatingScript, setGeneratingScript] = useState(false)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [activePlatformTab, setActivePlatformTab] = useState<SocialPlatform>('instagram')
+  const [briefOpen, setBriefOpen] = useState(false)
+  const [montageOpen, setMontageOpen] = useState(false)
+  const [pubOpen, setPubOpen] = useState(false)
+  const initSlotIdRef = useRef<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [mediaIsVideo, setMediaIsVideo] = useState(false)
   const [mediaDurationSec, setMediaDurationSec] = useState<number | null>(null)
@@ -356,6 +374,17 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
     } catch {}
   }
 
+  // Init des accordéons une fois par slotId. Si seul le contenu de `slot`
+  // change (auto-save), on garde l'état utilisateur.
+  useEffect(() => {
+    if (!slot || initSlotIdRef.current === slot.id) return
+    const exp = getDefaultExpansion(slot)
+    setBriefOpen(exp.brief)
+    setMontageOpen(exp.montage)
+    setPubOpen(exp.publication)
+    initSlotIdRef.current = slot.id
+  }, [slot])
+
   if (loading) {
     return (
       <div style={overlayStyle} onClick={onClose}>
@@ -386,6 +415,28 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
   // Color for header banner
   const headerColor = pillar?.color ?? '#666'
 
+  const briefSummary = (() => {
+    const txt = slot?.hook?.trim() || slot?.title?.trim() || ''
+    if (!txt) return '(vide)'
+    return txt.length > 80 ? txt.slice(0, 77) + '…' : txt
+  })()
+
+  const montageVisible = !!slot?.monteur_id || (slot?.production_status !== 'idea' && slot?.production_status != null)
+  const montageSummary = (() => {
+    if (!slot) return ''
+    const ps = slot.production_status
+    const status = ps === 'ready' ? 'Validé ✓✓' : ps === 'edited' ? 'Monté ✓' : ps === 'filmed' ? 'À monter' : 'Pas commencé'
+    const monteur = slot.monteur_id ? 'Assigné' : 'Non assigné'
+    return `${monteur} · ${status}`
+  })()
+
+  const pubSummary = (() => {
+    if (!slot) return ''
+    const active = (PLATFORMS.filter(p => enabledPlatforms[p.key]) ?? []).map(p => p.label)
+    if (active.length === 0) return 'Aucune plateforme'
+    return active.join(' · ')
+  })()
+
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
@@ -400,33 +451,37 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <select
-                  value={slot.pillar_id ?? ''}
-                  onChange={(e) => patch({ pillar_id: e.target.value || null })}
-                  style={{
-                    padding: '4px 12px', fontSize: 11, fontWeight: 700,
-                    color: '#fff',
-                    background: headerColor,
-                    border: 'none', borderRadius: 999, cursor: 'pointer',
-                    appearance: 'none', textTransform: 'uppercase', letterSpacing: 0.4,
-                  }}
-                >
-                  <option value="" style={{ color: '#000', background: '#fff' }}>(aucun pillar)</option>
-                  {pillars.map((p) => (
-                    <option key={p.id} value={p.id} style={{ color: '#000', background: '#fff' }}>{p.name}</option>
-                  ))}
-                </select>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', background: 'var(--bg-secondary)', borderRadius: 999, border: '1px solid var(--border-primary)' }}>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <select
+                    value={slot.pillar_id ?? ''}
+                    onChange={(e) => patch({ pillar_id: e.target.value || null })}
+                    style={{
+                      padding: '4px 24px 4px 12px', fontSize: 11, fontWeight: 700,
+                      color: '#fff',
+                      background: headerColor,
+                      border: 'none', borderRadius: 999, cursor: 'pointer',
+                      appearance: 'none', textTransform: 'uppercase', letterSpacing: 0.4,
+                    }}
+                  >
+                    <option value="" style={{ color: '#000', background: '#fff' }}>(aucun pillar)</option>
+                    {pillars.map((p) => (
+                      <option key={p.id} value={p.id} style={{ color: '#000', background: '#fff' }}>{p.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={11} color="#fff" style={{ position: 'absolute', right: 8, pointerEvents: 'none' }} />
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4, padding: '3px 22px 3px 10px', background: 'var(--bg-secondary)', borderRadius: 999, border: '1px solid var(--border-primary)', cursor: 'pointer' }}>
                   <KindIcon size={11} color="var(--text-tertiary)" />
                   <select
                     value={slot.content_kind ?? 'post'}
                     onChange={(e) => patch({ content_kind: e.target.value as SocialContentKind })}
-                    style={{ background: 'transparent', border: 'none', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', appearance: 'none', textTransform: 'uppercase' }}
+                    style={{ background: 'transparent', border: 'none', fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', appearance: 'none', textTransform: 'uppercase', paddingRight: 0 }}
                   >
                     <option value="post">Post</option>
                     <option value="story">Story</option>
                     <option value="reel">Reel</option>
                   </select>
+                  <ChevronDown size={10} color="var(--text-tertiary)" style={{ position: 'absolute', right: 7, pointerEvents: 'none' }} />
                 </div>
                 {isPublished && (
                   <span style={{ padding: '3px 10px', fontSize: 10, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.15)', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.4 }}>
@@ -470,28 +525,12 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
         <div style={bodyStyle}>
           {/* LEFT COLUMN — Production */}
           <div style={columnStyle}>
-            <ColumnHeader
-              icon={Sparkles}
-              label="Production"
-              color="#a78bfa"
-              action={hideAiActions ? null : (
-                <button
-                  onClick={() => window.open('/parametres/assistant-ia', '_blank')}
-                  title="Personnaliser l'IA (ton, niche, brief)"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    padding: '4px 8px', fontSize: 10, fontWeight: 600,
-                    color: 'var(--text-tertiary)',
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-primary)', borderRadius: 6,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Settings size={10} /> Personnaliser l'IA
-                </button>
-              )}
-            />
-
+            <DrawerSection
+              title="Brief"
+              summary={briefSummary}
+              open={briefOpen}
+              onToggle={() => setBriefOpen(o => !o)}
+            >
             <Field
               label="Accroche / Hook"
               hint="1 ligne percutante"
@@ -599,8 +638,18 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
                 onChange={(urls) => patch({ references_urls: urls })}
               />
             </Field>
+            </DrawerSection>
 
-            <MontageSection slot={slot} setSlot={setSlot} patch={patch} />
+            {montageVisible && (
+              <DrawerSection
+                title="Montage"
+                summary={montageSummary}
+                open={montageOpen}
+                onToggle={() => setMontageOpen(o => !o)}
+              >
+                <MontageSection slot={slot} setSlot={setSlot} patch={patch} />
+              </DrawerSection>
+            )}
           </div>
 
           {/* DIVIDER */}
@@ -608,159 +657,165 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
 
           {/* RIGHT COLUMN — Publication */}
           <div style={columnStyle}>
-            <ColumnHeader icon={Send} label="Publication" color="#10b981" />
-
-            {/* Platforms */}
-            <Field label="Plateformes" hint="≥ 1 obligatoire">
-              <div style={{ display: 'flex', gap: 6 }}>
-                {PLATFORMS.map((p) => {
-                  const on = enabledPlatforms[p.key]
-                  return (
-                    <button
-                      key={p.key}
-                      onClick={() => !p.disabled && togglePlatform(p.key)}
-                      disabled={p.disabled}
-                      title={p.disabled ? 'Bientôt disponible' : ''}
-                      style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        padding: '8px 10px', fontSize: 11, fontWeight: 600,
-                        color: on ? '#fff' : 'var(--text-tertiary)',
-                        background: on ? p.color : 'var(--bg-secondary)',
-                        border: `1px solid ${on ? p.color : 'var(--border-primary)'}`,
-                        borderRadius: 8, cursor: p.disabled ? 'not-allowed' : 'pointer',
-                        opacity: p.disabled ? 0.45 : 1,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <p.icon size={12} />
-                      {p.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </Field>
-
-            {/* Media + auto-detected type */}
-            <Field
-              label="Media"
-              icon={ImgIcon}
-              hint="Drop ou click pour upload"
-              action={
-                computedMediaType ? (
-                  <span style={{ padding: '3px 8px', fontSize: 9, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.12)', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    {computedMediaType}
-                    {mediaDurationSec != null && ` · ${mediaDurationSec.toFixed(0)}s`}
-                  </span>
-                ) : null
-              }
+            <DrawerSection
+              title="Publication"
+              summary={pubSummary}
+              open={pubOpen}
+              onToggle={() => setPubOpen(o => !o)}
             >
-              <MediaList
-                urls={slot.media_urls ?? []}
-                onChange={(urls) => {
-                  setMediaDurationSec(null)
-                  patch({ media_urls: urls })
-                }}
-              />
-            </Field>
-
-            {/* Per-platform tabs */}
-            <div style={{ marginTop: 4 }}>
-              <PlatformTabs
-                platforms={PLATFORMS.filter((p) => enabledPlatforms[p.key] && !p.disabled)}
-                active={activePlatformTab}
-                onChange={setActivePlatformTab}
-              />
-
-              {activePlatformTab === 'instagram' && enabledPlatforms.instagram && (
-                <>
-                  <Field label="Caption Instagram">
-                    <textarea
-                      value={slot.caption ?? ''}
-                      onChange={(e) => setSlot({ ...slot, caption: e.target.value })}
-                      onBlur={() => patch({ caption: slot.caption })}
-                      placeholder="Caption finale qui sera publiée…"
-                      rows={5}
-                      style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
-                    />
-                  </Field>
-
-                  <Field label="Hashtags" icon={Hash}>
-                    <HashtagsInput
-                      tags={slot.hashtags ?? []}
-                      onChange={(tags) => patch({ hashtags: tags })}
-                    />
-                  </Field>
-                </>
-              )}
-
-              {activePlatformTab === 'youtube' && enabledPlatforms.youtube && (
-                <>
-                  <Field label="Titre YouTube *" hint={`${(ytConfig.title ?? '').length}/100`}>
-                    <input
-                      type="text"
-                      value={ytConfig.title ?? ''}
-                      onChange={(e) => updatePlatformConfig('youtube', { title: e.target.value })}
-                      placeholder="Titre de la vidéo (max 100 char)"
-                      maxLength={100}
-                      style={inputStyle}
-                    />
-                  </Field>
-                  <Field label="Description YouTube">
-                    <textarea
-                      value={ytConfig.description ?? ''}
-                      onChange={(e) => updatePlatformConfig('youtube', { description: e.target.value })}
-                      placeholder="Description complète…"
-                      rows={5}
-                      style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
-                    />
-                  </Field>
-                  <Field label="Visibilité">
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      {(['public', 'unlisted', 'private'] as const).map((v) => {
-                        const active = (ytConfig.privacy_status ?? 'public') === v
-                        return (
-                          <button
-                            key={v}
-                            onClick={() => updatePlatformConfig('youtube', { privacy_status: v })}
-                            style={{
-                              flex: 1, padding: '7px', fontSize: 11, fontWeight: 600,
-                              color: active ? '#fff' : 'var(--text-secondary)',
-                              background: active ? '#FF0000' : 'var(--bg-secondary)',
-                              border: `1px solid ${active ? '#FF0000' : 'var(--border-primary)'}`,
-                              borderRadius: 6, cursor: 'pointer',
-                            }}
-                          >
-                            {v === 'public' ? 'Public' : v === 'unlisted' ? 'Non répertorié' : 'Privé'}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </Field>
-                </>
-              )}
-
-              {Object.values(enabledPlatforms).every((v) => !v) && (
-                <div style={{ padding: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, fontSize: 11, color: '#ef4444' }}>
-                  Active au moins une plateforme pour pouvoir programmer ce slot.
+              {/* Platforms */}
+              <Field label="Plateformes" hint="≥ 1 obligatoire">
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {PLATFORMS.map((p) => {
+                    const on = enabledPlatforms[p.key]
+                    return (
+                      <button
+                        key={p.key}
+                        onClick={() => !p.disabled && togglePlatform(p.key)}
+                        disabled={p.disabled}
+                        title={p.disabled ? 'Bientôt disponible' : ''}
+                        style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          padding: '8px 10px', fontSize: 11, fontWeight: 600,
+                          color: on ? '#fff' : 'var(--text-tertiary)',
+                          background: on ? p.color : 'var(--bg-secondary)',
+                          border: `1px solid ${on ? p.color : 'var(--border-primary)'}`,
+                          borderRadius: 8, cursor: p.disabled ? 'not-allowed' : 'pointer',
+                          opacity: p.disabled ? 0.45 : 1,
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <p.icon size={12} />
+                        {p.label}
+                      </button>
+                    )
+                  })}
                 </div>
-              )}
-            </div>
+              </Field>
 
-            <Field label="Notes">
-              <textarea
-                value={slot.notes ?? ''}
-                onChange={(e) => setSlot({ ...slot, notes: e.target.value })}
-                onBlur={() => patch({ notes: slot.notes })}
-                placeholder="Notes internes, todos…"
-                rows={3}
-                style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
-              />
-            </Field>
+              {/* Media + auto-detected type */}
+              <Field
+                label="Media"
+                icon={ImgIcon}
+                hint="Drop ou click pour upload"
+                action={
+                  computedMediaType ? (
+                    <span style={{ padding: '3px 8px', fontSize: 9, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.12)', borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      {computedMediaType}
+                      {mediaDurationSec != null && ` · ${mediaDurationSec.toFixed(0)}s`}
+                    </span>
+                  ) : null
+                }
+              >
+                <MediaList
+                  urls={slot.media_urls ?? []}
+                  onChange={(urls) => {
+                    setMediaDurationSec(null)
+                    patch({ media_urls: urls })
+                  }}
+                />
+              </Field>
 
-            {/* Mini chat coach <-> monteur */}
-            <Field label="Discussion (coach ↔ monteur)">
-              <SlotChat slotId={slot.id} />
-            </Field>
+              {/* Per-platform tabs */}
+              <div style={{ marginTop: 4 }}>
+                <PlatformTabs
+                  platforms={PLATFORMS.filter((p) => enabledPlatforms[p.key] && !p.disabled)}
+                  active={activePlatformTab}
+                  onChange={setActivePlatformTab}
+                />
+
+                {activePlatformTab === 'instagram' && enabledPlatforms.instagram && (
+                  <>
+                    <Field label="Caption Instagram">
+                      <textarea
+                        value={slot.caption ?? ''}
+                        onChange={(e) => setSlot({ ...slot, caption: e.target.value })}
+                        onBlur={() => patch({ caption: slot.caption })}
+                        placeholder="Caption finale qui sera publiée…"
+                        rows={5}
+                        style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+                      />
+                    </Field>
+
+                    <Field label="Hashtags" icon={Hash}>
+                      <HashtagsInput
+                        tags={slot.hashtags ?? []}
+                        onChange={(tags) => patch({ hashtags: tags })}
+                      />
+                    </Field>
+                  </>
+                )}
+
+                {activePlatformTab === 'youtube' && enabledPlatforms.youtube && (
+                  <>
+                    <Field label="Titre YouTube *" hint={`${(ytConfig.title ?? '').length}/100`}>
+                      <input
+                        type="text"
+                        value={ytConfig.title ?? ''}
+                        onChange={(e) => updatePlatformConfig('youtube', { title: e.target.value })}
+                        placeholder="Titre de la vidéo (max 100 char)"
+                        maxLength={100}
+                        style={inputStyle}
+                      />
+                    </Field>
+                    <Field label="Description YouTube">
+                      <textarea
+                        value={ytConfig.description ?? ''}
+                        onChange={(e) => updatePlatformConfig('youtube', { description: e.target.value })}
+                        placeholder="Description complète…"
+                        rows={5}
+                        style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.5 }}
+                      />
+                    </Field>
+                    <Field label="Visibilité">
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {(['public', 'unlisted', 'private'] as const).map((v) => {
+                          const active = (ytConfig.privacy_status ?? 'public') === v
+                          return (
+                            <button
+                              key={v}
+                              onClick={() => updatePlatformConfig('youtube', { privacy_status: v })}
+                              style={{
+                                flex: 1, padding: '7px', fontSize: 11, fontWeight: 600,
+                                color: active ? '#fff' : 'var(--text-secondary)',
+                                background: active ? '#FF0000' : 'var(--bg-secondary)',
+                                border: `1px solid ${active ? '#FF0000' : 'var(--border-primary)'}`,
+                                borderRadius: 6, cursor: 'pointer',
+                              }}
+                            >
+                              {v === 'public' ? 'Public' : v === 'unlisted' ? 'Non répertorié' : 'Privé'}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </Field>
+                  </>
+                )}
+
+                {Object.values(enabledPlatforms).every((v) => !v) && (
+                  <div style={{ padding: 14, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, fontSize: 11, color: '#ef4444' }}>
+                    Active au moins une plateforme pour pouvoir programmer ce slot.
+                  </div>
+                )}
+              </div>
+
+              <Field label="Notes">
+                <textarea
+                  value={slot.notes ?? ''}
+                  onChange={(e) => setSlot({ ...slot, notes: e.target.value })}
+                  onBlur={() => patch({ notes: slot.notes })}
+                  placeholder="Notes internes, todos…"
+                  rows={3}
+                  style={{ ...inputStyle, fontFamily: 'inherit', resize: 'vertical' }}
+                />
+              </Field>
+            </DrawerSection>
+
+            {slot.monteur_id && (
+              <Field label="Discussion (coach ↔ monteur)">
+                <SlotChat slotId={slot.id} />
+              </Field>
+            )}
           </div>
         </div>
 
@@ -1425,6 +1480,66 @@ function Field({
         {action && <div style={{ marginLeft: 'auto' }}>{action}</div>}
       </div>
       {children}
+    </div>
+  )
+}
+
+function DrawerSection({
+  title,
+  summary,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string
+  summary?: string | null
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div style={{
+      border: '1px solid var(--border-primary)',
+      borderRadius: 10,
+      background: 'var(--bg-secondary)',
+      overflow: 'hidden',
+      marginBottom: 12,
+    }}>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          padding: '12px 14px',
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          color: 'var(--text-primary)', textAlign: 'left',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+            {title}
+          </span>
+          {!open && summary && (
+            <span style={{
+              fontSize: 12, color: 'var(--text-tertiary)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              maxWidth: '100%',
+            }}>
+              {summary}
+            </span>
+          )}
+        </div>
+        {open ? <ChevronDown size={15} color="var(--text-tertiary)" /> : <ChevronRight size={15} color="var(--text-tertiary)" />}
+      </button>
+      {open && (
+        <div style={{
+          padding: '4px 14px 14px',
+          borderTop: '1px solid var(--border-primary)',
+          display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+          {children}
+        </div>
+      )}
     </div>
   )
 }
