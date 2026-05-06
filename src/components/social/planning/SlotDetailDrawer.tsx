@@ -850,15 +850,15 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange, h
           {/* DIVIDER */}
           <div style={{ width: 1, background: 'var(--border-primary)' }} />
 
-          {/* RIGHT COLUMN — Big video preview */}
-          <div style={{ ...columnStyle, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* RIGHT COLUMN — Big media preview */}
+          <div style={{ ...columnStyle, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
             <div style={{
               fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
               color: 'var(--text-tertiary)',
             }}>
               Preview
             </div>
-            <VideoPreview slot={slot} />
+            <MediaPreview slot={slot} />
           </div>
         </div>
 
@@ -1598,11 +1598,15 @@ function DrawerSection({
   )
 }
 
-// ─── Video preview helper + component ─────────────────────────────────
-type EmbedType = 'native' | 'youtube' | 'loom' | 'drive' | 'unsupported'
-function detectVideoEmbed(url: string | null | undefined): { type: EmbedType; src?: string } {
+// ─── Media preview helper + component ─────────────────────────────────
+type EmbedType = 'image' | 'native' | 'youtube' | 'loom' | 'drive' | 'unsupported'
+const VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v|ogg|avi)(\?|#|$)/i
+const IMAGE_EXT_RE = /\.(jpg|jpeg|png|webp|gif|avif)(\?|#|$)/i
+
+function detectMediaEmbed(url: string | null | undefined): { type: EmbedType; src?: string } {
   if (!url) return { type: 'unsupported' }
-  if (/\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i.test(url)) return { type: 'native', src: url }
+  if (IMAGE_EXT_RE.test(url)) return { type: 'image', src: url }
+  if (VIDEO_EXT_RE.test(url)) return { type: 'native', src: url }
   const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]+)/)
   if (yt) return { type: 'youtube', src: `https://www.youtube.com/embed/${yt[1]}` }
   const loom = url.match(/loom\.com\/share\/([\w]+)/)
@@ -1612,17 +1616,21 @@ function detectVideoEmbed(url: string | null | undefined): { type: EmbedType; sr
   return { type: 'unsupported' }
 }
 
-function VideoPreview({ slot }: { slot: SocialPostWithPublications }) {
-  const videoUrl = (() => {
-    const firstMedia = (slot.media_urls ?? []).find((u) => /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(u))
-    if (firstMedia) return firstMedia
+function MediaPreview({ slot }: { slot: SocialPostWithPublications }) {
+  // Priorité : 1er fichier vidéo de media_urls > final_url > rush_url > 1ère image de media_urls
+  const url = (() => {
+    const media = slot.media_urls ?? []
+    const firstVideo = media.find((u) => VIDEO_EXT_RE.test(u))
+    if (firstVideo) return firstVideo
     if (slot.final_url) return slot.final_url
     if (slot.rush_url) return slot.rush_url
-    return null
+    const firstImage = media.find((u) => IMAGE_EXT_RE.test(u))
+    if (firstImage) return firstImage
+    return media[0] ?? null
   })()
-  const embed = detectVideoEmbed(videoUrl)
+  const embed = detectMediaEmbed(url)
 
-  if (!videoUrl) {
+  if (!url) {
     return (
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -1630,11 +1638,24 @@ function VideoPreview({ slot }: { slot: SocialPostWithPublications }) {
         padding: 32, textAlign: 'center', gap: 10, minHeight: 320,
       }}>
         <Video size={32} color="var(--text-tertiary)" />
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Aucune vidéo à prévisualiser</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Aucun media à prévisualiser</div>
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', maxWidth: 320, lineHeight: 1.4 }}>
-          Le rush du coach ou le montage final apparaîtront ici dès qu'un lien embeddable (YouTube, Loom, Drive) ou un fichier vidéo sera ajouté.
+          Le rush du coach, le montage final ou le media uploadé apparaîtront ici.
         </div>
       </div>
+    )
+  }
+
+  if (embed.type === 'image' && embed.src) {
+    return (
+      <img
+        src={embed.src}
+        alt="Preview"
+        style={{
+          width: '100%', maxHeight: '70vh', objectFit: 'contain',
+          borderRadius: 12, background: '#000',
+        }}
+      />
     )
   }
 
@@ -1643,7 +1664,12 @@ function VideoPreview({ slot }: { slot: SocialPostWithPublications }) {
       <video
         src={embed.src}
         controls
-        style={{ width: '100%', borderRadius: 12, background: '#000', maxHeight: '70vh' }}
+        preload="metadata"
+        playsInline
+        style={{
+          width: '100%', maxHeight: '70vh', objectFit: 'contain',
+          borderRadius: 12, background: '#000',
+        }}
       />
     )
   }
@@ -1675,7 +1701,7 @@ function VideoPreview({ slot }: { slot: SocialPostWithPublications }) {
         SwissTransfer, WeTransfer, Dropbox… nécessitent un téléchargement. Pour une preview embarquée, utilise YouTube (unlisted), Loom ou Google Drive.
       </div>
       <a
-        href={videoUrl} target="_blank" rel="noopener noreferrer"
+        href={url} target="_blank" rel="noopener noreferrer"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
           padding: '10px 18px', fontSize: 13, fontWeight: 700,
@@ -2324,7 +2350,7 @@ const bodyStyle: React.CSSProperties = {
   display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1.4fr)',
 }
 const columnStyle: React.CSSProperties = {
-  padding: '20px 24px', overflowY: 'auto',
+  padding: '20px 24px', overflowY: 'auto', minHeight: 0, minWidth: 0,
 }
 const footerStyle: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
