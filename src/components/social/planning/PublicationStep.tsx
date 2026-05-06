@@ -15,6 +15,8 @@ interface PublicationStepProps {
   onSchedule: () => void
   scheduling: boolean
   readOnly: boolean
+  scheduledTime: string
+  onScheduledTimeChange: (time: string) => void
 }
 
 const PLATFORMS: { key: Platform; label: string }[] = [
@@ -43,6 +45,8 @@ export default function PublicationStep({
   onSchedule,
   scheduling,
   readOnly,
+  scheduledTime,
+  onScheduledTimeChange,
 }: PublicationStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const publications = slot.publications ?? []
@@ -219,7 +223,20 @@ export default function PublicationStep({
         </div>
       )}
 
-      {/* 4. Schedule button */}
+      {/* 4. Scheduled time */}
+      {enabledPlatforms.length > 0 && (
+        <Field label="Heure de publication">
+          <input
+            type="time"
+            value={scheduledTime}
+            onChange={(e) => onScheduledTimeChange(e.target.value)}
+            disabled={readOnly}
+            style={inputStyle}
+          />
+        </Field>
+      )}
+
+      {/* 5. Schedule button */}
       {canSchedule && (
         <button
           onClick={onSchedule}

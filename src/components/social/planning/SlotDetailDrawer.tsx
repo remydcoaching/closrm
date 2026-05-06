@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { X } from 'lucide-react'
+import { X, Trash2 } from 'lucide-react'
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import type { SocialPostWithPublications, ContentPillar, SocialPlatform } from '@/types'
 import StepperBar from './StepperBar'
@@ -66,6 +66,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
   // Publication scheduling
   const [scheduling, setScheduling] = useState(false)
+  const [scheduledTime, setScheduledTime] = useState<string>('18:00')
+
+  // Delete confirm
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   // Discussion
   const [unreadCount, setUnreadCount] = useState(0)
@@ -127,6 +131,14 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     const id = setInterval(fetchUnread, 20000)
     return () => { cancelled = true; clearInterval(id) }
   }, [slotId])
+
+  // ─── Confirm delete timeout ─────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!confirmDelete) return
+    const t = setTimeout(() => setConfirmDelete(false), 5000)
+    return () => clearTimeout(t)
+  }, [confirmDelete])
 
   // ─── Update slot (optimistic with rollback) ─────────────────────────────
 
@@ -335,9 +347,17 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       toast.error('Média manquant', 'Au moins un média est requis.')
       return
     }
+    const ytPub = (slot.publications ?? []).find((p) => p.platform === 'youtube')
+    if (ytPub) {
+      const ytTitle = ((ytPub.config as Record<string, unknown> | undefined)?.title as string | undefined)?.trim()
+      if (!ytTitle) {
+        toast.error('Titre YouTube manquant', 'Renseigne un titre avant de programmer.')
+        return
+      }
+    }
     setScheduling(true)
     try {
-      const scheduledAt = new Date(slot.plan_date + 'T18:00:00').toISOString()
+      const scheduledAt = new Date(slot.plan_date + `T${scheduledTime}:00`).toISOString()
       const res = await fetch(`/api/social/posts/${slotId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -363,7 +383,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     } finally {
       setScheduling(false)
     }
-  }, [slot, slotId, toast, onChange, onClose])
+  }, [slot, slotId, scheduledTime, toast, onChange, onClose])
 
   // ─── Transition step ────────────────────────────────────────────────────
 
@@ -376,6 +396,23 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     if (action.nextStatus === 'filmed') setActiveStep('montage')
     if (action.nextStatus === 'ready') setActiveStep('publication')
   }, [slot, activeStep, updateSlot])
+
+  // ─── Delete slot ────────────────────────────────────────────────────────
+
+  const handleDelete = useCallback(async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    const res = await fetch(`/api/social/posts/${slotId}`, { method: 'DELETE' })
+    if (res.ok) {
+      toast.success('Slot supprimé')
+      onChange()
+      onClose()
+    } else {
+      toast.error('Erreur suppression')
+    }
+  }, [confirmDelete, slotId, toast, onChange, onClose])
 
   // ─── Computed ───────────────────────────────────────────────────────────
 
@@ -451,6 +488,20 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
             })}
           </span>
         )}
+        {!readOnly && (
+          <button
+            onClick={handleDelete}
+            title={confirmDelete ? 'Cliquer à nouveau pour confirmer' : 'Supprimer'}
+            style={{
+              width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: confirmDelete ? 'var(--color-danger, #ef4444)' : 'transparent',
+              color: confirmDelete ? '#fff' : 'var(--text-tertiary)',
+              border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
+            }}
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
         <button
           onClick={onClose}
           style={{
@@ -506,6 +557,8 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
             onSchedule={schedule}
             scheduling={scheduling}
             readOnly={readOnly}
+            scheduledTime={scheduledTime}
+            onScheduledTimeChange={setScheduledTime}
           />
         )}
       </div>
