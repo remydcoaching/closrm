@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import MetaIntegrationCard from './meta-card'
 import GoogleCalendarCard from './google-card'
+import TelegramCard from './telegram-card'
 import DomainWizardCard from '@/components/emails/DomainWizardCard'
 import SuppressionList from '@/components/emails/SuppressionList'
 
@@ -21,6 +22,7 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
 
   const metaIntegration = integrations?.find(i => i.type === 'meta')
   const googleIntegration = integrations?.find(i => i.type === 'google_calendar')
+  const telegramIntegration = integrations?.find(i => i.type === 'telegram')
 
   const successMessage: Record<string, string> = {
     meta_connected: 'Facebook Meta Ads + Instagram connecté avec succès ! Les leads arrivent maintenant automatiquement.',
@@ -93,12 +95,7 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
         />
 
         {/* Telegram */}
-        <PlaceholderCard
-          icon="✈️"
-          name="Telegram"
-          description="Notifications coach en temps réel"
-          color="#229ED9"
-        />
+        <TelegramCard integration={telegramIntegration ?? null} />
 
         {/* Stripe */}
         <PlaceholderCard

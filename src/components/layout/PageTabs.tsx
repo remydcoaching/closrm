@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -8,12 +9,9 @@ interface Tab {
   href: string
 }
 
-/**
- * Sticky tab bar for grouped pages (Agenda, Leads, Stats, etc.)
- * Active tab is derived from the current pathname (matches by prefix or exact).
- */
 export default function PageTabs({ tabs }: { tabs: Tab[] }) {
   const pathname = usePathname()
+  const [hovered, setHovered] = useState<string | null>(null)
 
   return (
     <div
@@ -39,16 +37,19 @@ export default function PageTabs({ tabs }: { tabs: Tab[] }) {
       >
         {tabs.map((tab) => {
           const active = pathname === tab.href || pathname.startsWith(tab.href + '/')
+          const isHovered = hovered === tab.href && !active
           return (
             <Link
               key={tab.href}
               href={tab.href}
+              onMouseEnter={() => setHovered(tab.href)}
+              onMouseLeave={() => setHovered(null)}
               style={{
                 padding: '7px 14px',
                 fontSize: 13,
                 fontWeight: 500,
-                color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                background: active ? 'var(--bg-active)' : 'transparent',
+                color: active ? 'var(--text-primary)' : isHovered ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+                background: active ? 'var(--bg-active)' : isHovered ? 'var(--bg-hover)' : 'transparent',
                 border: active ? '1px solid var(--border-primary)' : '1px solid transparent',
                 borderRadius: 7,
                 textDecoration: 'none',
