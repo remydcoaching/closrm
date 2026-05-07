@@ -270,13 +270,16 @@ export default function AgendaV2Page() {
 
   async function handleStatusChange(ev: AgendaEvent, status: string) {
     if (ev.kind !== 'booking') return
-    const res = await fetch(`/api/bookings/${ev.booking.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
+    // Use dedicated confirm endpoint when confirming a pending booking
+    const isPendingConfirm = ev.booking.status === 'pending' && status === 'confirmed'
+    const res = isPendingConfirm
+      ? await fetch(`/api/bookings/${ev.booking.id}/confirm`, { method: 'POST' })
+      : await fetch(`/api/bookings/${ev.booking.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        })
     if (res.ok) {
-      // Met à jour l'event sélectionné en mémoire pour feedback immédiat
       setSelectedEvent({
         ...ev,
         booking: { ...ev.booking, status: status as typeof ev.booking.status },
