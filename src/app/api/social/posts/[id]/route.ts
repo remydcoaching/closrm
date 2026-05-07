@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateSocialPostSchema } from '@/lib/validations/social-posts'
-import { notifyMonteurFilmed, notifyCoachEdited } from '@/lib/social/monteur-notifications'
+import { notifyMonteurFilmed, notifyCoachEdited, notifyMonteurValidated } from '@/lib/social/monteur-notifications'
 
 export async function GET(
   _request: NextRequest,
@@ -78,6 +78,14 @@ export async function PATCH(
       if (!wasEdited && nowEdited) {
         notifyCoachEdited(supabase, updated).catch(err =>
           console.error('[social/posts PATCH] notify coach failed:', err?.message)
+        )
+      }
+      // edited → ready : prévenir le monteur (montage validé)
+      const wasReady = existing.production_status === 'ready'
+      const nowReady = updated.production_status === 'ready'
+      if (!wasReady && nowReady) {
+        notifyMonteurValidated(supabase, updated).catch(err =>
+          console.error('[social/posts PATCH] notify monteur validated failed:', err?.message)
         )
       }
     }
