@@ -60,6 +60,7 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
     const [submitting, setSubmitting] = useState(false)
     const [hoveredId, setHoveredId] = useState<string | null>(null)
     const [clickedId, setClickedId] = useState<string | null>(null)
+    const [dismissedId, setDismissedId] = useState<string | null>(null)
 
     useImperativeHandle(ref, () => ({
       seek: (s: number) => {
@@ -252,6 +253,7 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
                       }
                       // Toggle: si deja ouvert, ferme; sinon ouvre
                       setClickedId((prev) => (prev === a.id ? null : a.id))
+                      setDismissedId(null) // reset: le user redemande explicitement cette annotation
                       onAnnotationClick?.(a.id)
                     }}
                     style={{
@@ -341,9 +343,30 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           </button>
         </div>
 
-        {/* Panneau "annotation active" — affiche la note quand un marker est cliqué */}
+        {/* Panneau "annotation active" : auto-affiche celle la plus proche du playhead.
+            Click marker = override manuel. X = dismiss tant qu'on reste sur ce timestamp. */}
         {(() => {
-          const activeAnnotation = clickedId ? annotations.find((a) => a.id === clickedId) : null
+          // Annotation manuellement cliquee a la priorite
+          let activeAnnotation = clickedId ? annotations.find((a) => a.id === clickedId) : null
+
+          if (!activeAnnotation) {
+            // Auto: derniere annotation passee dans les 8 dernieres secondes du playhead
+            const TOLERANCE_S = 8
+            const candidates = annotations.filter(
+              (a) =>
+                a.video_timestamp_seconds <= currentTime + 0.3 &&
+                a.video_timestamp_seconds >= currentTime - TOLERANCE_S,
+            )
+            if (candidates.length > 0) {
+              activeAnnotation = candidates.reduce(
+                (best, a) => (a.video_timestamp_seconds > best.video_timestamp_seconds ? a : best),
+                candidates[0],
+              )
+            }
+          }
+
+          // Si l'utilisateur a fait X sur cette annotation, ne pas la re-afficher tant qu'elle est encore active
+          if (activeAnnotation && dismissedId === activeAnnotation.id) return null
           if (!activeAnnotation) return null
           return (
             <div style={{
@@ -374,7 +397,10 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
                   <span>{activeAnnotation.author_name}</span>
                 </div>
                 <button
-                  onClick={() => setClickedId(null)}
+                  onClick={() => {
+                    setClickedId(null)
+                    if (activeAnnotation) setDismissedId(activeAnnotation.id)
+                  }}
                   aria-label="Fermer"
                   style={{
                     width: 22, height: 22, padding: 0, display: 'flex',
