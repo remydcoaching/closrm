@@ -182,6 +182,197 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
       .slice()
       .sort((a, b) => a.video_timestamp_seconds - b.video_timestamp_seconds)
 
+    // ─── Active annotation panel (auto-display de la plus proche du playhead) ───
+    const renderActivePanel = (widthOverride?: string) => {
+      let activeAnnotation = clickedId ? annotations.find((a) => a.id === clickedId) : null
+      if (!activeAnnotation) {
+        const TOLERANCE_S = 8
+        const candidates = annotations.filter(
+          (a) =>
+            (showResolved || !a.resolved_at) &&
+            a.video_timestamp_seconds <= currentTime + 0.3 &&
+            a.video_timestamp_seconds >= currentTime - TOLERANCE_S,
+        )
+        if (candidates.length > 0) {
+          activeAnnotation = candidates.reduce(
+            (best, a) => (a.video_timestamp_seconds > best.video_timestamp_seconds ? a : best),
+            candidates[0],
+          )
+        }
+      }
+      if (activeAnnotation && dismissedId === activeAnnotation.id) return null
+      if (!activeAnnotation) return null
+      const annotForRender = activeAnnotation
+      const isResolved = !!annotForRender.resolved_at
+      const accentColor = isResolved ? 'var(--text-tertiary)' : (annotForRender.author_color ?? '#f59e0b')
+      return (
+        <div style={{
+          padding: '10px 12px',
+          background: 'var(--bg-elevated)',
+          border: `1px solid ${accentColor}`,
+          borderLeftWidth: 4,
+          borderRadius: 8,
+          fontSize: 12,
+          display: 'flex', flexDirection: 'column', gap: 6,
+          width: widthOverride ?? controlsWidth, maxWidth: '100%',
+          opacity: isResolved ? 0.7 : 1,
+          boxSizing: 'border-box',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                fontFamily: 'monospace', padding: '2px 6px',
+                background: accentColor, color: '#fff', borderRadius: 3, fontSize: 10,
+              }}>
+                {formatTime(annotForRender.video_timestamp_seconds)}
+              </span>
+              <span>{annotForRender.author_name}</span>
+              {isResolved && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, color: '#10b981',
+                  padding: '1px 6px', background: 'rgba(16,185,129,0.12)', borderRadius: 3,
+                }}>RÉSOLU</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {onToggleResolved && (
+                <button
+                  onClick={async () => {
+                    setTogglingId(annotForRender.id)
+                    try { await onToggleResolved(annotForRender.id, !isResolved) }
+                    finally { setTogglingId(null) }
+                  }}
+                  disabled={togglingId === annotForRender.id}
+                  style={{
+                    height: 22, padding: '0 8px', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', gap: 4,
+                    fontSize: 11, fontWeight: 600,
+                    background: isResolved ? 'transparent' : 'rgba(16,185,129,0.15)',
+                    color: isResolved ? 'var(--text-tertiary)' : '#10b981',
+                    border: `1px solid ${isResolved ? 'var(--border-primary)' : 'rgba(16,185,129,0.4)'}`,
+                    borderRadius: 4, cursor: 'pointer',
+                  }}
+                  title={isResolved ? 'Réouvrir cette annotation' : 'Marquer comme résolu'}
+                >
+                  <Check size={11} />
+                  {isResolved ? 'Réouvrir' : 'Résolu'}
+                </button>
+              )}
+              <button
+                onClick={() => { setClickedId(null); setDismissedId(annotForRender.id) }}
+                aria-label="Fermer"
+                style={{
+                  width: 22, height: 22, padding: 0, display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  background: 'transparent', color: 'var(--text-tertiary)',
+                  border: 'none', borderRadius: 4, cursor: 'pointer',
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+          <div style={{
+            lineHeight: 1.5, color: 'var(--text-primary)',
+            whiteSpace: 'pre-wrap',
+            textDecoration: isResolved ? 'line-through' : 'none',
+          }}>
+            {annotForRender.body}
+          </div>
+        </div>
+      )
+    }
+
+    // ─── CTA "Commenter ici" ───
+    const renderCtaButton = (alignSelf?: 'center' | 'flex-start' | 'stretch') => (
+      pendingTimestamp === null ? (
+        <button
+          onClick={startCommentHere}
+          disabled={!duration}
+          style={{
+            alignSelf: alignSelf ?? (isPortrait ? 'center' : 'flex-start'),
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '7px 12px', fontSize: 12, fontWeight: 600,
+            color: '#fff', background: 'var(--color-primary)',
+            border: 'none', borderRadius: 6, cursor: duration ? 'pointer' : 'not-allowed',
+            opacity: duration ? 1 : 0.5,
+          }}
+        >
+          <MessageSquarePlus size={13} />
+          Commenter à {formatTime(currentTime)}
+        </button>
+      ) : null
+    )
+
+    // ─── Bulle d'annotation (formulaire de saisie) ───
+    const renderBubble = (widthOverride?: string) => (
+      pendingTimestamp !== null ? (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 8,
+          padding: 12,
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--color-primary)',
+          borderRadius: 8,
+          width: widthOverride ?? controlsWidth, maxWidth: '100%', boxSizing: 'border-box',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+            <MessageSquarePlus size={14} color="var(--color-primary)" />
+            <span style={{ fontWeight: 600 }}>Commenter à {formatTime(pendingTimestamp)}</span>
+          </div>
+          <textarea
+            value={pendingBody}
+            onChange={(e) => setPendingBody(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault()
+                submitAnnotation()
+              }
+              if (e.key === 'Escape') cancelAnnotation()
+            }}
+            placeholder="Ton retour à ce moment précis…"
+            autoFocus
+            rows={2}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '8px 10px', fontSize: 13,
+              background: 'var(--bg-secondary)', color: 'var(--text-primary)',
+              border: '1px solid var(--border-primary)', borderRadius: 6,
+              outline: 'none', resize: 'vertical', fontFamily: 'inherit',
+            }}
+          />
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+            <button
+              onClick={cancelAnnotation}
+              style={{
+                padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                background: 'transparent', color: 'var(--text-tertiary)',
+                border: '1px solid var(--border-primary)', borderRadius: 6,
+                cursor: 'pointer',
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              onClick={submitAnnotation}
+              disabled={submitting || !pendingBody.trim()}
+              style={{
+                padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                color: '#fff', background: 'var(--color-primary)',
+                border: 'none', borderRadius: 6,
+                cursor: submitting ? 'wait' : 'pointer',
+                opacity: submitting || !pendingBody.trim() ? 0.5 : 1,
+              }}
+            >
+              {submitting ? 'Envoi…' : 'Commenter'}
+            </button>
+          </div>
+          <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+            ⌘+Entrée pour envoyer · Échap pour annuler
+          </span>
+        </div>
+      ) : null
+    )
+
     const playerColumn = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0, minHeight: 0, alignItems: 'center' }}>
         {/* Player (sans controls natifs — on a notre propre toolbar).
@@ -386,12 +577,13 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           </button>
         </div>
 
-        {/* Toggle visibilite des annotations resolues (apparait uniquement s'il y en a) */}
-        {annotations.some(a => a.resolved_at) && (
+        {/* Toggle visibilite des annotations resolues — affiche en bas pour landscape only,
+            la sidebar (portrait) a son propre toggle dans son header. */}
+        {!isPortrait && annotations.some(a => a.resolved_at) && (
           <button
             onClick={() => setShowResolved(v => !v)}
             style={{
-              alignSelf: isPortrait ? 'center' : 'flex-start',
+              alignSelf: 'flex-start',
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '5px 10px', fontSize: 11, fontWeight: 600,
               color: 'var(--text-secondary)',
@@ -406,217 +598,17 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           </button>
         )}
 
-        {/* Panneau "annotation active" : auto-affiche celle la plus proche du playhead.
-            Click marker = override manuel. X = dismiss tant qu'on reste sur ce timestamp. */}
-        {(() => {
-          // Annotation manuellement cliquee a la priorite
-          let activeAnnotation = clickedId ? annotations.find((a) => a.id === clickedId) : null
-
-          if (!activeAnnotation) {
-            // Auto: derniere annotation passee dans les 8 dernieres secondes du playhead
-            // (skip resolved sauf si showResolved actif)
-            const TOLERANCE_S = 8
-            const candidates = annotations.filter(
-              (a) =>
-                (showResolved || !a.resolved_at) &&
-                a.video_timestamp_seconds <= currentTime + 0.3 &&
-                a.video_timestamp_seconds >= currentTime - TOLERANCE_S,
-            )
-            if (candidates.length > 0) {
-              activeAnnotation = candidates.reduce(
-                (best, a) => (a.video_timestamp_seconds > best.video_timestamp_seconds ? a : best),
-                candidates[0],
-              )
-            }
-          }
-
-          // Si l'utilisateur a fait X sur cette annotation, ne pas la re-afficher tant qu'elle est encore active
-          if (activeAnnotation && dismissedId === activeAnnotation.id) return null
-          if (!activeAnnotation) return null
-          const annotForRender = activeAnnotation
-          const isResolved = !!annotForRender.resolved_at
-          const accentColor = isResolved ? 'var(--text-tertiary)' : (annotForRender.author_color ?? '#f59e0b')
-          return (
-            <div style={{
-              padding: '10px 12px',
-              background: 'var(--bg-elevated)',
-              border: `1px solid ${accentColor}`,
-              borderLeftWidth: 4,
-              borderRadius: 8,
-              fontSize: 12,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-              width: controlsWidth, maxWidth: '100%',
-              opacity: isResolved ? 0.7 : 1,
-            }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-              }}>
-                <div style={{
-                  fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                  <span style={{
-                    fontFamily: 'monospace', padding: '2px 6px',
-                    background: accentColor,
-                    color: '#fff', borderRadius: 3, fontSize: 10,
-                  }}>
-                    {formatTime(annotForRender.video_timestamp_seconds)}
-                  </span>
-                  <span>{annotForRender.author_name}</span>
-                  {isResolved && (
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, color: '#10b981',
-                      padding: '1px 6px', background: 'rgba(16,185,129,0.12)', borderRadius: 3,
-                    }}>RÉSOLU</span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {onToggleResolved && (
-                    <button
-                      onClick={async () => {
-                        setTogglingId(annotForRender.id)
-                        try { await onToggleResolved(annotForRender.id, !isResolved) }
-                        finally { setTogglingId(null) }
-                      }}
-                      disabled={togglingId === annotForRender.id}
-                      style={{
-                        height: 22, padding: '0 8px', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', gap: 4,
-                        fontSize: 11, fontWeight: 600,
-                        background: isResolved ? 'transparent' : 'rgba(16,185,129,0.15)',
-                        color: isResolved ? 'var(--text-tertiary)' : '#10b981',
-                        border: `1px solid ${isResolved ? 'var(--border-primary)' : 'rgba(16,185,129,0.4)'}`,
-                        borderRadius: 4, cursor: 'pointer',
-                      }}
-                      title={isResolved ? 'Réouvrir cette annotation' : 'Marquer comme résolu (corrigé dans la nouvelle version)'}
-                    >
-                      <Check size={11} />
-                      {isResolved ? 'Réouvrir' : 'Résolu'}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setClickedId(null)
-                      setDismissedId(annotForRender.id)
-                    }}
-                    aria-label="Fermer"
-                    style={{
-                      width: 22, height: 22, padding: 0, display: 'flex',
-                      alignItems: 'center', justifyContent: 'center',
-                      background: 'transparent', color: 'var(--text-tertiary)',
-                      border: 'none', borderRadius: 4, cursor: 'pointer',
-                    }}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              </div>
-              <div style={{
-                lineHeight: 1.5,
-                color: 'var(--text-primary)',
-                whiteSpace: 'pre-wrap',
-                textDecoration: isResolved ? 'line-through' : 'none',
-              }}>
-                {annotForRender.body}
-              </div>
-            </div>
-          )
-        })()}
-
-        {/* CTA "Commenter ici" — utilise le temps actuel, pas besoin de viser la timeline */}
-        {pendingTimestamp === null && (
-          <button
-            onClick={startCommentHere}
-            disabled={!duration}
-            style={{
-              alignSelf: isPortrait ? 'center' : 'flex-start',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '7px 12px', fontSize: 12, fontWeight: 600,
-              color: '#fff', background: 'var(--color-primary)',
-              border: 'none', borderRadius: 6, cursor: duration ? 'pointer' : 'not-allowed',
-              opacity: duration ? 1 : 0.5,
-            }}
-          >
-            <MessageSquarePlus size={13} />
-            Commenter à {formatTime(currentTime)}
-          </button>
-        )}
-
-        {/* Bulle d'annotation */}
-        {pendingTimestamp !== null && (
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: 8,
-            padding: 12,
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--color-primary)',
-            borderRadius: 8,
-            width: controlsWidth, maxWidth: '100%', boxSizing: 'border-box',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-              <MessageSquarePlus size={14} color="var(--color-primary)" />
-              <span style={{ fontWeight: 600 }}>Commenter à {formatTime(pendingTimestamp)}</span>
-            </div>
-            <textarea
-              value={pendingBody}
-              onChange={(e) => setPendingBody(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault()
-                  submitAnnotation()
-                }
-                if (e.key === 'Escape') cancelAnnotation()
-              }}
-              placeholder="Ton retour à ce moment précis…"
-              autoFocus
-              rows={2}
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                padding: '8px 10px', fontSize: 13,
-                background: 'var(--bg-secondary)', color: 'var(--text-primary)',
-                border: '1px solid var(--border-primary)', borderRadius: 6,
-                outline: 'none', resize: 'vertical', fontFamily: 'inherit',
-              }}
-            />
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-              <button
-                onClick={cancelAnnotation}
-                style={{
-                  padding: '6px 12px', fontSize: 12, fontWeight: 600,
-                  background: 'transparent', color: 'var(--text-tertiary)',
-                  border: '1px solid var(--border-primary)', borderRadius: 6,
-                  cursor: 'pointer',
-                }}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={submitAnnotation}
-                disabled={submitting || !pendingBody.trim()}
-                style={{
-                  padding: '6px 14px', fontSize: 12, fontWeight: 600,
-                  color: '#fff', background: 'var(--color-primary)',
-                  border: 'none', borderRadius: 6,
-                  cursor: submitting ? 'wait' : 'pointer',
-                  opacity: submitting || !pendingBody.trim() ? 0.5 : 1,
-                }}
-              >
-                {submitting ? 'Envoi…' : 'Commenter'}
-              </button>
-            </div>
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
-              ⌘+Entrée pour envoyer · Échap pour annuler
-            </span>
-          </div>
-        )}
+        {/* Panneau actif + CTA + Bulle: en bas pour landscape, dans la sidebar pour portrait */}
+        {!isPortrait && renderActivePanel()}
+        {!isPortrait && renderCtaButton()}
+        {!isPortrait && renderBubble()}
       </div>
     )
 
     const commentsSidebar = (
       <div
         style={{
-          width: 280, flexShrink: 0,
+          width: 320, flexShrink: 0,
           display: 'flex', flexDirection: 'column',
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border-primary)',
@@ -625,6 +617,16 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           overflow: 'hidden',
         }}
       >
+        {/* Section haute: CTA + bulle de saisie + panneau actif */}
+        <div style={{
+          padding: 10,
+          borderBottom: '1px solid var(--border-primary)',
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          {renderCtaButton('stretch')}
+          {renderBubble('100%')}
+          {renderActivePanel('100%')}
+        </div>
         <div style={{
           padding: '10px 12px', borderBottom: '1px solid var(--border-primary)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -728,12 +730,17 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
       </div>
     )
 
-    return (
-      <div style={{ display: 'flex', flexDirection: 'row', gap: 12, width: '100%', height: '100%', minHeight: 0, alignItems: 'stretch' }}>
-        {playerColumn}
-        {commentsSidebar}
-      </div>
-    )
+    // Portrait: layout horizontal avec sidebar commentaires a droite
+    // Landscape: layout vertical, commentaires/CTA/bulle inline sous la timeline
+    if (isPortrait) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 12, width: '100%', height: '100%', minHeight: 0, alignItems: 'stretch' }}>
+          {playerColumn}
+          {commentsSidebar}
+        </div>
+      )
+    }
+    return playerColumn
   },
 )
 
