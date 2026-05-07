@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import type { SocialPostWithPublications, ContentPillar, SocialPlatform } from '@/types'
+import { uploadToR2 } from '@/lib/storage/r2-upload-client'
 import StepperBar from './StepperBar'
 import BriefStep from './BriefStep'
 import MontageStep from './MontageStep'
@@ -225,7 +225,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     }
   }, [slot, updateSlot, toast])
 
-  // ─── Upload via Supabase Storage ────────────────────────────────────────
+  // ─── Upload via Cloudflare R2 (presigned PUT) ───────────────────────────
 
   const uploadFinal = useCallback(
     async (file: File) => {
@@ -236,16 +236,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       }
       setUploadingFinal(true)
       try {
-        const supabase = createBrowserClient()
-        const ext = file.name.split('.').pop() ?? 'bin'
-        const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-        const { error } = await supabase.storage.from('content-drafts').upload(path, file, {
-          contentType: file.type,
-          upsert: false,
-        })
-        if (error) { toast.error('Erreur upload', error.message); return }
-        const { data: { publicUrl } } = supabase.storage.from('content-drafts').getPublicUrl(path)
-        await updateSlot({ final_url: publicUrl })
+        const { path } = await uploadToR2(file, { post_id: slot.id, target: 'final' })
+        await updateSlot({ final_url: path })
+      } catch (e) {
+        toast.error('Erreur upload', e instanceof Error ? e.message : String(e))
       } finally {
         setUploadingFinal(false)
       }
@@ -262,16 +256,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       }
       setUploadingMedia(true)
       try {
-        const supabase = createBrowserClient()
-        const ext = file.name.split('.').pop() ?? 'bin'
-        const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-        const { error } = await supabase.storage.from('content-drafts').upload(path, file, {
-          contentType: file.type,
-          upsert: false,
-        })
-        if (error) { toast.error('Erreur upload', error.message); return }
-        const { data: { publicUrl } } = supabase.storage.from('content-drafts').getPublicUrl(path)
-        await updateSlot({ media_urls: [...(slot.media_urls ?? []), publicUrl] })
+        const { path } = await uploadToR2(file, { post_id: slot.id, target: 'media' })
+        await updateSlot({ media_urls: [...(slot.media_urls ?? []), path] })
+      } catch (e) {
+        toast.error('Erreur upload', e instanceof Error ? e.message : String(e))
       } finally {
         setUploadingMedia(false)
       }

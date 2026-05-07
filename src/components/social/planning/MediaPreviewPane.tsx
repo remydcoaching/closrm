@@ -1,10 +1,13 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
+import { resolveR2Url } from '@/lib/storage/r2-upload-client'
 
 type MediaKind = 'video' | 'image' | 'link'
 
 interface MediaPreviewPaneProps {
+  /** Soit un path R2 relatif (`workspaces/...`), soit une URL absolute (legacy Supabase ou externe). */
   url: string
   kind: MediaKind
   label?: string
@@ -20,6 +23,19 @@ export function inferMediaKind(url: string): MediaKind {
 }
 
 export default function MediaPreviewPane({ url, kind, label }: MediaPreviewPaneProps) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setResolvedUrl(null)
+    setError(null)
+    resolveR2Url(url)
+      .then((u) => { if (!cancelled) setResolvedUrl(u) })
+      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : 'Erreur') })
+    return () => { cancelled = true }
+  }, [url])
+
   return (
     <div
       style={{
@@ -51,26 +67,34 @@ export default function MediaPreviewPane({ url, kind, label }: MediaPreviewPaneP
           overflow: 'hidden',
         }}
       >
-        {kind === 'video' && (
+        {error && (
+          <div style={{ color: 'var(--text-tertiary)', fontSize: 12, padding: 16, textAlign: 'center' }}>
+            Erreur de chargement: {error}
+          </div>
+        )}
+        {!error && !resolvedUrl && (
+          <div style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>Chargement…</div>
+        )}
+        {resolvedUrl && kind === 'video' && (
           <video
-            src={url}
+            src={resolvedUrl}
             controls
             preload="metadata"
             playsInline
             style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
           />
         )}
-        {kind === 'image' && (
+        {resolvedUrl && kind === 'image' && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={url}
+            src={resolvedUrl}
             alt={label ?? 'Aperçu média'}
             style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
           />
         )}
-        {kind === 'link' && (
+        {resolvedUrl && kind === 'link' && (
           <a
-            href={url}
+            href={resolvedUrl}
             target="_blank"
             rel="noopener noreferrer"
             style={{
