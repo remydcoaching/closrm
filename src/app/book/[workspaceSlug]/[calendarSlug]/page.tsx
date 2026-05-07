@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   startOfMonth,
   endOfMonth,
@@ -70,6 +70,9 @@ const fieldInputStyle: React.CSSProperties = {
 export default function PublicBookingPage() {
   const params = useParams<{ workspaceSlug: string; calendarSlug: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const rescheduleFrom = searchParams.get('reschedule_from')
+  const rescheduleToken = searchParams.get('reschedule_token')
 
   // Data
   const [calendar, setCalendar] = useState<CalendarInfo | null>(null)
@@ -181,7 +184,12 @@ export default function PublicBookingPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scheduled_at: scheduledAt, form_data: formData, location_id: selectedLocationId }),
+          body: JSON.stringify({
+            scheduled_at: scheduledAt,
+            form_data: formData,
+            location_id: selectedLocationId,
+            ...(rescheduleFrom ? { reschedule_from: rescheduleFrom, reschedule_token: rescheduleToken } : {}),
+          }),
         },
       )
       if (!res.ok) {

@@ -50,7 +50,7 @@ export default async function ManageBookingPage({ params, searchParams }: PagePr
         .eq('workspace_id', booking.workspace_id)
         .maybeSingle()
       if (ws?.slug && cal.slug) {
-        rescheduleUrl = `/book/${ws.slug}/${cal.slug}`
+        rescheduleUrl = `/book/${ws.slug}/${cal.slug}?reschedule_from=${booking.id}&reschedule_token=${token}`
       }
     }
   }

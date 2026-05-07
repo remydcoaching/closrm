@@ -183,7 +183,26 @@ export async function POST(
     )
   }
 
-  const { scheduled_at, form_data, location_id } = parsed.data
+  const { scheduled_at, form_data, location_id, reschedule_from, reschedule_token } = parsed.data
+
+  // Validate reschedule context if provided
+  if (reschedule_from) {
+    if (!reschedule_token) {
+      return NextResponse.json({ error: 'Token de reprogrammation manquant.' }, { status: 400 })
+    }
+    const { data: oldBooking } = await supabase
+      .from('bookings')
+      .select('id, manage_token, status')
+      .eq('id', reschedule_from)
+      .eq('workspace_id', calendar.workspace_id)
+      .maybeSingle()
+    if (!oldBooking || oldBooking.manage_token !== reschedule_token) {
+      return NextResponse.json({ error: 'Lien de reprogrammation invalide.' }, { status: 403 })
+    }
+    if (oldBooking.status === 'cancelled') {
+      return NextResponse.json({ error: 'Ce rendez-vous a déjà été annulé.' }, { status: 400 })
+    }
+  }
 
   // Anti-double-booking
   const bookingStart = parseISO(scheduled_at)
@@ -202,13 +221,19 @@ export async function POST(
     }
   }
 
-  const { data: conflicts, error: conflictError } = await supabase
+  let conflictQuery = supabase
     .from('bookings')
     .select('id, scheduled_at, duration_minutes')
     .eq('workspace_id', calendar.workspace_id)
     .eq('status', 'confirmed')
     .lt('scheduled_at', bookingEnd.toISOString())
     .gte('scheduled_at', addMinutes(bookingStart, -calendar.duration_minutes).toISOString())
+
+  if (reschedule_from) {
+    conflictQuery = conflictQuery.neq('id', reschedule_from)
+  }
+
+  const { data: conflicts, error: conflictError } = await conflictQuery
 
   if (conflictError) {
     return NextResponse.json({ error: 'Erreur lors de la vérification de disponibilité.' }, { status: 500 })
@@ -303,6 +328,21 @@ export async function POST(
 
   if (bookingError || !booking) {
     return NextResponse.json({ error: 'Erreur lors de la création de la réservation.' }, { status: 500 })
+  }
+
+  // Cancel the old booking if this is a reschedule
+  if (reschedule_from) {
+    await supabase
+      .from('bookings')
+      .update({ status: 'cancelled' })
+      .eq('id', reschedule_from)
+      .eq('workspace_id', calendar.workspace_id)
+
+    await supabase
+      .from('booking_reminders')
+      .update({ status: 'cancelled' })
+      .eq('booking_id', reschedule_from)
+      .eq('status', 'pending')
   }
 
   // Auto-create call if calendar has purpose setting/closing
