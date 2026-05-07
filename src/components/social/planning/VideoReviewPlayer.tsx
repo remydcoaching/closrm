@@ -577,9 +577,8 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           </button>
         </div>
 
-        {/* Toggle visibilite des annotations resolues — affiche en bas pour landscape only,
-            la sidebar (portrait) a son propre toggle dans son header. */}
-        {!isPortrait && annotations.some(a => a.resolved_at) && (
+        {/* Toggle visibilite des annotations resolues */}
+        {annotations.some(a => a.resolved_at) && (
           <button
             onClick={() => setShowResolved(v => !v)}
             style={{
@@ -598,10 +597,10 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           </button>
         )}
 
-        {/* Panneau actif + CTA + Bulle: en bas pour landscape, dans la sidebar pour portrait */}
-        {!isPortrait && renderActivePanel()}
-        {!isPortrait && renderCtaButton()}
-        {!isPortrait && renderBubble()}
+        {/* Panneau actif + CTA + Bulle */}
+        {renderActivePanel()}
+        {renderCtaButton()}
+        {renderBubble()}
       </div>
     )
 
@@ -730,16 +729,9 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
       </div>
     )
 
-    // Portrait: layout horizontal avec sidebar commentaires a droite
-    // Landscape: layout vertical, commentaires/CTA/bulle inline sous la timeline
-    if (isPortrait) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 12, width: '100%', height: '100%', minHeight: 0, alignItems: 'stretch' }}>
-          {playerColumn}
-          {commentsSidebar}
-        </div>
-      )
-    }
+    // Layout unifie: video + toolbar + CTA/bulle/panneau actif inline en dessous.
+    // (Plus de sidebar — l'auto-display de la plus proche annotation suffit.)
+    void commentsSidebar
     return playerColumn
   },
 )
