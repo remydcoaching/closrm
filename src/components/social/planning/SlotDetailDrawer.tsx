@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { X, Trash2 } from 'lucide-react'
-import type { SocialPostWithPublications, ContentPillar, SocialPlatform } from '@/types'
+import type { SocialPostWithPublications, ContentPillar, SocialPlatform, SocialPostPublication } from '@/types'
 import { uploadToR2 } from '@/lib/storage/r2-upload-client'
 import StepperBar from './StepperBar'
 import BriefStep from './BriefStep'
@@ -239,14 +239,36 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       const previous = slot
       setSlot({ ...slot, ...patch })
       try {
+        // Sanitize: les publications creees cote client ont un id temporaire
+        // ("tmp-instagram-1234567890") qui fait planter la validation UUID.
+        // On envoie au serveur juste les champs editables (platform/config/
+        // scheduled_at + id si c'est un vrai UUID a updater).
+        const sanitized: Partial<SocialPostWithPublications> = { ...patch }
+        if (Array.isArray(patch.publications)) {
+          sanitized.publications = patch.publications.map((p) => {
+            const isRealId = typeof p.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id)
+            return {
+              ...(isRealId ? { id: p.id } : {}),
+              platform: p.platform,
+              config: p.config ?? {},
+              scheduled_at: p.scheduled_at ?? null,
+            } as SocialPostPublication
+          })
+        }
         const res = await fetch(`/api/social/posts/${slotId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(patch),
+          body: JSON.stringify(sanitized),
         })
         if (!res.ok) {
           const j = await res.json().catch(() => ({}))
-          toast.error('Erreur sauvegarde', (j as { error?: string }).error ?? '')
+          const err = (j as { error?: unknown }).error
+          const msg = typeof err === 'string'
+            ? err
+            : (err as { formErrors?: string[]; fieldErrors?: Record<string, string[]> })?.formErrors?.join(', ')
+              || Object.values((err as { fieldErrors?: Record<string, string[]> })?.fieldErrors ?? {}).flat().join(', ')
+              || 'Erreur'
+          toast.error('Erreur sauvegarde', msg)
           setSlot(previous)
         } else {
           onChange()
