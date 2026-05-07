@@ -16,6 +16,7 @@ import { publicBookingSchema } from '@/lib/validations/bookings'
 import { getAvailableSlots } from '@/lib/bookings/availability'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
+import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { createBookingReminders } from '@/lib/bookings/reminders'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import type { CalendarReminder } from '@/types'
@@ -473,10 +474,20 @@ export async function POST(
           ? `${appUrl}/booking/manage/${booking.id}?token=${manageToken}`
           : undefined
 
+        const coachFullName = ownerRes.data?.full_name ?? 'Votre coach'
+        const calLocation = meetUrl ? 'Google Meet' : locationName && locationAddress ? `${locationName}, ${locationAddress}` : locationName ?? ''
+        const calendarLinks = buildCalendarUrls({
+          title: `RDV ${calName || 'Coaching'} — ${coachFullName}`,
+          startISO: bookingStartDt.toISOString(),
+          durationMinutes: calendar.duration_minutes,
+          location: calLocation,
+          description: `Rendez-vous ${calName || 'Coaching'} avec ${coachFullName}`,
+        })
+
         await sendBookingConfirmationEmail({
           to: email,
           workspaceId: calendar.workspace_id,
-          coachName: ownerRes.data?.full_name ?? 'Votre coach',
+          coachName: coachFullName,
           prospectName: `${firstName} ${lastName}`.trim(),
           date: dateStr,
           time: timeStr,
@@ -488,6 +499,8 @@ export async function POST(
           accentColor: calAccent,
           customMessage,
           manageUrl,
+          icsUrl: calendarLinks.icsUrl,
+          googleCalendarUrl: calendarLinks.googleCalendarUrl,
         })
       } catch (err) {
         console.error('[public-booking-by-id] booking-confirmation email failed:', err instanceof Error ? err.message : err)
