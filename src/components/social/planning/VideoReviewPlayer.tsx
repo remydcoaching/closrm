@@ -638,18 +638,21 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
       </div>
     )
 
-    // Portrait: video a gauche + colonne droite (CTA/bulle/panneau actif).
-    // Landscape: tout inline sous la timeline.
+    // Structure DOM stable peu importe portrait/landscape pour ne pas remount le <video>
+    // (sinon les event listeners du player sont perdus quand aspectRatio bascule).
     void visibleAnnotations
-    if (isPortrait) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 12, width: '100%', height: '100%', minHeight: 0, alignItems: 'stretch' }}>
-          {playerColumn}
-          {portraitRightColumn}
-        </div>
-      )
-    }
-    return playerColumn
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%', height: '100%', minHeight: 0,
+        alignItems: 'stretch',
+      }}>
+        {playerColumn}
+        {isPortrait ? portraitRightColumn : null}
+      </div>
+    )
   },
 )
 
