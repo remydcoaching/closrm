@@ -16,7 +16,7 @@
  */
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { MessageSquarePlus } from 'lucide-react'
+import { MessageSquarePlus, Play, Pause, Volume2, VolumeX, Maximize2, X } from 'lucide-react'
 
 export interface VideoAnnotation {
   id: string
@@ -53,9 +53,13 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
 
     const [duration, setDuration] = useState(0)
     const [currentTime, setCurrentTime] = useState(0)
+    const [playing, setPlaying] = useState(false)
+    const [muted, setMuted] = useState(false)
     const [pendingTimestamp, setPendingTimestamp] = useState<number | null>(null)
     const [pendingBody, setPendingBody] = useState('')
     const [submitting, setSubmitting] = useState(false)
+    const [hoveredId, setHoveredId] = useState<string | null>(null)
+    const [clickedId, setClickedId] = useState<string | null>(null)
 
     useImperativeHandle(ref, () => ({
       seek: (s: number) => {
@@ -73,14 +77,43 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
       if (!v) return
       const onTime = () => setCurrentTime(v.currentTime)
       const onMeta = () => setDuration(v.duration || 0)
+      const onPlay = () => setPlaying(true)
+      const onPause = () => setPlaying(false)
+      const onVolume = () => setMuted(v.muted)
       v.addEventListener('timeupdate', onTime)
       v.addEventListener('loadedmetadata', onMeta)
+      v.addEventListener('play', onPlay)
+      v.addEventListener('pause', onPause)
+      v.addEventListener('volumechange', onVolume)
       return () => {
         v.removeEventListener('timeupdate', onTime)
         v.removeEventListener('loadedmetadata', onMeta)
+        v.removeEventListener('play', onPlay)
+        v.removeEventListener('pause', onPause)
+        v.removeEventListener('volumechange', onVolume)
       }
     }, [url])
 
+    const togglePlay = () => {
+      const v = videoRef.current
+      if (!v) return
+      if (v.paused) v.play().catch(() => {})
+      else v.pause()
+    }
+
+    const toggleMute = () => {
+      const v = videoRef.current
+      if (!v) return
+      v.muted = !v.muted
+    }
+
+    const goFullscreen = () => {
+      const v = videoRef.current
+      if (!v) return
+      if (v.requestFullscreen) v.requestFullscreen().catch(() => {})
+    }
+
+    // Click sur la timeline = juste un seek (précis) — plus d'ouverture auto de la bulle
     const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
       const tl = timelineRef.current
       const v = videoRef.current
@@ -88,9 +121,15 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
       const rect = tl.getBoundingClientRect()
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
       const t = ratio * duration
-      v.pause()
       v.currentTime = t
-      setPendingTimestamp(t)
+    }
+
+    // CTA principal : commenter au temps actuel (= la frame visible)
+    const startCommentHere = () => {
+      const v = videoRef.current
+      if (!v) return
+      v.pause()
+      setPendingTimestamp(v.currentTime)
       setPendingBody('')
     }
 
@@ -113,25 +152,55 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', height: '100%' }}>
-        {/* Player */}
+        {/* Player (sans controls natifs — on a notre propre toolbar) */}
         <div style={{ flex: 1, minHeight: 0, background: '#000', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
           <video
             ref={videoRef}
             src={url}
-            controls
             preload="metadata"
             playsInline
-            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+            onClick={togglePlay}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', cursor: 'pointer' }}
           />
+          {/* Overlay play icon quand pause */}
+          {!playing && (
+            <div
+              onClick={togglePlay}
+              style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none',
+              }}
+            >
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.55)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Play size={26} color="#fff" fill="#fff" style={{ marginLeft: 3 }} />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Timeline custom avec markers + click pour annoter */}
+        {/* Toolbar custom : play/pause + timeline + volume + fullscreen */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'var(--text-tertiary)', padding: '0 4px' }}>
+          <button
+            onClick={togglePlay}
+            aria-label={playing ? 'Pause' : 'Play'}
+            style={{
+              width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', color: 'var(--text-primary)',
+              border: 'none', borderRadius: 6, cursor: 'pointer',
+            }}
+          >
+            {playing ? <Pause size={14} /> : <Play size={14} fill="currentColor" />}
+          </button>
           <span style={{ minWidth: 38, textAlign: 'right', fontFamily: 'monospace' }}>{formatTime(currentTime)}</span>
           <div
             ref={timelineRef}
             onClick={handleTimelineClick}
-            title="Clique pour ajouter un commentaire à ce moment"
+            title="Clique pour aller à ce moment"
             style={{
               position: 'relative',
               flex: 1,
@@ -155,38 +224,158 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
             {/* Markers */}
             {duration > 0 && annotations.map((a) => {
               const left = `${Math.max(0, Math.min(100, (a.video_timestamp_seconds / duration) * 100))}%`
+              const isHovered = hoveredId === a.id
+              const isClicked = clickedId === a.id
+              const showPopup = isClicked || (isHovered && !clickedId)
               return (
-                <button
+                <div
                   key={a.id}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (videoRef.current) {
-                      videoRef.current.currentTime = a.video_timestamp_seconds
-                      videoRef.current.pause()
-                    }
-                    onAnnotationClick?.(a.id)
-                  }}
-                  title={`${a.author_name} · ${formatTime(a.video_timestamp_seconds)}\n${a.body}`}
                   style={{
                     position: 'absolute',
                     left,
                     transform: 'translate(-50%, 0)',
-                    top: 4,
-                    width: 12,
-                    height: 16,
-                    padding: 0,
-                    background: a.author_color ?? '#f59e0b',
-                    border: '2px solid var(--bg-secondary)',
-                    borderRadius: 4,
-                    cursor: 'pointer',
+                    top: 0,
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    pointerEvents: 'none',
                   }}
-                  aria-label={`Annotation à ${formatTime(a.video_timestamp_seconds)}`}
-                />
+                  onMouseEnter={() => setHoveredId(a.id)}
+                  onMouseLeave={() => setHoveredId((prev) => (prev === a.id ? null : prev))}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (videoRef.current) {
+                        videoRef.current.currentTime = a.video_timestamp_seconds
+                        videoRef.current.pause()
+                      }
+                      // Toggle: si deja ouvert, ferme; sinon ouvre
+                      setClickedId((prev) => (prev === a.id ? null : a.id))
+                      onAnnotationClick?.(a.id)
+                    }}
+                    style={{
+                      width: 12,
+                      height: 16,
+                      marginTop: 4,
+                      padding: 0,
+                      background: a.author_color ?? '#f59e0b',
+                      border: '2px solid var(--bg-secondary)',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      transform: isHovered || isClicked ? 'scale(1.25)' : 'scale(1)',
+                      transition: 'transform 0.12s',
+                      boxShadow: isClicked ? `0 0 0 3px ${a.author_color ?? '#f59e0b'}33` : 'none',
+                    }}
+                    aria-label={`Annotation à ${formatTime(a.video_timestamp_seconds)}`}
+                  />
+                  {showPopup && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        minWidth: 200,
+                        maxWidth: 280,
+                        padding: '10px 12px',
+                        background: 'var(--bg-elevated)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border-primary)',
+                        borderRadius: 8,
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                        fontSize: 12,
+                        zIndex: 10,
+                        pointerEvents: isClicked ? 'auto' : 'none',
+                        whiteSpace: 'normal',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        marginBottom: 6, gap: 6,
+                      }}>
+                        <div style={{
+                          fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}>
+                          <span style={{
+                            fontFamily: 'monospace',
+                            padding: '1px 5px',
+                            background: a.author_color ?? '#f59e0b',
+                            color: '#fff',
+                            borderRadius: 3,
+                          }}>
+                            {formatTime(a.video_timestamp_seconds)}
+                          </span>
+                          <span>{a.author_name}</span>
+                        </div>
+                        {isClicked && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setClickedId(null) }}
+                            style={{
+                              width: 18, height: 18, padding: 0, display: 'flex',
+                              alignItems: 'center', justifyContent: 'center',
+                              background: 'transparent', color: 'var(--text-tertiary)',
+                              border: 'none', borderRadius: 3, cursor: 'pointer',
+                            }}
+                            aria-label="Fermer"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ lineHeight: 1.4 }}>{a.body}</div>
+                    </div>
+                  )}
+                </div>
               )
             })}
           </div>
           <span style={{ minWidth: 38, fontFamily: 'monospace' }}>{formatTime(duration)}</span>
+          <button
+            onClick={toggleMute}
+            aria-label={muted ? 'Activer le son' : 'Couper le son'}
+            style={{
+              width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', color: 'var(--text-primary)',
+              border: 'none', borderRadius: 6, cursor: 'pointer',
+            }}
+          >
+            {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+          </button>
+          <button
+            onClick={goFullscreen}
+            aria-label="Plein écran"
+            style={{
+              width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', color: 'var(--text-primary)',
+              border: 'none', borderRadius: 6, cursor: 'pointer',
+            }}
+          >
+            <Maximize2 size={13} />
+          </button>
         </div>
+
+        {/* CTA "Commenter ici" — utilise le temps actuel, pas besoin de viser la timeline */}
+        {pendingTimestamp === null && (
+          <button
+            onClick={startCommentHere}
+            disabled={!duration}
+            style={{
+              alignSelf: 'flex-start',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '7px 12px', fontSize: 12, fontWeight: 600,
+              color: '#fff', background: 'var(--color-primary)',
+              border: 'none', borderRadius: 6, cursor: duration ? 'pointer' : 'not-allowed',
+              opacity: duration ? 1 : 0.5,
+            }}
+          >
+            <MessageSquarePlus size={13} />
+            Commenter à {formatTime(currentTime)}
+          </button>
+        )}
 
         {/* Bulle d'annotation */}
         {pendingTimestamp !== null && (

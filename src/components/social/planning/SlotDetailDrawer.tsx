@@ -81,6 +81,8 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   // Video annotations (Frame.io style)
   const [annotations, setAnnotations] = useState<VideoAnnotation[]>([])
   const [messagesVersion, setMessagesVersion] = useState(0)
+  const [footerOpenTrigger, setFooterOpenTrigger] = useState(0)
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
   const playerRef = useRef<VideoReviewPlayerHandle | null>(null)
 
   // ─── Fetch slot on mount ────────────────────────────────────────────────
@@ -172,6 +174,9 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   const handleAnnotationClick = useCallback((id: string) => {
     const a = annotations.find((x) => x.id === id)
     if (a) playerRef.current?.seek(a.video_timestamp_seconds)
+    // L'affichage du contenu est gere par le popup persistant dans VideoReviewPlayer.
+    // Le footer ne s'ouvre PAS automatiquement (si l'utilisateur veut tout voir,
+    // il l'ouvre lui-meme).
   }, [annotations])
 
   // ─── Polling unread messages (scoped to drawer mount) ───────────────────
@@ -659,6 +664,9 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           onMarkRead={() => setUnreadCount(0)}
           onAnnotationClick={handleAnnotationClick}
           refreshKey={messagesVersion}
+          openTrigger={footerOpenTrigger}
+          highlightedMessageId={highlightedMessageId}
+          onHighlightCleared={() => setHighlightedMessageId(null)}
         />
       )}
     </Modal>

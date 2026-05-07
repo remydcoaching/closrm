@@ -28,6 +28,12 @@ interface DiscussionFooterProps {
   onAnnotationClick?: (annotationId: string) => void
   /** Increment to force a refetch (used when an annotation was added externally) */
   refreshKey?: number
+  /** Increment to force the footer to open (e.g. clicking a marker on the video) */
+  openTrigger?: number
+  /** ID du message a mettre en surbrillance + scroller dans la liste */
+  highlightedMessageId?: string | null
+  /** Callback appele apres un highlight pour reset le state parent */
+  onHighlightCleared?: () => void
 }
 
 function fmtVideoTime(seconds: number): string {
@@ -56,6 +62,9 @@ export default function DiscussionFooter({
   onMarkRead,
   onAnnotationClick,
   refreshKey = 0,
+  openTrigger = 0,
+  highlightedMessageId,
+  onHighlightCleared,
 }: DiscussionFooterProps) {
   const [open, setOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -99,6 +108,26 @@ export default function DiscussionFooter({
     if (refreshKey > 0 && loaded) loadMessages()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey])
+
+  // Force open + load when openTrigger increments (e.g. user clicked a marker)
+  useEffect(() => {
+    if (openTrigger > 0) {
+      setOpen(true)
+      if (!loaded) loadMessages()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTrigger])
+
+  // Scroll to highlighted message + clear highlight after 2.5s
+  useEffect(() => {
+    if (!highlightedMessageId || !open) return
+    const t = setTimeout(() => {
+      const el = document.getElementById(`slot-msg-${highlightedMessageId}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+    const clearT = setTimeout(() => onHighlightCleared?.(), 2500)
+    return () => { clearTimeout(t); clearTimeout(clearT) }
+  }, [highlightedMessageId, open, onHighlightCleared])
 
   // Auto-scroll to bottom when messages update
   useEffect(() => {
@@ -228,9 +257,11 @@ export default function DiscussionFooter({
             >
               {visibleMessages.map(m => {
                 const isSelf = currentUserId !== null && m.author_id === currentUserId
+                const isHighlighted = highlightedMessageId === m.id
                 return (
                   <div
                     key={m.id}
+                    id={`slot-msg-${m.id}`}
                     style={{
                       alignSelf: isSelf ? 'flex-end' : 'flex-start',
                       maxWidth: '80%',
@@ -238,6 +269,10 @@ export default function DiscussionFooter({
                       flexDirection: 'column',
                       gap: 2,
                       alignItems: isSelf ? 'flex-end' : 'flex-start',
+                      padding: isHighlighted ? 4 : 0,
+                      borderRadius: 8,
+                      background: isHighlighted ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                      transition: 'background 0.3s, padding 0.3s',
                     }}
                   >
                     {!isSelf && (
