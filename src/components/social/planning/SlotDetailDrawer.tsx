@@ -598,7 +598,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
       {/* ── Step content (col gauche) + MediaPreviewPane (col droite si média) ── */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <div style={{ flex: hasMedia ? '0 0 460px' : 1, overflowY: 'auto', minHeight: 0, minWidth: 0 }}>
+        <div style={{ flex: hasMedia ? '0 0 420px' : 1, overflowY: 'auto', minHeight: 0, minWidth: 0 }}>
           {activeStep === 'brief' && (
             <BriefStep
               slot={slot}
@@ -689,7 +689,7 @@ function Modal({ onClose, children }: { onClose: () => void; children: React.Rea
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: '100%', maxWidth: 1100, maxHeight: '90vh',
+          width: '95vw', maxWidth: 1500, height: '92vh',
           display: 'flex', flexDirection: 'column',
           background: 'var(--bg-primary)',
           border: '1px solid var(--border-primary)', borderRadius: 12,
