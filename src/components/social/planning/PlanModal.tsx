@@ -100,7 +100,7 @@ export default function PlanModal({ onClose, onConfirm, onEditTrame }: Props) {
           <div>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <CalendarRange size={16} color="#a78bfa" />
-              Planifier des slots
+              Générer des slots
             </h2>
             <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
               Crée des slots vides à partir de ta trame, prêts à enrichir.

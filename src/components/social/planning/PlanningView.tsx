@@ -192,7 +192,7 @@ export default function PlanningView() {
             }}
           >
             <CalendarRange size={13} />
-            {generating ? '…' : 'Planifier'}
+            {generating ? '…' : 'Générer slots'}
           </button>
         </div>
       </div>
