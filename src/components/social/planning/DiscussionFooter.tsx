@@ -163,7 +163,10 @@ export default function DiscussionFooter({
     }
   }
 
-  const visibleMessages = messages.slice(-5)
+  // Filtre: les annotations video timestampees s'affichent comme markers sur le player.
+  // Le chat ne montre que les messages non-timestampes pour eviter le doublon.
+  const chatMessages = messages.filter(m => m.video_timestamp_seconds === null || m.video_timestamp_seconds === undefined)
+  const visibleMessages = chatMessages.slice(-5)
 
   return (
     <div style={{
@@ -235,7 +238,7 @@ export default function DiscussionFooter({
               <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
               Chargement…
             </div>
-          ) : messages.length === 0 ? (
+          ) : chatMessages.length === 0 ? (
             <div style={{
               fontSize: 12,
               color: 'var(--text-tertiary)',
