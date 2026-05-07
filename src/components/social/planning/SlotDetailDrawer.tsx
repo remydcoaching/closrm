@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import type { SocialPostWithPublications, ContentPillar, SocialPlatform } from '@/types'
 import { uploadToR2 } from '@/lib/storage/r2-upload-client'
@@ -10,6 +10,7 @@ import MontageStep from './MontageStep'
 import PublicationStep from './PublicationStep'
 import DiscussionFooter from './DiscussionFooter'
 import MediaPreviewPane, { inferMediaKind } from './MediaPreviewPane'
+import type { VideoReviewPlayerHandle, VideoAnnotation } from './VideoReviewPlayer'
 import {
   getDefaultStep,
   isStepComplete,
@@ -77,6 +78,11 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   // Discussion
   const [unreadCount, setUnreadCount] = useState(0)
 
+  // Video annotations (Frame.io style)
+  const [annotations, setAnnotations] = useState<VideoAnnotation[]>([])
+  const [messagesVersion, setMessagesVersion] = useState(0)
+  const playerRef = useRef<VideoReviewPlayerHandle | null>(null)
+
   // ─── Fetch slot on mount ────────────────────────────────────────────────
 
   useEffect(() => {
@@ -114,6 +120,59 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       })
       .catch(() => {})
   }, [activeStep, monteurs.length])
+
+  // ─── Fetch annotations (messages with video_timestamp_seconds) ─────────
+
+  const refreshAnnotations = useCallback(async () => {
+    if (!slotId) return
+    try {
+      const [msgRes, meRes] = await Promise.all([
+        fetch(`/api/social/posts/${slotId}/messages`),
+        fetch('/api/auth/me').catch(() => null),
+      ])
+      const msgJson = await msgRes.json()
+      const meJson = meRes ? await meRes.json().catch(() => null) : null
+      const meId = meJson?.user?.id ?? meJson?.data?.id ?? null
+      type RawMsg = { id: string; author_id: string; body: string; video_timestamp_seconds: number | null; author?: { full_name?: string | null; email?: string | null } | null }
+      const list: VideoAnnotation[] = ((msgJson?.data ?? []) as RawMsg[])
+        .filter((m) => m.video_timestamp_seconds !== null && m.video_timestamp_seconds !== undefined)
+        .map((m) => ({
+          id: m.id,
+          video_timestamp_seconds: m.video_timestamp_seconds!,
+          body: m.body,
+          author_name: m.author?.full_name || m.author?.email || 'Utilisateur',
+          is_self: m.author_id === meId,
+        }))
+      setAnnotations(list)
+    } catch {
+      // best-effort
+    }
+  }, [slotId])
+
+  useEffect(() => { refreshAnnotations() }, [refreshAnnotations])
+
+  const addAnnotation = useCallback(
+    async (timestampSeconds: number, body: string) => {
+      const res = await fetch(`/api/social/posts/${slotId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body, video_timestamp_seconds: timestampSeconds }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        toast.error('Erreur annotation', (j as { error?: string }).error ?? '')
+        return
+      }
+      await refreshAnnotations()
+      setMessagesVersion((v) => v + 1)
+    },
+    [slotId, toast, refreshAnnotations]
+  )
+
+  const handleAnnotationClick = useCallback((id: string) => {
+    const a = annotations.find((x) => x.id === id)
+    if (a) playerRef.current?.seek(a.video_timestamp_seconds)
+  }, [annotations])
 
   // ─── Polling unread messages (scoped to drawer mount) ───────────────────
 
@@ -580,9 +639,13 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
         </div>
         {hasMedia && previewMedia && (
           <MediaPreviewPane
+            ref={playerRef}
             url={previewMedia.url}
             kind={previewMedia.kind}
             label={previewMedia.label}
+            annotations={annotations}
+            onAddAnnotation={addAnnotation}
+            onAnnotationClick={handleAnnotationClick}
           />
         )}
       </div>
@@ -594,6 +657,8 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           monteurName={monteurForSlot?.full_name ?? monteurForSlot?.email ?? undefined}
           unreadCount={unreadCount}
           onMarkRead={() => setUnreadCount(0)}
+          onAnnotationClick={handleAnnotationClick}
+          refreshKey={messagesVersion}
         />
       )}
     </Modal>

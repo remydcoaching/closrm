@@ -11,6 +11,7 @@ interface SlotChatMessage {
   author_id: string
   body: string
   created_at: string
+  video_timestamp_seconds: number | null
   author?: {
     id: string
     full_name: string | null
@@ -24,6 +25,15 @@ interface DiscussionFooterProps {
   monteurName?: string
   unreadCount: number
   onMarkRead: () => void
+  onAnnotationClick?: (annotationId: string) => void
+  /** Increment to force a refetch (used when an annotation was added externally) */
+  refreshKey?: number
+}
+
+function fmtVideoTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
 function authorName(m: SlotChatMessage): string {
@@ -44,6 +54,8 @@ export default function DiscussionFooter({
   monteurName,
   unreadCount,
   onMarkRead,
+  onAnnotationClick,
+  refreshKey = 0,
 }: DiscussionFooterProps) {
   const [open, setOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -81,6 +93,12 @@ export default function DiscussionFooter({
       loadMessages()
     }
   }, [open, loaded, loadMessages])
+
+  // Re-fetch when refreshKey changes (annotations added via player while footer open/closed)
+  useEffect(() => {
+    if (refreshKey > 0 && loaded) loadMessages()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey])
 
   // Auto-scroll to bottom when messages update
   useEffect(() => {
@@ -243,6 +261,22 @@ export default function DiscussionFooter({
                       wordBreak: 'break-word',
                       border: isSelf ? 'none' : '1px solid var(--border-primary)',
                     }}>
+                      {m.video_timestamp_seconds !== null && m.video_timestamp_seconds !== undefined && (
+                        <button
+                          onClick={() => onAnnotationClick?.(m.id)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            padding: '1px 6px', marginRight: 6, marginBottom: 2,
+                            fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
+                            background: isSelf ? 'rgba(255,255,255,0.25)' : 'var(--color-primary)',
+                            color: '#fff',
+                            border: 'none', borderRadius: 4, cursor: 'pointer',
+                          }}
+                          title="Cliquer pour aller à ce moment de la vidéo"
+                        >
+                          → {fmtVideoTime(m.video_timestamp_seconds)}
+                        </button>
+                      )}
                       {m.body}
                     </div>
                     <span style={{ fontSize: 9, color: 'var(--text-tertiary)', paddingLeft: 4, paddingRight: 4 }}>
