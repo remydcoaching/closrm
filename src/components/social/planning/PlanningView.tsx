@@ -16,11 +16,13 @@ const PlanModal = dynamic(() => import('./PlanModal'), { ssr: false })
 
 export default function PlanningView() {
   const toast = useToast()
-  const [view, setView] = useState<'calendar' | 'board'>(() => {
-    if (typeof window === 'undefined') return 'calendar'
+  // Always start with 'calendar' to match SSR. Hydrate from localStorage after mount
+  // to avoid hydration mismatch (server can't read localStorage).
+  const [view, setView] = useState<'calendar' | 'board'>('calendar')
+  useEffect(() => {
     const stored = window.localStorage.getItem('social_planning_view_mode')
-    return stored === 'board' ? 'board' : 'calendar'
-  })
+    if (stored === 'board') setView('board')
+  }, [])
   const [trame, setTrame] = useState<ContentTrame | null>(null)
   const [pillars, setPillars] = useState<ContentPillar[]>([])
   const [posts, setPosts] = useState<SocialPostWithPublications[]>([])
