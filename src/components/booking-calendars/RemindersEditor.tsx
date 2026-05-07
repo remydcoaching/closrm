@@ -239,9 +239,49 @@ export default function RemindersEditor({
         </div>
       )}
 
+      {/* Mandatory confirmation email — always present, not removable */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '10px 12px',
+          borderRadius: 10,
+          border: '1px solid rgba(34, 197, 94, 0.25)',
+          background: 'rgba(34, 197, 94, 0.06)',
+        }}
+      >
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '4px 10px', borderRadius: 6,
+          background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
+        }}>
+          <Mail size={12} style={{ color: '#22c55e' }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#22c55e' }}>
+            Confirmation
+          </span>
+        </div>
+        <span style={{
+          flex: 1, minWidth: 0,
+          fontSize: 12, color: 'var(--text-secondary)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          Email de confirmation envoyé automatiquement au prospect
+        </span>
+        <span style={{
+          fontSize: 10, color: 'var(--text-muted)',
+          padding: '2px 8px', borderRadius: 4,
+          background: 'var(--bg-input)',
+          border: '1px solid var(--border-primary)',
+          whiteSpace: 'nowrap',
+        }}>
+          Obligatoire
+        </span>
+      </div>
+
       {reminders.length === 0 && !showPresets && (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>
-          Aucun rappel configuré. Ajoutez-en pour notifier vos prospects avant leurs rendez-vous.
+          Aucun rappel supplémentaire configuré. Ajoutez-en pour notifier vos prospects avant leurs rendez-vous.
         </p>
       )}
 
