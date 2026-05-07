@@ -7,7 +7,7 @@ import { BookingCalendar, WeekAvailability, FormField, CalendarPurpose } from '@
 import type { CalendarReminder } from '@/types'
 import AvailabilityEditor from '@/components/booking-calendars/AvailabilityEditor'
 import FormFieldsEditor from '@/components/booking-calendars/FormFieldsEditor'
-import LocationEditor from '@/components/booking-calendars/LocationEditor'
+import LocationEditor, { type LocationInfo } from '@/components/booking-calendars/LocationEditor'
 import PurposeEditor from '@/components/booking-calendars/PurposeEditor'
 import RemindersEditor from '@/components/booking-calendars/RemindersEditor'
 import RemindersLog from '@/components/booking-calendars/RemindersLog'
@@ -49,6 +49,7 @@ export default function EditCalendarPage() {
   const [purpose, setPurpose] = useState<CalendarPurpose>('other')
   const [reminders, setReminders] = useState<CalendarReminder[]>([])
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
+  const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null)
 
   useEffect(() => {
     async function fetchCalendar() {
@@ -348,6 +349,37 @@ export default function EditCalendarPage() {
         </div>
       </section>
 
+      {/* Section: Type de rendez-vous */}
+      <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Type de rendez-vous
+        </h2>
+        <div
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 12,
+            padding: 24,
+          }}
+        >
+          <LocationEditor
+            selectedLocationIds={locationIds}
+            onChange={setLocationIds}
+            googleCalendarConnected={googleCalendarConnected}
+            onLocationInfoChange={setLocationInfo}
+          />
+        </div>
+      </section>
+
       {/* Section: Disponibilités */}
       <section style={{ marginBottom: 40 }}>
         <h2
@@ -422,6 +454,7 @@ export default function EditCalendarPage() {
             emailAccentColor={emailAccentColor}
             onEmailTemplateChange={setEmailTemplate}
             onEmailAccentColorChange={setEmailAccentColor}
+            locationInfo={locationInfo}
           />
         </div>
       </section>
@@ -445,36 +478,6 @@ export default function EditCalendarPage() {
           borderRadius: 12, padding: 24,
         }}>
           <RemindersLog calendarId={id} />
-        </div>
-      </section>
-
-      {/* Section: Lieux */}
-      <section style={{ marginBottom: 40 }}>
-        <h2
-          style={{
-            fontSize: 15,
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            margin: '0 0 16px',
-            paddingBottom: 10,
-            borderBottom: '1px solid var(--border-primary)',
-          }}
-        >
-          Type de rendez-vous
-        </h2>
-        <div
-          style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-primary)',
-            borderRadius: 12,
-            padding: 24,
-          }}
-        >
-          <LocationEditor
-            selectedLocationIds={locationIds}
-            onChange={setLocationIds}
-            googleCalendarConnected={googleCalendarConnected}
-          />
         </div>
       </section>
 

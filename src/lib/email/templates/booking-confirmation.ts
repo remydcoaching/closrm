@@ -23,6 +23,8 @@ export interface BookingConfirmationParams {
   template?: BookingEmailTemplate
   accentColor?: string
   manageUrl?: string
+  icsUrl?: string
+  googleCalendarUrl?: string
 }
 
 const DEFAULT_ACCENT = '#E53E3E'
@@ -239,18 +241,37 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
               ${meetBlock}
               ${phoneBlock}
               ${locationBlock}
+
               ${signOff}
 
-              <!-- Bottom section: manage button (if available) + disclaimer -->
+              <!-- Bottom actions: calendar + manage -->
               <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 36px; border-top: 1px solid #F1F1F1;">
-                ${params.manageUrl ? `
                 <tr>
-                  <td style="padding: 28px 0 8px; text-align: center;">
-                    <a href="${escapeHtml(params.manageUrl)}" target="_blank" style="display: inline-block; padding: 11px 22px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 10px; color: #374151; text-decoration: none; font-size: 13px; font-weight: 600;">
-                      Reprogrammer ou annuler ce RDV
-                    </a>
+                  <td style="padding: 24px 0 0; text-align: center;">
+                    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
+                      <tr>
+                        ${params.googleCalendarUrl ? `
+                        <td style="padding: 0 5px;">
+                          <a href="${escapeHtml(params.googleCalendarUrl)}" target="_blank" style="display: inline-block; padding: 9px 16px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 8px; color: #374151; text-decoration: none; font-size: 12px; font-weight: 600;">
+                            Google Calendar
+                          </a>
+                        </td>` : ''}
+                        ${params.icsUrl ? `
+                        <td style="padding: 0 5px;">
+                          <a href="${escapeHtml(params.icsUrl)}" target="_blank" style="display: inline-block; padding: 9px 16px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 8px; color: #374151; text-decoration: none; font-size: 12px; font-weight: 600;">
+                            Outlook / Apple
+                          </a>
+                        </td>` : ''}
+                        ${params.manageUrl ? `
+                        <td style="padding: 0 5px;">
+                          <a href="${escapeHtml(params.manageUrl)}" target="_blank" style="display: inline-block; padding: 9px 16px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 8px; color: #6B7280; text-decoration: none; font-size: 12px; font-weight: 500;">
+                            Reprogrammer / annuler
+                          </a>
+                        </td>` : ''}
+                      </tr>
+                    </table>
                   </td>
-                </tr>` : ''}
+                </tr>
                 <tr>
                   <td style="padding: ${params.manageUrl ? '8px 0 0' : '24px 0 0'}; text-align: center;">
                     <p style="margin: 0; font-size: 12px; color: #9CA3AF; line-height: 1.6;">
@@ -337,6 +358,12 @@ function buildMinimalHtml(params: BookingConfirmationParams): string {
           ${meetBlock}
           ${phoneBlock}
           ${locationBlock}
+          ${params.icsUrl || params.googleCalendarUrl ? `
+          <p style="margin: 24px 0 0; font-size: 13px; color: #6B7280;">Ajouter à mon calendrier&nbsp;:
+            ${params.googleCalendarUrl ? ` <a href="${escapeHtml(params.googleCalendarUrl)}" target="_blank" style="color: ${accent}; font-weight: 600; text-decoration: none;">Google Calendar</a>` : ''}
+            ${params.googleCalendarUrl && params.icsUrl ? ' · ' : ''}
+            ${params.icsUrl ? `<a href="${escapeHtml(params.icsUrl)}" target="_blank" style="color: ${accent}; font-weight: 600; text-decoration: none;">Outlook / Apple</a>` : ''}
+          </p>` : ''}
           ${params.manageUrl ? `<p style="margin: 36px 0 0; text-align: center;">
             <a href="${escapeHtml(params.manageUrl)}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 8px; color: #374151; text-decoration: none; font-size: 13px; font-weight: 600;">Reprogrammer ou annuler</a>
           </p>` : ''}
@@ -385,6 +412,12 @@ function buildPlainHtml(params: BookingConfirmationParams): string {
   } else if (safeLocationName) {
     lines.push('')
     lines.push(`Lieu : ${safeLocationName}${safeLocationAddress ? ' — ' + safeLocationAddress : ''}`)
+  }
+  if (params.icsUrl || params.googleCalendarUrl) {
+    lines.push('')
+    lines.push('Ajouter à mon calendrier :')
+    if (params.googleCalendarUrl) lines.push(`Google Calendar : <a href="${escapeHtml(params.googleCalendarUrl)}" style="color:#1d4ed8;">${escapeHtml(params.googleCalendarUrl)}</a>`)
+    if (params.icsUrl) lines.push(`Outlook / Apple : <a href="${escapeHtml(params.icsUrl)}" style="color:#1d4ed8;">${escapeHtml(params.icsUrl)}</a>`)
   }
   if (!hasCustomMessage) {
     lines.push('')

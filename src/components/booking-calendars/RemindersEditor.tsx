@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, X, Mail, MessageCircle, MessageSquare, Clock, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import type { CalendarReminder, ReminderChannel } from '@/types'
+import type { LocationInfo } from '@/components/booking-calendars/LocationEditor'
 
 type EmailTemplateChoice = 'premium' | 'minimal' | 'plain'
 
@@ -14,6 +15,7 @@ interface RemindersEditorProps {
   emailAccentColor?: string
   onEmailTemplateChange?: (template: EmailTemplateChoice) => void
   onEmailAccentColorChange?: (color: string) => void
+  locationInfo?: LocationInfo | null
 }
 
 const CHANNELS: { value: ReminderChannel; label: string; icon: typeof Mail; color: string }[] = [
@@ -54,6 +56,12 @@ function previewSnippet(msg: string): string {
   return msg.length > 80 ? msg.slice(0, 80) + '…' : msg
 }
 
+function locationModeToVariant(mode?: string): 'meet' | 'location' | 'phone' {
+  if (mode === 'in_person') return 'location'
+  if (mode === 'phone') return 'phone'
+  return 'meet'
+}
+
 export default function RemindersEditor({
   reminders,
   onChange,
@@ -62,13 +70,15 @@ export default function RemindersEditor({
   emailAccentColor = '#E53E3E',
   onEmailTemplateChange,
   onEmailAccentColorChange,
+  locationInfo,
 }: RemindersEditorProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showPresets, setShowPresets] = useState(false)
   const [previewHtml, setPreviewHtml] = useState<string>('')
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [previewVariant, setPreviewVariant] = useState<'meet' | 'location' | 'phone'>('meet')
   const [previewError, setPreviewError] = useState<string | null>(null)
+
+  const previewVariant = locationModeToVariant(locationInfo?.mode)
 
   const expandedReminder = reminders.find((r) => r.id === expandedId)
   const expandedMessage = expandedReminder?.channel === 'email' ? expandedReminder.message : ''
@@ -92,6 +102,9 @@ export default function RemindersEditor({
             variant: previewVariant,
             template: emailTemplate,
             accentColor: emailAccentColor,
+            locationName: locationInfo?.locationName,
+            locationAddress: locationInfo?.locationAddress,
+            customLink: locationInfo?.customLink,
           }),
         })
         if (cancelled) return
@@ -113,7 +126,7 @@ export default function RemindersEditor({
       cancelled = true
       clearTimeout(handle)
     }
-  }, [isEmailExpanded, expandedMessage, calendarName, previewVariant, emailTemplate, emailAccentColor])
+  }, [isEmailExpanded, expandedMessage, calendarName, previewVariant, emailTemplate, emailAccentColor, locationInfo])
 
   function addFromPreset(preset: typeof QUICK_PRESETS[0], channel: ReminderChannel = 'whatsapp') {
     const isConfirmation = 'isConfirmation' in preset && preset.isConfirmation
@@ -369,22 +382,13 @@ export default function RemindersEditor({
                       </span>
                       {previewLoading && <Loader2 size={10} style={{ color: 'var(--text-muted)', animation: 'spin 1s linear infinite' }} />}
                     </div>
-                    <div style={{ display: 'flex', gap: 2, padding: 2, background: 'var(--bg-input)', borderRadius: 6, border: '1px solid var(--border-primary)' }}>
-                      {(['meet', 'location', 'phone'] as const).map(v => (
-                        <button
-                          key={v}
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setPreviewVariant(v) }}
-                          style={{
-                            padding: '3px 9px', borderRadius: 4, border: 'none',
-                            background: previewVariant === v ? emailAccentColor : 'transparent',
-                            color: previewVariant === v ? '#fff' : 'var(--text-tertiary)',
-                            cursor: 'pointer', fontSize: 10, fontWeight: 600,
-                          }}
-                        >
-                          {v === 'meet' ? 'Visio' : v === 'location' ? 'Présentiel' : 'Tél.'}
-                        </button>
-                      ))}
+                    <div style={{
+                      padding: '3px 9px', borderRadius: 4,
+                      background: emailAccentColor,
+                      color: '#fff',
+                      fontSize: 10, fontWeight: 600,
+                    }}>
+                      {previewVariant === 'meet' ? 'Visio' : previewVariant === 'location' ? 'Présentiel' : 'Téléphone'}
                     </div>
                   </div>
                   <div style={{ height: 640, position: 'relative' }}>
