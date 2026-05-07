@@ -532,10 +532,16 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     const action = getTransitionAction(slot, activeStep)
     if (!action) return
     await updateSlot({ production_status: action.nextStatus })
-    // Auto-switch to next step after transition
-    if (action.nextStatus === 'filmed') setActiveStep('montage')
-    if (action.nextStatus === 'ready') setActiveStep('publication')
-  }, [slot, activeStep, updateSlot])
+    // Auto-switch to next step + toast pour feedback visuel
+    if (action.nextStatus === 'filmed') {
+      setActiveStep('montage')
+      toast.success('Brief envoyé', 'Le slot est passé en montage.')
+    }
+    if (action.nextStatus === 'ready') {
+      setActiveStep('publication')
+      toast.success('Montage validé', 'Le monteur a été notifié. Tu peux maintenant programmer la publication.')
+    }
+  }, [slot, activeStep, updateSlot, toast])
 
   // ─── Delete slot ────────────────────────────────────────────────────────
 
