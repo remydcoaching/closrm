@@ -9,6 +9,7 @@ import BriefStep from './BriefStep'
 import MontageStep from './MontageStep'
 import PublicationStep from './PublicationStep'
 import DiscussionFooter from './DiscussionFooter'
+import MediaPreviewPane, { inferMediaKind } from './MediaPreviewPane'
 import {
   getDefaultStep,
   isStepComplete,
@@ -445,6 +446,16 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   const pillar = pillars.find((p) => p.id === slot.pillar_id)
   const monteurForSlot = monteurs.find((m) => m.id === slot.monteur_id)
 
+  // Media to show in the right pane: prio final_url > first media_url > rush_url (link only)
+  const previewMedia = (() => {
+    if (slot.final_url) return { url: slot.final_url, kind: inferMediaKind(slot.final_url), label: 'Montage final' }
+    const firstMedia = slot.media_urls?.[0]
+    if (firstMedia) return { url: firstMedia, kind: inferMediaKind(firstMedia), label: 'Média de publication' }
+    if (slot.rush_url) return { url: slot.rush_url, kind: 'link' as const, label: 'Rush' }
+    return null
+  })()
+  const hasMedia = previewMedia !== null
+
   return (
     <Modal onClose={onClose}>
       {/* ── Header compact 1 ligne ── */}
@@ -519,46 +530,55 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
         <StepperBar active={activeStep} completed={completed} onSelect={setActiveStep} />
       </div>
 
-      {/* ── Step content ── */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-        {activeStep === 'brief' && (
-          <BriefStep
-            slot={slot}
-            onUpdate={updateSlot}
-            onGenerateHooks={generateHooks}
-            onGenerateScript={generateScript}
-            generatingHooks={generatingHooks}
-            generatingScript={generatingScript}
-            hooksLibrary={hooksLibrary}
-            onPickHook={(h) => updateSlot({ hook: h })}
-            transitionAction={transitionAction as { label: string; nextStatus: 'filmed' | 'ready' } | null}
-            onTransition={transition}
-          />
-        )}
-        {activeStep === 'montage' && (
-          <MontageStep
-            slot={slot}
-            monteurs={monteurs}
-            onUpdate={updateSlot}
-            onUploadFinal={uploadFinal}
-            uploading={uploadingFinal}
-            transitionAction={transitionAction as { label: string; nextStatus: 'ready' } | null}
-            onTransition={transition}
-          />
-        )}
-        {activeStep === 'publication' && (
-          <PublicationStep
-            slot={slot}
-            onUpdate={updateSlot}
-            onTogglePlatform={togglePlatform}
-            onUpdatePublication={updatePublication}
-            onUploadMedia={uploadMedia}
-            uploading={uploadingMedia}
-            onSchedule={schedule}
-            scheduling={scheduling}
-            readOnly={readOnly}
-            scheduledTime={scheduledTime}
-            onScheduledTimeChange={setScheduledTime}
+      {/* ── Step content (col gauche) + MediaPreviewPane (col droite si média) ── */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <div style={{ flex: hasMedia ? '0 0 460px' : 1, overflowY: 'auto', minHeight: 0, minWidth: 0 }}>
+          {activeStep === 'brief' && (
+            <BriefStep
+              slot={slot}
+              onUpdate={updateSlot}
+              onGenerateHooks={generateHooks}
+              onGenerateScript={generateScript}
+              generatingHooks={generatingHooks}
+              generatingScript={generatingScript}
+              hooksLibrary={hooksLibrary}
+              onPickHook={(h) => updateSlot({ hook: h })}
+              transitionAction={transitionAction as { label: string; nextStatus: 'filmed' | 'ready' } | null}
+              onTransition={transition}
+            />
+          )}
+          {activeStep === 'montage' && (
+            <MontageStep
+              slot={slot}
+              monteurs={monteurs}
+              onUpdate={updateSlot}
+              onUploadFinal={uploadFinal}
+              uploading={uploadingFinal}
+              transitionAction={transitionAction as { label: string; nextStatus: 'ready' } | null}
+              onTransition={transition}
+            />
+          )}
+          {activeStep === 'publication' && (
+            <PublicationStep
+              slot={slot}
+              onUpdate={updateSlot}
+              onTogglePlatform={togglePlatform}
+              onUpdatePublication={updatePublication}
+              onUploadMedia={uploadMedia}
+              uploading={uploadingMedia}
+              onSchedule={schedule}
+              scheduling={scheduling}
+              readOnly={readOnly}
+              scheduledTime={scheduledTime}
+              onScheduledTimeChange={setScheduledTime}
+            />
+          )}
+        </div>
+        {hasMedia && previewMedia && (
+          <MediaPreviewPane
+            url={previewMedia.url}
+            kind={previewMedia.kind}
+            label={previewMedia.label}
           />
         )}
       </div>
@@ -592,7 +612,7 @@ function Modal({ onClose, children }: { onClose: () => void; children: React.Rea
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: '100%', maxWidth: 720, maxHeight: '90vh',
+          width: '100%', maxWidth: 1100, maxHeight: '90vh',
           display: 'flex', flexDirection: 'column',
           background: 'var(--bg-primary)',
           border: '1px solid var(--border-primary)', borderRadius: 12,

@@ -75,7 +75,7 @@ export default function MontageStep({
         />
       </Field>
 
-      {/* Montage final */}
+      {/* Montage final — preview vidéo gérée dans le panneau droit du drawer */}
       <Field label="Montage final">
         <input
           ref={fileInputRef}
@@ -85,19 +85,11 @@ export default function MontageStep({
           style={{ display: 'none' }}
         />
         {slot.final_url ? (
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <div style={videoWrapperStyle}>
-              <video
-                src={slot.final_url}
-                controls
-                preload="metadata"
-                style={{ width: '100%', height: '100%', display: 'block' }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', wordBreak: 'break-all' }}>
-                {slot.final_url.split('/').pop()?.slice(0, 60) ?? '—'}
-              </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', wordBreak: 'break-all' }}>
+              {slot.final_url.split('/').pop()?.slice(0, 60) ?? '—'}
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
@@ -108,15 +100,9 @@ export default function MontageStep({
               <button
                 onClick={() => onUpdate({ final_url: null })}
                 style={{
-                  alignSelf: 'flex-start',
-                  padding: '6px 10px',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: 'var(--text-tertiary)',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
+                  padding: '6px 10px', fontSize: 11, fontWeight: 600,
+                  color: 'var(--text-tertiary)', background: 'transparent',
+                  border: 'none', cursor: 'pointer', textDecoration: 'underline',
                 }}
               >
                 Supprimer
