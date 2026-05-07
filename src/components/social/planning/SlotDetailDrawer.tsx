@@ -531,7 +531,21 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     if (!slot) return
     const action = getTransitionAction(slot, activeStep)
     if (!action) return
-    await updateSlot({ production_status: action.nextStatus })
+
+    // Si on valide le montage et que le slot n'a pas encore de media_urls,
+    // on copie le final_url dedans pour eviter au coach de re-uploader.
+    const patch: Partial<SocialPostWithPublications> = {
+      production_status: action.nextStatus,
+    }
+    if (
+      action.nextStatus === 'ready' &&
+      slot.final_url &&
+      (!slot.media_urls || slot.media_urls.length === 0)
+    ) {
+      patch.media_urls = [slot.final_url]
+    }
+    await updateSlot(patch)
+
     // Auto-switch to next step + toast pour feedback visuel
     if (action.nextStatus === 'filmed') {
       setActiveStep('montage')
@@ -539,7 +553,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     }
     if (action.nextStatus === 'ready') {
       setActiveStep('publication')
-      toast.success('Montage validé', 'Le monteur a été notifié. Tu peux maintenant programmer la publication.')
+      toast.success('Montage validé', 'Le monteur a été notifié. Le media est pret pour la publication.')
     }
   }, [slot, activeStep, updateSlot, toast])
 

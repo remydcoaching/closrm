@@ -36,7 +36,8 @@ export const updateSocialPostSchema = z.object({
   title: z.string().max(300).optional().nullable(),
   caption: z.string().max(10000).optional().nullable(),
   hashtags: z.array(z.string().max(100)).max(60).optional(),
-  media_urls: z.array(z.string().url()).max(10).optional(),
+  // Accepte URLs externes OU paths R2 (workspaces/.../*) — comme final_url
+  media_urls: z.array(z.string().min(1).max(2000)).max(10).optional(),
   media_type: z.enum(mediaTypes).optional().nullable(),
   thumbnail_url: z.string().url().optional().nullable(),
   status: z.enum(statuses).optional(),
