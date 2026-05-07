@@ -360,7 +360,18 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           target: 'final',
           onProgress: (pct) => setUploadFinalPct(pct),
         })
-        await updateSlot({ final_url: path })
+        // Auto-transition: si le slot etait en 'idea'/'to_film'/'filmed' et qu'on
+        // pose un final_url, le slot passe en 'edited' (= prêt a etre valide).
+        // L'API declenche notifyCoachEdited si applicable.
+        const shouldAdvance =
+          slot.production_status === 'idea' ||
+          slot.production_status === 'to_film' ||
+          slot.production_status === 'filmed' ||
+          slot.production_status === null
+        await updateSlot({
+          final_url: path,
+          ...(shouldAdvance ? { production_status: 'edited' as const } : {}),
+        })
       } catch (e) {
         toast.error('Erreur upload', e instanceof Error ? e.message : String(e))
       } finally {

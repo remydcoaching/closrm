@@ -53,7 +53,7 @@ export async function notifyMonteurFilmed(
     .from('users').select('id, email, full_name').eq('id', slot.monteur_id).single<UserRow>()
   if (!monteur?.email) return
 
-  const link = `${APP_URL}/montage`
+  const link = `${APP_URL}/acquisition/reseaux-sociaux`
   const title = slotTitle(slot)
 
   const html = `
@@ -108,7 +108,7 @@ export async function notifyCoachEdited(
     .from('users').select('id, email, full_name').eq('id', workspace.owner_id).single<UserRow>()
   if (!owner?.email) return
 
-  const link = `${APP_URL}/montage`
+  const link = `${APP_URL}/acquisition/reseaux-sociaux`
   const title = slotTitle(slot)
 
   const html = `
@@ -158,7 +158,7 @@ export async function notifyMonteurValidated(
     .from('users').select('id, email, full_name').eq('id', slot.monteur_id).single<UserRow>()
   if (!monteur?.email) return
 
-  const link = `${APP_URL}/montage`
+  const link = `${APP_URL}/acquisition/reseaux-sociaux`
   const title = slotTitle(slot)
 
   const html = `

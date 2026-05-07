@@ -79,7 +79,7 @@ export function getTransitionAction(
     step === 'montage' &&
     !!slot.final_url &&
     slot.final_url.trim().length > 0 &&
-    slot.production_status === 'edited'
+    slot.production_status !== 'ready'
   ) {
     return { label: 'Valider le montage', nextStatus: 'ready' }
   }
