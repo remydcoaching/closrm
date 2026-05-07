@@ -577,8 +577,9 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           </button>
         </div>
 
-        {/* Toggle visibilite des annotations resolues */}
-        {annotations.some(a => a.resolved_at) && (
+        {/* Toggle visibilite des annotations resolues — landscape only.
+            Portrait: ce toggle est dans la colonne droite. */}
+        {!isPortrait && annotations.some(a => a.resolved_at) && (
           <button
             onClick={() => setShowResolved(v => !v)}
             style={{
@@ -597,141 +598,57 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           </button>
         )}
 
-        {/* Panneau actif + CTA + Bulle */}
-        {renderActivePanel()}
-        {renderCtaButton()}
-        {renderBubble()}
+        {/* Panneau actif + CTA + Bulle: inline pour landscape, deplaces a droite pour portrait */}
+        {!isPortrait && renderActivePanel()}
+        {!isPortrait && renderCtaButton()}
+        {!isPortrait && renderBubble()}
       </div>
     )
 
-    const commentsSidebar = (
+    // Colonne droite minimaliste pour portrait : juste le CTA + la bulle + le panneau actif.
+    // Pas de liste de tous les retours (l'auto-display de la plus proche suffit).
+    const portraitRightColumn = (
       <div
         style={{
-          width: 320, flexShrink: 0,
-          display: 'flex', flexDirection: 'column',
-          background: 'var(--bg-elevated)',
-          border: '1px solid var(--border-primary)',
-          borderRadius: 10,
-          minHeight: 0, maxHeight: '100%',
-          overflow: 'hidden',
+          width: 280, flexShrink: 0,
+          display: 'flex', flexDirection: 'column', gap: 8,
+          minHeight: 0,
         }}
       >
-        {/* Section haute: CTA + bulle de saisie + panneau actif */}
-        <div style={{
-          padding: 10,
-          borderBottom: '1px solid var(--border-primary)',
-          display: 'flex', flexDirection: 'column', gap: 8,
-        }}>
-          {renderCtaButton('stretch')}
-          {renderBubble('100%')}
-          {renderActivePanel('100%')}
-        </div>
-        <div style={{
-          padding: '10px 12px', borderBottom: '1px solid var(--border-primary)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
-          textTransform: 'uppercase', letterSpacing: 0.4,
-        }}>
-          <span>Retours ({visibleAnnotations.length})</span>
-          {annotations.some(a => a.resolved_at) && (
-            <button
-              onClick={() => setShowResolved(v => !v)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '3px 8px', fontSize: 10, fontWeight: 700,
-                color: 'var(--text-tertiary)',
-                background: 'transparent', border: '1px solid var(--border-primary)',
-                borderRadius: 4, cursor: 'pointer',
-              }}
-            >
-              {showResolved ? <EyeOff size={11} /> : <Eye size={11} />}
-              {showResolved ? 'Masquer' : 'Voir résolues'}
-            </button>
-          )}
-        </div>
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {visibleAnnotations.length === 0 && (
-            <div style={{ padding: 16, fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
-              Aucun retour.<br/>Pause la vidéo et clique &quot;Commenter à&quot; pour en ajouter.
-            </div>
-          )}
-          {visibleAnnotations.map((a) => {
-            const isResolved = !!a.resolved_at
-            const isClicked = clickedId === a.id
-            const accent = isResolved ? 'var(--text-tertiary)' : (a.author_color ?? '#f59e0b')
-            return (
-              <div
-                key={a.id}
-                onClick={() => {
-                  if (videoRef.current) {
-                    videoRef.current.currentTime = a.video_timestamp_seconds
-                    videoRef.current.pause()
-                  }
-                  setClickedId((prev) => (prev === a.id ? null : a.id))
-                  setDismissedId(null)
-                  onAnnotationClick?.(a.id)
-                }}
-                style={{
-                  padding: '8px 10px',
-                  background: isClicked ? 'var(--bg-secondary)' : 'transparent',
-                  border: `1px solid ${isClicked ? accent : 'var(--border-primary)'}`,
-                  borderLeftWidth: 3, borderLeftColor: accent,
-                  borderRadius: 6, cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', gap: 4,
-                  opacity: isResolved ? 0.6 : 1,
-                  transition: 'background 0.15s, border-color 0.15s',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)' }}>
-                    <span style={{
-                      fontFamily: 'monospace', padding: '1px 5px',
-                      background: accent, color: '#fff', borderRadius: 3,
-                    }}>
-                      {formatTime(a.video_timestamp_seconds)}
-                    </span>
-                    <span>{a.author_name}</span>
-                  </div>
-                  {onToggleResolved && (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation()
-                        setTogglingId(a.id)
-                        try { await onToggleResolved(a.id, !isResolved) }
-                        finally { setTogglingId(null) }
-                      }}
-                      disabled={togglingId === a.id}
-                      title={isResolved ? 'Réouvrir' : 'Marquer comme résolu'}
-                      style={{
-                        width: 22, height: 22, padding: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: isResolved ? 'transparent' : 'rgba(16,185,129,0.15)',
-                        color: isResolved ? 'var(--text-tertiary)' : '#10b981',
-                        border: `1px solid ${isResolved ? 'var(--border-primary)' : 'rgba(16,185,129,0.4)'}`,
-                        borderRadius: 4, cursor: 'pointer', flexShrink: 0,
-                      }}
-                    >
-                      <Check size={11} />
-                    </button>
-                  )}
-                </div>
-                <div style={{
-                  fontSize: 12, lineHeight: 1.4, color: 'var(--text-primary)',
-                  whiteSpace: 'pre-wrap',
-                  textDecoration: isResolved ? 'line-through' : 'none',
-                }}>
-                  {a.body}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        {renderCtaButton('stretch')}
+        {renderBubble('100%')}
+        {renderActivePanel('100%')}
+        {annotations.some(a => a.resolved_at) && (
+          <button
+            onClick={() => setShowResolved(v => !v)}
+            style={{
+              alignSelf: 'flex-start',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '5px 10px', fontSize: 11, fontWeight: 600,
+              color: 'var(--text-secondary)',
+              background: 'transparent',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 6, cursor: 'pointer',
+            }}
+          >
+            {showResolved ? <EyeOff size={12} /> : <Eye size={12} />}
+            {showResolved ? 'Masquer résolues' : `Voir résolues (${annotations.filter(a => a.resolved_at).length})`}
+          </button>
+        )}
       </div>
     )
 
-    // Layout unifie: video + toolbar + CTA/bulle/panneau actif inline en dessous.
-    // (Plus de sidebar — l'auto-display de la plus proche annotation suffit.)
-    void commentsSidebar
+    // Portrait: video a gauche + colonne droite (CTA/bulle/panneau actif).
+    // Landscape: tout inline sous la timeline.
+    void visibleAnnotations
+    if (isPortrait) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 12, width: '100%', height: '100%', minHeight: 0, alignItems: 'stretch' }}>
+          {playerColumn}
+          {portraitRightColumn}
+        </div>
+      )
+    }
     return playerColumn
   },
 )
