@@ -270,16 +270,17 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
                     }}
                     aria-label={`Annotation à ${formatTime(a.video_timestamp_seconds)}`}
                   />
-                  {showPopup && (
+                  {/* Tooltip hover uniquement (pas le clicked — celui-la s'affiche dans le panneau dedie en dessous) */}
+                  {showPopup && !isClicked && (
                     <div
                       style={{
                         position: 'absolute',
                         bottom: 'calc(100% + 6px)',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        minWidth: 200,
-                        maxWidth: 280,
-                        padding: '10px 12px',
+                        minWidth: 180,
+                        maxWidth: 260,
+                        padding: '8px 10px',
                         background: 'var(--bg-elevated)',
                         color: 'var(--text-primary)',
                         border: '1px solid var(--border-primary)',
@@ -287,44 +288,26 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
                         boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
                         fontSize: 12,
                         zIndex: 10,
-                        pointerEvents: isClicked ? 'auto' : 'none',
+                        pointerEvents: 'none',
                         whiteSpace: 'normal',
                         textAlign: 'left',
                       }}
                     >
                       <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        marginBottom: 6, gap: 6,
+                        fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
+                        marginBottom: 4,
+                        display: 'flex', alignItems: 'center', gap: 6,
                       }}>
-                        <div style={{
-                          fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)',
-                          display: 'flex', alignItems: 'center', gap: 6,
+                        <span style={{
+                          fontFamily: 'monospace',
+                          padding: '1px 5px',
+                          background: a.author_color ?? '#f59e0b',
+                          color: '#fff',
+                          borderRadius: 3,
                         }}>
-                          <span style={{
-                            fontFamily: 'monospace',
-                            padding: '1px 5px',
-                            background: a.author_color ?? '#f59e0b',
-                            color: '#fff',
-                            borderRadius: 3,
-                          }}>
-                            {formatTime(a.video_timestamp_seconds)}
-                          </span>
-                          <span>{a.author_name}</span>
-                        </div>
-                        {isClicked && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setClickedId(null) }}
-                            style={{
-                              width: 18, height: 18, padding: 0, display: 'flex',
-                              alignItems: 'center', justifyContent: 'center',
-                              background: 'transparent', color: 'var(--text-tertiary)',
-                              border: 'none', borderRadius: 3, cursor: 'pointer',
-                            }}
-                            aria-label="Fermer"
-                          >
-                            <X size={12} />
-                          </button>
-                        )}
+                          {formatTime(a.video_timestamp_seconds)}
+                        </span>
+                        <span>{a.author_name}</span>
                       </div>
                       <div style={{ lineHeight: 1.4 }}>{a.body}</div>
                     </div>
@@ -357,6 +340,58 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
             <Maximize2 size={13} />
           </button>
         </div>
+
+        {/* Panneau "annotation active" — affiche la note quand un marker est cliqué */}
+        {(() => {
+          const activeAnnotation = clickedId ? annotations.find((a) => a.id === clickedId) : null
+          if (!activeAnnotation) return null
+          return (
+            <div style={{
+              padding: '10px 12px',
+              background: 'var(--bg-elevated)',
+              border: `1px solid ${activeAnnotation.author_color ?? '#f59e0b'}`,
+              borderLeftWidth: 4,
+              borderRadius: 8,
+              fontSize: 12,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  <span style={{
+                    fontFamily: 'monospace', padding: '2px 6px',
+                    background: activeAnnotation.author_color ?? '#f59e0b',
+                    color: '#fff', borderRadius: 3, fontSize: 10,
+                  }}>
+                    {formatTime(activeAnnotation.video_timestamp_seconds)}
+                  </span>
+                  <span>{activeAnnotation.author_name}</span>
+                </div>
+                <button
+                  onClick={() => setClickedId(null)}
+                  aria-label="Fermer"
+                  style={{
+                    width: 22, height: 22, padding: 0, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    background: 'transparent', color: 'var(--text-tertiary)',
+                    border: 'none', borderRadius: 4, cursor: 'pointer',
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div style={{ lineHeight: 1.5, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+                {activeAnnotation.body}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* CTA "Commenter ici" — utilise le temps actuel, pas besoin de viser la timeline */}
         {pendingTimestamp === null && (
