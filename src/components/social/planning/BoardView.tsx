@@ -115,20 +115,26 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange, onLo
       if (range.from && (!p.plan_date || p.plan_date < range.from)) return false
       if (range.to && (!p.plan_date || p.plan_date > range.to)) return false
       if (!showHistory) {
-        if (!['draft', 'scheduled', 'failed'].includes(p.status)) return false
+        // 'published' est INCLU par defaut (visible dans la colonne Publie)
+        if (!['draft', 'scheduled', 'failed', 'published'].includes(p.status)) return false
         if (p.plan_date && p.plan_date < cutoff && period !== 'all') return false
       }
       return true
     })
   }, [posts, filterKind, filterPillar, range, showHistory, cutoff, period])
 
+  // 6 colonnes: 5 production_status + 1 colonne virtuelle "publie" pour status='published'
   const grouped = useMemo(() => {
-    const acc: Record<SocialProductionStatus, SocialPostWithPublications[]> = {
-      idea: [], to_film: [], filmed: [], edited: [], ready: [],
+    const acc: Record<SocialProductionStatus | 'published', SocialPostWithPublications[]> = {
+      idea: [], to_film: [], filmed: [], edited: [], ready: [], published: [],
     }
     for (const p of visiblePosts) {
-      const ps = (p.production_status ?? 'idea') as SocialProductionStatus
-      acc[ps].push(p)
+      if (p.status === 'published') {
+        acc.published.push(p)
+      } else {
+        const ps = (p.production_status ?? 'idea') as SocialProductionStatus
+        acc[ps].push(p)
+      }
     }
     return acc
   }, [visiblePosts])
@@ -241,8 +247,8 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange, onLo
         </div>
       )}
 
-      {/* Columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(180px, 1fr))', gap: 12 }}>
+      {/* Columns: 5 production_status + Publie (read-only, drop disabled) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(170px, 1fr))', gap: 12 }}>
         {PRODUCTION_STATUSES.map(({ value, label }) => (
           <Column
             key={value}
@@ -256,6 +262,17 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange, onLo
             onSelectSlot={onSelectSlot}
           />
         ))}
+        <Column
+          value={'ready' /* fallback type — drop is no-op */}
+          label="Publié"
+          posts={grouped.published}
+          pillars={pillars}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={() => { /* no manual move into Publie — must be triggered by publication flow */ }}
+          onDragStart={setDraggedId}
+          onSelectSlot={onSelectSlot}
+          published
+        />
       </div>
     </div>
   )
@@ -264,6 +281,7 @@ export default function BoardView({ posts, pillars, onSelectSlot, onChange, onLo
 function Column({
   value, label, posts, pillars,
   onDragOver, onDrop, onDragStart, onSelectSlot,
+  published = false,
 }: {
   value: SocialProductionStatus
   label: string
@@ -273,7 +291,11 @@ function Column({
   onDrop: () => void
   onDragStart: (id: string) => void
   onSelectSlot: (id: string) => void
+  published?: boolean
 }) {
+  void value
+  void published
+  void onDragStart
   const grouped = useMemo(() => {
     const map = new Map<string, SocialPostWithPublications[]>()
     for (const p of posts) {
