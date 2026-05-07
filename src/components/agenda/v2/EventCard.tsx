@@ -31,13 +31,15 @@ interface EventCardProps {
 export function EventCard({ event, onClick, style, isHighlighted, resizable }: EventCardProps) {
   const isShort = event.durationMinutes <= 30
   const isMedium = event.durationMinutes > 30 && event.durationMinutes < 60
+  const isPending = event.kind === 'booking' && event.booking.status === 'pending'
   const start = isoToHHmm(event.start)
   const end = isoToHHmm(addMinutes(parseISO(event.start), event.durationMinutes).toISOString())
-  // Fond + outline + couleurs typo dérivés de la couleur du calendrier.
-  // Cards OPAQUES (mix avec bg-elevated, pas transparent) → les lignes
-  // horaires de la grille sont masquées par les cards, comme Google Cal.
-  const fillBg = `color-mix(in srgb, ${event.color} 22%, var(--bg-elevated))`
-  const fillBgHover = `color-mix(in srgb, ${event.color} 32%, var(--bg-elevated))`
+  const fillBg = isPending
+    ? `color-mix(in srgb, ${event.color} 10%, var(--bg-elevated))`
+    : `color-mix(in srgb, ${event.color} 22%, var(--bg-elevated))`
+  const fillBgHover = isPending
+    ? `color-mix(in srgb, ${event.color} 18%, var(--bg-elevated))`
+    : `color-mix(in srgb, ${event.color} 32%, var(--bg-elevated))`
   const outlineColor = `color-mix(in srgb, ${event.color} 35%, transparent)`
   const timeColor = `color-mix(in srgb, ${event.color} 30%, var(--text-secondary) 70%)`
 
@@ -69,9 +71,13 @@ export function EventCard({ event, onClick, style, isHighlighted, resizable }: E
         // Bande couleur à gauche + outline. En mode highlighted, on bumpe
         // l'outline + on ajoute un ring extérieur à la couleur du calendrier
         // pour signaler la sélection (style "click 1 = select" type Notion/Linear).
-        boxShadow: isHighlighted
-          ? `inset var(--agenda-event-bar-width) 0 0 ${event.color}, inset 0 0 0 1.5px ${event.color}, 0 0 0 2px color-mix(in srgb, ${event.color} 45%, transparent)`
-          : `inset var(--agenda-event-bar-width) 0 0 ${event.color}, inset 0 0 0 1px ${outlineColor}`,
+        outline: isPending ? `1.5px dashed ${event.color}` : 'none',
+        outlineOffset: isPending ? -1 : 0,
+        boxShadow: isPending
+          ? `inset var(--agenda-event-bar-width) 0 0 ${event.color}`
+          : isHighlighted
+            ? `inset var(--agenda-event-bar-width) 0 0 ${event.color}, inset 0 0 0 1.5px ${event.color}, 0 0 0 2px color-mix(in srgb, ${event.color} 45%, transparent)`
+            : `inset var(--agenda-event-bar-width) 0 0 ${event.color}, inset 0 0 0 1px ${outlineColor}`,
         ...style,
       }}
       onMouseEnter={(e) => {

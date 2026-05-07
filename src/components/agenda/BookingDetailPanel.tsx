@@ -14,6 +14,7 @@ interface BookingDetailPanelProps {
 }
 
 const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; bg: string }> = {
+  pending: { label: 'À confirmer', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   confirmed: { label: 'Confirmé', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
   completed: { label: 'Terminé', color: '#38A169', bg: 'rgba(56,161,105,0.12)' },
   cancelled: { label: 'Annulé', color: '#E53E3E', bg: 'rgba(229,62,62,0.12)' },

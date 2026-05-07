@@ -16,7 +16,7 @@
 import { useEffect, useState } from 'react'
 import { addMinutes, format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Check, ExternalLink, Mail, MapPin, Pencil, Phone, Repeat, Trash2, Video, X, XCircle, UserX } from 'lucide-react'
+import { Check, Clock, ExternalLink, Mail, MapPin, Pencil, Phone, Repeat, Trash2, Video, X, XCircle, UserX } from 'lucide-react'
 import Link from 'next/link'
 import type { AgendaEvent } from '@/types/agenda'
 import type { BookingStatus } from '@/types'
@@ -43,6 +43,7 @@ interface EventDetailPanelProps {
 }
 
 const STATUS_LABELS: Record<ReturnType<typeof eventStatus>, { label: string; color: string }> = {
+  pending: { label: 'À confirmer', color: '#f59e0b' },
   confirmed: { label: 'Confirmé', color: '#22c55e' },
   completed: { label: 'Terminé', color: '#3b82f6' },
   cancelled: { label: 'Annulé', color: '#ef4444' },
@@ -519,10 +520,54 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
           )
         )}
 
+        {/* Confirm CTA for pending bookings */}
+        {isBooking && status === 'pending' && onStatusChange && (
+          <div
+            style={{
+              padding: '14px 16px',
+              background: 'rgba(245,158,11,0.08)',
+              border: '1px solid rgba(245,158,11,0.25)',
+              borderRadius: 10,
+            }}
+          >
+            <p style={{ margin: '0 0 10px', fontSize: 13, color: '#f59e0b', fontWeight: 600 }}>
+              Ce rendez-vous est en attente de votre confirmation.
+            </p>
+            <button
+              type="button"
+              onClick={() => onStatusChange(event, 'confirmed')}
+              style={{
+                width: '100%',
+                padding: '10px 18px',
+                borderRadius: 8,
+                border: 'none',
+                background: 'var(--color-primary)',
+                color: '#000',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <Check size={14} /> Confirmer ce RDV
+            </button>
+          </div>
+        )}
+
         {/* Status change — RDV avec lead ou call uniquement (pas pour perso) */}
         {isBooking && hasStatus && onStatusChange && (
           <Section title="Statut">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <StatusButton
+                active={status === 'pending'}
+                color={STATUS_LABELS.pending.color}
+                label="À confirmer"
+                icon={<Clock size={12} />}
+                onClick={() => onStatusChange(event, 'pending')}
+              />
               <StatusButton
                 active={status === 'confirmed'}
                 color={STATUS_LABELS.confirmed.color}
