@@ -34,7 +34,7 @@ export default function MontageStep({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '12px 18px 18px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 22px 24px' }}>
       {/* Monteur */}
       <Field label="Monteur">
         {monteurs.length === 0 ? (
@@ -152,13 +152,13 @@ export default function MontageStep({
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <label style={{
         fontSize: 11,
         fontWeight: 700,
         color: 'var(--text-tertiary)',
         textTransform: 'uppercase',
-        letterSpacing: 0.4,
+        letterSpacing: 0.6,
       }}>
         {label}
       </label>
@@ -170,12 +170,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputStyle: React.CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  padding: '8px 10px',
+  padding: '10px 12px',
   fontSize: 13,
+  lineHeight: 1.4,
   background: 'var(--bg-elevated)',
   color: 'var(--text-primary)',
   border: '1px solid var(--border-primary)',
-  borderRadius: 6,
+  borderRadius: 8,
   outline: 'none',
 }
 

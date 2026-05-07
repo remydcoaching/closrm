@@ -94,7 +94,7 @@ export default function PublicationStep({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '12px 18px 18px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 22px 24px' }}>
 
       {/* 1. Platform toggles */}
       <Field label="Plateformes">
@@ -409,12 +409,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputStyle: React.CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  padding: '8px 10px',
+  padding: '10px 12px',
   fontSize: 13,
+  lineHeight: 1.4,
   background: 'var(--bg-elevated)',
   color: 'var(--text-primary)',
   border: '1px solid var(--border-primary)',
-  borderRadius: 6,
+  borderRadius: 8,
   outline: 'none',
 }
 

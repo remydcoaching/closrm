@@ -24,9 +24,16 @@ export default function BriefStep({
   transitionAction, onTransition,
 }: BriefStepProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '12px 18px 18px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 22px 24px' }}>
       {/* Hook */}
-      <Field label="Hook">
+      <Field
+        label="Hook"
+        action={
+          <AiButton onClick={onGenerateHooks} loading={generatingHooks}>
+            {generatingHooks ? 'Génération…' : 'Générer 5 hooks'}
+          </AiButton>
+        }
+      >
         <textarea
           value={slot.hook ?? ''}
           onChange={(e) => onUpdate({ hook: e.target.value })}
@@ -34,9 +41,6 @@ export default function BriefStep({
           rows={2}
           style={textareaStyle}
         />
-        <button onClick={onGenerateHooks} disabled={generatingHooks} style={aiBtnStyle}>
-          <Sparkles size={12} /> {generatingHooks ? 'Génération…' : 'Générer 5 hooks IA'}
-        </button>
         {hooksLibrary.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
             {hooksLibrary.map((h, i) => (
@@ -48,29 +52,22 @@ export default function BriefStep({
         )}
       </Field>
 
-      {/* Titre */}
-      <Field label="Titre">
-        <input
-          type="text"
-          value={slot.title ?? ''}
-          onChange={(e) => onUpdate({ title: e.target.value })}
-          placeholder="Titre du contenu"
-          style={inputStyle}
-        />
-      </Field>
-
       {/* Script */}
-      <Field label="Script">
+      <Field
+        label="Script"
+        action={
+          <AiButton onClick={onGenerateScript} loading={generatingScript}>
+            {generatingScript ? 'Génération…' : 'Générer un script'}
+          </AiButton>
+        }
+      >
         <textarea
           value={slot.script ?? ''}
           onChange={(e) => onUpdate({ script: e.target.value })}
-          placeholder="Cliquer pour ajouter un script…"
-          rows={6}
+          placeholder="Décris ton idée, tes points clés, le call-to-action…"
+          rows={7}
           style={textareaStyle}
         />
-        <button onClick={onGenerateScript} disabled={generatingScript} style={aiBtnStyle}>
-          <Sparkles size={12} /> {generatingScript ? 'Génération…' : 'Générer un script IA'}
-        </button>
       </Field>
 
       {/* Références */}
@@ -102,23 +99,79 @@ export default function BriefStep({
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+// ─── Sous-composants ────────────────────────────────────────────────────────
+
+function Field({
+  label,
+  action,
+  children,
+}: {
+  label: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{
-        fontSize: 11, fontWeight: 700,
-        color: 'var(--text-tertiary)',
-        textTransform: 'uppercase',
-        letterSpacing: 0.4,
-      }}>
-        {label}
-      </label>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 22 }}>
+        <label style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: 'var(--text-tertiary)',
+          textTransform: 'uppercase',
+          letterSpacing: 0.6,
+        }}>
+          {label}
+        </label>
+        {action}
+      </div>
       {children}
     </div>
   )
 }
 
+function AiButton({
+  onClick,
+  loading,
+  children,
+}: {
+  onClick: () => void
+  loading: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '4px 10px',
+        fontSize: 11,
+        fontWeight: 600,
+        color: '#a78bfa',
+        background: 'transparent',
+        border: '1px solid rgba(167, 139, 250, 0.3)',
+        borderRadius: 6,
+        cursor: loading ? 'wait' : 'pointer',
+        opacity: loading ? 0.6 : 1,
+        whiteSpace: 'nowrap',
+        transition: 'all 0.15s',
+      }}
+    >
+      <Sparkles size={11} /> {children}
+    </button>
+  )
+}
+
 function ReferencesList({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
+  if (urls.length === 0) {
+    return (
+      <button onClick={() => onChange([''])} style={addBtnEmptyStyle}>
+        + Ajouter une référence
+      </button>
+    )
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {urls.map((url, i) => (
@@ -131,93 +184,99 @@ function ReferencesList({ urls, onChange }: { urls: string[]; onChange: (urls: s
               next[i] = e.target.value
               onChange(next)
             }}
+            placeholder="https://…"
             style={{ ...inputStyle, flex: 1 }}
           />
           <button
             onClick={() => onChange(urls.filter((_, idx) => idx !== i))}
             style={removeBtnStyle}
+            aria-label="Supprimer la référence"
           >
             ×
           </button>
         </div>
       ))}
-      <button onClick={() => onChange([...urls, ''])} style={addBtnStyle}>
-        + Ajouter une référence
+      <button onClick={() => onChange([...urls, ''])} style={addBtnInlineStyle}>
+        + Ajouter
       </button>
     </div>
   )
 }
 
+// ─── Styles ─────────────────────────────────────────────────────────────────
+
 const inputStyle: React.CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  padding: '8px 10px',
+  padding: '10px 12px',
   fontSize: 13,
+  lineHeight: 1.4,
   background: 'var(--bg-elevated)',
   color: 'var(--text-primary)',
   border: '1px solid var(--border-primary)',
-  borderRadius: 6,
+  borderRadius: 8,
   outline: 'none',
+  transition: 'border-color 0.15s',
 }
 
 const textareaStyle: React.CSSProperties = {
   ...inputStyle,
   resize: 'vertical',
   fontFamily: 'inherit',
-}
-
-const aiBtnStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '6px 10px',
-  fontSize: 11,
-  fontWeight: 600,
-  color: '#fff',
-  background: '#a78bfa',
-  border: 'none',
-  borderRadius: 6,
-  cursor: 'pointer',
-  alignSelf: 'flex-start',
+  minHeight: 60,
 }
 
 const hookSuggestionStyle: React.CSSProperties = {
   textAlign: 'left',
-  padding: '8px 10px',
+  padding: '10px 12px',
   fontSize: 12,
+  lineHeight: 1.45,
   background: 'var(--bg-elevated)',
   color: 'var(--text-primary)',
   border: '1px solid var(--border-primary)',
-  borderRadius: 6,
+  borderRadius: 8,
   cursor: 'pointer',
+  transition: 'border-color 0.15s',
 }
 
 const removeBtnStyle: React.CSSProperties = {
-  width: 28,
-  height: 28,
-  fontSize: 16,
+  width: 36,
+  height: 36,
+  fontSize: 18,
   background: 'transparent',
   color: 'var(--text-tertiary)',
   border: '1px solid var(--border-primary)',
-  borderRadius: 6,
+  borderRadius: 8,
   cursor: 'pointer',
+  flexShrink: 0,
 }
 
-const addBtnStyle: React.CSSProperties = {
+const addBtnEmptyStyle: React.CSSProperties = {
+  padding: '14px 16px',
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--text-tertiary)',
+  background: 'transparent',
+  border: '1px dashed var(--border-primary)',
+  borderRadius: 8,
+  cursor: 'pointer',
+  textAlign: 'center',
+}
+
+const addBtnInlineStyle: React.CSSProperties = {
   alignSelf: 'flex-start',
   fontSize: 12,
-  padding: '6px 10px',
+  padding: '6px 12px',
   background: 'transparent',
-  color: 'var(--color-primary)',
-  border: '1px dashed var(--border-primary)',
-  borderRadius: 6,
+  color: 'var(--text-tertiary)',
+  border: 'none',
   cursor: 'pointer',
 }
 
 const transitionBtnStyle: React.CSSProperties = {
   alignSelf: 'flex-end',
-  marginTop: 8,
-  padding: '10px 18px',
+  marginTop: 4,
+  padding: '11px 22px',
   fontSize: 13,
   fontWeight: 600,
   color: '#fff',
