@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { Settings, KanbanSquare, Calendar as CalIcon, Plus, CalendarRange } from 'lucide-react'
+import { KanbanSquare, Calendar as CalIcon, Plus, CalendarRange } from 'lucide-react'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
 import BoardView from './BoardView'
 import PlanningCalendarView from './PlanningCalendarView'
@@ -178,22 +178,9 @@ export default function PlanningView() {
             <Plus size={14} /> Nouveau post
           </button>
           <button
-            onClick={() => setTrameModalOpen(true)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px', fontSize: 12, fontWeight: 600,
-              color: 'var(--text-secondary)',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-primary)', borderRadius: 8,
-              cursor: 'pointer',
-            }}
-          >
-            <Settings size={14} /> Trame
-          </button>
-          <button
             onClick={() => setPlanModalOpen(true)}
             disabled={generating}
-            title="Préparer des slots vides à partir de la trame"
+            title="Préparer des slots vides à partir de la trame (la trame est éditable depuis ce bouton)"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', fontSize: 12, fontWeight: 600,
@@ -251,6 +238,7 @@ export default function PlanningView() {
         <PlanModal
           onClose={() => setPlanModalOpen(false)}
           onConfirm={planRange}
+          onEditTrame={() => { setPlanModalOpen(false); setTrameModalOpen(true) }}
         />
       )}
 

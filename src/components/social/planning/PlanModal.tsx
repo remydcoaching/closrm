@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, FileText, Camera, CalendarRange, Sparkles } from 'lucide-react'
+import { X, FileText, Camera, CalendarRange, Sparkles, Settings } from 'lucide-react'
 
 interface Props {
   onClose: () => void
@@ -10,6 +10,7 @@ interface Props {
     start_date: string
     end_date: string
   }) => Promise<void>
+  onEditTrame?: () => void
 }
 
 type Preset = 'next_week' | 'next_month' | 'this_week' | 'this_month' | 'custom'
@@ -53,7 +54,7 @@ function presetRange(preset: Preset): { start: string; end: string } {
   return { start: fmt(today), end: fmt(end) }
 }
 
-export default function PlanModal({ onClose, onConfirm }: Props) {
+export default function PlanModal({ onClose, onConfirm, onEditTrame }: Props) {
   const [preset, setPreset] = useState<Preset>('next_month')
   const [{ start, end }, setRange] = useState(() => presetRange('next_month'))
   const [kinds, setKinds] = useState<{ post: boolean; story: boolean }>({ post: true, story: false })
@@ -105,7 +106,25 @@ export default function PlanModal({ onClose, onConfirm }: Props) {
               Crée des slots vides à partir de ta trame, prêts à enrichir.
             </p>
           </div>
-          <button onClick={onClose} style={iconBtnStyle}><X size={16} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {onEditTrame && (
+              <button
+                onClick={onEditTrame}
+                title="Modifier la trame (rythme hebdo, piliers, types de contenu)"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '6px 10px', fontSize: 11, fontWeight: 600,
+                  color: 'var(--text-secondary)',
+                  background: 'transparent',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 6, cursor: 'pointer',
+                }}
+              >
+                <Settings size={12} /> Trame
+              </button>
+            )}
+            <button onClick={onClose} style={iconBtnStyle}><X size={16} /></button>
+          </div>
         </div>
 
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 18 }}>
