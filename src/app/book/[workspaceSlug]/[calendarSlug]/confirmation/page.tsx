@@ -41,7 +41,7 @@ export default function BookingConfirmationPage() {
           marginBottom: '16px',
         }}
       >
-        Rendez-vous confirmé !
+        Rendez-vous enregistré !
       </h1>
 
       {dateLabel && timeParam && (
@@ -57,8 +57,8 @@ export default function BookingConfirmationPage() {
         </p>
       )}
 
-      <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-        Vous recevrez un email de confirmation avec les détails de votre rendez-vous.
+      <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6 }}>
+        Vous recevrez un email de confirmation dès que votre coach aura confirmé le rendez-vous.
       </p>
     </div>
   )
