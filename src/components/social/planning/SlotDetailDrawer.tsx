@@ -245,15 +245,21 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
         // scheduled_at + id si c'est un vrai UUID a updater).
         const sanitized: Partial<SocialPostWithPublications> = { ...patch }
         if (Array.isArray(patch.publications)) {
-          sanitized.publications = patch.publications.map((p) => {
+          // Dedupe par platform (1 publication par plateforme = unique constraint server-side)
+          const seenPlatforms = new Set<string>()
+          const cleaned: SocialPostPublication[] = []
+          for (const p of patch.publications) {
+            if (seenPlatforms.has(p.platform)) continue
+            seenPlatforms.add(p.platform)
             const isRealId = typeof p.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id)
-            return {
+            cleaned.push({
               ...(isRealId ? { id: p.id } : {}),
               platform: p.platform,
               config: p.config ?? {},
               scheduled_at: p.scheduled_at ?? null,
-            } as SocialPostPublication
-          })
+            } as SocialPostPublication)
+          }
+          sanitized.publications = cleaned
         }
         const res = await fetch(`/api/social/posts/${slotId}`, {
           method: 'PATCH',
@@ -397,8 +403,18 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     (platform: SocialPlatform, enabled: boolean) => {
       if (!slot) return
       let pubs = [...(slot.publications ?? [])]
+      // Dedupe defensif: si pour une raison X la plateforme est en double, on nettoie
+      const alreadyHasPlatform = pubs.some((p) => p.platform === platform)
       if (!enabled) {
         pubs = pubs.filter((p) => p.platform !== platform)
+      } else if (alreadyHasPlatform) {
+        // Deja activee: ne pas dupliquer (et nettoyer d'eventuels doublons existants)
+        const seen = new Set<string>()
+        pubs = pubs.filter((p) => {
+          if (seen.has(p.platform)) return false
+          seen.add(p.platform)
+          return true
+        })
       } else {
         const config =
           platform === 'youtube'

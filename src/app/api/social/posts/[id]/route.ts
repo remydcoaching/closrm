@@ -83,10 +83,18 @@ export async function PATCH(
     }
 
     if (publications) {
-      // Strategy: upsert par (social_post_id, platform) — on remplace intégralement la liste
+      // Strategy: upsert par (social_post_id, platform) — on remplace intégralement la liste.
+      // Defense en profondeur: dedupe par platform (la unique constraint le ferait planter sinon).
+      const dedupedPubs: typeof publications = []
+      const seen = new Set<string>()
+      for (const p of publications) {
+        if (seen.has(p.platform)) continue
+        seen.add(p.platform)
+        dedupedPubs.push(p)
+      }
       await supabase.from('social_post_publications').delete().eq('social_post_id', id)
-      if (publications.length > 0) {
-        const rows = publications.map((p) => ({
+      if (dedupedPubs.length > 0) {
+        const rows = dedupedPubs.map((p) => ({
           social_post_id: id,
           workspace_id: workspaceId,
           platform: p.platform,
