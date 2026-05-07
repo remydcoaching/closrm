@@ -170,24 +170,15 @@ export default function AgendaV2Page() {
     setCurrentDate(new Date())
   }
 
-  // ── Sélection en deux temps + copy/paste ──
-  // 1er clic sur un event → highlight (panel fermé). 2ᵉ clic sur le même
-  // → ouvre le panel. Cmd+C copie l'event highlighted. Cmd+V crée une copie
-  // au slot survolé par le curseur.
+  // ── Sélection + copy/paste ──
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null)
   const [copiedEvent, setCopiedEvent] = useState<AgendaEvent | null>(null)
   const hoverPosRef = useRef<{ date: Date; hour: number } | null>(null)
 
   const handleEventClick = useCallback((ev: AgendaEvent) => {
-    // Click sur l'event déjà highlighted (et panel pas encore ouvert) → ouvre le panel
-    if (highlightedEventId === ev.id && !selectedEvent) {
-      setSelectedEvent(ev)
-      return
-    }
-    // Sinon : highlight uniquement
     setHighlightedEventId(ev.id)
-    setSelectedEvent(null)
-  }, [highlightedEventId, selectedEvent])
+    setSelectedEvent(ev)
+  }, [])
 
   const handleHoverChange = useCallback((date: Date | null, hour: number | null) => {
     hoverPosRef.current = date && hour !== null ? { date, hour } : null
