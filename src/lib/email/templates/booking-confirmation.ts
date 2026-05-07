@@ -157,13 +157,7 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
                 Votre rendez-vous avec <strong style="color: #111827;">${safeCoach || safeBrand}</strong> est confirmé. Voici le récapitulatif&nbsp;:
               </p>`
 
-  const signOff = hasCustomMessage
-    ? ''
-    : `
-              <p style="margin: 36px 0 0; font-size: 15px; color: #4B5563; line-height: 1.65; text-align: center;">
-                À très vite,<br/>
-                <strong style="color: #111827;">${safeCoach || safeBrand}</strong>
-              </p>`
+  const signOff = ''
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -419,11 +413,6 @@ function buildPlainHtml(params: BookingConfirmationParams): string {
     if (params.googleCalendarUrl) lines.push(`Google Calendar : <a href="${escapeHtml(params.googleCalendarUrl)}" style="color:#1d4ed8;">${escapeHtml(params.googleCalendarUrl)}</a>`)
     if (params.icsUrl) lines.push(`Outlook / Apple : <a href="${escapeHtml(params.icsUrl)}" style="color:#1d4ed8;">${escapeHtml(params.icsUrl)}</a>`)
   }
-  if (!hasCustomMessage) {
-    lines.push('')
-    lines.push('À très vite,')
-    lines.push(safeCoach || safeBrand)
-  }
   if (params.manageUrl) {
     lines.push('')
     lines.push(`Reprogrammer ou annuler : <a href="${escapeHtml(params.manageUrl)}" style="color:#1d4ed8;">${escapeHtml(params.manageUrl)}</a>`)
@@ -483,7 +472,7 @@ export async function sendBookingConfirmationEmail(
   }
 
   const html = buildBookingConfirmationHtml(params)
-  const subject = `Votre rendez-vous avec ${params.coachName} est confirme`
+  const subject = `Votre rendez-vous avec ${params.coachName} est confirmé`
 
   // From-name priority: workspace brand name > coach legal name > fallback.
   // The brand name (workspaces.name) is what coaches expect to appear in

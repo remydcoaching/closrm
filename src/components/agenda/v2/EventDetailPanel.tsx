@@ -520,7 +520,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
           )
         )}
 
-        {/* Confirm CTA for pending bookings */}
+        {/* Pending: confirm CTA only (no status buttons) */}
         {isBooking && status === 'pending' && onStatusChange && (
           <div
             style={{
@@ -557,17 +557,10 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
           </div>
         )}
 
-        {/* Status change — RDV avec lead ou call uniquement (pas pour perso) */}
-        {isBooking && hasStatus && onStatusChange && (
+        {/* Status change — only for non-pending bookings */}
+        {isBooking && hasStatus && status !== 'pending' && onStatusChange && (
           <Section title="Statut">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <StatusButton
-                active={status === 'pending'}
-                color={STATUS_LABELS.pending.color}
-                label="À confirmer"
-                icon={<Clock size={12} />}
-                onClick={() => onStatusChange(event, 'pending')}
-              />
               <StatusButton
                 active={status === 'confirmed'}
                 color={STATUS_LABELS.confirmed.color}
@@ -651,8 +644,47 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
         </div>
       )}
 
-      {/* Actions footer — bascule entre mode lecture et mode édition */}
-      {isBooking && (onDelete || canEdit) && (
+      {/* Actions footer — pending: just cancel button */}
+      {isBooking && status === 'pending' && onDelete && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            padding: 12,
+            borderTop: '1px solid var(--agenda-grid-line)',
+            flexShrink: 0,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ? Il sera supprimé définitivement.')) {
+                onDelete(event)
+              }
+            }}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--border-secondary)',
+              background: 'transparent',
+              color: '#ef4444',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            <Trash2 size={13} /> Annuler ce RDV
+          </button>
+        </div>
+      )}
+
+      {/* Actions footer — non-pending: edit + delete */}
+      {isBooking && status !== 'pending' && (onDelete || canEdit) && (
         <div
           style={{
             display: 'flex',
