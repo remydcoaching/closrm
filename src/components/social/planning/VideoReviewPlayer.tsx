@@ -50,6 +50,7 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
   function VideoReviewPlayer({ url, annotations, onAddAnnotation, onAnnotationClick }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const timelineRef = useRef<HTMLDivElement>(null)
+    const playerWrapRef = useRef<HTMLDivElement>(null)
 
     const [duration, setDuration] = useState(0)
     const [currentTime, setCurrentTime] = useState(0)
@@ -61,6 +62,8 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
     const [hoveredId, setHoveredId] = useState<string | null>(null)
     const [clickedId, setClickedId] = useState<string | null>(null)
     const [dismissedId, setDismissedId] = useState<string | null>(null)
+    const [aspectRatio, setAspectRatio] = useState<number | null>(null)
+    const [playerWidth, setPlayerWidth] = useState<number | null>(null)
 
     useImperativeHandle(ref, () => ({
       seek: (s: number) => {
@@ -77,7 +80,10 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
       const v = videoRef.current
       if (!v) return
       const onTime = () => setCurrentTime(v.currentTime)
-      const onMeta = () => setDuration(v.duration || 0)
+      const onMeta = () => {
+        setDuration(v.duration || 0)
+        if (v.videoWidth && v.videoHeight) setAspectRatio(v.videoWidth / v.videoHeight)
+      }
       const onPlay = () => setPlaying(true)
       const onPause = () => setPlaying(false)
       const onVolume = () => setMuted(v.muted)
@@ -94,6 +100,18 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
         v.removeEventListener('volumechange', onVolume)
       }
     }, [url])
+
+    // Track displayed player width to size toolbar + panels
+    useEffect(() => {
+      const el = playerWrapRef.current
+      if (!el) return
+      const ro = new ResizeObserver((entries) => {
+        const w = entries[0]?.contentRect.width
+        if (w) setPlayerWidth(w)
+      })
+      ro.observe(el)
+      return () => ro.disconnect()
+    }, [aspectRatio])
 
     const togglePlay = () => {
       const v = videoRef.current
@@ -151,10 +169,24 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
       setPendingBody('')
     }
 
+    // Pour les videos portrait, on contraint la largeur des controles a celle du player
+    const isPortrait = aspectRatio !== null && aspectRatio < 1
+    const controlsWidth = isPortrait && playerWidth ? `${playerWidth}px` : '100%'
+
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', height: '100%' }}>
-        {/* Player (sans controls natifs — on a notre propre toolbar) */}
-        <div style={{ flex: 1, minHeight: 0, background: '#000', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', height: '100%', alignItems: 'center' }}>
+        {/* Player (sans controls natifs — on a notre propre toolbar).
+            Si portrait : aspect-ratio applique pour eviter le letterboxing horizontal massif. */}
+        <div
+          ref={playerWrapRef}
+          style={{
+            flex: 1, minHeight: 0,
+            width: isPortrait ? 'auto' : '100%',
+            maxWidth: '100%',
+            aspectRatio: isPortrait && aspectRatio ? `${aspectRatio}` : undefined,
+            background: '#000', borderRadius: 10, overflow: 'hidden', position: 'relative',
+          }}
+        >
           <video
             ref={videoRef}
             src={url}
@@ -185,7 +217,7 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
         </div>
 
         {/* Toolbar custom : play/pause + timeline + volume + fullscreen */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'var(--text-tertiary)', padding: '0 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'var(--text-tertiary)', padding: '0 4px', width: controlsWidth, maxWidth: '100%' }}>
           <button
             onClick={togglePlay}
             aria-label={playing ? 'Pause' : 'Play'}
@@ -379,6 +411,7 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
               display: 'flex',
               flexDirection: 'column',
               gap: 6,
+              width: controlsWidth, maxWidth: '100%',
             }}>
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
@@ -425,7 +458,7 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
             onClick={startCommentHere}
             disabled={!duration}
             style={{
-              alignSelf: 'flex-start',
+              alignSelf: isPortrait ? 'center' : 'flex-start',
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '7px 12px', fontSize: 12, fontWeight: 600,
               color: '#fff', background: 'var(--color-primary)',
@@ -446,6 +479,7 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
             background: 'var(--bg-elevated)',
             border: '1px solid var(--color-primary)',
             borderRadius: 8,
+            width: controlsWidth, maxWidth: '100%', boxSizing: 'border-box',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
               <MessageSquarePlus size={14} color="var(--color-primary)" />
