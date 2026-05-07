@@ -36,7 +36,7 @@ interface Props {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MAX_FILE_BYTES = 250 * 1024 * 1024 // 250 MB — match bucket limit
+const MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024 // 2 GB — R2 supporte jusqu'a 5 GB par PUT, 250 MB suffisait pour Supabase mais plus de raison de brider
 
 function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`
@@ -64,6 +64,8 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   // Upload
   const [uploadingFinal, setUploadingFinal] = useState(false)
   const [uploadingMedia, setUploadingMedia] = useState(false)
+  const [uploadFinalPct, setUploadFinalPct] = useState(0)
+  const [uploadMediaPct, setUploadMediaPct] = useState(0)
 
   // Publication scheduling
   const [scheduling, setScheduling] = useState(false)
@@ -231,17 +233,23 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     async (file: File) => {
       if (!slot) return
       if (file.size > MAX_FILE_BYTES) {
-        toast.error('Fichier trop lourd', `Max 250 Mo — ce fichier fait ${formatSize(file.size)}.`)
+        toast.error('Fichier trop lourd', `Max 2 Go — ce fichier fait ${formatSize(file.size)}.`)
         return
       }
       setUploadingFinal(true)
+      setUploadFinalPct(0)
       try {
-        const { path } = await uploadToR2(file, { post_id: slot.id, target: 'final' })
+        const { path } = await uploadToR2(file, {
+          post_id: slot.id,
+          target: 'final',
+          onProgress: (pct) => setUploadFinalPct(pct),
+        })
         await updateSlot({ final_url: path })
       } catch (e) {
         toast.error('Erreur upload', e instanceof Error ? e.message : String(e))
       } finally {
         setUploadingFinal(false)
+        setUploadFinalPct(0)
       }
     },
     [slot, updateSlot, toast]
@@ -251,17 +259,23 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     async (file: File) => {
       if (!slot) return
       if (file.size > MAX_FILE_BYTES) {
-        toast.error('Fichier trop lourd', `Max 250 Mo — ce fichier fait ${formatSize(file.size)}.`)
+        toast.error('Fichier trop lourd', `Max 2 Go — ce fichier fait ${formatSize(file.size)}.`)
         return
       }
       setUploadingMedia(true)
+      setUploadMediaPct(0)
       try {
-        const { path } = await uploadToR2(file, { post_id: slot.id, target: 'media' })
+        const { path } = await uploadToR2(file, {
+          post_id: slot.id,
+          target: 'media',
+          onProgress: (pct) => setUploadMediaPct(pct),
+        })
         await updateSlot({ media_urls: [...(slot.media_urls ?? []), path] })
       } catch (e) {
         toast.error('Erreur upload', e instanceof Error ? e.message : String(e))
       } finally {
         setUploadingMedia(false)
+        setUploadMediaPct(0)
       }
     },
     [slot, updateSlot, toast]
@@ -542,6 +556,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               onUpdate={updateSlot}
               onUploadFinal={uploadFinal}
               uploading={uploadingFinal}
+              uploadPct={uploadFinalPct}
               transitionAction={transitionAction as { label: string; nextStatus: 'ready' } | null}
               onTransition={transition}
             />
@@ -554,6 +569,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               onUpdatePublication={updatePublication}
               onUploadMedia={uploadMedia}
               uploading={uploadingMedia}
+              uploadPct={uploadMediaPct}
               onSchedule={schedule}
               scheduling={scheduling}
               readOnly={readOnly}

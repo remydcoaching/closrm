@@ -9,6 +9,7 @@ interface MontageStepProps {
   onUpdate: (patch: Partial<SocialPostWithPublications>) => void
   onUploadFinal: (file: File) => Promise<void>
   uploading: boolean
+  uploadPct?: number
   transitionAction: { label: string; nextStatus: 'ready' } | null
   onTransition: () => void
 }
@@ -19,6 +20,7 @@ export default function MontageStep({
   onUpdate,
   onUploadFinal,
   uploading,
+  uploadPct = 0,
   transitionAction,
   onTransition,
 }: MontageStepProps) {
@@ -95,7 +97,7 @@ export default function MontageStep({
                 disabled={uploading}
                 style={uploadBtnStyle}
               >
-                {uploading ? 'Upload en cours…' : 'Remplacer'}
+                {uploading ? `Upload… ${uploadPct}%` : 'Remplacer'}
               </button>
               <button
                 onClick={() => onUpdate({ final_url: null })}
@@ -117,14 +119,16 @@ export default function MontageStep({
               onChange={(e) => onUpdate({ final_url: e.target.value || null })}
               placeholder="Coller un lien ou uploader…"
               style={inputStyle}
+              disabled={uploading}
             />
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               style={uploadBtnStyle}
             >
-              {uploading ? 'Upload en cours…' : '📁 Uploader un fichier'}
+              {uploading ? `Upload… ${uploadPct}%` : '📁 Uploader un fichier'}
             </button>
+            {uploading && <ProgressBar pct={uploadPct} />}
           </>
         )}
       </Field>
@@ -163,6 +167,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
         {label}
       </label>
       {children}
+    </div>
+  )
+}
+
+function ProgressBar({ pct }: { pct: number }) {
+  return (
+    <div style={{
+      width: '100%',
+      height: 6,
+      background: 'var(--bg-elevated)',
+      borderRadius: 3,
+      overflow: 'hidden',
+      marginTop: 4,
+    }}>
+      <div style={{
+        width: `${Math.max(0, Math.min(100, pct))}%`,
+        height: '100%',
+        background: 'var(--color-primary)',
+        transition: 'width 0.2s ease',
+      }} />
     </div>
   )
 }

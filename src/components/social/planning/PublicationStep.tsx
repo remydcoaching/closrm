@@ -12,6 +12,7 @@ interface PublicationStepProps {
   onUpdatePublication: (platform: Platform, patch: Record<string, unknown>) => void
   onUploadMedia: (file: File) => Promise<void>
   uploading: boolean
+  uploadPct?: number
   onSchedule: () => void
   scheduling: boolean
   readOnly: boolean
@@ -42,6 +43,7 @@ export default function PublicationStep({
   onUpdatePublication,
   onUploadMedia,
   uploading,
+  uploadPct = 0,
   onSchedule,
   scheduling,
   readOnly,
@@ -165,7 +167,7 @@ export default function PublicationStep({
               disabled={readOnly || uploading}
               style={uploadBtnStyle}
             >
-              {uploading ? 'Upload en cours…' : '📁 Uploader image ou vidéo'}
+              {uploading ? `Upload… ${uploadPct ?? 0}%` : '📁 Uploader image ou vidéo'}
             </button>
           </>
         )}

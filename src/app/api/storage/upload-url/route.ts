@@ -4,7 +4,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { isR2Configured } from '@/lib/storage/r2-client'
 import { buildR2Path, signUpload, type R2Target } from '@/lib/storage/signing'
 
-const MAX_BYTES = 250 * 1024 * 1024 // 250 MB — match historic Supabase limit
+const MAX_BYTES = 2 * 1024 * 1024 * 1024 // 2 GB — R2 supporte jusqu'a 5 GB par PUT
 
 const bodySchema = z.object({
   post_id: z.string().uuid(),
