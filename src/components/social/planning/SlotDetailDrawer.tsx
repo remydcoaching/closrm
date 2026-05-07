@@ -135,7 +135,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       const msgJson = await msgRes.json()
       const meJson = meRes ? await meRes.json().catch(() => null) : null
       const meId = meJson?.user?.id ?? meJson?.data?.id ?? null
-      type RawMsg = { id: string; author_id: string; body: string; video_timestamp_seconds: number | null; author?: { full_name?: string | null; email?: string | null } | null }
+      type RawMsg = { id: string; author_id: string; body: string; video_timestamp_seconds: number | null; resolved_at: string | null; author?: { full_name?: string | null; email?: string | null } | null }
       const list: VideoAnnotation[] = ((msgJson?.data ?? []) as RawMsg[])
         .filter((m) => m.video_timestamp_seconds !== null && m.video_timestamp_seconds !== undefined)
         .map((m) => ({
@@ -144,6 +144,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           body: m.body,
           author_name: m.author?.full_name || m.author?.email || 'Utilisateur',
           is_self: m.author_id === meId,
+          resolved_at: m.resolved_at ?? null,
         }))
       setAnnotations(list)
     } catch {
@@ -169,6 +170,29 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       setMessagesVersion((v) => v + 1)
     },
     [slotId, toast, refreshAnnotations]
+  )
+
+  const toggleAnnotationResolved = useCallback(
+    async (annotationId: string, resolved: boolean) => {
+      // Optimistic
+      setAnnotations((prev) => prev.map((a) =>
+        a.id === annotationId ? { ...a, resolved_at: resolved ? new Date().toISOString() : null } : a,
+      ))
+      try {
+        const res = await fetch(`/api/social/posts/${slotId}/messages/${annotationId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resolved }),
+        })
+        if (!res.ok) throw new Error('patch failed')
+        setMessagesVersion((v) => v + 1)
+      } catch {
+        // Rollback
+        toast.error('Erreur', 'Impossible de mettre à jour le statut')
+        await refreshAnnotations()
+      }
+    },
+    [slotId, toast, refreshAnnotations],
   )
 
   const handleAnnotationClick = useCallback((id: string) => {
@@ -651,6 +675,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
             annotations={annotations}
             onAddAnnotation={addAnnotation}
             onAnnotationClick={handleAnnotationClick}
+            onToggleResolved={toggleAnnotationResolved}
           />
         )}
       </div>

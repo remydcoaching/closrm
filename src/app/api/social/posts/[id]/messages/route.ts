@@ -22,7 +22,7 @@ export async function GET(
 
     const { data: messages, error } = await supabase
       .from('social_post_messages')
-      .select('id, author_id, body, created_at, video_timestamp_seconds')
+      .select('id, author_id, body, created_at, video_timestamp_seconds, resolved_at, resolved_by')
       .eq('social_post_id', slotId)
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: true })
@@ -80,7 +80,7 @@ export async function POST(
         body: parsed.data.body,
         video_timestamp_seconds: parsed.data.video_timestamp_seconds ?? null,
       })
-      .select('id, author_id, body, created_at, video_timestamp_seconds')
+      .select('id, author_id, body, created_at, video_timestamp_seconds, resolved_at, resolved_by')
       .single()
     if (error) throw error
 

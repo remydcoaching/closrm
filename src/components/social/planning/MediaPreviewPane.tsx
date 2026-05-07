@@ -14,6 +14,7 @@ interface MediaPreviewPaneProps {
   annotations?: VideoAnnotation[]
   onAddAnnotation?: (timestampSeconds: number, body: string) => Promise<void>
   onAnnotationClick?: (annotationId: string) => void
+  onToggleResolved?: (annotationId: string, resolved: boolean) => Promise<void>
 }
 
 const VIDEO_RE = /\.(mp4|mov|webm|m4v)(\?|$)/i
@@ -26,7 +27,7 @@ export function inferMediaKind(url: string): MediaKind {
 }
 
 const MediaPreviewPane = forwardRef<VideoReviewPlayerHandle, MediaPreviewPaneProps>(
-  function MediaPreviewPane({ url, kind, label, annotations, onAddAnnotation, onAnnotationClick }, ref) {
+  function MediaPreviewPane({ url, kind, label, annotations, onAddAnnotation, onAnnotationClick, onToggleResolved }, ref) {
     const [resolvedUrl, setResolvedUrl] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
 
@@ -87,6 +88,7 @@ const MediaPreviewPane = forwardRef<VideoReviewPlayerHandle, MediaPreviewPanePro
               annotations={annotations ?? []}
               onAddAnnotation={onAddAnnotation ?? (async () => { /* noop si pas de handler */ })}
               onAnnotationClick={onAnnotationClick}
+              onToggleResolved={onToggleResolved}
             />
           )}
           {resolvedUrl && kind === 'image' && (

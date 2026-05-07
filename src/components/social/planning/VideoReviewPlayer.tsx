@@ -16,7 +16,7 @@
  */
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { MessageSquarePlus, Play, Pause, Volume2, VolumeX, Maximize2, X } from 'lucide-react'
+import { MessageSquarePlus, Play, Pause, Volume2, VolumeX, Maximize2, X, Check, Eye, EyeOff } from 'lucide-react'
 
 export interface VideoAnnotation {
   id: string
@@ -25,6 +25,7 @@ export interface VideoAnnotation {
   author_name: string
   author_color?: string
   is_self: boolean
+  resolved_at: string | null
 }
 
 export interface VideoReviewPlayerHandle {
@@ -37,6 +38,7 @@ interface VideoReviewPlayerProps {
   annotations: VideoAnnotation[]
   onAddAnnotation: (timestampSeconds: number, body: string) => Promise<void>
   onAnnotationClick?: (annotationId: string) => void
+  onToggleResolved?: (annotationId: string, resolved: boolean) => Promise<void>
 }
 
 function formatTime(seconds: number): string {
@@ -47,7 +49,7 @@ function formatTime(seconds: number): string {
 }
 
 const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerProps>(
-  function VideoReviewPlayer({ url, annotations, onAddAnnotation, onAnnotationClick }, ref) {
+  function VideoReviewPlayer({ url, annotations, onAddAnnotation, onAnnotationClick, onToggleResolved }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const timelineRef = useRef<HTMLDivElement>(null)
     const playerWrapRef = useRef<HTMLDivElement>(null)
@@ -64,6 +66,8 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
     const [dismissedId, setDismissedId] = useState<string | null>(null)
     const [aspectRatio, setAspectRatio] = useState<number | null>(null)
     const [playerWidth, setPlayerWidth] = useState<number | null>(null)
+    const [showResolved, setShowResolved] = useState(false)
+    const [togglingId, setTogglingId] = useState<string | null>(null)
 
     useImperativeHandle(ref, () => ({
       seek: (s: number) => {
@@ -255,11 +259,12 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
               background: 'var(--color-primary)', opacity: 0.6, borderRadius: 2,
             }} />
             {/* Markers */}
-            {duration > 0 && annotations.map((a) => {
+            {duration > 0 && annotations.filter(a => showResolved || !a.resolved_at).map((a) => {
               const left = `${Math.max(0, Math.min(100, (a.video_timestamp_seconds / duration) * 100))}%`
               const isHovered = hoveredId === a.id
               const isClicked = clickedId === a.id
               const showPopup = isClicked || (isHovered && !clickedId)
+              const isResolved = !!a.resolved_at
               return (
                 <div
                   key={a.id}
@@ -293,11 +298,12 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
                       height: 16,
                       marginTop: 4,
                       padding: 0,
-                      background: a.author_color ?? '#f59e0b',
+                      background: isResolved ? 'var(--text-tertiary)' : (a.author_color ?? '#f59e0b'),
                       border: '2px solid var(--bg-secondary)',
                       borderRadius: 4,
                       cursor: 'pointer',
                       pointerEvents: 'auto',
+                      opacity: isResolved ? 0.5 : 1,
                       transform: isHovered || isClicked ? 'scale(1.25)' : 'scale(1)',
                       transition: 'transform 0.12s',
                       boxShadow: isClicked ? `0 0 0 3px ${a.author_color ?? '#f59e0b'}33` : 'none',
@@ -375,6 +381,26 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           </button>
         </div>
 
+        {/* Toggle visibilite des annotations resolues (apparait uniquement s'il y en a) */}
+        {annotations.some(a => a.resolved_at) && (
+          <button
+            onClick={() => setShowResolved(v => !v)}
+            style={{
+              alignSelf: isPortrait ? 'center' : 'flex-start',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '5px 10px', fontSize: 11, fontWeight: 600,
+              color: 'var(--text-secondary)',
+              background: 'transparent',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 6, cursor: 'pointer',
+            }}
+            title={showResolved ? 'Masquer les annotations résolues' : 'Afficher les annotations résolues'}
+          >
+            {showResolved ? <EyeOff size={12} /> : <Eye size={12} />}
+            {showResolved ? 'Masquer résolues' : `Voir résolues (${annotations.filter(a => a.resolved_at).length})`}
+          </button>
+        )}
+
         {/* Panneau "annotation active" : auto-affiche celle la plus proche du playhead.
             Click marker = override manuel. X = dismiss tant qu'on reste sur ce timestamp. */}
         {(() => {
@@ -383,9 +409,11 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
 
           if (!activeAnnotation) {
             // Auto: derniere annotation passee dans les 8 dernieres secondes du playhead
+            // (skip resolved sauf si showResolved actif)
             const TOLERANCE_S = 8
             const candidates = annotations.filter(
               (a) =>
+                (showResolved || !a.resolved_at) &&
                 a.video_timestamp_seconds <= currentTime + 0.3 &&
                 a.video_timestamp_seconds >= currentTime - TOLERANCE_S,
             )
@@ -400,11 +428,14 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
           // Si l'utilisateur a fait X sur cette annotation, ne pas la re-afficher tant qu'elle est encore active
           if (activeAnnotation && dismissedId === activeAnnotation.id) return null
           if (!activeAnnotation) return null
+          const annotForRender = activeAnnotation
+          const isResolved = !!annotForRender.resolved_at
+          const accentColor = isResolved ? 'var(--text-tertiary)' : (annotForRender.author_color ?? '#f59e0b')
           return (
             <div style={{
               padding: '10px 12px',
               background: 'var(--bg-elevated)',
-              border: `1px solid ${activeAnnotation.author_color ?? '#f59e0b'}`,
+              border: `1px solid ${accentColor}`,
               borderLeftWidth: 4,
               borderRadius: 8,
               fontSize: 12,
@@ -412,6 +443,7 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
               flexDirection: 'column',
               gap: 6,
               width: controlsWidth, maxWidth: '100%',
+              opacity: isResolved ? 0.7 : 1,
             }}>
               <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
@@ -422,31 +454,67 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
                 }}>
                   <span style={{
                     fontFamily: 'monospace', padding: '2px 6px',
-                    background: activeAnnotation.author_color ?? '#f59e0b',
+                    background: accentColor,
                     color: '#fff', borderRadius: 3, fontSize: 10,
                   }}>
-                    {formatTime(activeAnnotation.video_timestamp_seconds)}
+                    {formatTime(annotForRender.video_timestamp_seconds)}
                   </span>
-                  <span>{activeAnnotation.author_name}</span>
+                  <span>{annotForRender.author_name}</span>
+                  {isResolved && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, color: '#10b981',
+                      padding: '1px 6px', background: 'rgba(16,185,129,0.12)', borderRadius: 3,
+                    }}>RÉSOLU</span>
+                  )}
                 </div>
-                <button
-                  onClick={() => {
-                    setClickedId(null)
-                    if (activeAnnotation) setDismissedId(activeAnnotation.id)
-                  }}
-                  aria-label="Fermer"
-                  style={{
-                    width: 22, height: 22, padding: 0, display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    background: 'transparent', color: 'var(--text-tertiary)',
-                    border: 'none', borderRadius: 4, cursor: 'pointer',
-                  }}
-                >
-                  <X size={14} />
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {onToggleResolved && (
+                    <button
+                      onClick={async () => {
+                        setTogglingId(annotForRender.id)
+                        try { await onToggleResolved(annotForRender.id, !isResolved) }
+                        finally { setTogglingId(null) }
+                      }}
+                      disabled={togglingId === annotForRender.id}
+                      style={{
+                        height: 22, padding: '0 8px', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', gap: 4,
+                        fontSize: 11, fontWeight: 600,
+                        background: isResolved ? 'transparent' : 'rgba(16,185,129,0.15)',
+                        color: isResolved ? 'var(--text-tertiary)' : '#10b981',
+                        border: `1px solid ${isResolved ? 'var(--border-primary)' : 'rgba(16,185,129,0.4)'}`,
+                        borderRadius: 4, cursor: 'pointer',
+                      }}
+                      title={isResolved ? 'Réouvrir cette annotation' : 'Marquer comme résolu (corrigé dans la nouvelle version)'}
+                    >
+                      <Check size={11} />
+                      {isResolved ? 'Réouvrir' : 'Résolu'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setClickedId(null)
+                      setDismissedId(annotForRender.id)
+                    }}
+                    aria-label="Fermer"
+                    style={{
+                      width: 22, height: 22, padding: 0, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      background: 'transparent', color: 'var(--text-tertiary)',
+                      border: 'none', borderRadius: 4, cursor: 'pointer',
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               </div>
-              <div style={{ lineHeight: 1.5, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
-                {activeAnnotation.body}
+              <div style={{
+                lineHeight: 1.5,
+                color: 'var(--text-primary)',
+                whiteSpace: 'pre-wrap',
+                textDecoration: isResolved ? 'line-through' : 'none',
+              }}>
+                {annotForRender.body}
               </div>
             </div>
           )
