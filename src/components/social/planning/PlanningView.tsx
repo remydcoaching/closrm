@@ -107,7 +107,12 @@ export default function PlanningView() {
       setSelectedSlotId(json.data.id)
       reload()
     } else {
-      toast.error('Erreur création slot', json.error ?? 'inconnue')
+      const errMsg = typeof json.error === 'string'
+        ? json.error
+        : json.error?.formErrors?.join(', ')
+          || Object.values(json.error?.fieldErrors ?? {}).flat().join(', ')
+          || 'inconnue'
+      toast.error('Erreur création slot', errMsg)
     }
   }
 
