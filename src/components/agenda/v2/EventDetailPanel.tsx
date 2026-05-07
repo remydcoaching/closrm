@@ -644,42 +644,83 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
         </div>
       )}
 
-      {/* Actions footer — pending: just cancel button */}
+      {/* Actions footer — pending: cancel with inline confirmation */}
       {isBooking && status === 'pending' && onDelete && (
         <div
           style={{
             display: 'flex',
+            flexDirection: 'column',
             gap: 8,
             padding: 12,
             borderTop: '1px solid var(--agenda-grid-line)',
             flexShrink: 0,
           }}
         >
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ? Il sera supprimé définitivement.')) {
-                onDelete(event)
-              }
-            }}
-            style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              padding: '8px 12px',
-              borderRadius: 6,
-              border: '1px solid var(--border-secondary)',
-              background: 'transparent',
-              color: '#ef4444',
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            <Trash2 size={13} /> Annuler ce RDV
-          </button>
+          {showDeleteScope ? (
+            <>
+              <p style={{ margin: 0, fontSize: 12, color: '#ef4444', fontWeight: 500 }}>
+                Êtes-vous sûr de vouloir annuler ce rendez-vous ? Il sera supprimé définitivement.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => { setShowDeleteScope(false); onDelete(event) }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Oui, annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteScope(false)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border-secondary)',
+                    background: 'transparent',
+                    color: 'var(--text-secondary)',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Garder le RDV
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowDeleteScope(true)}
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: '1px solid var(--border-secondary)',
+                background: 'transparent',
+                color: '#ef4444',
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              <Trash2 size={13} /> Annuler ce RDV
+            </button>
+          )}
         </div>
       )}
 
