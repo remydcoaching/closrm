@@ -14,6 +14,7 @@ interface PublicationStepProps {
   uploading: boolean
   uploadPct?: number
   onSchedule: () => void
+  onPublishNow?: () => void
   scheduling: boolean
   readOnly: boolean
   scheduledTime: string
@@ -45,6 +46,7 @@ export default function PublicationStep({
   uploading,
   uploadPct = 0,
   onSchedule,
+  onPublishNow,
   scheduling,
   readOnly,
   scheduledTime,
@@ -238,15 +240,27 @@ export default function PublicationStep({
         </Field>
       )}
 
-      {/* 5. Schedule button */}
+      {/* 5. Schedule + Publish now buttons */}
       {canSchedule && (
-        <button
-          onClick={onSchedule}
-          disabled={scheduling}
-          style={scheduleBtnStyle}
-        >
-          {scheduling ? 'Programmation…' : 'Programmer la publication'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={onSchedule}
+            disabled={scheduling}
+            style={{ ...scheduleBtnStyle, flex: 1 }}
+          >
+            {scheduling ? 'Programmation…' : 'Programmer la publication'}
+          </button>
+          {onPublishNow && (
+            <button
+              onClick={onPublishNow}
+              disabled={scheduling}
+              title="Publier immediatement (ignore l'heure programmee)"
+              style={publishNowBtnStyle}
+            >
+              {scheduling ? '…' : 'Publier maintenant'}
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -486,4 +500,17 @@ const scheduleBtnStyle: React.CSSProperties = {
   border: 'none',
   borderRadius: 8,
   cursor: 'pointer',
+}
+
+const publishNowBtnStyle: React.CSSProperties = {
+  marginTop: 8,
+  padding: '12px 18px',
+  fontSize: 14,
+  fontWeight: 700,
+  color: 'var(--text-primary)',
+  background: 'transparent',
+  border: '1px solid var(--border-primary)',
+  borderRadius: 8,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
 }

@@ -525,6 +525,58 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     }
   }, [slot, slotId, scheduledTime, toast, onChange, onClose])
 
+  // ─── Publier maintenant (immediat, ignore l'heure programmee) ───────────
+
+  const publishNow = useCallback(async () => {
+    if (!slot) return
+    const activePubs = (slot.publications ?? []).filter((p) => p.platform)
+    if (activePubs.length === 0) {
+      toast.error('Plateforme manquante', 'Sélectionne au moins une plateforme.')
+      return
+    }
+    if (!slot.media_urls || slot.media_urls.length === 0) {
+      toast.error('Média manquant', 'Au moins un média est requis.')
+      return
+    }
+    const ytPub = (slot.publications ?? []).find((p) => p.platform === 'youtube')
+    if (ytPub) {
+      const ytTitle = ((ytPub.config as Record<string, unknown> | undefined)?.title as string | undefined)?.trim()
+      if (!ytTitle) {
+        toast.error('Titre YouTube manquant', 'Renseigne un titre avant de publier.')
+        return
+      }
+    }
+    setScheduling(true)
+    try {
+      // scheduled_at = now → le worker de publication va le picker immediatement
+      const nowIso = new Date().toISOString()
+      const res = await fetch(`/api/social/posts/${slotId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'scheduled',
+          scheduled_at: nowIso,
+          publications: activePubs.map((p) => ({
+            platform: p.platform,
+            config: p.config,
+            scheduled_at: nowIso,
+          })),
+        }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error((j as { error?: string }).error ?? `Erreur ${res.status}`)
+      }
+      toast.success('Publication lancée', 'Le slot va être publié dans la minute qui vient.')
+      onChange()
+      onClose()
+    } catch (e) {
+      toast.error('Erreur publication', (e as Error).message)
+    } finally {
+      setScheduling(false)
+    }
+  }, [slot, slotId, toast, onChange, onClose])
+
   // ─── Transition step ────────────────────────────────────────────────────
 
   const transition = useCallback(async () => {
@@ -728,6 +780,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               uploading={uploadingMedia}
               uploadPct={uploadMediaPct}
               onSchedule={schedule}
+              onPublishNow={publishNow}
               scheduling={scheduling}
               readOnly={readOnly}
               scheduledTime={scheduledTime}
