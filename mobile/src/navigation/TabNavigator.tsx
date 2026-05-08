@@ -6,7 +6,7 @@ import LeadsStack from './stacks/LeadsStack'
 import CallsStack from './stacks/CallsStack'
 import MessagesStack from './stacks/MessagesStack'
 import MoreStack from './stacks/MoreStack'
-import { PlaceholderScreen } from '../components/screens/Placeholder'
+import { PulseScreen } from '../app/pulse/PulseScreen'
 
 const Tab = createBottomTabNavigator<TabParamList>()
 
@@ -50,9 +50,7 @@ export default function TabNavigator() {
       <Tab.Screen name="LeadsTab" component={LeadsStack} options={{ title: 'Leads' }} />
       <Tab.Screen name="CallsTab" component={CallsStack} options={{ title: 'Calls' }} />
       <Tab.Screen name="MessagesTab" component={MessagesStack} options={{ title: 'Messages' }} />
-      <Tab.Screen name="PulseTab" options={{ title: 'Pulse' }}>
-        {() => <PlaceholderScreen name="Pulse" />}
-      </Tab.Screen>
+      <Tab.Screen name="PulseTab" component={PulseScreen} options={{ title: 'Pulse' }} />
       <Tab.Screen name="MoreTab" component={MoreStack} options={{ title: 'Plus' }} />
     </Tab.Navigator>
   )

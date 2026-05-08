@@ -29,16 +29,16 @@ EAS Build au lieu de Xcode/Android Studio direct.
 | # | Task | Statut |
 |---|------|--------|
 | 7 | Leads List flat | ✅ | useLeads + LeadCard + segments/filters/search/realtime |
-| 8 | Leads List groupée + priorité | ⏳ |
+| 8 | Leads List groupée + priorité | 🟠 reportée | flat suffit en MVP — vues custom à brancher après build preview |
 | 9 | Lead Detail | ✅ | useLead + hero + KPI + CTA + quick actions + infos + tags + notes |
 | 10 | Calls Day | ✅ | useCalls + DayStrip + CallSlot + KPI summary + flatlist |
 | 11 | Call Detail | ✅ | useCall + countdown hero + Zoom CTA + contexte/objectif + notes auto-save |
-| 12 | Schedule Sheet | ⏳ |
+| 12 | Schedule Sheet | 🟠 reportée | bottom sheet + time picker + détection conflits — gros chunk, à faire après build preview |
 | 13 | Inbox | ✅ | useConversations + ConvRow + sections non-lus/précédemment |
 | 14 | Conversation | ✅ | useMessages + bubbles + composer + lead context strip |
-| 15 | Notifications + table SQL | ⏳ |
-| 16 | Push notifications | ⏳ |
-| 17 | Pulse Dashboard | ⏳ |
+| 15 | Notifications + table SQL | ✅ | migration 076 + useNotifications + filterChips + group day + mark all read |
+| 16 | Push notifications | 🟠 reportée | nécessite expo-notifications + APNs/FCM + backend dispatch — à faire après build preview |
+| 17 | Pulse Dashboard | ✅ | usePulseKpis + hero revenue + 4 KPI cards + funnel 30j + activity heatmap 7j |
 
 ## Historique
 
