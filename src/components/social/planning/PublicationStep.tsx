@@ -16,6 +16,8 @@ interface PublicationStepProps {
   uploadPct?: number
   onSchedule: () => void
   onPublishNow?: () => void
+  /** Reprogrammer un slot deja `scheduled` : update scheduled_at + plan_date. */
+  onReschedule?: (date: string, time: string) => void
   scheduling: boolean
   /** True quand 'Publier maintenant' tourne (vs 'Programmer'). */
   publishingNow?: boolean
@@ -51,6 +53,7 @@ export default function PublicationStep({
   uploadPct = 0,
   onSchedule,
   onPublishNow,
+  onReschedule,
   scheduling,
   publishingNow = false,
   readOnly,
@@ -329,6 +332,13 @@ export default function PublicationStep({
             date={(slot.plan_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10)}
             time={scheduledTime}
             onChange={(date, time) => {
+              const isScheduled = slot.status === 'scheduled'
+              if (isScheduled && onReschedule) {
+                // Reprogrammation: PATCH scheduled_at + plan_date + pubs.scheduled_at.
+                onReschedule(date, time)
+                if (time !== scheduledTime) onScheduledTimeChange(time)
+                return
+              }
               if (date !== (slot.plan_date ?? '').slice(0, 10)) {
                 // Slot manuellement deplace: on le detache de la trame
                 // (slot_index=null) sinon l'index unique
@@ -338,7 +348,7 @@ export default function PublicationStep({
               }
               if (time !== scheduledTime) onScheduledTimeChange(time)
             }}
-            disabled={readOnly}
+            disabled={readOnly || slot.status === 'published' || slot.status === 'publishing'}
           />
         </Field>
       )}

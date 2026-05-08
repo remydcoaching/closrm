@@ -120,6 +120,15 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
         const fetched = j.data as SocialPostWithPublications
         setSlot(fetched)
         setActiveStep(getDefaultStep(fetched))
+        // Si le slot est déjà programmé, on initialise le picker depuis
+        // scheduled_at (sinon il afficherait toujours 18:00 + plan_date au
+        // lieu de l'heure réelle de programmation).
+        if (fetched.scheduled_at) {
+          const d = new Date(fetched.scheduled_at)
+          const hh = String(d.getHours()).padStart(2, '0')
+          const mm = String(d.getMinutes()).padStart(2, '0')
+          setScheduledTime(`${hh}:${mm}`)
+        }
       })
       .catch(() => {
         if (!cancelled) toast.error('Erreur chargement', 'Impossible de charger le slot.')
@@ -574,6 +583,46 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     }
   }, [slot, slotId, scheduledTime, toast, onChange, onClose])
 
+  // ─── Reprogrammer un slot deja `scheduled` ──────────────────────────────
+  // Debounce naturel via le picker (l'user click une nouvelle date+time, on
+  // PATCH une seule fois). Pas de loading state visible, juste un toast.
+  const reschedule = useCallback(async (date: string, time: string) => {
+    if (!slot) return
+    const built = new Date(`${date}T${time}:00`)
+    if (isNaN(built.getTime()) || built.getTime() <= Date.now()) {
+      toast.error('Date invalide', 'La date doit être future.')
+      return
+    }
+    const scheduledAt = built.toISOString()
+    try {
+      const activePubs = (slot.publications ?? []).filter((p) => p.platform)
+      const res = await fetch(`/api/social/posts/${slotId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan_date: date,
+          scheduled_at: scheduledAt,
+          // re-sync chaque pub pour que le cron prenne la bonne heure
+          publications: activePubs.map((p) => ({
+            platform: p.platform,
+            config: p.config,
+            scheduled_at: scheduledAt,
+          })),
+        }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error((j as { error?: string }).error ?? `Erreur ${res.status}`)
+      }
+      const j = await res.json()
+      if (j.data) setSlot(j.data as SocialPostWithPublications)
+      toast.success('Reprogrammé', `Nouvelle date : ${built.toLocaleString('fr-FR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })}`)
+      onChange()
+    } catch (e) {
+      toast.error('Erreur reprogrammation', (e as Error).message)
+    }
+  }, [slot, slotId, toast, onChange])
+
   // ─── Publier maintenant (immediat, ignore l'heure programmee) ───────────
 
   const publishNow = useCallback(async () => {
@@ -891,6 +940,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               uploadPct={uploadMediaPct}
               onSchedule={schedule}
               onPublishNow={publishNow}
+              onReschedule={reschedule}
               scheduling={scheduling}
               publishingNow={publishingNow}
               readOnly={readOnly}
