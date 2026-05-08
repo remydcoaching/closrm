@@ -34,8 +34,8 @@ EAS Build au lieu de Xcode/Android Studio direct.
 | 10 | Calls Day | ✅ | useCalls + DayStrip + CallSlot + KPI summary + flatlist |
 | 11 | Call Detail | ✅ | useCall + countdown hero + Zoom CTA + contexte/objectif + notes auto-save |
 | 12 | Schedule Sheet | ⏳ |
-| 13 | Inbox | ⏳ |
-| 14 | Conversation | ⏳ |
+| 13 | Inbox | ✅ | useConversations + ConvRow + sections non-lus/précédemment |
+| 14 | Conversation | ✅ | useMessages + bubbles + composer + lead context strip |
 | 15 | Notifications + table SQL | ⏳ |
 | 16 | Push notifications | ⏳ |
 | 17 | Pulse Dashboard | ⏳ |
