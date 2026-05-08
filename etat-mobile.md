@@ -17,8 +17,8 @@ EAS Build au lieu de Xcode/Android Studio direct.
 
 | # | Task | Statut | Notes |
 |---|------|--------|-------|
-| 1 | Setup RN CLI + NativeWind | 🟡 en cours | init lancé |
-| 2 | Dossier `shared/` | ⏳ | |
+| 1 | Setup Expo + NativeWind | ✅ | tsc OK, App boot avec tokens. Switch RN CLI→Expo (cf ameliorations) |
+| 2 | Dossier `shared/` | ✅ | types web extraits + zod schemas leads/calls |
 | 3 | Services Supabase + API | ⏳ | |
 | 4 | Navigation (tab + stacks) | ⏳ | |
 | 5 | Design system (composants UI) | ⏳ | |

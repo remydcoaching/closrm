@@ -1,7 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
 import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import type { Lead } from '@shared/types';
 import './global.css';
+
+// Sanity check: l'alias @shared/* compile (pas d'usage runtime).
+const _typeProbe: Lead | null = null;
+void _typeProbe;
 
 export default function App() {
   return (
