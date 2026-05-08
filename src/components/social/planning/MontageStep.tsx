@@ -93,8 +93,8 @@ export default function MontageStep({
         />
       </Field>
 
-      {/* Versions du montage final (V1, V2, V3...) — visible si plus d'une */}
-      {(slot.final_versions?.length ?? 0) > 1 && (
+      {/* Versions du montage final (V1, V2, V3...) — visible des V1 */}
+      {(slot.final_versions?.length ?? 0) >= 1 && (
         <Field label="Versions livrées">
           <VersionsList versions={slot.final_versions ?? []} currentUrl={slot.final_url ?? null} />
         </Field>
