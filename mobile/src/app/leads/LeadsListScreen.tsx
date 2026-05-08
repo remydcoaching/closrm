@@ -261,10 +261,52 @@ export function LeadsListScreen() {
         <FlatList
           data={leads}
           keyExtractor={(l) => l.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 14 }}
-          renderItem={({ item }) => (
+          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+          /* Wrap manuel : on positionne le 1er row avec borderRadius top
+             et le dernier avec borderRadius bottom → effet 'section card'
+             iOS-native (style Settings/Mail). Plus de recycling FlatList
+             si liste très longue, mais OK pour <500 leads. */
+          CellRendererComponent={({ children, index, style, ...rest }) => {
+            const isFirst = index === 0
+            const isLast = index === leads.length - 1
+            return (
+              <View
+                {...rest}
+                style={[
+                  style,
+                  {
+                    backgroundColor: colors.bgElevated,
+                    borderTopLeftRadius: isFirst ? 14 : 0,
+                    borderTopRightRadius: isFirst ? 14 : 0,
+                    borderBottomLeftRadius: isLast ? 14 : 0,
+                    borderBottomRightRadius: isLast ? 14 : 0,
+                    overflow: 'hidden',
+                    borderTopWidth: isFirst ? 1 : 0,
+                    borderBottomWidth: isLast ? 1 : 0,
+                    borderLeftWidth: 1,
+                    borderRightWidth: 1,
+                    borderColor: colors.border,
+                    ...(isFirst
+                      ? {
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.5,
+                          shadowRadius: 8,
+                          elevation: 3,
+                        }
+                      : null),
+                  },
+                ]}
+              >
+                {children}
+              </View>
+            )
+          }}
+          renderItem={({ item, index }) => (
             <LeadCard
               lead={item}
+              isInSection
+              isLast={index === leads.length - 1}
               onPress={() => navigation.navigate('LeadDetail', { leadId: item.id })}
             />
           )}
@@ -273,7 +315,7 @@ export function LeadsListScreen() {
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 15 }}>
                 Aucun lead pour l'instant.
               </Text>
             </View>

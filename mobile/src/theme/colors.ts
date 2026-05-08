@@ -27,12 +27,15 @@ interface ColorTokens {
 }
 
 export const darkColors: ColorTokens = {
-  bgPrimary: '#09090b',
-  bgSecondary: '#101012',
-  // bgElevated #2c2c30 — plus visible sur OLED noir profond.
-  bgElevated: '#2c2c30',
+  bgPrimary: '#000000',
+  bgSecondary: '#1c1c1e',
+  // bgElevated #2c2c2e — match exact des Group cells iOS natif (Settings,
+  // Mail). Sur OLED, le pas dramatique entre bgPrimary noir true black
+  // et bgElevated rend chaque card instantanément distincte.
+  bgElevated: '#2c2c2e',
   sheet: '#1c1c1e',
-  border: '#454549',
+  // border iOS natif separator dark : rgba(84, 84, 88, 0.65).
+  border: '#48484a',
   primary: '#00C853',
   warning: '#f59e0b',
   danger: '#ef4444',
