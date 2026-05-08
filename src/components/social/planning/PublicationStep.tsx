@@ -571,6 +571,8 @@ const inputStyle: React.CSSProperties = {
   border: '1px solid var(--border-primary)',
   borderRadius: 8,
   outline: 'none',
+  // Force dark theme on native pickers (calendar popup, time spinner, etc.)
+  colorScheme: 'dark',
 }
 
 const textareaStyle: React.CSSProperties = {
