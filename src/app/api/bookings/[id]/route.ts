@@ -257,6 +257,13 @@ export async function DELETE(
 
     if (effectiveScope === 'this') {
       cancelBookingReminders(id).catch(() => {})
+      // Fetch call_id before deleting the booking
+      const { data: bookingWithCall } = await supabase
+        .from('bookings')
+        .select('call_id')
+        .eq('id', id)
+        .eq('workspace_id', workspaceId)
+        .single()
       const { data, error } = await supabase
         .from('bookings')
         .delete()
@@ -267,6 +274,9 @@ export async function DELETE(
       if (error || !data) return NextResponse.json({ error: 'Réservation non trouvée' }, { status: 404 })
       if (bookingToDelete.google_event_id) {
         deleteGoogleCalendarEvent(workspaceId, bookingToDelete.google_event_id).catch(() => {})
+      }
+      if (bookingWithCall?.call_id) {
+        supabase.from('calls').delete().eq('id', bookingWithCall.call_id).eq('workspace_id', workspaceId).then(() => {})
       }
       return NextResponse.json({ data, deleted_count: 1 })
     }

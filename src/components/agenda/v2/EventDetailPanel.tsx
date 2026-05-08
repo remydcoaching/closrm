@@ -594,53 +594,58 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
         )}
       </div>
 
-      {/* Picker scope de suppression — apparaît au-dessus du footer pour une série */}
-      {showDeleteScope && onDelete && (
+      {/* Confirmation de suppression — inline, pas de popup navigateur */}
+      {showDeleteScope && onDelete && status !== 'pending' && (
         <div
-          role="dialog"
-          aria-label="Choisir l'étendue de la suppression"
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 6,
-            padding: '12px 14px 8px',
+            gap: 8,
+            padding: '12px 14px',
             borderTop: '1px solid var(--agenda-grid-line)',
             background: 'var(--bg-elevated)',
             flexShrink: 0,
           }}
         >
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-            Cet événement fait partie d&apos;une série. Que veux-tu supprimer ?
+          <p style={{ margin: 0, fontSize: 12, color: '#ef4444', fontWeight: 500 }}>
+            Supprimer &laquo;&nbsp;{event.title}&nbsp;&raquo; ?
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => { setShowDeleteScope(false); onDelete(event) }}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: 'none',
+                background: '#ef4444',
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Oui, supprimer
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeleteScope(false)}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: '1px solid var(--border-secondary)',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Annuler
+            </button>
           </div>
-          <ScopeButton
-            label="Cet événement uniquement"
-            onClick={() => { setShowDeleteScope(false); onDelete(event, 'this') }}
-          />
-          <ScopeButton
-            label="Cet événement et les suivants"
-            onClick={() => { setShowDeleteScope(false); onDelete(event, 'future') }}
-          />
-          <ScopeButton
-            label="Toute la série"
-            onClick={() => { setShowDeleteScope(false); onDelete(event, 'all') }}
-            danger
-          />
-          <button
-            type="button"
-            onClick={() => setShowDeleteScope(false)}
-            style={{
-              alignSelf: 'flex-end',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-tertiary)',
-              fontSize: 11,
-              padding: '4px 6px',
-              cursor: 'pointer',
-              marginTop: 2,
-            }}
-          >
-            Annuler
-          </button>
         </div>
       )}
 
@@ -806,13 +811,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
               {onDelete && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isRecurring) {
-                      setShowDeleteScope(true)
-                    } else if (confirm(`Supprimer "${event.title}" ?`)) {
-                      onDelete(event)
-                    }
-                  }}
+                  onClick={() => setShowDeleteScope(true)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
