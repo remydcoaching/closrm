@@ -42,16 +42,21 @@ const last7Days = () => {
 export function usePulseKpis() {
   const [kpis, setKpis] = useState<PulseKpis | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const fetch = useCallback(async () => {
     setLoading(true)
+    setError(null)
 
     const monthStart = startOfMonth()
     const thirtyDaysAgo = last30Days()
     const weekStart = last7Days()
 
-    // Toutes les queries en parallèle.
-    const [dealsRes, callsRes, leadsRes, leads30Res, deals30Res, leadsWeekRes] = await Promise.all([
+    let dealsRes, callsRes, leadsRes, leads30Res, deals30Res, leadsWeekRes
+    try {
+      // Toutes les queries en parallèle. Promise.all rejecte au premier
+      // fail → on wrap pour surface l'erreur et garder l'état précédent.
+      ;[dealsRes, callsRes, leadsRes, leads30Res, deals30Res, leadsWeekRes] = await Promise.all([
       // Revenue du mois (deals créés dans le mois courant)
       supabase
         .from('deals')
@@ -83,6 +88,11 @@ export function usePulseKpis() {
         .select('created_at')
         .gte('created_at', weekStart.toISOString()),
     ])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur chargement KPIs')
+      setLoading(false)
+      return
+    }
 
     const deals = dealsRes.data ?? []
     const calls = callsRes.data ?? []
@@ -139,5 +149,5 @@ export function usePulseKpis() {
     void fetch()
   }, [fetch])
 
-  return { kpis, loading, refetch: fetch }
+  return { kpis, loading, error, refetch: fetch }
 }

@@ -1,3 +1,9 @@
+// IMPORTANT — Expo Go (SDK 54+) ne supporte plus pleinement les push
+// notifications sur iOS : `getExpoPushTokenAsync` peut échouer silencieusement
+// ou retourner un token qui ne reçoit jamais de payload. Pour tester les
+// push en vrai, il faut un Development Build (`eas build --profile development`).
+// En Expo Go, on récupère le token mais le banner de réception ne marchera
+// pas en background — c'est une limitation Apple+Expo, pas un bug du code.
 import * as Notifications from 'expo-notifications'
 import * as Device from 'expo-device'
 import Constants from 'expo-constants'

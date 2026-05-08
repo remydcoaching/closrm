@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { LeadsStackParamList } from '../../navigation/types'
 import { useLeads } from '../../hooks/useLeads'
 import { useAuth } from '../../hooks/useAuth'
+import { useDebounce } from '../../hooks/useDebounce'
 import { LeadCard } from '../../components/leads/LeadCard'
 import { LeadCardLarge } from '../../components/leads/LeadCardLarge'
 import { NavLarge, SearchField, Segmented, FilterChips, FAB, NavIcon } from '../../components/ui'
@@ -138,10 +139,14 @@ export function LeadsListScreen() {
   // pas de sens (la vue regroupe déjà par statut, ou trie par urgence).
   const effectiveStatus = viewMode === 'flat' ? status : 'tous'
 
+  // Debounce search 300ms : sans ça chaque keystroke spam une nouvelle
+  // requête Supabase + résoudre les abonnements realtime → UX laggy.
+  const debouncedSearch = useDebounce(search, 300)
+
   const { leads, loading, refetch } = useLeads({
     segment,
     status: effectiveStatus,
-    search,
+    search: debouncedSearch,
     myUserId: user?.id,
   })
 

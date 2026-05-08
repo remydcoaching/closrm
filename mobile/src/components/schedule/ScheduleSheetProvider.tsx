@@ -1,6 +1,10 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native'
-import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet'
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetScrollView,
+  BottomSheetView,
+} from '@gorhom/bottom-sheet'
 import { Ionicons } from '@expo/vector-icons'
 import type { Lead, Call } from '@shared/types'
 import { Avatar, StatusBadge, Button, Segmented } from '../ui'
@@ -128,9 +132,20 @@ export function ScheduleSheetProvider({ children }: { children: React.ReactNode 
     return conflicts.has(`${isoDay(state.selectedDate)}-${state.hour}:${state.minute}`)
   }, [state, conflicts])
 
+  // Bloque la planification dans le passé (cf bug équivalent côté web
+  // social — l'UI laissait choisir une date passée puis le backend
+  // acceptait sans broncher).
+  const isInPast = useMemo(() => {
+    if (!state) return false
+    const scheduled = new Date(state.selectedDate)
+    scheduled.setHours(state.hour, state.minute, 0, 0)
+    return scheduled.getTime() < Date.now()
+  }, [state])
+
   const submit = useCallback(async () => {
     if (!state) return
     if (isCurrentSlotTaken) return
+    if (isInPast) return
     setState((s) => (s ? { ...s, submitting: true } : s))
     try {
       const scheduled = new Date(state.selectedDate)
@@ -187,6 +202,7 @@ export function ScheduleSheetProvider({ children }: { children: React.ReactNode 
               conflicts={conflicts}
               conflictsByDate={conflictsByDate}
               isTaken={isCurrentSlotTaken}
+              isInPast={isInPast}
               onTypeChange={(i) =>
                 setState((s) => (s ? { ...s, typeIdx: i as 0 | 1 | 2 } : s))
               }
@@ -209,6 +225,7 @@ interface ContentProps {
   conflicts: Set<string>
   conflictsByDate: Record<string, number>
   isTaken: boolean
+  isInPast: boolean
   onTypeChange: (i: number) => void
   onDayChange: (d: Date) => void
   onHourChange: (h: number) => void
@@ -223,6 +240,7 @@ function ScheduleSheetContent({
   conflicts,
   conflictsByDate,
   isTaken,
+  isInPast,
   onTypeChange,
   onDayChange,
   onHourChange,
@@ -233,7 +251,9 @@ function ScheduleSheetContent({
   const fullName = `${state.lead.first_name} ${state.lead.last_name}`.trim() || '—'
 
   return (
-    <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 24 }}>
+    // BottomSheetScrollView : version qui coopère avec le pan-down du sheet.
+    // Sans ça, scroller dans la sheet déclencherait parfois la fermeture.
+    <BottomSheetScrollView contentContainerStyle={{ gap: 16, paddingBottom: 24 }}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>
@@ -427,38 +447,46 @@ function ScheduleSheetContent({
         </View>
       </View>
 
-      {/* Conflict status */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-          backgroundColor: isTaken ? colors.danger + '22' : colors.primary + '15',
-          borderRadius: 10,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          borderWidth: 1,
-          borderColor: isTaken ? colors.danger + '55' : colors.primary + '40',
-        }}
-      >
-        <Ionicons
-          name={isTaken ? 'alert-circle' : 'checkmark-circle'}
-          size={16}
-          color={isTaken ? colors.danger : colors.primary}
-        />
-        <Text
-          style={{
-            color: isTaken ? colors.danger : colors.primary,
-            fontSize: 12,
-            fontWeight: '600',
-            flex: 1,
-          }}
-        >
-          {isTaken
-            ? `Conflit · un autre call est déjà à ${state.hour}h${state.minute.toString().padStart(2, '0')}`
-            : `Libre · ${state.hour}h${state.minute.toString().padStart(2, '0')}`}
-        </Text>
-      </View>
+      {/* Conflict / Past status */}
+      {(() => {
+        const isError = isTaken || isInPast
+        const message = isInPast
+          ? `Date passée — choisis une heure future`
+          : isTaken
+          ? `Conflit · un autre call est déjà à ${state.hour}h${state.minute.toString().padStart(2, '0')}`
+          : `Libre · ${state.hour}h${state.minute.toString().padStart(2, '0')}`
+        return (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              backgroundColor: isError ? colors.danger + '22' : colors.primary + '15',
+              borderRadius: 10,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderWidth: 1,
+              borderColor: isError ? colors.danger + '55' : colors.primary + '40',
+            }}
+          >
+            <Ionicons
+              name={isError ? 'alert-circle' : 'checkmark-circle'}
+              size={16}
+              color={isError ? colors.danger : colors.primary}
+            />
+            <Text
+              style={{
+                color: isError ? colors.danger : colors.primary,
+                fontSize: 12,
+                fontWeight: '600',
+                flex: 1,
+              }}
+            >
+              {message}
+            </Text>
+          </View>
+        )
+      })()}
 
       {/* CTAs */}
       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -474,7 +502,7 @@ function ScheduleSheetContent({
             }
             fullWidth
             size="md"
-            disabled={isTaken || state.submitting}
+            disabled={isTaken || isInPast || state.submitting}
             loading={state.submitting}
             onPress={onSubmit}
           />
@@ -482,6 +510,6 @@ function ScheduleSheetContent({
       </View>
 
       {state.submitting ? <ActivityIndicator color={colors.primary} /> : null}
-    </ScrollView>
+    </BottomSheetScrollView>
   )
 }

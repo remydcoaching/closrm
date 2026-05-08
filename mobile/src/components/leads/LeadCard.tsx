@@ -16,7 +16,9 @@ interface LeadCardProps {
 const formatRelative = (iso: string | null): string => {
   if (!iso) return '—'
   const d = new Date(iso)
-  const diffMin = Math.round((Date.now() - d.getTime()) / 60000)
+  // clamp à 0 : si la date est dans le futur (clock skew, timezone mal
+  // gérée côté serveur), on affiche "à l'instant" au lieu d'un truc bizarre.
+  const diffMin = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000))
   if (diffMin < 1) return "à l'instant"
   if (diffMin < 60) return `il y a ${diffMin} min`
   const diffH = Math.round(diffMin / 60)

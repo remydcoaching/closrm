@@ -29,5 +29,25 @@ export function useCall(callId: string | null) {
     void fetch()
   }, [fetch])
 
+  // Subscription temps réel ciblée : si CE call est mis à jour côté
+  // backend (notes auto-save concurrente, status passé à done…), on
+  // refetch. Évite que CallDetailScreen reste bloqué sur un état stale.
+  useEffect(() => {
+    if (!callId) return
+    const channel = supabase
+      .channel(`call-${callId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'calls', filter: `id=eq.${callId}` },
+        () => {
+          void fetch()
+        },
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [callId, fetch])
+
   return { call, loading, error, refetch: fetch }
 }

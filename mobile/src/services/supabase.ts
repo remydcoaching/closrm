@@ -9,7 +9,12 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   // Fail fast en dev pour éviter les bugs silencieux ; les valeurs viennent
   // du .env (gitignored), templated dans .env.example.
   throw new Error(
-    'EXPO_PUBLIC_SUPABASE_URL ou EXPO_PUBLIC_SUPABASE_ANON_KEY manquant. Copier .env.example vers .env et remplir.',
+    [
+      '[ClosRM Mobile] Variables Supabase manquantes.',
+      "Étapes : 1) cd mobile  2) cp .env.example .env",
+      '3) remplir EXPO_PUBLIC_SUPABASE_URL + EXPO_PUBLIC_SUPABASE_ANON_KEY (mêmes valeurs que .env.local du web)',
+      '4) restart le bundler Metro (touche `r` ou kill + npx expo start)',
+    ].join('\n'),
   )
 }
 

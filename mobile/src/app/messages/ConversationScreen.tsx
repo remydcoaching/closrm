@@ -77,22 +77,34 @@ export function ConversationScreen() {
   useEffect(() => {
     if (items.length === 0) return
     const t = setTimeout(() => {
-      listRef.current?.scrollToEnd({ animated: true })
+      // try/catch : sur certaines versions RN, scrollToEnd lève
+      // si la FlatList n'a pas encore mesuré ses items.
+      try {
+        listRef.current?.scrollToEnd({ animated: true })
+      } catch {
+        /* swallow — scroll best-effort */
+      }
     }, 50)
     return () => clearTimeout(t)
   }, [items.length])
 
+  const [sendError, setSendError] = useState<string | null>(null)
+
   const send = async () => {
-    if (!draft.trim() || sending) return
+    const text = draft.trim()
+    if (!text || sending) return
     setSending(true)
+    setSendError(null)
     try {
       await api.post('/api/instagram/messages', {
         conversation_id: conversationId,
-        text: draft.trim(),
+        text,
       })
+      // On clear le draft UNIQUEMENT après succès — sinon en cas d'erreur
+      // réseau le message est perdu et l'utilisateur doit retaper.
       setDraft('')
-    } catch {
-      // toast à brancher
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : 'Erreur envoi')
     } finally {
       setSending(false)
     }
@@ -217,6 +229,22 @@ export function ConversationScreen() {
             }}
           />
         )}
+
+        {sendError ? (
+          <View
+            style={{
+              backgroundColor: colors.danger + '22',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <Ionicons name="alert-circle" size={14} color={colors.danger} />
+            <Text style={{ color: colors.danger, fontSize: 12 }}>{sendError}</Text>
+          </View>
+        ) : null}
 
         {/* Composer */}
         <View
