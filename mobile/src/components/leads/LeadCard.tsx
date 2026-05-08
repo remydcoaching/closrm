@@ -50,6 +50,13 @@ export function LeadCard({ lead, onPress, variant = 'dense' }: LeadCardProps) {
         borderRadius: 14,
         borderWidth: 1,
         borderColor: colors.border,
+        // Shadow iOS — visible même sur OLED car le décalage crée un halo
+        // sombre + bord lumineux qui décolle la card du fond.
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 4,
         padding: variant === 'large' ? 16 : 14,
         flexDirection: 'row',
         alignItems: 'center',

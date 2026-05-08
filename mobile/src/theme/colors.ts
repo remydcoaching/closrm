@@ -1,16 +1,38 @@
-// Tokens couleurs (cf spec 6.1). Le primary mobile est vert (#00C853),
-// pas le rouge web — choix de design assumé par Rémy.
-export const colors = {
+// Theme tokens (dark + light).
+//
+// Architecture : `colors` est un Proxy qui lit dynamiquement le thème
+// courant du singleton `themeState`. Quand on toggle, on appelle
+// `setTheme()` puis on force un remount global (cf ThemeProvider).
+// Les composants importent `colors` comme avant, sans modification.
+
+export type Theme = 'dark' | 'light'
+
+interface ColorTokens {
+  bgPrimary: string
+  bgSecondary: string
+  bgElevated: string
+  sheet: string
+  border: string
+  primary: string
+  warning: string
+  danger: string
+  info: string
+  purple: string
+  cyan: string
+  pink: string
+  orange: string
+  textPrimary: string
+  textSecondary: string
+  textTertiary: string
+}
+
+export const darkColors: ColorTokens = {
   bgPrimary: '#09090b',
   bgSecondary: '#101012',
-  // bgElevated #232327 — niveau de contraste suffisant pour qu'une card
-  // soit clairement distincte du fond OLED noir profond. Sur écran OLED
-  // tout ce qui est en dessous de #1f1f20 disparaît visuellement.
-  bgElevated: '#232327',
+  // bgElevated #2c2c30 — plus visible sur OLED noir profond.
+  bgElevated: '#2c2c30',
   sheet: '#1c1c1e',
-  // border #3a3a3e — limite de card visible sur OLED. Avec #2e2e30 sur
-  // un bg #232327, la border se confond. Faut creuser à +1.5 stops.
-  border: '#3a3a3e',
+  border: '#454549',
   primary: '#00C853',
   warning: '#f59e0b',
   danger: '#ef4444',
@@ -20,15 +42,52 @@ export const colors = {
   pink: '#ec4899',
   orange: '#f97316',
   textPrimary: '#FFFFFF',
-  // textSecondary remonté de #A0A0A0 → #BFBFBF pour meilleure lisibilité
-  // sur fond noir profond. Le contraste WCAG AA passe de 6.2:1 à 8.2:1.
   textSecondary: '#BFBFBF',
-  // Tier intermédiaire pour les labels uppercase / metadata discrète.
   textTertiary: '#8A8A8A',
-} as const
+}
 
-// 8 teintes pour les avatars, dérivées de manière déterministe du nom
-// (même nom → même couleur, sans state à stocker).
+export const lightColors: ColorTokens = {
+  bgPrimary: '#FFFFFF',
+  bgSecondary: '#F5F5F7',
+  bgElevated: '#FFFFFF',
+  sheet: '#F2F2F7',
+  border: '#D1D1D6',
+  primary: '#00A040', // primary légèrement assombri pour le contraste sur blanc
+  warning: '#D97706',
+  danger: '#DC2626',
+  info: '#2563EB',
+  purple: '#7C3AED',
+  cyan: '#0891B2',
+  pink: '#DB2777',
+  orange: '#EA580C',
+  textPrimary: '#0A0A0A',
+  textSecondary: '#3F3F46',
+  textTertiary: '#71717A',
+}
+
+// Singleton mutable. Mis à jour par setTheme() + ThemeProvider remount.
+const themeState = {
+  current: 'dark' as Theme,
+}
+
+export function setTheme(t: Theme) {
+  themeState.current = t
+}
+
+export function getTheme(): Theme {
+  return themeState.current
+}
+
+// Proxy qui forwarde aux tokens du thème courant.
+// `colors.primary` → résout à `(themeState.current === 'dark' ? darkColors : lightColors).primary`
+export const colors: ColorTokens = new Proxy({} as ColorTokens, {
+  get(_target, prop: string) {
+    const map = themeState.current === 'dark' ? darkColors : lightColors
+    return (map as unknown as Record<string, string>)[prop]
+  },
+}) as ColorTokens
+
+// 8 teintes pour les avatars — fixes (les mêmes en dark/light).
 export const avatarHues = [
   '#ef4444',
   '#f97316',

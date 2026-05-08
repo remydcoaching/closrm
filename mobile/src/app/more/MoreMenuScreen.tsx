@@ -9,6 +9,7 @@ import { Avatar, Card, Divider } from '../../components/ui'
 import { useAuth } from '../../hooks/useAuth'
 import { signOut } from '../../services/auth'
 import { colors } from '../../theme/colors'
+import { useTheme } from '../../theme/ThemeProvider'
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'MoreMenu'>
 
@@ -58,6 +59,7 @@ function Row({ icon, label, hint, iconColor = colors.textSecondary, onPress }: R
 export function MoreMenuScreen() {
   const navigation = useNavigation<Nav>()
   const { user } = useAuth()
+  const { mode, setMode } = useTheme()
 
   const handleLogout = () => {
     Alert.alert('Déconnexion', 'Tu veux vraiment te déconnecter ?', [
@@ -87,6 +89,67 @@ export function MoreMenuScreen() {
                 Workspace ClosRM
               </Text>
             </View>
+          </View>
+        </Card>
+
+        {/* Apparence — toggle thème */}
+        <Card>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: 12,
+              fontWeight: '700',
+              letterSpacing: 0.5,
+              marginBottom: 10,
+            }}
+          >
+            APPARENCE
+          </Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 6,
+              backgroundColor: colors.bgSecondary,
+              borderRadius: 10,
+              padding: 4,
+            }}
+          >
+            {(['auto', 'light', 'dark'] as const).map((m) => {
+              const active = mode === m
+              const label = m === 'auto' ? 'Auto' : m === 'light' ? 'Clair' : 'Sombre'
+              const icon = m === 'auto' ? 'phone-portrait-outline' : m === 'light' ? 'sunny' : 'moon'
+              return (
+                <Pressable
+                  key={m}
+                  onPress={() => void setMode(m)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    backgroundColor: active ? colors.bgElevated : 'transparent',
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Ionicons
+                    name={icon as keyof typeof Ionicons.glyphMap}
+                    size={14}
+                    color={active ? colors.primary : colors.textSecondary}
+                  />
+                  <Text
+                    style={{
+                      color: active ? colors.textPrimary : colors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              )
+            })}
           </View>
         </Card>
 
