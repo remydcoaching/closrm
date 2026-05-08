@@ -24,15 +24,16 @@ export const updateBookingSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   scheduled_at: z.string().optional(),
   duration_minutes: z.number().int().min(5).max(480).optional(),
-  status: z.enum(['confirmed', 'cancelled', 'no_show', 'completed']).optional(),
+  status: z.enum(['pending', 'confirmed', 'cancelled', 'no_show', 'completed']).optional(),
   notes: z.string().max(5000).optional().nullable(),
+  notify_lead: z.boolean().optional(),
 })
 
 export const bookingFiltersSchema = z.object({
   date_start: z.string().optional(),
   date_end: z.string().optional(),
   calendar_id: z.string().uuid().optional(),
-  status: z.enum(['confirmed', 'cancelled', 'no_show', 'completed']).optional(),
+  status: z.enum(['pending', 'confirmed', 'cancelled', 'no_show', 'completed']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(100).default(50),
 })
@@ -41,6 +42,8 @@ export const publicBookingSchema = z.object({
   scheduled_at: z.string().min(1, 'La date est requise.'),
   form_data: z.record(z.string(), z.string()),
   location_id: z.string().uuid().optional().nullable(),
+  reschedule_from: z.string().uuid().optional().nullable(),
+  reschedule_token: z.string().uuid().optional().nullable(),
 })
 
 export type CreateBookingData = z.infer<typeof createBookingSchema>

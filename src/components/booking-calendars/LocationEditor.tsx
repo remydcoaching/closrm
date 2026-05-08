@@ -6,12 +6,20 @@ import { BookingLocation } from '@/types'
 
 type LocationMode = 'in_person' | 'google_meet' | 'custom_link' | 'phone'
 
+export interface LocationInfo {
+  mode: LocationMode
+  locationName?: string
+  locationAddress?: string
+  customLink?: string
+}
+
 const PHONE_LOCATION_NAME = 'Téléphone'
 
 interface LocationEditorProps {
   selectedLocationIds: string[]
   onChange: (ids: string[]) => void
   googleCalendarConnected: boolean
+  onLocationInfoChange?: (info: LocationInfo) => void
 }
 
 const inputStyle: React.CSSProperties = {
@@ -64,6 +72,7 @@ export default function LocationEditor({
   selectedLocationIds,
   onChange,
   googleCalendarConnected,
+  onLocationInfoChange,
 }: LocationEditorProps) {
   const [locations, setLocations] = useState<BookingLocation[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,6 +98,21 @@ export default function LocationEditor({
       setCustomLink(selectedLocations[0].address ?? '')
     }
   }, [activeMode, selectedLocations])
+
+  // Notify parent of location info changes — use primitive deps to avoid infinite loops
+  const firstSelectedName = selectedLocations[0]?.name
+  const firstSelectedAddress = selectedLocations[0]?.address
+  useEffect(() => {
+    if (!onLocationInfoChange || !activeMode) return
+    const info: LocationInfo = { mode: activeMode }
+    if (activeMode === 'in_person' && firstSelectedName) {
+      info.locationName = firstSelectedName
+      info.locationAddress = firstSelectedAddress ?? undefined
+    } else if (activeMode === 'custom_link' && firstSelectedAddress) {
+      info.customLink = firstSelectedAddress
+    }
+    onLocationInfoChange(info)
+  }, [activeMode, firstSelectedName, firstSelectedAddress, onLocationInfoChange])
 
   useEffect(() => {
     fetchLocations()

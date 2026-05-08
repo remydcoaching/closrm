@@ -5,6 +5,9 @@ import { updateBookingSchema } from '@/lib/validations/bookings'
 import { deleteGoogleCalendarEvent, updateGoogleCalendarEvent } from '@/lib/google/calendar'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { cancelBookingReminders, rescheduleBookingReminders } from '@/lib/bookings/reminders'
+import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
+import { buildCalendarUrls } from '@/lib/email/calendar-links'
+import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 
 const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
 
@@ -54,7 +57,8 @@ export async function PATCH(
     if (!existing) return NextResponse.json({ error: 'Réservation non trouvée' }, { status: 404 })
 
     // If cancelling, also clear the meet_url
-    const updatePayload = { ...parsed.data } as Record<string, unknown>
+    const { notify_lead: shouldNotify, ...updateFields } = parsed.data
+    const updatePayload = { ...updateFields } as Record<string, unknown>
     if (parsed.data.status === 'cancelled' && existing.status !== 'cancelled') {
       updatePayload.meet_url = null
     }
@@ -129,6 +133,49 @@ export async function PATCH(
         }).catch((err) => {
           console.error('[booking] Failed to reschedule reminders:', err)
         })
+      }
+    }
+
+    // Send notification email to lead if coach requested it
+    if (
+      shouldNotify &&
+      parsed.data.scheduled_at &&
+      parsed.data.scheduled_at !== existing.scheduled_at &&
+      data.lead_id
+    ) {
+      const leadData = data.lead as { first_name?: string; last_name?: string; email?: string } | null
+      if (leadData?.email) {
+        const newDt = new Date(parsed.data.scheduled_at)
+        const { data: owner } = await supabase.from('users').select('full_name').eq('workspace_id', workspaceId).eq('role', 'coach').maybeSingle()
+        const { data: cal } = data.calendar_id
+          ? await supabase.from('booking_calendars').select('name, email_template, email_accent_color').eq('id', data.calendar_id).maybeSingle()
+          : { data: null }
+        const coachName = owner?.full_name ?? 'Votre coach'
+        const calName = (cal as { name?: string } | null)?.name ?? 'Coaching'
+        const calTemplate = (cal as { email_template?: 'premium' | 'minimal' | 'plain' } | null)?.email_template ?? 'premium'
+        const calAccent = (cal as { email_accent_color?: string } | null)?.email_accent_color ?? '#E53E3E'
+        const calendarLinks = buildCalendarUrls({
+          title: `RDV ${calName} — ${coachName}`,
+          startISO: newDt.toISOString(),
+          durationMinutes: data.duration_minutes ?? 30,
+          description: `Rendez-vous ${calName} avec ${coachName}`,
+        })
+        const manageToken = (data as unknown as { manage_token?: string }).manage_token
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+        const manageUrl = appUrl && manageToken ? `${appUrl}/booking/manage/${data.id}?token=${manageToken}` : undefined
+        sendBookingConfirmationEmail({
+          to: leadData.email,
+          workspaceId,
+          coachName,
+          prospectName: `${leadData.first_name ?? ''} ${leadData.last_name ?? ''}`.trim(),
+          date: formatBookingDateFR(newDt),
+          time: formatBookingTimeFR(newDt),
+          template: calTemplate,
+          accentColor: calAccent,
+          manageUrl,
+          icsUrl: calendarLinks.icsUrl,
+          googleCalendarUrl: calendarLinks.googleCalendarUrl,
+        }).catch((err) => console.error('[booking] Reschedule notification email failed:', err))
       }
     }
 
@@ -257,6 +304,13 @@ export async function DELETE(
 
     if (effectiveScope === 'this') {
       cancelBookingReminders(id).catch(() => {})
+      // Fetch call_id before deleting the booking
+      const { data: bookingWithCall } = await supabase
+        .from('bookings')
+        .select('call_id')
+        .eq('id', id)
+        .eq('workspace_id', workspaceId)
+        .single()
       const { data, error } = await supabase
         .from('bookings')
         .delete()
@@ -267,6 +321,9 @@ export async function DELETE(
       if (error || !data) return NextResponse.json({ error: 'Réservation non trouvée' }, { status: 404 })
       if (bookingToDelete.google_event_id) {
         deleteGoogleCalendarEvent(workspaceId, bookingToDelete.google_event_id).catch(() => {})
+      }
+      if (bookingWithCall?.call_id) {
+        supabase.from('calls').delete().eq('id', bookingWithCall.call_id).eq('workspace_id', workspaceId).then(() => {})
       }
       return NextResponse.json({ data, deleted_count: 1 })
     }

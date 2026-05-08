@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   startOfMonth,
   endOfMonth,
@@ -29,6 +29,7 @@ interface CalendarInfo {
   location_ids: string[]
   color: string
   form_fields: FormField[]
+  require_confirmation?: boolean
 }
 
 interface WorkspaceInfo {
@@ -70,6 +71,9 @@ const fieldInputStyle: React.CSSProperties = {
 export default function PublicBookingPage() {
   const params = useParams<{ workspaceSlug: string; calendarSlug: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const rescheduleFrom = searchParams.get('reschedule_from')
+  const rescheduleToken = searchParams.get('reschedule_token')
 
   // Data
   const [calendar, setCalendar] = useState<CalendarInfo | null>(null)
@@ -181,7 +185,12 @@ export default function PublicBookingPage() {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scheduled_at: scheduledAt, form_data: formData, location_id: selectedLocationId }),
+          body: JSON.stringify({
+            scheduled_at: scheduledAt,
+            form_data: formData,
+            location_id: selectedLocationId,
+            ...(rescheduleFrom ? { reschedule_from: rescheduleFrom, reschedule_token: rescheduleToken } : {}),
+          }),
         },
       )
       if (!res.ok) {
@@ -192,8 +201,9 @@ export default function PublicBookingPage() {
       // Redirect to confirmation page
       const dateParam = encodeURIComponent(dateStr)
       const timeParam = encodeURIComponent(selectedTime)
+      const pendingParam = calendar?.require_confirmation ? '&pending=1' : ''
       router.push(
-        `/book/${params.workspaceSlug}/${params.calendarSlug}/confirmation?date=${dateParam}&time=${timeParam}`,
+        `/book/${params.workspaceSlug}/${params.calendarSlug}/confirmation?date=${dateParam}&time=${timeParam}${pendingParam}`,
       )
     } catch {
       setError('Erreur réseau. Veuillez réessayer.')

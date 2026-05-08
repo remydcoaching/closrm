@@ -16,7 +16,7 @@
 import { useEffect, useState } from 'react'
 import { addMinutes, format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Check, ExternalLink, Mail, MapPin, Pencil, Phone, Repeat, Trash2, Video, X, XCircle, UserX } from 'lucide-react'
+import { Check, Clock, ExternalLink, Mail, MapPin, Pencil, Phone, Repeat, Trash2, Video, X, XCircle, UserX } from 'lucide-react'
 import Link from 'next/link'
 import type { AgendaEvent } from '@/types/agenda'
 import type { BookingStatus } from '@/types'
@@ -43,6 +43,7 @@ interface EventDetailPanelProps {
 }
 
 const STATUS_LABELS: Record<ReturnType<typeof eventStatus>, { label: string; color: string }> = {
+  pending: { label: 'À confirmer', color: '#f59e0b' },
   confirmed: { label: 'Confirmé', color: '#22c55e' },
   completed: { label: 'Terminé', color: '#3b82f6' },
   cancelled: { label: 'Annulé', color: '#ef4444' },
@@ -519,8 +520,45 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
           )
         )}
 
-        {/* Status change — RDV avec lead ou call uniquement (pas pour perso) */}
-        {isBooking && hasStatus && onStatusChange && (
+        {/* Pending: confirm CTA only (no status buttons) */}
+        {isBooking && status === 'pending' && onStatusChange && (
+          <div
+            style={{
+              padding: '14px 16px',
+              background: 'rgba(245,158,11,0.08)',
+              border: '1px solid rgba(245,158,11,0.25)',
+              borderRadius: 10,
+            }}
+          >
+            <p style={{ margin: '0 0 10px', fontSize: 13, color: '#f59e0b', fontWeight: 600 }}>
+              Ce rendez-vous est en attente de votre confirmation.
+            </p>
+            <button
+              type="button"
+              onClick={() => onStatusChange(event, 'confirmed')}
+              style={{
+                width: '100%',
+                padding: '10px 18px',
+                borderRadius: 8,
+                border: 'none',
+                background: 'var(--color-primary)',
+                color: '#000',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <Check size={14} /> Confirmer ce RDV
+            </button>
+          </div>
+        )}
+
+        {/* Status change — only for non-pending bookings */}
+        {isBooking && hasStatus && status !== 'pending' && onStatusChange && (
           <Section title="Statut">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               <StatusButton
@@ -556,58 +594,143 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
         )}
       </div>
 
-      {/* Picker scope de suppression — apparaît au-dessus du footer pour une série */}
-      {showDeleteScope && onDelete && (
+      {/* Confirmation de suppression — inline, pas de popup navigateur */}
+      {showDeleteScope && onDelete && status !== 'pending' && (
         <div
-          role="dialog"
-          aria-label="Choisir l'étendue de la suppression"
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 6,
-            padding: '12px 14px 8px',
+            gap: 8,
+            padding: '12px 14px',
             borderTop: '1px solid var(--agenda-grid-line)',
             background: 'var(--bg-elevated)',
             flexShrink: 0,
           }}
         >
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-            Cet événement fait partie d&apos;une série. Que veux-tu supprimer ?
+          <p style={{ margin: 0, fontSize: 12, color: '#ef4444', fontWeight: 500 }}>
+            Supprimer &laquo;&nbsp;{event.title}&nbsp;&raquo; ?
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => { setShowDeleteScope(false); onDelete(event) }}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: 'none',
+                background: '#ef4444',
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Oui, supprimer
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeleteScope(false)}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: '1px solid var(--border-secondary)',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Annuler
+            </button>
           </div>
-          <ScopeButton
-            label="Cet événement uniquement"
-            onClick={() => { setShowDeleteScope(false); onDelete(event, 'this') }}
-          />
-          <ScopeButton
-            label="Cet événement et les suivants"
-            onClick={() => { setShowDeleteScope(false); onDelete(event, 'future') }}
-          />
-          <ScopeButton
-            label="Toute la série"
-            onClick={() => { setShowDeleteScope(false); onDelete(event, 'all') }}
-            danger
-          />
-          <button
-            type="button"
-            onClick={() => setShowDeleteScope(false)}
-            style={{
-              alignSelf: 'flex-end',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-tertiary)',
-              fontSize: 11,
-              padding: '4px 6px',
-              cursor: 'pointer',
-              marginTop: 2,
-            }}
-          >
-            Annuler
-          </button>
         </div>
       )}
 
-      {/* Actions footer — bascule entre mode lecture et mode édition */}
-      {isBooking && (onDelete || canEdit) && (
+      {/* Actions footer — pending: cancel with inline confirmation */}
+      {isBooking && status === 'pending' && onDelete && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            padding: 12,
+            borderTop: '1px solid var(--agenda-grid-line)',
+            flexShrink: 0,
+          }}
+        >
+          {showDeleteScope ? (
+            <>
+              <p style={{ margin: 0, fontSize: 12, color: '#ef4444', fontWeight: 500 }}>
+                Êtes-vous sûr de vouloir annuler ce rendez-vous ? Il sera supprimé définitivement.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => { setShowDeleteScope(false); onDelete(event) }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Oui, annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteScope(false)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border-secondary)',
+                    background: 'transparent',
+                    color: 'var(--text-secondary)',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Garder le RDV
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowDeleteScope(true)}
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: '1px solid var(--border-secondary)',
+                background: 'transparent',
+                color: '#ef4444',
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              <Trash2 size={13} /> Annuler ce RDV
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Actions footer — non-pending: edit + delete */}
+      {isBooking && status !== 'pending' && (onDelete || canEdit) && (
         <div
           style={{
             display: 'flex',
@@ -688,13 +811,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
               {onDelete && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isRecurring) {
-                      setShowDeleteScope(true)
-                    } else if (confirm(`Supprimer "${event.title}" ?`)) {
-                      onDelete(event)
-                    }
-                  }}
+                  onClick={() => setShowDeleteScope(true)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

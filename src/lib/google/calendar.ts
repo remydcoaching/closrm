@@ -22,6 +22,7 @@ interface CreateEventPayload {
   description?: string
   start: { dateTime: string; timeZone?: string }
   end: { dateTime: string; timeZone?: string }
+  status?: 'confirmed' | 'tentative' | 'cancelled'
 }
 
 export interface CreateEventResult {
@@ -34,6 +35,7 @@ interface UpdateEventPayload {
   description?: string
   start?: { dateTime: string; timeZone?: string }
   end?: { dateTime: string; timeZone?: string }
+  status?: 'confirmed' | 'tentative' | 'cancelled'
 }
 
 // ─── Token Management ───────────────────────────────────────────────────────

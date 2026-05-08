@@ -458,7 +458,7 @@ export interface BookingLocation {
 
 // ── Booking ──────────────────────────────────────────────────────────────────
 
-export type BookingStatus = 'confirmed' | 'cancelled' | 'no_show' | 'completed'
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'completed'
 export type BookingSource = 'booking_page' | 'manual' | 'google_sync'
 
 export interface Booking {

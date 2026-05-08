@@ -5,6 +5,7 @@ import { publicBookingSchema } from '@/lib/validations/bookings'
 import { getAvailableSlots } from '@/lib/bookings/availability'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
+import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { createBookingReminders } from '@/lib/bookings/reminders'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import type { CalendarReminder } from '@/types'
@@ -26,6 +27,7 @@ interface CalendarRow {
   purpose: string
   reminders: unknown[]
   max_advance_days: number | null
+  require_confirmation: boolean
 }
 
 async function getCalendarBySlug(
@@ -47,7 +49,7 @@ async function getCalendarBySlug(
   const { data: calendar, error: calError } = await supabase
     .from('booking_calendars')
     .select(
-      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose, reminders, max_advance_days',
+      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose, reminders, max_advance_days, require_confirmation',
     )
     .eq('workspace_id', slugRow.workspace_id)
     .eq('slug', calendarSlug)
@@ -155,6 +157,7 @@ export async function GET(
       color: calendar.color,
       form_fields: calendar.form_fields,
       max_advance_days: calendar.max_advance_days,
+      require_confirmation: calendar.require_confirmation,
     },
     workspace: {
       name: workspaceRow?.name ?? null,
@@ -195,7 +198,26 @@ export async function POST(
     )
   }
 
-  const { scheduled_at, form_data, location_id } = parsed.data
+  const { scheduled_at, form_data, location_id, reschedule_from, reschedule_token } = parsed.data
+
+  // Validate reschedule context if provided
+  if (reschedule_from) {
+    if (!reschedule_token) {
+      return NextResponse.json({ error: 'Token de reprogrammation manquant.' }, { status: 400 })
+    }
+    const { data: oldBooking } = await supabase
+      .from('bookings')
+      .select('id, manage_token, status')
+      .eq('id', reschedule_from)
+      .eq('workspace_id', calendar.workspace_id)
+      .maybeSingle()
+    if (!oldBooking || oldBooking.manage_token !== reschedule_token) {
+      return NextResponse.json({ error: 'Lien de reprogrammation invalide.' }, { status: 403 })
+    }
+    if (oldBooking.status === 'cancelled') {
+      return NextResponse.json({ error: 'Ce rendez-vous a déjà été annulé.' }, { status: 400 })
+    }
+  }
 
   // Anti-double-booking: check for overlapping confirmed bookings
   const bookingStart = parseISO(scheduled_at)
@@ -214,13 +236,19 @@ export async function POST(
     }
   }
 
-  const { data: conflicts, error: conflictError } = await supabase
+  let conflictQuery = supabase
     .from('bookings')
     .select('id, scheduled_at, duration_minutes')
     .eq('workspace_id', calendar.workspace_id)
     .eq('status', 'confirmed')
     .lt('scheduled_at', bookingEnd.toISOString())
     .gte('scheduled_at', addMinutes(bookingStart, -calendar.duration_minutes).toISOString())
+
+  if (reschedule_from) {
+    conflictQuery = conflictQuery.neq('id', reschedule_from)
+  }
+
+  const { data: conflicts, error: conflictError } = await conflictQuery
 
   if (conflictError) {
     return NextResponse.json({ error: 'Erreur lors de la vérification de disponibilité.' }, { status: 500 })
@@ -303,7 +331,7 @@ export async function POST(
       title,
       scheduled_at,
       duration_minutes: calendar.duration_minutes,
-      status: 'confirmed',
+      status: calendar.require_confirmation ? 'pending' : 'confirmed',
       source: 'booking_page',
       form_data,
       is_personal: false,
@@ -316,131 +344,111 @@ export async function POST(
     return NextResponse.json({ error: 'Erreur lors de la création de la réservation.' }, { status: 500 })
   }
 
-  // Auto-create call if calendar has purpose setting/closing
-  if (leadId && (calendar.purpose === 'setting' || calendar.purpose === 'closing')) {
-    // Count existing calls for attempt_number
-    const { count: callCount } = await supabase
-      .from('calls')
-      .select('*', { count: 'exact', head: true })
+  // Cancel the old booking if this is a reschedule
+  if (reschedule_from) {
+    await supabase
+      .from('bookings')
+      .update({ status: 'cancelled' })
+      .eq('id', reschedule_from)
       .eq('workspace_id', calendar.workspace_id)
-      .eq('lead_id', leadId)
-      .eq('type', calendar.purpose)
 
-    const { data: newCall } = await supabase
-      .from('calls')
-      .insert({
-        workspace_id: calendar.workspace_id,
-        lead_id: leadId,
-        type: calendar.purpose,
-        scheduled_at: scheduled_at,
-        outcome: 'pending',
-        attempt_number: (callCount ?? 0) + 1,
-        reached: false,
-        notes: `Via calendrier : ${calendar.name}`,
-      })
-      .select('id')
-      .single()
-
-    if (newCall) {
-      // Link call to booking
-      await supabase
-        .from('bookings')
-        .update({ call_id: newCall.id })
-        .eq('id', booking.id)
-
-      // Update lead status
-      const newStatus = calendar.purpose === 'setting' ? 'setting_planifie' : 'closing_planifie'
-      await supabase
-        .from('leads')
-        .update({ status: newStatus })
-        .eq('id', leadId)
-        .eq('workspace_id', calendar.workspace_id)
-
-      // Fire call_scheduled trigger
-      fireTriggersForEvent(calendar.workspace_id, 'call_scheduled', {
-        lead_id: leadId,
-        call_id: newCall.id,
-        call_type: calendar.purpose,
-      }).catch(() => {})
-    }
+    // Cancel pending reminders for the old booking
+    await supabase
+      .from('booking_reminders')
+      .update({ status: 'cancelled' })
+      .eq('booking_id', reschedule_from)
+      .eq('status', 'pending')
   }
 
-  // Create booking reminders if calendar has reminders configured
-  if (leadId && calendar.reminders && calendar.reminders.length > 0) {
-    createBookingReminders({
-      workspaceId: calendar.workspace_id,
-      bookingId: booking.id,
-      leadId,
-      bookingScheduledAt: scheduled_at,
-      calendarReminders: calendar.reminders as CalendarReminder[],
-      calendarName: calendar.name,
-      lead: { first_name: firstName, last_name: lastName },
-    }).catch((err) => {
-      console.error('[public-booking] Failed to create reminders:', err)
-    })
-  }
-
-  // Fire workflow trigger (non-blocking)
-  if (leadId) {
-    fireTriggersForEvent(calendar.workspace_id, 'booking_created', {
-      lead_id: leadId,
-      booking_id: booking.id,
-      calendar_id: calendar.id,
-      calendar_name: calendar.name,
-      scheduled_at: booking.scheduled_at,
-    }).catch(() => {})
-  }
-
-  // Determine location type for Google Meet
-  let isOnlineLocation = false
-  let locationName: string | null = null
-  let locationAddress: string | null = null
-  if (location_id) {
-    const { data: loc } = await supabase
-      .from('booking_locations')
-      .select('location_type, name, address')
-      .eq('id', location_id)
-      .eq('workspace_id', calendar.workspace_id)
-      .single()
-    if (loc) {
-      isOnlineLocation = loc.location_type === 'online'
-      locationName = loc.name
-      locationAddress = loc.address
-    }
-  } else if (calendar.location_ids && calendar.location_ids.length > 0) {
-    // No explicit location — check calendar's locations for online/Meet
-    const { data: locs } = await supabase
-      .from('booking_locations')
-      .select('location_type, name, address')
-      .in('id', calendar.location_ids)
-      .eq('workspace_id', calendar.workspace_id)
-    const onlineLoc = locs?.find(l => l.location_type === 'online')
-    if (onlineLoc) {
-      isOnlineLocation = true
-      locationName = onlineLoc.name
-      locationAddress = onlineLoc.address
-    }
-  }
-
-  // Create Google Calendar event with optional Meet + send confirmation email
-  // after the response, so the serverless function isn't terminated mid-flight.
+  // All side-effects deferred to after() for faster response
   const bookingStartDt = new Date(booking.scheduled_at)
   const bookingEndDt = addMinutes(bookingStartDt, booking.duration_minutes)
-  // Phone-type locations (name='Téléphone') sont online mais ne génèrent pas de Meet
-  const isPhoneLocation = locationName === 'Téléphone'
-  const withMeet = isOnlineLocation && !locationAddress && !isPhoneLocation
-  console.log('[public-booking] Google Calendar:', { isOnlineLocation, locationAddress, withMeet, isPhoneLocation, location_id, calendarLocationIds: calendar.location_ids })
 
   after(async () => {
+    // Auto-create call if calendar has purpose setting/closing
+    if (leadId && (calendar.purpose === 'setting' || calendar.purpose === 'closing')) {
+      try {
+        const { count: callCount } = await supabase
+          .from('calls')
+          .select('*', { count: 'exact', head: true })
+          .eq('workspace_id', calendar.workspace_id)
+          .eq('lead_id', leadId)
+          .eq('type', calendar.purpose)
+
+        const { data: newCall } = await supabase
+          .from('calls')
+          .insert({
+            workspace_id: calendar.workspace_id,
+            lead_id: leadId,
+            type: calendar.purpose,
+            scheduled_at: scheduled_at,
+            outcome: 'pending',
+            attempt_number: (callCount ?? 0) + 1,
+            reached: false,
+            notes: `Via calendrier : ${calendar.name}`,
+          })
+          .select('id')
+          .single()
+
+        if (newCall) {
+          await supabase.from('bookings').update({ call_id: newCall.id }).eq('id', booking.id)
+          const newStatus = calendar.purpose === 'setting' ? 'setting_planifie' : 'closing_planifie'
+          await supabase.from('leads').update({ status: newStatus }).eq('id', leadId).eq('workspace_id', calendar.workspace_id)
+          fireTriggersForEvent(calendar.workspace_id, 'call_scheduled', { lead_id: leadId, call_id: newCall.id, call_type: calendar.purpose }).catch(() => {})
+        }
+      } catch (err) {
+        console.error('[public-booking] Call creation failed:', err instanceof Error ? err.message : err)
+      }
+    }
+
+    if (leadId) {
+      fireTriggersForEvent(calendar.workspace_id, 'booking_created', { lead_id: leadId, booking_id: booking.id, calendar_id: calendar.id, calendar_name: calendar.name, scheduled_at: booking.scheduled_at }).catch(() => {})
+    }
+
+    // Determine location type for Google Meet
+    let isOnlineLocation = false
+    let locationName: string | null = null
+    let locationAddress: string | null = null
+    if (location_id) {
+      const { data: loc } = await supabase
+        .from('booking_locations')
+        .select('location_type, name, address')
+        .eq('id', location_id)
+        .eq('workspace_id', calendar.workspace_id)
+        .single()
+      if (loc) {
+        isOnlineLocation = loc.location_type === 'online'
+        locationName = loc.name
+        locationAddress = loc.address
+      }
+    } else if (calendar.location_ids && calendar.location_ids.length > 0) {
+      const { data: locs } = await supabase
+        .from('booking_locations')
+        .select('location_type, name, address')
+        .in('id', calendar.location_ids)
+        .eq('workspace_id', calendar.workspace_id)
+      const onlineLoc = locs?.find(l => l.location_type === 'online')
+      if (onlineLoc) {
+        isOnlineLocation = true
+        locationName = onlineLoc.name
+        locationAddress = onlineLoc.address
+      }
+    }
+
+    const isPhoneLocation = locationName === 'Téléphone'
+    const withMeet = isOnlineLocation && !locationAddress && !isPhoneLocation
     let meetUrl: string | undefined
 
     try {
+      const gcalTitle = calendar.require_confirmation ? `[À confirmer] ${title}` : title
+      const gcalStatus = calendar.require_confirmation ? 'tentative' : undefined
       const result = await createGoogleCalendarEvent(
         calendar.workspace_id,
         {
-          summary: title,
+          summary: gcalTitle,
           start: { dateTime: bookingStartDt.toISOString() },
           end: { dateTime: bookingEndDt.toISOString() },
+          ...(gcalStatus ? { status: gcalStatus } : {}),
         },
         { withMeet },
       )
@@ -459,56 +467,80 @@ export async function POST(
       console.error('[public-booking] Google Calendar event creation failed:', err instanceof Error ? err.message : err)
     }
 
-    const emailConfirmationReminder = (calendar.reminders as CalendarReminder[] | undefined)?.find(
-      (r) => r.channel === 'email' && r.delay_value === 0,
-    )
-
-    if (email) {
-      try {
-        const [ownerRes, calRes] = await Promise.all([
-          supabase.from('users').select('full_name').eq('workspace_id', calendar.workspace_id).eq('role', 'coach').maybeSingle(),
-          supabase.from('booking_calendars').select('email_template, email_accent_color, name').eq('id', calendar.id).maybeSingle(),
-        ])
-        const calTemplate = (calRes.data as { email_template?: 'premium' | 'minimal' | 'plain' } | null)?.email_template ?? 'premium'
-        const calAccent = (calRes.data as { email_accent_color?: string } | null)?.email_accent_color ?? '#E53E3E'
-        const calName = (calRes.data as { name?: string } | null)?.name ?? ''
-
-        const dateStr = formatBookingDateFR(bookingStartDt)
-        const timeStr = formatBookingTimeFR(bookingStartDt)
-
-        const customMessage = emailConfirmationReminder
-          ? emailConfirmationReminder.message
-              .replace(/\{\{prenom\}\}/g, firstName)
-              .replace(/\{\{nom\}\}/g, lastName)
-              .replace(/\{\{date_rdv\}\}/g, dateStr)
-              .replace(/\{\{heure_rdv\}\}/g, timeStr)
-              .replace(/\{\{nom_calendrier\}\}/g, calName)
-          : undefined
-
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
-        const manageToken = (booking as unknown as { manage_token?: string }).manage_token
-        const manageUrl = appUrl && manageToken
-          ? `${appUrl}/booking/manage/${booking.id}?token=${manageToken}`
-          : undefined
-
-        await sendBookingConfirmationEmail({
-          to: email,
+    // If no confirmation required, send email + create reminders immediately
+    if (!calendar.require_confirmation) {
+      if (leadId && calendar.reminders && (calendar.reminders as CalendarReminder[]).length > 0) {
+        createBookingReminders({
           workspaceId: calendar.workspace_id,
-          coachName: ownerRes.data?.full_name ?? 'Votre coach',
-          prospectName: `${firstName} ${lastName}`.trim(),
-          date: dateStr,
-          time: timeStr,
-          meetUrl,
-          locationName: locationName ?? undefined,
-          locationAddress: locationAddress ?? undefined,
-          isPhoneCall: locationName === 'Téléphone',
-          template: calTemplate,
-          accentColor: calAccent,
-          customMessage,
-          manageUrl,
-        })
-      } catch (err) {
-        console.error('[public-booking] booking-confirmation email failed:', err instanceof Error ? err.message : err)
+          bookingId: booking.id,
+          leadId,
+          bookingScheduledAt: scheduled_at,
+          calendarReminders: calendar.reminders as CalendarReminder[],
+          calendarName: calendar.name,
+          lead: { first_name: firstName, last_name: lastName },
+        }).catch((err) => console.error('[public-booking] Failed to create reminders:', err))
+      }
+
+      const email = form_data['email'] ?? null
+      if (email) {
+        try {
+          const [ownerRes, calRes] = await Promise.all([
+            supabase.from('users').select('full_name').eq('workspace_id', calendar.workspace_id).eq('role', 'coach').maybeSingle(),
+            supabase.from('booking_calendars').select('email_template, email_accent_color, name').eq('id', calendar.id).maybeSingle(),
+          ])
+          const calTemplate = (calRes.data as { email_template?: 'premium' | 'minimal' | 'plain' } | null)?.email_template ?? 'premium'
+          const calAccent = (calRes.data as { email_accent_color?: string } | null)?.email_accent_color ?? '#E53E3E'
+          const calName = (calRes.data as { name?: string } | null)?.name ?? ''
+
+          const emailConfirmationReminder = (calendar.reminders as CalendarReminder[] | undefined)?.find(
+            (r) => r.channel === 'email' && r.delay_value === 0,
+          )
+          const dateStr = formatBookingDateFR(bookingStartDt)
+          const timeStr = formatBookingTimeFR(bookingStartDt)
+          const customMessage = emailConfirmationReminder
+            ? emailConfirmationReminder.message
+                .replace(/\{\{prenom\}\}/g, firstName)
+                .replace(/\{\{nom\}\}/g, lastName)
+                .replace(/\{\{date_rdv\}\}/g, dateStr)
+                .replace(/\{\{heure_rdv\}\}/g, timeStr)
+                .replace(/\{\{nom_calendrier\}\}/g, calName)
+            : undefined
+
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+          const manageToken = (booking as unknown as { manage_token?: string }).manage_token
+          const manageUrl = appUrl && manageToken ? `${appUrl}/booking/manage/${booking.id}?token=${manageToken}` : undefined
+
+          const coachFullName = ownerRes.data?.full_name ?? 'Votre coach'
+          const calLocation = meetUrl ? 'Google Meet' : locationName && locationAddress ? `${locationName}, ${locationAddress}` : locationName ?? ''
+          const calendarLinks = buildCalendarUrls({
+            title: `RDV ${calName || 'Coaching'} — ${coachFullName}`,
+            startISO: bookingStartDt.toISOString(),
+            durationMinutes: calendar.duration_minutes,
+            location: calLocation,
+            description: `Rendez-vous ${calName || 'Coaching'} avec ${coachFullName}`,
+          })
+
+          await sendBookingConfirmationEmail({
+            to: email,
+            workspaceId: calendar.workspace_id,
+            coachName: coachFullName,
+            prospectName: `${firstName} ${lastName}`.trim(),
+            date: dateStr,
+            time: timeStr,
+            meetUrl,
+            locationName: locationName ?? undefined,
+            locationAddress: locationAddress ?? undefined,
+            isPhoneCall: locationName === 'Téléphone',
+            template: calTemplate,
+            accentColor: calAccent,
+            customMessage,
+            manageUrl,
+            icsUrl: calendarLinks.icsUrl,
+            googleCalendarUrl: calendarLinks.googleCalendarUrl,
+          })
+        } catch (err) {
+          console.error('[public-booking] Email failed:', err instanceof Error ? err.message : err)
+        }
       }
     }
   })

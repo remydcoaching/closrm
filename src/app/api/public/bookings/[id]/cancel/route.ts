@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { cancelBookingReminders } from '@/lib/bookings/reminders'
+import { deleteGoogleCalendarEvent } from '@/lib/google/calendar'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ export async function POST(
   const supabase = createServiceClient()
   const { data: booking, error } = await supabase
     .from('bookings')
-    .select('id, status, manage_token')
+    .select('id, status, manage_token, workspace_id, google_event_id, call_id')
     .eq('id', id)
     .maybeSingle()
 
@@ -38,16 +39,30 @@ export async function POST(
     return NextResponse.json({ ok: true, alreadyCancelled: true })
   }
 
-  const { error: updErr } = await supabase
-    .from('bookings')
-    .update({ status: 'cancelled' })
-    .eq('id', id)
+  // Cancel pending reminders
+  await cancelBookingReminders(id)
 
-  if (updErr) {
-    return NextResponse.json({ error: updErr.message }, { status: 500 })
+  // Delete Google Calendar event if present
+  if (booking.google_event_id && booking.workspace_id) {
+    deleteGoogleCalendarEvent(booking.workspace_id, booking.google_event_id).catch((err) => {
+      console.error('[cancel-booking] Google Calendar delete failed:', err instanceof Error ? err.message : err)
+    })
   }
 
-  await cancelBookingReminders(id)
+  // Delete linked call if any
+  if (booking.call_id && booking.workspace_id) {
+    supabase.from('calls').delete().eq('id', booking.call_id).eq('workspace_id', booking.workspace_id).then(() => {})
+  }
+
+  // Delete the booking entirely
+  const { error: delErr } = await supabase
+    .from('bookings')
+    .delete()
+    .eq('id', id)
+
+  if (delErr) {
+    return NextResponse.json({ error: delErr.message }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }

@@ -177,8 +177,13 @@ export default function NewBookingModal({
       return
     }
     const cal = calendars.find((c) => c.id === calendarId)
-    if (cal) setDuration(cal.duration_minutes)
-  }, [calendarId, calendars, isEditing])
+    if (cal) {
+      setDuration(cal.duration_minutes)
+      const calLocs = locations.filter((l) => l.is_active && cal.location_ids?.includes(l.id))
+      if (calLocs.length > 0) setLocationId(calLocs[0].id)
+      else setLocationId('')
+    }
+  }, [calendarId, calendars, locations, isEditing])
 
   // ── Lead search optimisée ──
   // Stratégie hybride :
@@ -499,9 +504,9 @@ export default function NewBookingModal({
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                   >
-                    <option value={BLOCKED_CALENDAR_VALUE}>Horaire bloqué</option>
+                    <option value={BLOCKED_CALENDAR_VALUE} style={{ background: '#141414', color: '#fff' }}>Horaire bloqué</option>
                     {calendars.map((cal) => (
-                      <option key={cal.id} value={cal.id}>{cal.name}</option>
+                      <option key={cal.id} value={cal.id} style={{ background: '#141414', color: '#fff' }}>{cal.name}</option>
                     ))}
                   </select>
                   <ChevronDown size={13} style={{ position: 'absolute', right: 8, color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
@@ -683,9 +688,9 @@ export default function NewBookingModal({
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                         >
-                          <option value="">Choisir un lieu…</option>
+                          <option value="" style={{ background: '#141414', color: '#fff' }}>Choisir un lieu…</option>
                           {availableLocations.map((l) => (
-                            <option key={l.id} value={l.id}>
+                            <option key={l.id} value={l.id} style={{ background: '#141414', color: '#fff' }}>
                               {l.name}{l.location_type === 'online' ? ' (en ligne)' : ''}
                             </option>
                           ))}
@@ -725,10 +730,10 @@ export default function NewBookingModal({
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                       >
-                        <option value="none">Pas de récurrence</option>
-                        <option value="daily">Tous les jours</option>
-                        <option value="weekly">Toutes les semaines</option>
-                        <option value="monthly">Tous les mois</option>
+                        <option value="none" style={{ background: '#141414', color: '#fff' }}>Pas de récurrence</option>
+                        <option value="daily" style={{ background: '#141414', color: '#fff' }}>Tous les jours</option>
+                        <option value="weekly" style={{ background: '#141414', color: '#fff' }}>Toutes les semaines</option>
+                        <option value="monthly" style={{ background: '#141414', color: '#fff' }}>Tous les mois</option>
                       </select>
                       <ChevronDown size={13} style={{ position: 'absolute', right: 8, color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
                     </div>
@@ -988,7 +993,7 @@ function TimeSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       style={{
-        background: 'transparent',
+        background: 'var(--bg-primary)',
         border: '1px solid transparent',
         color: 'var(--text-primary)',
         fontSize: 13,
@@ -997,21 +1002,19 @@ function TimeSelect({
         cursor: 'pointer',
         fontFamily: 'inherit',
         outline: 'none',
-        appearance: 'none',
-        WebkitAppearance: 'none',
         textAlign: 'center',
         colorScheme: 'dark',
         transition: 'background 0.12s',
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-primary)' }}
     >
       {Array.from({ length: (rangeEnd - rangeStart) * 4 + 1 }, (_, i) => {
         const totalMin = rangeStart * 60 + i * 15
         const h = Math.floor(totalMin / 60)
         const m = totalMin % 60
         const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-        return <option key={val} value={val}>{val}</option>
+        return <option key={val} value={val} style={{ background: '#141414', color: '#fff' }}>{val}</option>
       })}
     </select>
   )
@@ -1027,7 +1030,7 @@ function DurationSelect({ value, onChange }: { value: number; onChange: (v: numb
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
       style={{
-        background: 'transparent',
+        background: 'var(--bg-primary)',
         border: '1px solid transparent',
         color: 'var(--text-primary)',
         fontSize: 13,
@@ -1036,17 +1039,15 @@ function DurationSelect({ value, onChange }: { value: number; onChange: (v: numb
         cursor: 'pointer',
         fontFamily: 'inherit',
         outline: 'none',
-        appearance: 'none',
-        WebkitAppearance: 'none',
         textAlign: 'center',
         colorScheme: 'dark',
         transition: 'background 0.12s',
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-primary)' }}
     >
       {options.map((m) => (
-        <option key={m} value={m}>{formatDuration(m)}</option>
+        <option key={m} value={m} style={{ background: '#141414', color: '#fff' }}>{formatDuration(m)}</option>
       ))}
     </select>
   )

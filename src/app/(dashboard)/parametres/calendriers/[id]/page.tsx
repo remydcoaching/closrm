@@ -7,7 +7,7 @@ import { BookingCalendar, WeekAvailability, FormField, CalendarPurpose } from '@
 import type { CalendarReminder } from '@/types'
 import AvailabilityEditor from '@/components/booking-calendars/AvailabilityEditor'
 import FormFieldsEditor from '@/components/booking-calendars/FormFieldsEditor'
-import LocationEditor from '@/components/booking-calendars/LocationEditor'
+import LocationEditor, { type LocationInfo } from '@/components/booking-calendars/LocationEditor'
 import PurposeEditor from '@/components/booking-calendars/PurposeEditor'
 import RemindersEditor from '@/components/booking-calendars/RemindersEditor'
 import RemindersLog from '@/components/booking-calendars/RemindersLog'
@@ -49,6 +49,8 @@ export default function EditCalendarPage() {
   const [purpose, setPurpose] = useState<CalendarPurpose>('other')
   const [reminders, setReminders] = useState<CalendarReminder[]>([])
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
+  const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null)
+  const [requireConfirmation, setRequireConfirmation] = useState(false)
 
   useEffect(() => {
     async function fetchCalendar() {
@@ -72,6 +74,7 @@ export default function EditCalendarPage() {
         setLocationIds(cal.location_ids ?? [])
         setPurpose((cal as unknown as { purpose?: CalendarPurpose }).purpose ?? 'other')
         setReminders((cal as unknown as { reminders?: CalendarReminder[] }).reminders ?? [])
+        setRequireConfirmation((cal as unknown as { require_confirmation?: boolean }).require_confirmation ?? false)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur inconnue')
       } finally {
@@ -113,6 +116,7 @@ export default function EditCalendarPage() {
           location_ids: locationIds,
           purpose,
           reminders,
+          require_confirmation: requireConfirmation,
         }),
       })
       if (!res.ok) {
@@ -348,6 +352,37 @@ export default function EditCalendarPage() {
         </div>
       </section>
 
+      {/* Section: Type de rendez-vous */}
+      <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Type de rendez-vous
+        </h2>
+        <div
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 12,
+            padding: 24,
+          }}
+        >
+          <LocationEditor
+            selectedLocationIds={locationIds}
+            onChange={setLocationIds}
+            googleCalendarConnected={googleCalendarConnected}
+            onLocationInfoChange={setLocationInfo}
+          />
+        </div>
+      </section>
+
       {/* Section: Disponibilités */}
       <section style={{ marginBottom: 40 }}>
         <h2
@@ -396,6 +431,80 @@ export default function EditCalendarPage() {
         </div>
       </section>
 
+      {/* Section: Confirmation manuelle */}
+      <section style={{ marginBottom: 40 }}>
+        <h2
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            margin: '0 0 16px',
+            paddingBottom: 10,
+            borderBottom: '1px solid var(--border-primary)',
+          }}
+        >
+          Confirmation des réservations
+        </h2>
+        <div style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+          borderRadius: 12, padding: 24,
+        }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '10px 14px',
+              background: requireConfirmation ? 'rgba(245, 158, 11, 0.08)' : 'transparent',
+              border: `1px solid ${requireConfirmation ? 'rgba(245, 158, 11, 0.25)' : 'var(--border-primary)'}`,
+              borderRadius: 8,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Confirmation manuelle requise
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                {requireConfirmation
+                  ? 'Les réservations doivent être confirmées par le coach avant que le prospect reçoive l\'email de confirmation.'
+                  : 'Les réservations sont confirmées automatiquement et le prospect reçoit l\'email immédiatement.'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRequireConfirmation(!requireConfirmation)}
+              style={{
+                position: 'relative',
+                width: 40,
+                height: 22,
+                borderRadius: 11,
+                border: 'none',
+                background: requireConfirmation ? '#f59e0b' : 'var(--border-primary)',
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'background 0.2s ease',
+                padding: 0,
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 3,
+                  left: requireConfirmation ? 21 : 3,
+                  width: 16,
+                  height: 16,
+                  borderRadius: '50%',
+                  background: '#fff',
+                  transition: 'left 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                }}
+              />
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* Section: Rappels automatiques */}
       <section style={{ marginBottom: 40 }}>
         <h2
@@ -422,6 +531,7 @@ export default function EditCalendarPage() {
             emailAccentColor={emailAccentColor}
             onEmailTemplateChange={setEmailTemplate}
             onEmailAccentColorChange={setEmailAccentColor}
+            locationInfo={locationInfo}
           />
         </div>
       </section>
@@ -445,36 +555,6 @@ export default function EditCalendarPage() {
           borderRadius: 12, padding: 24,
         }}>
           <RemindersLog calendarId={id} />
-        </div>
-      </section>
-
-      {/* Section: Lieux */}
-      <section style={{ marginBottom: 40 }}>
-        <h2
-          style={{
-            fontSize: 15,
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            margin: '0 0 16px',
-            paddingBottom: 10,
-            borderBottom: '1px solid var(--border-primary)',
-          }}
-        >
-          Type de rendez-vous
-        </h2>
-        <div
-          style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-primary)',
-            borderRadius: 12,
-            padding: 24,
-          }}
-        >
-          <LocationEditor
-            selectedLocationIds={locationIds}
-            onChange={setLocationIds}
-            googleCalendarConnected={googleCalendarConnected}
-          />
         </div>
       </section>
 

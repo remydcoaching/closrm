@@ -69,6 +69,11 @@ export default function AgendaV2Page() {
     duration: number
   } | null>(null)
   const [templates, setTemplates] = useState<PlanningTemplate[]>([])
+  const [pendingReschedule, setPendingReschedule] = useState<{
+    event: AgendaEvent
+    newScheduledAt: string
+    newDurationMinutes?: number
+  } | null>(null)
   // Sidebar masquée par défaut — pour un coach solo avec 1-2 calendriers,
   // les filtres + mini-cal sont du bruit visuel. Toggle dans la toolbar pour
   // l'afficher (utile en multi-calendriers).
@@ -170,24 +175,15 @@ export default function AgendaV2Page() {
     setCurrentDate(new Date())
   }
 
-  // ── Sélection en deux temps + copy/paste ──
-  // 1er clic sur un event → highlight (panel fermé). 2ᵉ clic sur le même
-  // → ouvre le panel. Cmd+C copie l'event highlighted. Cmd+V crée une copie
-  // au slot survolé par le curseur.
+  // ── Sélection + copy/paste ──
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null)
   const [copiedEvent, setCopiedEvent] = useState<AgendaEvent | null>(null)
   const hoverPosRef = useRef<{ date: Date; hour: number } | null>(null)
 
   const handleEventClick = useCallback((ev: AgendaEvent) => {
-    // Click sur l'event déjà highlighted (et panel pas encore ouvert) → ouvre le panel
-    if (highlightedEventId === ev.id && !selectedEvent) {
-      setSelectedEvent(ev)
-      return
-    }
-    // Sinon : highlight uniquement
     setHighlightedEventId(ev.id)
-    setSelectedEvent(null)
-  }, [highlightedEventId, selectedEvent])
+    setSelectedEvent(ev)
+  }, [])
 
   const handleHoverChange = useCallback((date: Date | null, hour: number | null) => {
     hoverPosRef.current = date && hour !== null ? { date, hour } : null
@@ -212,71 +208,70 @@ export default function AgendaV2Page() {
     })
   }
 
-  async function handleEventMove(ev: AgendaEvent, newScheduledAt: string) {
+  function handleEventMove(ev: AgendaEvent, newScheduledAt: string) {
     if (ev.kind !== 'booking') return
-    // Optimistic : on applique la nouvelle position localement avant le PATCH
-    // pour éviter le flash de retour au point d'origine pendant la latence.
-    patchEvent(ev.id, (e) => {
-      if (e.kind !== 'booking') return e
-      return {
-        ...e,
-        start: newScheduledAt,
-        booking: { ...e.booking, scheduled_at: newScheduledAt },
-      }
-    })
-    try {
-      const res = await fetch(`/api/bookings/${ev.booking.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduled_at: newScheduledAt }),
-      })
-      if (!res.ok) {
-        alert('Déplacement échoué')
-        refetch() // restaure l'état serveur
-      }
-    } catch {
-      alert('Déplacement échoué (réseau)')
-      refetch()
+    if (ev.booking.is_personal) {
+      applyReschedule(ev, newScheduledAt, undefined, false)
+      return
     }
+    setPendingReschedule({ event: ev, newScheduledAt })
   }
 
-  async function handleEventResize(ev: AgendaEvent, newScheduledAt: string, newDurationMinutes: number) {
+  function handleEventResize(ev: AgendaEvent, newScheduledAt: string, newDurationMinutes: number) {
     if (ev.kind !== 'booking') return
-    // Optimistic update
+    if (ev.booking.is_personal) {
+      applyReschedule(ev, newScheduledAt, newDurationMinutes, false)
+      return
+    }
+    setPendingReschedule({ event: ev, newScheduledAt, newDurationMinutes })
+  }
+
+  async function applyReschedule(ev: AgendaEvent, newScheduledAt: string, newDurationMinutes: number | undefined, notifyLead: boolean) {
+    if (ev.kind !== 'booking') return
     patchEvent(ev.id, (e) => {
       if (e.kind !== 'booking') return e
       return {
         ...e,
         start: newScheduledAt,
-        durationMinutes: newDurationMinutes,
-        booking: { ...e.booking, scheduled_at: newScheduledAt, duration_minutes: newDurationMinutes },
+        durationMinutes: newDurationMinutes ?? e.durationMinutes,
+        booking: {
+          ...e.booking,
+          scheduled_at: newScheduledAt,
+          ...(newDurationMinutes ? { duration_minutes: newDurationMinutes } : {}),
+        },
       }
     })
     try {
+      const body: Record<string, unknown> = { scheduled_at: newScheduledAt }
+      if (newDurationMinutes) body.duration_minutes = newDurationMinutes
+      if (notifyLead) body.notify_lead = true
       const res = await fetch(`/api/bookings/${ev.booking.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduled_at: newScheduledAt, duration_minutes: newDurationMinutes }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) {
-        alert('Redimensionnement échoué')
+        alert('Modification échouée')
         refetch()
       }
     } catch {
-      alert('Redimensionnement échoué (réseau)')
+      alert('Modification échouée (réseau)')
       refetch()
     }
   }
 
   async function handleStatusChange(ev: AgendaEvent, status: string) {
     if (ev.kind !== 'booking') return
-    const res = await fetch(`/api/bookings/${ev.booking.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
+    // Use dedicated confirm endpoint when confirming a pending booking
+    const isPendingConfirm = ev.booking.status === 'pending' && status === 'confirmed'
+    const res = isPendingConfirm
+      ? await fetch(`/api/bookings/${ev.booking.id}/confirm`, { method: 'POST' })
+      : await fetch(`/api/bookings/${ev.booking.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        })
     if (res.ok) {
-      // Met à jour l'event sélectionné en mémoire pour feedback immédiat
       setSelectedEvent({
         ...ev,
         booking: { ...ev.booking, status: status as typeof ev.booking.status },
@@ -657,6 +652,97 @@ export default function AgendaV2Page() {
               <Plus size={15} /> Nouveau RDV
             </button>
           </div>
+          {pendingReschedule && (
+            <div
+              onClick={() => { refetch(); setPendingReschedule(null) }}
+              style={{
+                position: 'fixed', inset: 0,
+                background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 20, zIndex: 9999,
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-primary)',
+                  borderRadius: 16,
+                  padding: '24px',
+                  maxWidth: 420,
+                  width: '100%',
+                  boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
+                }}
+              >
+                <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Modifier l&apos;horaire du rendez-vous ?
+                </h3>
+                <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  {pendingReschedule.event.title} — {(() => {
+                    const d = new Date(pendingReschedule.newScheduledAt)
+                    return `${d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+                  })()}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = pendingReschedule
+                      setPendingReschedule(null)
+                      applyReschedule(p.event, p.newScheduledAt, p.newDurationMinutes, true)
+                    }}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: 'var(--color-primary)',
+                      color: '#000',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Modifier et prévenir le prospect par email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = pendingReschedule
+                      setPendingReschedule(null)
+                      applyReschedule(p.event, p.newScheduledAt, p.newDurationMinutes, false)
+                    }}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-secondary)',
+                      background: 'transparent',
+                      color: 'var(--text-primary)',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Modifier sans prévenir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { refetch(); setPendingReschedule(null) }}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'var(--text-tertiary)',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {selectedEvent && (
             <EventDetailPanel
               event={selectedEvent}
