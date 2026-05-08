@@ -228,6 +228,51 @@ export default function PlanningView() {
               onCursorChange={setCursor}
               onSelectSlot={setSelectedSlotId}
               onCreateSlot={createPost}
+              onMoveSlot={async (slotId, newDate) => {
+                // Optimistic update: on patch local immediatement, puis on
+                // PATCH le serveur. En cas d'erreur, on revert + reload.
+                const previous = posts
+                const moved = previous.find(p => p.id === slotId)
+                if (!moved) return
+                const oldDate = moved.plan_date?.slice(0, 10) ?? null
+                // Si le slot est `scheduled` on update aussi scheduled_at
+                // pour conserver l'heure programmee mais sur la nouvelle date.
+                let newScheduledAt: string | null = null
+                if (moved.scheduled_at) {
+                  const d = new Date(moved.scheduled_at)
+                  d.setFullYear(Number(newDate.slice(0, 4)), Number(newDate.slice(5, 7)) - 1, Number(newDate.slice(8, 10)))
+                  newScheduledAt = d.toISOString()
+                }
+                setPosts(prev => prev.map(p => p.id === slotId
+                  ? { ...p, plan_date: newDate, slot_index: null, scheduled_at: newScheduledAt ?? p.scheduled_at }
+                  : p
+                ))
+                try {
+                  const body: Record<string, unknown> = { plan_date: newDate, slot_index: null }
+                  if (newScheduledAt) {
+                    body.scheduled_at = newScheduledAt
+                    body.publications = (moved.publications ?? []).map(pub => ({
+                      platform: pub.platform,
+                      config: pub.config,
+                      scheduled_at: newScheduledAt,
+                    }))
+                  }
+                  const res = await fetch(`/api/social/posts/${slotId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                  })
+                  if (!res.ok) {
+                    const j = await res.json().catch(() => ({}))
+                    throw new Error((j as { error?: string }).error ?? `Erreur ${res.status}`)
+                  }
+                  toast.success('Slot déplacé', `Du ${oldDate ?? '—'} au ${newDate}`)
+                  void reloadSilent()
+                } catch (e) {
+                  setPosts(previous)
+                  toast.error('Erreur déplacement', (e as Error).message)
+                }
+              }}
             />
           )}
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

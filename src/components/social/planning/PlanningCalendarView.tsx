@@ -16,6 +16,8 @@ interface Props {
   onCursorChange: (c: { year: number; month: number }) => void
   onSelectSlot: (id: string) => void
   onCreateSlot?: (planDate: string) => void
+  /** Drag & drop: deplacer un slot vers une autre date. Optionnel. */
+  onMoveSlot?: (slotId: string, newPlanDate: string) => void | Promise<void>
 }
 
 const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
@@ -37,9 +39,13 @@ const KIND_ICON: Record<SocialContentKind, typeof Camera> = {
 
 const MAX_VISIBLE_PER_CELL = 4
 
-export default function PlanningCalendarView({ posts, pillars, cursor, onCursorChange, onSelectSlot, onCreateSlot }: Props) {
+export default function PlanningCalendarView({ posts, pillars, cursor, onCursorChange, onSelectSlot, onCreateSlot, onMoveSlot }: Props) {
   const [hoverCell, setHoverCell] = useState<string | null>(null)
   const [dayPopover, setDayPopover] = useState<string | null>(null)
+  // Drag & drop state. dragOverKey = la cellule survolee pendant le drag,
+  // pour highlight visuel.
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null)
 
   const cells = useMemo(() => {
     const first = new Date(cursor.year, cursor.month - 1, 1)
@@ -147,20 +153,47 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
           const isHovered = hoverCell === c.key
           const isEmpty = posts.length + stories.length === 0
 
+          // Cellule highlight quand on drag dessus + on n'autorise pas le drop
+          // sur une date passee (le drag est silencieusement ignore).
+          const isDropTarget = !!onMoveSlot && draggingId !== null && !isPast && c.inMonth
+          const isBeingDraggedOver = isDropTarget && dragOverKey === c.key
           return (
             <div
               key={c.key}
               onMouseEnter={() => setHoverCell(c.key)}
               onMouseLeave={() => setHoverCell(null)}
+              onDragOver={(e) => {
+                if (!isDropTarget) return
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                if (dragOverKey !== c.key) setDragOverKey(c.key)
+              }}
+              onDragLeave={() => {
+                if (dragOverKey === c.key) setDragOverKey(null)
+              }}
+              onDrop={(e) => {
+                if (!isDropTarget) return
+                e.preventDefault()
+                const slotId = e.dataTransfer.getData('text/slot-id') || draggingId
+                setDraggingId(null)
+                setDragOverKey(null)
+                if (slotId && onMoveSlot && c.key !== posts.find(p => p.id === slotId)?.plan_date?.slice(0, 10)) {
+                  void onMoveSlot(slotId, c.key)
+                }
+              }}
               style={{
                 position: 'relative',
                 minHeight: 96, minWidth: 0, padding: 6,
-                background: isToday
-                  ? 'rgba(167,139,250,0.08)'
-                  : c.inMonth
-                    ? (isWeekend ? 'var(--bg-elevated)' : 'var(--bg-secondary)')
-                    : 'transparent',
-                border: isToday ? '1px solid rgba(167,139,250,0.5)' : '1px solid var(--border-primary)',
+                background: isBeingDraggedOver
+                  ? 'rgba(6,182,212,0.18)'
+                  : isToday
+                    ? 'rgba(167,139,250,0.08)'
+                    : c.inMonth
+                      ? (isWeekend ? 'var(--bg-elevated)' : 'var(--bg-secondary)')
+                      : 'transparent',
+                border: isBeingDraggedOver
+                  ? '1px solid rgba(6,182,212,0.7)'
+                  : isToday ? '1px solid rgba(167,139,250,0.5)' : '1px solid var(--border-primary)',
                 borderRadius: 8,
                 opacity: c.inMonth ? (isPast ? 0.55 : 1) : 0.3,
                 display: 'flex', flexDirection: 'column', gap: 3,
@@ -193,19 +226,34 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                 const StatusIcon = isPublished ? CheckCircle2 : meta.icon
                 const statusColor = isPublished ? '#10b981' : isFailed ? '#ef4444' : meta.color
                 const hookText = p.hook || p.title
+                // Drag autorise sauf pour publie (deja parti) et drag handler
+                // absent (calling parent ne supporte pas le move).
+                const draggable = !!onMoveSlot && !isPublished && p.status !== 'publishing'
+                const isBeingDragged = draggingId === p.id
                 return (
                   <button
                     key={p.id}
                     onClick={() => onSelectSlot(p.id)}
-                    title={`${pillar?.name ?? '—'} · ${isPublished ? 'Publié' : isScheduled ? 'Programmé' : meta.label}${hookText ? ` · ${hookText}` : ''}`}
+                    draggable={draggable}
+                    onDragStart={(e) => {
+                      if (!draggable) return
+                      e.dataTransfer.effectAllowed = 'move'
+                      e.dataTransfer.setData('text/slot-id', p.id)
+                      setDraggingId(p.id)
+                    }}
+                    onDragEnd={() => {
+                      setDraggingId(null)
+                      setDragOverKey(null)
+                    }}
+                    title={`${pillar?.name ?? '—'} · ${isPublished ? 'Publié' : isScheduled ? 'Programmé' : meta.label}${hookText ? ` · ${hookText}` : ''}${draggable ? '\n(Glisser pour changer de date)' : ''}`}
                     style={{
                       display: 'flex', flexDirection: 'column',
                       padding: '4px 6px', gap: 1,
                       background: color + (isPublished ? '12' : '20'),
                       border: `1px solid ${color}${isPublished ? '35' : '50'}`,
                       borderLeft: `3px solid ${color}`,
-                      borderRadius: 4, cursor: 'pointer',
-                      opacity: isPublished ? 0.75 : op,
+                      borderRadius: 4, cursor: draggable ? 'grab' : 'pointer',
+                      opacity: isBeingDragged ? 0.4 : (isPublished ? 0.75 : op),
                       width: '100%', overflow: 'hidden',
                       transition: 'all 0.1s',
                       position: 'relative',
