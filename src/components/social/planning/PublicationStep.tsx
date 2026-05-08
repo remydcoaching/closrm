@@ -16,6 +16,8 @@ interface PublicationStepProps {
   onSchedule: () => void
   onPublishNow?: () => void
   scheduling: boolean
+  /** True quand 'Publier maintenant' tourne (vs 'Programmer'). */
+  publishingNow?: boolean
   readOnly: boolean
   scheduledTime: string
   onScheduledTimeChange: (time: string) => void
@@ -48,6 +50,7 @@ export default function PublicationStep({
   onSchedule,
   onPublishNow,
   scheduling,
+  publishingNow = false,
   readOnly,
   scheduledTime,
   onScheduledTimeChange,
@@ -242,27 +245,58 @@ export default function PublicationStep({
 
       {/* 5. Schedule + Publish now buttons */}
       {canSchedule && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={onSchedule}
-            disabled={scheduling}
-            style={{ ...scheduleBtnStyle, flex: 1 }}
-          >
-            {scheduling ? 'Programmation…' : 'Programmer la publication'}
-          </button>
-          {onPublishNow && (
+        <>
+          <div style={{ display: 'flex', gap: 8 }}>
             <button
-              onClick={onPublishNow}
-              disabled={scheduling}
-              title="Publier immediatement (ignore l'heure programmee)"
-              style={publishNowBtnStyle}
+              onClick={onSchedule}
+              disabled={scheduling || publishingNow}
+              style={{ ...scheduleBtnStyle, flex: 1, opacity: publishingNow ? 0.4 : 1 }}
             >
-              {scheduling ? '…' : 'Publier maintenant'}
+              {scheduling ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Spinner /> Programmation…
+                </span>
+              ) : 'Programmer la publication'}
             </button>
+            {onPublishNow && (
+              <button
+                onClick={onPublishNow}
+                disabled={scheduling || publishingNow}
+                title="Publier immediatement (ignore l'heure programmee)"
+                style={{ ...publishNowBtnStyle, opacity: scheduling ? 0.4 : 1 }}
+              >
+                {publishingNow ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Spinner /> Publication…
+                  </span>
+                ) : 'Publier maintenant'}
+              </button>
+            )}
+          </div>
+          {publishingNow && (
+            <div style={progressHintStyle}>
+              ⏳ Upload du média + traitement Meta/YouTube en cours. Ça peut prendre 30s à 2min selon la taille de la vidéo. Ne ferme pas la fenêtre.
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
+  )
+}
+
+function Spinner() {
+  return (
+    <>
+      <span style={{
+        display: 'inline-block',
+        width: 12, height: 12,
+        border: '2px solid rgba(255,255,255,0.3)',
+        borderTopColor: '#fff',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </>
   )
 }
 
@@ -500,6 +534,18 @@ const scheduleBtnStyle: React.CSSProperties = {
   border: 'none',
   borderRadius: 8,
   cursor: 'pointer',
+}
+
+const progressHintStyle: React.CSSProperties = {
+  marginTop: 6,
+  padding: '10px 14px',
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--text-secondary)',
+  background: 'rgba(0, 200, 83, 0.06)',
+  border: '1px solid rgba(0, 200, 83, 0.25)',
+  borderRadius: 8,
+  lineHeight: 1.5,
 }
 
 const publishNowBtnStyle: React.CSSProperties = {

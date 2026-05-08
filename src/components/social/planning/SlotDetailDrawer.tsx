@@ -70,6 +70,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
   // Publication scheduling
   const [scheduling, setScheduling] = useState(false)
+  // Distinct du scheduling: 'Publier maintenant' a son propre loading state
+  // pour que le bouton publier affiche son spinner sans que 'Programmer'
+  // se mette aussi a clignoter (et inversement).
+  const [publishingNow, setPublishingNow] = useState(false)
   const [scheduledTime, setScheduledTime] = useState<string>('18:00')
 
   // Delete confirm
@@ -586,7 +590,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
         return
       }
     }
-    setScheduling(true)
+    setPublishingNow(true)
     try {
       // 1. PATCH le slot pour persister scheduled_at = now + status scheduled
       //    (sinon le record reste 'draft' et la publication n'est pas tracee).
@@ -628,7 +632,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     } catch (e) {
       toast.error('Erreur publication', (e as Error).message)
     } finally {
-      setScheduling(false)
+      setPublishingNow(false)
     }
   }, [slot, slotId, toast, onChange, onClose])
 
@@ -883,6 +887,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               onSchedule={schedule}
               onPublishNow={publishNow}
               scheduling={scheduling}
+              publishingNow={publishingNow}
               readOnly={readOnly}
               scheduledTime={scheduledTime}
               onScheduledTimeChange={setScheduledTime}
