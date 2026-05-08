@@ -47,6 +47,7 @@ export const updateSocialPostSchema = z.object({
   content_kind: z.enum(contentKinds).optional().nullable(),
   production_status: z.enum(productionStatuses).optional().nullable(),
   plan_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD attendu').optional().nullable(),
+  slot_index: z.number().int().nullable().optional(),
   hook: z.string().max(500).optional().nullable(),
   script: z.string().max(20000).optional().nullable(),
   references_urls: z.array(z.string().url()).max(20).optional(),

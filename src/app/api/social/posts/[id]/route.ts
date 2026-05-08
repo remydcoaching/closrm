@@ -196,7 +196,17 @@ export async function PATCH(
     if (e instanceof Error && e.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
-    return NextResponse.json({ error: (e as Error).message }, { status: 400 })
+    // Postgres unique-violation 23505 sur idx_social_posts_trame_slot_dedupe
+    // = on essaie de mettre 2 slots sur le meme jour avec meme content_kind/
+    // slot_index/pillar_id. Message clair pour l'utilisateur.
+    const code = (e as { code?: string }).code
+    const msg = (e as Error).message ?? ''
+    if (code === '23505' && /trame_slot_dedupe/.test(msg)) {
+      return NextResponse.json({
+        error: 'Un autre slot occupe déjà cette date pour cette trame. Choisis une date différente ou efface l\'autre slot.',
+      }, { status: 409 })
+    }
+    return NextResponse.json({ error: msg }, { status: 400 })
   }
 }
 

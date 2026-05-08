@@ -13,7 +13,7 @@ interface DateTimePickerProps {
   minDate?: string
 }
 
-const MONTHS_FR = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
+const MONTHS_FR = ['janvier', 'f\u00e9vrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'ao\u00fbt', 'septembre', 'octobre', 'novembre', 'd\u00e9cembre']
 const DAYS_FR = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
 function pad(n: number): string {
@@ -36,7 +36,7 @@ function formatDisplay(date: string, time: string): string {
   if (!p) return 'Choisir une date'
   const d = new Date(p.year, p.month, p.day)
   const dayName = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'][d.getDay()]
-  return `${dayName} ${p.day} ${MONTHS_FR[p.month]} ${p.year} a ${time}`
+  return `${dayName} ${p.day} ${MONTHS_FR[p.month]} ${p.year} \u00e0 ${time}`
 }
 
 function buildMonthGrid(year: number, month: number): { ymd: string; inMonth: boolean }[] {
@@ -225,7 +225,7 @@ export default function DateTimePicker({
               }}
               style={footerLinkStyle}
             >
-              Aujourd hui
+              Aujourd&apos;hui
             </button>
             <button
               type="button"
@@ -306,8 +306,8 @@ const popoverStyle: React.CSSProperties = {
   top: 'calc(100% + 6px)',
   left: 0,
   zIndex: 50,
-  width: 296,
-  padding: 12,
+  width: 256,
+  padding: 10,
   background: 'var(--bg-surface, #141414)',
   border: '1px solid var(--border-primary, #262626)',
   borderRadius: 10,
@@ -318,8 +318,8 @@ const popoverHeaderStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  marginBottom: 8,
-  padding: '0 4px',
+  marginBottom: 4,
+  padding: '0 2px',
 }
 
 const monthLabelStyle: React.CSSProperties = {
@@ -334,44 +334,44 @@ const navBtnStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 28,
-  height: 28,
+  width: 24,
+  height: 24,
   background: 'transparent',
   color: 'var(--text-secondary)',
   border: '1px solid var(--border-primary)',
-  borderRadius: 6,
+  borderRadius: 5,
   cursor: 'pointer',
 }
 
 const dowRowStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(7, 1fr)',
-  marginBottom: 4,
+  marginBottom: 2,
 }
 
 const dowCellStyle: React.CSSProperties = {
   textAlign: 'center',
-  fontSize: 10,
-  fontWeight: 600,
+  fontSize: 9,
+  fontWeight: 700,
   letterSpacing: 0.5,
   color: 'var(--text-tertiary, #888)',
-  padding: '6px 0',
+  padding: '4px 0',
 }
 
 const gridStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(7, 1fr)',
-  gap: 2,
+  gap: 1,
 }
 
 const dayCellStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  height: 34,
+  height: 28,
   fontSize: 12,
   border: '1px solid transparent',
-  borderRadius: 6,
+  borderRadius: 5,
   outline: 'none',
   transition: 'background-color 0.1s ease',
   background: 'transparent',
@@ -382,22 +382,22 @@ const timeRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: 10,
-  marginTop: 12,
-  padding: '10px 8px 10px 10px',
+  gap: 8,
+  marginTop: 8,
+  padding: '8px 4px 0 6px',
   borderTop: '1px solid var(--border-primary)',
 }
 
 const timeInputStyle: React.CSSProperties = {
-  width: 120,
-  padding: '7px 10px',
-  fontSize: 13,
+  width: 100,
+  padding: '5px 8px',
+  fontSize: 12,
   fontWeight: 600,
   fontFamily: 'inherit',
   background: 'var(--bg-elevated)',
   color: 'var(--text-primary)',
   border: '1px solid var(--border-primary)',
-  borderRadius: 6,
+  borderRadius: 5,
   outline: 'none',
   colorScheme: 'dark',
   textAlign: 'center',
@@ -407,27 +407,27 @@ const footerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  marginTop: 6,
-  padding: '0 4px',
+  marginTop: 4,
+  padding: '0 2px',
 }
 
 const footerLinkStyle: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 600,
   color: 'var(--text-secondary)',
   background: 'transparent',
   border: 'none',
-  padding: '6px 4px',
+  padding: '5px 2px',
   cursor: 'pointer',
 }
 
 const footerConfirmStyle: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 700,
   color: '#fff',
   background: 'var(--color-primary, #06b6d4)',
   border: 'none',
-  padding: '7px 16px',
-  borderRadius: 6,
+  padding: '6px 14px',
+  borderRadius: 5,
   cursor: 'pointer',
 }

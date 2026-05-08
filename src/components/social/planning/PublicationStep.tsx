@@ -329,7 +329,13 @@ export default function PublicationStep({
             date={(slot.plan_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10)}
             time={scheduledTime}
             onChange={(date, time) => {
-              if (date !== (slot.plan_date ?? '').slice(0, 10)) onUpdate({ plan_date: date })
+              if (date !== (slot.plan_date ?? '').slice(0, 10)) {
+                // Slot manuellement deplace: on le detache de la trame
+                // (slot_index=null) sinon l'index unique
+                // (workspace_id, plan_date, content_kind, slot_index, pillar_id)
+                // peut bloquer si un autre slot occupe deja cette date.
+                onUpdate({ plan_date: date, slot_index: null } as Partial<SocialPostWithPublications>)
+              }
               if (time !== scheduledTime) onScheduledTimeChange(time)
             }}
             disabled={readOnly}
