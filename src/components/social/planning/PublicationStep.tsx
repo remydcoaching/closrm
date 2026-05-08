@@ -321,13 +321,20 @@ export default function PublicationStep({
         </div>
       )}
 
-      {/* 4. Scheduled time */}
+      {/* 4. Scheduled date + time */}
       {enabledPlatforms.length > 0 && (
-        <Field label="Heure de publication">
+        <Field label="Date et heure de publication">
           <input
-            type="time"
-            value={scheduledTime}
-            onChange={(e) => onScheduledTimeChange(e.target.value)}
+            type="datetime-local"
+            value={`${(slot.plan_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10)}T${scheduledTime}`}
+            min={`${new Date().toISOString().slice(0, 10)}T00:00`}
+            onChange={(e) => {
+              const v = e.target.value
+              if (!v) return
+              const [datePart, timePart] = v.split('T')
+              if (datePart) onUpdate({ plan_date: datePart })
+              if (timePart) onScheduledTimeChange(timePart.slice(0, 5))
+            }}
             disabled={readOnly}
             style={inputStyle}
           />
