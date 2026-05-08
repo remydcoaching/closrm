@@ -25,7 +25,7 @@ export async function POST(
   const supabase = createServiceClient()
   const { data: booking, error } = await supabase
     .from('bookings')
-    .select('id, status, manage_token, workspace_id, google_event_id')
+    .select('id, status, manage_token, workspace_id, google_event_id, call_id')
     .eq('id', id)
     .maybeSingle()
 
@@ -47,6 +47,11 @@ export async function POST(
     deleteGoogleCalendarEvent(booking.workspace_id, booking.google_event_id).catch((err) => {
       console.error('[cancel-booking] Google Calendar delete failed:', err instanceof Error ? err.message : err)
     })
+  }
+
+  // Delete linked call if any
+  if (booking.call_id && booking.workspace_id) {
+    supabase.from('calls').delete().eq('id', booking.call_id).eq('workspace_id', booking.workspace_id).then(() => {})
   }
 
   // Delete the booking entirely
