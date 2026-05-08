@@ -30,9 +30,9 @@ EAS Build au lieu de Xcode/Android Studio direct.
 |---|------|--------|
 | 7 | Leads List flat | ✅ | useLeads + LeadCard + segments/filters/search/realtime |
 | 8 | Leads List groupée + priorité | ⏳ |
-| 9 | Lead Detail | ⏳ |
-| 10 | Calls Day | ⏳ |
-| 11 | Call Detail | ⏳ |
+| 9 | Lead Detail | ✅ | useLead + hero + KPI + CTA + quick actions + infos + tags + notes |
+| 10 | Calls Day | ✅ | useCalls + DayStrip + CallSlot + KPI summary + flatlist |
+| 11 | Call Detail | ✅ | useCall + countdown hero + Zoom CTA + contexte/objectif + notes auto-save |
 | 12 | Schedule Sheet | ⏳ |
 | 13 | Inbox | ⏳ |
 | 14 | Conversation | ⏳ |
