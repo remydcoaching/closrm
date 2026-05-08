@@ -28,7 +28,7 @@ EAS Build au lieu de Xcode/Android Studio direct.
 
 | # | Task | Statut |
 |---|------|--------|
-| 7 | Leads List flat | ⏳ |
+| 7 | Leads List flat | ✅ | useLeads + LeadCard + segments/filters/search/realtime |
 | 8 | Leads List groupée + priorité | ⏳ |
 | 9 | Lead Detail | ⏳ |
 | 10 | Calls Day | ⏳ |
