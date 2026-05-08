@@ -180,7 +180,7 @@ export const ROUTE_VISIBILITY: Record<string, WorkspaceRole[]> = {
   '/acquisition/reseaux-sociaux': ['admin'],
   '/acquisition/messages': ['admin', 'setter', 'closer'],
   '/acquisition/publicites': ['admin'],
-  '/parametres/reglages': ['admin', 'monteur'],
+  '/parametres/reglages': ['admin'],
   '/parametres/integrations': ['admin'],
   '/parametres/calendriers': ['admin'],
   '/parametres/equipe': ['admin'],
