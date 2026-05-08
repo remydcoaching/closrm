@@ -474,10 +474,10 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
                     alignItems: 'flex-start',
                     pointerEvents: 'none',
                   }}
-                  onMouseEnter={() => setHoveredId(a.id)}
-                  onMouseLeave={() => setHoveredId((prev) => (prev === a.id ? null : prev))}
                 >
                   <button
+                    onMouseEnter={() => setHoveredId(a.id)}
+                    onMouseLeave={() => setHoveredId((prev) => (prev === a.id ? null : prev))}
                     onClick={(e) => {
                       e.stopPropagation()
                       if (videoRef.current) {
@@ -489,23 +489,40 @@ const VideoReviewPlayer = forwardRef<VideoReviewPlayerHandle, VideoReviewPlayerP
                       setDismissedId(null) // reset: le user redemande explicitement cette annotation
                       onAnnotationClick?.(a.id)
                     }}
+                    // Hit area plus grand que le visuel : un wrapper transparent
+                    // (16x24) entourant le marker visible (12x16) — sans deplacer
+                    // le visuel grace au padding 0/4. Aide a viser sur trackpad.
                     style={{
-                      width: 12,
-                      height: 16,
-                      marginTop: 4,
-                      padding: 0,
-                      background: isResolved ? 'var(--text-tertiary)' : (a.author_color ?? '#f59e0b'),
-                      border: '2px solid var(--bg-secondary)',
-                      borderRadius: 4,
+                      width: 20,
+                      height: 24,
+                      padding: '4px 4px 4px 4px',
+                      marginTop: 0,
+                      background: 'transparent',
+                      border: 'none',
                       cursor: 'pointer',
                       pointerEvents: 'auto',
-                      opacity: isResolved ? 0.5 : 1,
-                      transform: isHovered || isClicked ? 'scale(1.25)' : 'scale(1)',
-                      transition: 'transform 0.12s',
-                      boxShadow: isClicked ? `0 0 0 3px ${a.author_color ?? '#f59e0b'}33` : 'none',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'center',
+                      // pour que le wrapper soit centré sur la timeline
                     }}
                     aria-label={`Annotation à ${formatTime(a.video_timestamp_seconds)}`}
-                  />
+                  >
+                    <span
+                      style={{
+                        display: 'block',
+                        width: 12,
+                        height: 16,
+                        background: isResolved ? 'var(--text-tertiary)' : (a.author_color ?? '#f59e0b'),
+                        border: '2px solid var(--bg-secondary)',
+                        borderRadius: 4,
+                        opacity: isResolved ? 0.5 : 1,
+                        transform: isHovered || isClicked ? 'scale(1.25)' : 'scale(1)',
+                        transition: 'transform 0.12s',
+                        boxShadow: isClicked ? `0 0 0 3px ${a.author_color ?? '#f59e0b'}33` : 'none',
+                      }}
+                    />
+                  </button>
                   {/* Tooltip hover uniquement (pas le clicked — celui-la s'affiche dans le panneau dedie en dessous) */}
                   {showPopup && !isClicked && (
                     <div
