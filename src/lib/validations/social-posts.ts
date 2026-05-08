@@ -64,6 +64,8 @@ export const updateSocialPostSchema = z.object({
   // monteur lors d'une transition edited|ready -> filmed (= retouches demandees).
   // Le serveur l'utilise pour le contenu de l'email + ne l'ecrit pas en DB.
   revision_feedback: z.string().max(2000).optional().nullable(),
+  // Deadline montage (coach uniquement). ISO 8601.
+  montage_deadline: z.string().datetime().optional().nullable(),
 })
 
 export const socialPostFiltersSchema = z.object({

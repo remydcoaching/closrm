@@ -1,8 +1,8 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { ChevronDown, Check } from 'lucide-react'
-import type { SocialPostWithPublications } from '@/types'
+import { ChevronDown, Check, Clock } from 'lucide-react'
+import type { SocialPostWithPublications, FinalVersion } from '@/types'
 
 interface MontageStepProps {
   slot: SocialPostWithPublications
@@ -14,6 +14,8 @@ interface MontageStepProps {
   transitionAction: { label: string; nextStatus: 'ready' } | null
   onTransition: () => void
   onRequestRevision?: (feedback: string) => Promise<void>
+  /** True quand le user est monteur (edite uniquement final + notes) */
+  isMonteur?: boolean
 }
 
 export default function MontageStep({
@@ -26,6 +28,7 @@ export default function MontageStep({
   transitionAction,
   onTransition,
   onRequestRevision,
+  isMonteur = false,
 }: MontageStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [revisionOpen, setRevisionOpen] = useState(false)
@@ -80,6 +83,22 @@ export default function MontageStep({
           style={inputStyle}
         />
       </Field>
+
+      {/* Deadline montage (coach edite, monteur lecture seule) */}
+      <Field label="Délai pour le montage">
+        <DeadlinePicker
+          value={slot.montage_deadline ?? null}
+          onChange={(iso) => onUpdate({ montage_deadline: iso })}
+          readOnly={isMonteur}
+        />
+      </Field>
+
+      {/* Versions du montage final (V1, V2, V3...) — visible si plus d'une */}
+      {(slot.final_versions?.length ?? 0) > 1 && (
+        <Field label="Versions livrées">
+          <VersionsList versions={slot.final_versions ?? []} currentUrl={slot.final_url ?? null} />
+        </Field>
+      )}
 
       {/* Montage final — preview vidéo gérée dans le panneau droit du drawer */}
       <Field label="Montage final">
@@ -440,6 +459,194 @@ function FinalUrlActions({
   )
 }
 
+/**
+ * DeadlinePicker — coach: presets rapides + datepicker.
+ *                    monteur: badge color-coded selon urgence (read-only).
+ */
+function DeadlinePicker({
+  value,
+  onChange,
+  readOnly,
+}: {
+  value: string | null
+  onChange: (iso: string | null) => void
+  readOnly: boolean
+}) {
+  const urgency = computeUrgency(value)
+
+  if (readOnly) {
+    if (!value) {
+      return (
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+          Aucun délai défini
+        </span>
+      )
+    }
+    return (
+      <UrgencyBadge value={value} urgency={urgency} />
+    )
+  }
+
+  // Coach: input date + presets
+  const dateValue = value ? new Date(value).toISOString().slice(0, 10) : ''
+  function setFromDays(days: number) {
+    const d = new Date()
+    d.setDate(d.getDate() + days)
+    d.setHours(23, 59, 0, 0)
+    onChange(d.toISOString())
+  }
+  function setFromInput(yyyymmdd: string) {
+    if (!yyyymmdd) {
+      onChange(null)
+      return
+    }
+    const d = new Date(yyyymmdd + 'T23:59:00')
+    onChange(d.toISOString())
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {[
+          { label: '+1 sem', days: 7 },
+          { label: '+2 sem', days: 14 },
+          { label: '+3 sem', days: 21 },
+          { label: '+1 mois', days: 30 },
+        ].map(p => (
+          <button
+            key={p.days}
+            type="button"
+            onClick={() => setFromDays(p.days)}
+            style={presetBtnStyle}
+          >
+            {p.label}
+          </button>
+        ))}
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            style={{ ...presetBtnStyle, color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
+          >
+            Effacer
+          </button>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input
+          type="date"
+          value={dateValue}
+          onChange={(e) => setFromInput(e.target.value)}
+          style={{ ...inputStyle, flex: 1, colorScheme: 'dark' }}
+        />
+        {value && <UrgencyBadge value={value} urgency={urgency} />}
+      </div>
+    </div>
+  )
+}
+
+function UrgencyBadge({ value, urgency }: { value: string; urgency: ReturnType<typeof computeUrgency> }) {
+  const d = new Date(value)
+  const fmt = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '4px 10px',
+      fontSize: 11, fontWeight: 700,
+      color: urgency.color,
+      background: urgency.bg,
+      border: `1px solid ${urgency.border}`,
+      borderRadius: 6,
+      whiteSpace: 'nowrap',
+    }}>
+      <Clock size={11} />
+      {urgency.label} · {fmt}
+    </span>
+  )
+}
+
+/** Calcule l'etat d'urgence relatif a maintenant. */
+function computeUrgency(iso: string | null): {
+  label: string
+  color: string
+  bg: string
+  border: string
+  daysLeft: number | null
+} {
+  if (!iso) return { label: '—', color: 'var(--text-tertiary)', bg: 'transparent', border: 'var(--border-primary)', daysLeft: null }
+  const target = new Date(iso).getTime()
+  const now = Date.now()
+  const diffMs = target - now
+  const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+
+  if (daysLeft < 0) {
+    return { label: `En retard de ${Math.abs(daysLeft)}j`, color: '#fff', bg: '#ef4444', border: '#ef4444', daysLeft }
+  }
+  if (daysLeft === 0) {
+    return { label: 'Aujourd\'hui', color: '#fff', bg: '#ef4444', border: '#ef4444', daysLeft }
+  }
+  if (daysLeft <= 2) {
+    return { label: `J-${daysLeft} URGENT`, color: '#fff', bg: '#ef4444', border: '#ef4444', daysLeft }
+  }
+  if (daysLeft <= 5) {
+    return { label: `J-${daysLeft}`, color: '#d97706', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)', daysLeft }
+  }
+  return { label: `J-${daysLeft}`, color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.4)', daysLeft }
+}
+
+/** Helper exporté pour la kanban du monteur. */
+export function getDeadlineUrgency(iso: string | null) {
+  return computeUrgency(iso)
+}
+
+/**
+ * Liste des versions livrees du monteur. Click pour ouvrir le lien dans
+ * un nouvel onglet. La derniere version (= currentUrl) est badged.
+ */
+function VersionsList({ versions, currentUrl }: { versions: FinalVersion[]; currentUrl: string | null }) {
+  const sorted = [...versions].sort((a, b) => b.version - a.version)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {sorted.map((v) => {
+        const isCurrent = v.url === currentUrl
+        const date = new Date(v.uploaded_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+        return (
+          <div
+            key={v.version}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 10px',
+              background: isCurrent ? 'rgba(0, 200, 83, 0.06)' : 'var(--bg-elevated)',
+              border: `1px solid ${isCurrent ? 'rgba(0, 200, 83, 0.3)' : 'var(--border-primary)'}`,
+              borderRadius: 6,
+              fontSize: 12,
+            }}
+          >
+            <span style={{
+              fontFamily: 'monospace', fontWeight: 700,
+              padding: '2px 6px',
+              background: isCurrent ? 'var(--color-primary)' : 'var(--bg-secondary)',
+              color: isCurrent ? '#fff' : 'var(--text-tertiary)',
+              borderRadius: 4,
+              fontSize: 10,
+            }}>
+              V{v.version}
+            </span>
+            <span style={{ flex: 1, color: 'var(--text-tertiary)', fontSize: 11 }}>
+              {date}
+            </span>
+            {isCurrent && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                Active
+              </span>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -535,6 +742,18 @@ const revisionBtnStyle: React.CSSProperties = {
   background: 'rgba(245,158,11,0.08)',
   border: '1px solid rgba(245,158,11,0.4)',
   borderRadius: 8,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+}
+
+const presetBtnStyle: React.CSSProperties = {
+  padding: '5px 10px',
+  fontSize: 11,
+  fontWeight: 600,
+  color: 'var(--text-tertiary)',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-primary)',
+  borderRadius: 6,
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 }

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { Clapperboard, Scissors, CheckCircle2, Loader2 } from 'lucide-react'
+import { Clapperboard, Scissors, CheckCircle2, Loader2, Clock } from 'lucide-react'
 import type { SocialPost, ContentPillar } from '@/types'
 import { useToast } from '@/components/ui/Toast'
+import { getDeadlineUrgency } from '@/components/social/planning/MontageStep'
 
 // Drawer = lourd (~2k lignes), lazy
 const SlotDetailDrawer = dynamic(() => import('@/components/social/planning/SlotDetailDrawer'), { ssr: false })
@@ -146,6 +147,11 @@ function SlotCard({
   const date = slot.plan_date
     ? new Date(slot.plan_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
     : null
+  // Badge urgency: seulement pour les statuts ou le monteur peut encore agir
+  const showUrgency = slot.production_status === 'filmed' || slot.production_status === 'edited'
+  const urgency = showUrgency ? getDeadlineUrgency(slot.montage_deadline ?? null) : null
+  const overdueOrUrgent = urgency && urgency.daysLeft !== null && urgency.daysLeft <= 2
+
   return (
     <button
       onClick={onClick}
@@ -153,13 +159,16 @@ function SlotCard({
         textAlign: 'left',
         padding: 12,
         background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-primary)',
+        border: overdueOrUrgent
+          ? '1px solid #ef4444'
+          : '1px solid var(--border-primary)',
         borderRadius: 8,
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
         transition: 'border-color 0.15s',
+        boxShadow: overdueOrUrgent ? '0 0 0 1px rgba(239,68,68,0.15)' : 'none',
       }}
     >
       {date && (
@@ -170,11 +179,28 @@ function SlotCard({
       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.35 }}>
         {slot.title || slot.hook?.slice(0, 80) || 'Sans titre'}
       </span>
-      {pillar && (
-        <span style={{ fontSize: 10, color: pillar.color, fontWeight: 600 }}>
-          ● {pillar.name}
-        </span>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        {pillar && (
+          <span style={{ fontSize: 10, color: pillar.color, fontWeight: 600 }}>
+            ● {pillar.name}
+          </span>
+        )}
+        {urgency && urgency.daysLeft !== null && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 6px',
+            fontSize: 10, fontWeight: 700,
+            color: urgency.color,
+            background: urgency.bg,
+            border: `1px solid ${urgency.border}`,
+            borderRadius: 4,
+            whiteSpace: 'nowrap',
+          }}>
+            <Clock size={9} />
+            {urgency.label}
+          </span>
+        )}
+      </div>
     </button>
   )
 }

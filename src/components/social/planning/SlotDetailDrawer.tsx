@@ -826,6 +826,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               transitionAction={role === 'monteur' ? null : (transitionAction as { label: string; nextStatus: 'ready' } | null)}
               onTransition={transition}
               onRequestRevision={role === 'monteur' ? undefined : requestRevision}
+              isMonteur={role === 'monteur'}
             />
           )}
           {activeStep === 'publication' && (
