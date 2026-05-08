@@ -72,7 +72,17 @@ export async function PATCH(
       // Filmed avec un monteur assigné — soit transition, soit réassignation.
       // monteur_notified_at est null (reseté par trigger si nécessaire), donc
       // notifyMonteurFilmed ne renverra pas si déjà envoyé.
-      if (nowFilmed && updated.monteur_id && (existing.production_status !== 'filmed' || monteurChanged)) {
+      // EXCLUSION: si on revient depuis edited|ready (= demande de retouches),
+      // c'est notifyMonteurRevisionRequested qui prend le relai (eviter le
+      // double email).
+      const isRevisionFlow =
+        nowFilmed && (existing.production_status === 'edited' || existing.production_status === 'ready')
+      if (
+        nowFilmed &&
+        updated.monteur_id &&
+        !isRevisionFlow &&
+        (existing.production_status !== 'filmed' || monteurChanged)
+      ) {
         notifyMonteurFilmed(supabase, updated).catch(err =>
           console.error('[social/posts PATCH] notify monteur failed:', err?.message)
         )
@@ -91,10 +101,8 @@ export async function PATCH(
           console.error('[social/posts PATCH] notify monteur validated failed:', err?.message)
         )
       }
-      // edited|ready → filmed avec un feedback : retouches demandees
-      const goingBackToFilmed =
-        nowFilmed && (existing.production_status === 'edited' || existing.production_status === 'ready')
-      if (goingBackToFilmed && updated.monteur_id) {
+      // edited|ready → filmed : retouches demandees
+      if (isRevisionFlow && updated.monteur_id) {
         const feedback = (parsed.data as { revision_feedback?: string | null }).revision_feedback ?? null
         notifyMonteurRevisionRequested(supabase, updated, feedback).catch(err =>
           console.error('[social/posts PATCH] notify monteur revision failed:', err?.message)
