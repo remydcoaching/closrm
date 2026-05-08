@@ -262,7 +262,20 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
         // ("tmp-instagram-1234567890") qui fait planter la validation UUID.
         // On envoie au serveur juste les champs editables (platform/config/
         // scheduled_at + id si c'est un vrai UUID a updater).
+        // Helper: Zod .datetime() exige RFC 3339 avec TZ ('Z' ou '+HH:MM').
+        // Une valeur sans TZ (e.g. "2026-05-05T18:00:00") est rejetee → on
+        // la convertit en ISO complet, sinon on retourne null.
+        const toIsoOrNull = (v: unknown): string | null => {
+          if (typeof v !== 'string' || v.length === 0) return null
+          const d = new Date(v)
+          if (isNaN(d.getTime())) return null
+          return d.toISOString()
+        }
         const sanitized: Partial<SocialPostWithPublications> = { ...patch }
+        // Sanitize scheduled_at top-level
+        if ('scheduled_at' in patch) {
+          sanitized.scheduled_at = toIsoOrNull(patch.scheduled_at)
+        }
         if (Array.isArray(patch.publications)) {
           // Dedupe par platform (1 publication par plateforme = unique constraint server-side)
           const seenPlatforms = new Set<string>()
@@ -275,7 +288,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               ...(isRealId ? { id: p.id } : {}),
               platform: p.platform,
               config: p.config ?? {},
-              scheduled_at: p.scheduled_at ?? null,
+              scheduled_at: toIsoOrNull(p.scheduled_at),
             } as SocialPostPublication)
           }
           sanitized.publications = cleaned
