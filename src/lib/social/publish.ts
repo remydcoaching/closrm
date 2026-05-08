@@ -24,25 +24,40 @@ interface Pub {
 
 export async function publishPendingBatch(supabase: Supabase, limit = 10) {
   const now = new Date().toISOString()
-  const { data: pubs, error } = await supabase
+  // 1. SELECT les ids pending dont l'heure est passee.
+  const { data: candidates, error: selErr } = await supabase
     .from('social_post_publications')
-    .select('*, post:social_posts(*)')
+    .select('id')
     .eq('status', 'pending')
     .lte('scheduled_at', now)
     .limit(limit)
+  if (selErr) throw new Error(selErr.message)
+  if (!candidates?.length) return { published: 0, errors: 0 }
 
-  if (error) throw new Error(error.message)
-  if (!pubs?.length) return { published: 0, errors: 0 }
+  // 2. Atomic claim: UPDATE ... WHERE status='pending' RETURNING.
+  //    Si 2 invocations de cron se chevauchent (cron toutes les 5min,
+  //    une iteration prend >5min sur une grosse video), seule la premiere
+  //    qui passe le UPDATE recupere les lignes — la 2e voit status='publishing'
+  //    et son WHERE filtre. Pas de double-publication.
+  const ids = candidates.map((c) => c.id as string)
+  const { data: claimed, error: claimErr } = await supabase
+    .from('social_post_publications')
+    .update({ status: 'publishing' })
+    .in('id', ids)
+    .eq('status', 'pending') // re-check pour gagner la course
+    .select('*, post:social_posts(*)')
+  if (claimErr) throw new Error(claimErr.message)
+  if (!claimed?.length) return { published: 0, errors: 0 }
 
   let published = 0
   let errors = 0
-  for (const pub of pubs) {
+  for (const pub of claimed) {
     const post = (pub as unknown as { post: Post | null }).post
     const ok = await publishOne(supabase, pub as unknown as Pub, post)
     if (ok) published++
     else errors++
   }
-  await refreshPostStatuses(supabase, pubs.map((p) => (p as unknown as Pub).social_post_id))
+  await refreshPostStatuses(supabase, claimed.map((p) => (p as unknown as Pub).social_post_id))
   return { published, errors }
 }
 

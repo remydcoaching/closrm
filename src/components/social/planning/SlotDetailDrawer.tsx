@@ -594,6 +594,11 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       return
     }
     const scheduledAt = built.toISOString()
+    // Lock anti double-PATCH : si un reschedule est deja en vol, on ignore.
+    // Sans ca, click rapide sur picker + bouton 'Reprogrammer' => 2 PATCHes
+    // concurrents, dont la 2e peut ecraser une mise a jour serveur entre-deux.
+    if (scheduling) return
+    setScheduling(true)
     try {
       const activePubs = (slot.publications ?? []).filter((p) => p.platform)
       const res = await fetch(`/api/social/posts/${slotId}`, {
@@ -620,8 +625,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       onChange()
     } catch (e) {
       toast.error('Erreur reprogrammation', (e as Error).message)
+    } finally {
+      setScheduling(false)
     }
-  }, [slot, slotId, toast, onChange])
+  }, [slot, slotId, scheduling, toast, onChange])
 
   // ─── Publier maintenant (immediat, ignore l'heure programmee) ───────────
 

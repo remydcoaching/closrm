@@ -229,14 +229,20 @@ export default function PlanningView() {
               onSelectSlot={setSelectedSlotId}
               onCreateSlot={createPost}
               onMoveSlot={async (slotId, newDate) => {
-                // Optimistic update: on patch local immediatement, puis on
-                // PATCH le serveur. En cas d'erreur, on revert + reload.
-                const previous = posts
-                const moved = previous.find(p => p.id === slotId)
+                // Optimistic update: on patch UNIQUEMENT le slot deplace
+                // (pas tout l'array). Sans ca, drag-rapide D1 + D2 en
+                // simultane, si D1 fail apres D2, le revert restaurait
+                // l'array d'avant D1 et ecrasait D2.
+                const moved = posts.find(p => p.id === slotId)
                 if (!moved) return
                 const oldDate = moved.plan_date?.slice(0, 10) ?? null
-                // Si le slot est `scheduled` on update aussi scheduled_at
-                // pour conserver l'heure programmee mais sur la nouvelle date.
+                if (oldDate === newDate) return // no-op, meme cellule
+                // Snapshot de l'etat avant move (just le slot, pas tout)
+                const previousSnapshot: Partial<SocialPostWithPublications> = {
+                  plan_date: moved.plan_date,
+                  slot_index: moved.slot_index,
+                  scheduled_at: moved.scheduled_at,
+                }
                 let newScheduledAt: string | null = null
                 if (moved.scheduled_at) {
                   const d = new Date(moved.scheduled_at)
@@ -269,7 +275,11 @@ export default function PlanningView() {
                   toast.success('Slot déplacé', `Du ${oldDate ?? '—'} au ${newDate}`)
                   void reloadSilent()
                 } catch (e) {
-                  setPosts(previous)
+                  // Revert UNIQUEMENT le slot concerne (pas tout l'array).
+                  setPosts(prev => prev.map(p => p.id === slotId
+                    ? { ...p, ...previousSnapshot }
+                    : p
+                  ))
                   toast.error('Erreur déplacement', (e as Error).message)
                 }
               }}

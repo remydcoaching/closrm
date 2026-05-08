@@ -329,7 +329,14 @@ export default function PublicationStep({
       {enabledPlatforms.length > 0 && (
         <Field label="Date et heure de publication">
           <DateTimePicker
-            date={(slot.plan_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10)}
+            // Priorité: plan_date (= la date pivot UI) → scheduled_at
+            // (= si quelqu'un a programme sans plan_date) → aujourd'hui.
+            // Sans ce fallback, un slot sans plan_date affichait toujours
+            // 'aujourd hui' meme si scheduled_at pointait sur une autre date.
+            date={(
+              slot.plan_date ??
+              (slot.scheduled_at ? slot.scheduled_at.slice(0, 10) : new Date().toISOString().slice(0, 10))
+            ).slice(0, 10)}
             time={scheduledTime}
             onChange={(date, time) => {
               const isScheduled = slot.status === 'scheduled'
