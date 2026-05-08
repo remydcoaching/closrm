@@ -49,6 +49,12 @@
         "projectId": "ead8d818-3bad-4a5c-9368-4286d0aa1019"
       }
     },
-    "owner": "pierre_rebmann"
+    "owner": "pierre_rebmann",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ead8d818-3bad-4a5c-9368-4286d0aa1019"
+    }
   }
 }
