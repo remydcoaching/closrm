@@ -567,9 +567,10 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     }
     setScheduling(true)
     try {
-      // scheduled_at = now → le worker de publication va le picker immediatement
+      // 1. PATCH le slot pour persister scheduled_at = now + status scheduled
+      //    (sinon le record reste 'draft' et la publication n'est pas tracee).
       const nowIso = new Date().toISOString()
-      const res = await fetch(`/api/social/posts/${slotId}`, {
+      const patchRes = await fetch(`/api/social/posts/${slotId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -582,11 +583,25 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
           })),
         }),
       })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        throw new Error((j as { error?: string }).error ?? `Erreur ${res.status}`)
+      if (!patchRes.ok) {
+        const j = await patchRes.json().catch(() => ({}))
+        throw new Error((j as { error?: string }).error ?? `Erreur ${patchRes.status}`)
       }
-      toast.success('Publication lancée', 'Le slot va être publié dans la minute qui vient.')
+      // 2. Trigger l'API de publication immediate (publishPostNow service-role).
+      //    Sinon le user attendrait le cron qui tourne 1x/jour a 09:00 UTC.
+      const publishRes = await fetch(`/api/social/posts/${slotId}/publish`, {
+        method: 'POST',
+      })
+      if (!publishRes.ok) {
+        const j = await publishRes.json().catch(() => ({}))
+        throw new Error((j as { error?: string }).error ?? `Erreur publication ${publishRes.status}`)
+      }
+      const result = (await publishRes.json()) as { published?: number; errors?: number }
+      if ((result.errors ?? 0) > 0) {
+        toast.error('Publication partielle', `${result.published ?? 0} publié(s), ${result.errors} échec(s). Voir la fiche pour les détails.`)
+      } else {
+        toast.success('Publication lancée', `${result.published ?? activePubs.length} publication(s) en cours.`)
+      }
       onChange()
       onClose()
     } catch (e) {
