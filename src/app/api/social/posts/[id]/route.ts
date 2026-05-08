@@ -43,6 +43,20 @@ export async function PATCH(
     const { publications, revision_feedback: _revisionFeedback, ...post } = parsed.data
     void _revisionFeedback
 
+    // ⚠️ Important: certains champs (rush_url, final_url) ont un .transform()
+    // dans le schema Zod qui transforme `undefined` (champ absent du payload)
+    // en `null`. Resultat: PATCH { final_url: 'xxx' } produit
+    // { final_url: 'xxx', rush_url: null } apres parse. Le UPDATE SQL inclut
+    // alors rush_url: null, et le trigger DB monteur_guard voit
+    // NEW.rush_url IS DISTINCT FROM OLD.rush_url → throws.
+    // Fix: on ne garde dans l'UPDATE que les cles reellement presentes
+    // dans le body original (= le client a explicitement voulu les modifier).
+    const bodyKeys = body && typeof body === 'object' ? new Set(Object.keys(body)) : new Set()
+    const filteredPost: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(post)) {
+      if (bodyKeys.has(k)) filteredPost[k] = v
+    }
+
     const supabase = await createClient()
     const { data: existing } = await supabase
       .from('social_posts')
@@ -52,7 +66,7 @@ export async function PATCH(
 
     const { data: updated, error } = await supabase
       .from('social_posts')
-      .update(post)
+      .update(filteredPost)
       .eq('id', id)
       .eq('workspace_id', workspaceId)
       .select()
