@@ -32,18 +32,26 @@ export default function TabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        // Tab bar premium : un peu translucide effet glass via solid-on-bg,
+        // bordure top sobre, hauteur généreuse pour respiration.
         tabBarStyle: {
-          backgroundColor: '#09090b',
-          borderTopColor: '#262626',
-          borderTopWidth: 1,
-          height: 84,
-          paddingTop: 6,
+          backgroundColor: '#000000',
+          borderTopColor: '#2c2c2e',
+          borderTopWidth: 0.5,
+          height: 88,
+          paddingTop: 8,
+          paddingBottom: 24,
         },
         tabBarActiveTintColor: '#00C853',
-        tabBarInactiveTintColor: '#A0A0A0',
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
-        tabBarIcon: ({ focused, color, size }) => (
-          <Ionicons name={iconFor(route.name, focused)} size={size ?? 22} color={color} />
+        tabBarInactiveTintColor: '#6E6E73',
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.3,
+          marginTop: 2,
+        },
+        tabBarIcon: ({ focused, color }) => (
+          <Ionicons name={iconFor(route.name, focused)} size={focused ? 26 : 24} color={color} />
         ),
       })}
     >

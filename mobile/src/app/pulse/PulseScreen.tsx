@@ -57,37 +57,75 @@ export function PulseScreen() {
           </Text>
         </View>
 
-        {/* Hero Revenue avec gradient (cf spec 7.9 'gradient vert'). */}
-        <LinearGradient
-          colors={[colors.primary + '40', colors.primary + '10', colors.bgElevated]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        {/* Hero Revenue — premium feel : gradient vert + numéro XXL +
+            glow shadow primary. Inspiré Linear/Superhuman cards. */}
+        <View
           style={{
-            borderRadius: 18,
-            borderWidth: 1,
-            borderColor: colors.primary + '50',
-            padding: 20,
-            overflow: 'hidden',
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.25,
+            shadowRadius: 24,
+            elevation: 6,
           }}
         >
-          <Text
+          <LinearGradient
+            colors={[colors.primary + '55', colors.primary + '15', colors.bgElevated]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1.2 }}
             style={{
-              color: colors.primary,
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 0.6,
+              borderRadius: 22,
+              borderWidth: 1,
+              borderColor: colors.primary + '60',
+              padding: 24,
+              overflow: 'hidden',
             }}
           >
-            REVENUE · {monthName.toUpperCase()}
-          </Text>
-          <Text style={{ color: colors.textPrimary, fontSize: 38, fontWeight: '800', marginTop: 6, letterSpacing: -0.5 }}>
-            {fmtEur(kpis.revenueMonth)}
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 6 }}>
-            {kpis.funnel.deals} deal{kpis.funnel.deals > 1 ? 's' : ''} · panier moyen{' '}
-            {fmtEur(kpis.avgBasket)}
-          </Text>
-        </LinearGradient>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                marginBottom: 8,
+              }}
+            >
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: colors.primary,
+                }}
+              />
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontSize: 11,
+                  fontWeight: '800',
+                  letterSpacing: 1.2,
+                }}
+              >
+                REVENUE · {monthName.toUpperCase()}
+              </Text>
+            </View>
+            <Text
+              style={{
+                color: colors.textPrimary,
+                fontSize: 48,
+                fontWeight: '800',
+                letterSpacing: -1.2,
+                lineHeight: 54,
+              }}
+            >
+              {fmtEur(kpis.revenueMonth)}
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 8, fontWeight: '500' }}>
+              {kpis.funnel.deals} deal{kpis.funnel.deals > 1 ? 's' : ''} · panier moyen{' '}
+              <Text style={{ color: colors.textPrimary, fontWeight: '700' }}>
+                {fmtEur(kpis.avgBasket)}
+              </Text>
+            </Text>
+          </LinearGradient>
+        </View>
 
         {/* Mini KPI grid */}
         <View style={{ flexDirection: 'row', gap: 8 }}>

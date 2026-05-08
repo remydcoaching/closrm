@@ -19,23 +19,27 @@ export function FAB({ onPress, icon = 'add', bottom = 24 }: FABProps) {
         position: 'absolute',
         right: 20,
         bottom,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        // shadow iOS
+        // Glow premium : 2 shadows superposées (proche + far) pour un
+        // effet plus riche qu'une simple shadow.
         shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        // shadow Android
-        elevation: 8,
-        opacity: pressed ? 0.85 : 1,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.55,
+        shadowRadius: 20,
+        elevation: 12,
+        // Inner border subtil pour donner du relief
+        borderWidth: 1,
+        borderColor: '#FFFFFF22',
+        transform: [{ scale: pressed ? 0.94 : 1 }],
+        opacity: pressed ? 0.95 : 1,
       })}
     >
-      <Ionicons name={icon} size={26} color="#fff" />
+      <Ionicons name={icon} size={28} color="#fff" />
     </Pressable>
   )
 }

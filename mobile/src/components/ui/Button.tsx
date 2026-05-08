@@ -17,23 +17,60 @@ interface ButtonProps {
   fullWidth?: boolean
 }
 
-const sizeStyle: Record<Size, { paddingV: number; paddingH: number; fontSize: number }> = {
-  sm: { paddingV: 6, paddingH: 12, fontSize: 13 },
-  md: { paddingV: 10, paddingH: 16, fontSize: 15 },
-  lg: { paddingV: 14, paddingH: 20, fontSize: 17 },
+const sizeStyle: Record<Size, { paddingV: number; paddingH: number; fontSize: number; radius: number }> = {
+  sm: { paddingV: 8, paddingH: 14, fontSize: 13, radius: 10 },
+  md: { paddingV: 12, paddingH: 18, fontSize: 15, radius: 12 },
+  lg: { paddingV: 16, paddingH: 22, fontSize: 17, radius: 14 },
 }
 
 function variantStyle(variant: Variant, disabled: boolean) {
   const dim = disabled ? 0.4 : 1
   switch (variant) {
     case 'primary':
-      return { bg: colors.primary, fg: '#fff', borderColor: colors.primary, opacity: dim }
+      return {
+        bg: colors.primary,
+        fg: '#fff',
+        borderColor: colors.primary,
+        opacity: dim,
+        // Glow vert subtil sur primary CTA — premium feel.
+        shadow: {
+          shadowColor: colors.primary,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 8,
+          elevation: 4,
+        },
+      }
     case 'danger':
-      return { bg: colors.danger, fg: '#fff', borderColor: colors.danger, opacity: dim }
+      return {
+        bg: colors.danger,
+        fg: '#fff',
+        borderColor: colors.danger,
+        opacity: dim,
+        shadow: {
+          shadowColor: colors.danger,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 6,
+          elevation: 3,
+        },
+      }
     case 'outline':
-      return { bg: 'transparent', fg: colors.textPrimary, borderColor: colors.border, opacity: dim }
+      return {
+        bg: 'transparent',
+        fg: colors.textPrimary,
+        borderColor: colors.border,
+        opacity: dim,
+        shadow: {},
+      }
     case 'ghost':
-      return { bg: 'transparent', fg: colors.textPrimary, borderColor: 'transparent', opacity: dim }
+      return {
+        bg: 'transparent',
+        fg: colors.textPrimary,
+        borderColor: 'transparent',
+        opacity: dim,
+        shadow: {},
+      }
   }
 }
 
@@ -60,13 +97,14 @@ export function Button({
         borderWidth: 1,
         paddingVertical: s.paddingV,
         paddingHorizontal: s.paddingH,
-        borderRadius: 10,
+        borderRadius: s.radius,
         opacity: v.opacity * (pressed ? 0.85 : 1),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
+        gap: 8,
         alignSelf: fullWidth ? 'stretch' : 'flex-start',
+        ...(v.shadow as object),
       })}
     >
       {loading ? (
@@ -74,7 +112,16 @@ export function Button({
       ) : (
         <>
           {iconLeft ? <View>{iconLeft}</View> : null}
-          <Text style={{ color: v.fg, fontSize: s.fontSize, fontWeight: '600' }}>{label}</Text>
+          <Text
+            style={{
+              color: v.fg,
+              fontSize: s.fontSize,
+              fontWeight: '700',
+              letterSpacing: 0.1,
+            }}
+          >
+            {label}
+          </Text>
           {iconRight ? <View>{iconRight}</View> : null}
         </>
       )}
