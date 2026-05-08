@@ -363,16 +363,24 @@ export default function PublicationStep({
           )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button
-              onClick={onSchedule}
+              onClick={() => {
+                // Si deja programme: PATCH scheduled_at + plan_date directement.
+                if (slot.status === 'scheduled' && onReschedule) {
+                  const datePart = (slot.plan_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10)
+                  onReschedule(datePart, scheduledTime)
+                } else {
+                  onSchedule()
+                }
+              }}
               disabled={scheduling || publishingNow || scheduledDateInPast}
               title={scheduledDateInPast ? 'Date dans le passé — choisis une date future ou publie maintenant' : undefined}
               style={{ ...scheduleBtnStyle, flex: 1, opacity: (publishingNow || scheduledDateInPast) ? 0.4 : 1, cursor: scheduledDateInPast ? 'not-allowed' : 'pointer' }}
             >
               {scheduling ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <Spinner /> Programmation…
+                  <Spinner /> {slot.status === 'scheduled' ? 'Reprogrammation…' : 'Programmation…'}
                 </span>
-              ) : 'Programmer la publication'}
+              ) : (slot.status === 'scheduled' ? 'Reprogrammer' : 'Programmer la publication')}
             </button>
             {onPublishNow && (
               <button
