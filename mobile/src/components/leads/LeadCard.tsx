@@ -89,16 +89,22 @@ export function LeadCard({ lead, onPress, variant = 'dense' }: LeadCardProps) {
         </View>
       </View>
 
-      {amount ? (
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '700' }}>{amount}</Text>
-          {lead.deal_installments > 1 ? (
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-              x{lead.deal_installments}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
+      {/* Bloc droit : amount + chevron. Toujours afficher le chevron pour
+          signaler "tappable" même sans deal — sans ça la card paraissait
+          coupée à droite avec un grand vide (cf screenshot user). */}
+      <View style={{ alignItems: 'flex-end', gap: 4, flexDirection: 'row' }}>
+        {amount ? (
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '700' }}>{amount}</Text>
+            {lead.deal_installments > 1 ? (
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                x{lead.deal_installments}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} style={{ alignSelf: 'center' }} />
+      </View>
     </Pressable>
   )
 }

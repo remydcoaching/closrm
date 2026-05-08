@@ -2,15 +2,15 @@
 // pas le rouge web — choix de design assumé par Rémy.
 export const colors = {
   bgPrimary: '#09090b',
-  bgSecondary: '#0c0c0e',
-  // bgElevated remonté de #141414 → #1a1a1c pour creuser le contraste
-  // entre la carte et le fond — sinon les LeadCards adjacentes paraissent
-  // se fondre les unes dans les autres ('lourd à voir' / 'enchaîné').
-  bgElevated: '#1a1a1c',
+  bgSecondary: '#101012',
+  // bgElevated #232327 — niveau de contraste suffisant pour qu'une card
+  // soit clairement distincte du fond OLED noir profond. Sur écran OLED
+  // tout ce qui est en dessous de #1f1f20 disparaît visuellement.
+  bgElevated: '#232327',
   sheet: '#1c1c1e',
-  // border #2e2e30 (au lieu de #262626) pour qu'on distingue mieux les
-  // limites des cards dans une liste dense.
-  border: '#2e2e30',
+  // border #3a3a3e — limite de card visible sur OLED. Avec #2e2e30 sur
+  // un bg #232327, la border se confond. Faut creuser à +1.5 stops.
+  border: '#3a3a3e',
   primary: '#00C853',
   warning: '#f59e0b',
   danger: '#ef4444',
