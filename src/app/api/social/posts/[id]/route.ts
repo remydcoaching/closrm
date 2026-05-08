@@ -64,14 +64,32 @@ export async function PATCH(
       .eq('id', id).eq('workspace_id', workspaceId).single()
     if (!existing) return NextResponse.json({ error: 'Post introuvable' }, { status: 404 })
 
-    const { data: updated, error } = await supabase
-      .from('social_posts')
-      .update(filteredPost)
-      .eq('id', id)
-      .eq('workspace_id', workspaceId)
-      .select()
-      .single()
-    if (error) throw error
+    // Si filteredPost est vide (= seuls publications/revision_feedback dans
+    // le body), on ne touche pas a la table social_posts — sinon
+    // .update({}).select().single() throw 'Cannot coerce single JSON object'.
+    // Dans ce cas on refetch le slot full pour les notifications downstream.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let updated: any
+    if (Object.keys(filteredPost).length > 0) {
+      const res = await supabase
+        .from('social_posts')
+        .update(filteredPost)
+        .eq('id', id)
+        .eq('workspace_id', workspaceId)
+        .select()
+        .single()
+      if (res.error) throw res.error
+      updated = res.data
+    } else {
+      const fullRes = await supabase
+        .from('social_posts')
+        .select('*')
+        .eq('id', id)
+        .eq('workspace_id', workspaceId)
+        .single()
+      if (fullRes.error) throw fullRes.error
+      updated = fullRes.data
+    }
 
     // Notifications monteur — déclenchées sur transition production_status
     // OU sur réassignation alors que le slot est déjà filmed.
