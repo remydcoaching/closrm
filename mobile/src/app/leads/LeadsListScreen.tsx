@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { View, Text, FlatList, RefreshControl, ActivityIndicator, Pressable } from 'react-native'
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
@@ -8,9 +8,18 @@ import type { LeadsStackParamList } from '../../navigation/types'
 import { useLeads } from '../../hooks/useLeads'
 import { useAuth } from '../../hooks/useAuth'
 import { useDebounce } from '../../hooks/useDebounce'
-import { LeadCard } from '../../components/leads/LeadCard'
 import { LeadCardLarge } from '../../components/leads/LeadCardLarge'
-import { NavLarge, SearchField, Segmented, FilterChips, FAB, NavIcon } from '../../components/ui'
+import {
+  NavLarge,
+  SearchField,
+  Segmented,
+  FilterChips,
+  FAB,
+  ListSection,
+  ListRow,
+  Avatar,
+  StatusBadge,
+} from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { statusConfig } from '../../theme/status'
 import type { Lead, LeadStatus } from '@shared/types'
@@ -34,7 +43,6 @@ const STATUS_FILTERS = [
 
 type ViewMode = 'flat' | 'grouped' | 'priority'
 
-// Ordre des statuts pour la vue groupée — du plus chaud au plus froid.
 const GROUP_ORDER: LeadStatus[] = [
   'closing_planifie',
   'setting_planifie',
@@ -46,13 +54,6 @@ const GROUP_ORDER: LeadStatus[] = [
   'dead',
 ]
 
-// Statuts considérés "chauds" → ouverts par défaut dans la vue groupée.
-const HOT_STATUSES = new Set<LeadStatus>([
-  'closing_planifie',
-  'setting_planifie',
-  'no_show_closing',
-])
-
 interface ScoredLead {
   lead: Lead
   score: number
@@ -63,17 +64,11 @@ interface ScoredLead {
 const HOURS = (n: number) => n * 60 * 60 * 1000
 const MS_PER_DAY = HOURS(24)
 
-// Heuristique de score "à traiter".
-// Critères :
-//  - Closing planifié dans <2h → top priorité (score 100+)
-//  - No-show récent (<3j) → urgence 80
-//  - Setting planifié soon → 70
-//  - Lead nouveau récent → 50
-//  - Deal amount élevé → bonus
-//  - Sinon ignoré (score 0).
 function scoreLead(lead: Lead): ScoredLead {
   const now = Date.now()
-  const lastActivity = new Date(lead.last_activity_at ?? lead.updated_at ?? lead.created_at).getTime()
+  const lastActivity = new Date(
+    lead.last_activity_at ?? lead.updated_at ?? lead.created_at,
+  ).getTime()
   const ageMs = now - lastActivity
   const amountBonus = lead.deal_amount ? Math.min(20, lead.deal_amount / 500) : 0
   let score = 0
@@ -93,16 +88,15 @@ function scoreLead(lead: Lead): ScoredLead {
       break
     case 'no_show_closing':
       score = 90 + amountBonus
-      urgency = { label: 'No-show closing — reprogrammer', color: colors.orange }
+      urgency = { label: 'No-show — reprogrammer', color: colors.orange }
       ctaLabel = 'Reprogrammer'
       break
     case 'no_show_setting':
       score = 75 + amountBonus
-      urgency = { label: 'No-show setting', color: colors.warning }
+      urgency = { label: 'No-show', color: colors.warning }
       ctaLabel = 'Reprogrammer'
       break
     case 'nouveau':
-      // Frais → 50, dégrade avec l'âge
       score = Math.max(0, 50 - Math.floor(ageMs / MS_PER_DAY) * 5) + amountBonus
       urgency = ageMs < HOURS(24) ? { label: 'Nouveau lead', color: colors.cyan } : null
       ctaLabel = 'Contacter'
@@ -117,6 +111,15 @@ function scoreLead(lead: Lead): ScoredLead {
   return { lead, score, urgency, ctaLabel }
 }
 
+const formatAmount = (n: number | null): string | null =>
+  n == null
+    ? null
+    : new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        maximumFractionDigits: 0,
+      }).format(n)
+
 export function LeadsListScreen() {
   const navigation = useNavigation<Nav>()
   const { user } = useAuth()
@@ -125,22 +128,10 @@ export function LeadsListScreen() {
   const [segIdx, setSegIdx] = useState(0)
   const [statusIdx, setStatusIdx] = useState(0)
   const [search, setSearch] = useState('')
-  // Sections collapsées : map status → bool
-  const [collapsed, setCollapsed] = useState<Partial<Record<LeadStatus, boolean>>>(() => {
-    const init: Partial<Record<LeadStatus, boolean>> = {}
-    for (const s of GROUP_ORDER) if (!HOT_STATUSES.has(s)) init[s] = true
-    return init
-  })
 
   const segment = SEGMENTS[segIdx].key
   const status = STATUS_FILTERS[statusIdx].key
-
-  // En vue grouped/priority on ignore le filtre "STATUS_FILTERS" — il n'a
-  // pas de sens (la vue regroupe déjà par statut, ou trie par urgence).
   const effectiveStatus = viewMode === 'flat' ? status : 'tous'
-
-  // Debounce search 300ms : sans ça chaque keystroke spam une nouvelle
-  // requête Supabase + résoudre les abonnements realtime → UX laggy.
   const debouncedSearch = useDebounce(search, 300)
 
   const { leads, loading, refetch } = useLeads({
@@ -152,40 +143,28 @@ export function LeadsListScreen() {
 
   const counts = leads.length
 
-  // Données pour la vue groupée
-  const groupedItems = useMemo(() => {
+  // Vue groupée : map status → leads, dans l'ordre GROUP_ORDER
+  const groupedSections = useMemo(() => {
     const byStatus = new Map<LeadStatus, Lead[]>()
     for (const l of leads) {
       const arr = byStatus.get(l.status) ?? []
       arr.push(l)
       byStatus.set(l.status, arr)
     }
-    type Item =
-      | { kind: 'header'; status: LeadStatus; count: number; isCollapsed: boolean }
-      | { kind: 'lead'; lead: Lead }
-    const out: Item[] = []
-    for (const s of GROUP_ORDER) {
+    return GROUP_ORDER.flatMap((s) => {
       const arr = byStatus.get(s)
-      if (!arr || arr.length === 0) continue
-      const isCollapsed = !!collapsed[s]
-      out.push({ kind: 'header', status: s, count: arr.length, isCollapsed })
-      if (!isCollapsed) {
-        for (const l of arr) out.push({ kind: 'lead', lead: l })
-      }
-    }
-    return out
-  }, [leads, collapsed])
-
-  // Données pour la vue priority
-  const priorityItems = useMemo(() => {
-    return leads
-      .map(scoreLead)
-      .filter((s) => s.score > 0)
-      .sort((a, b) => b.score - a.score)
+      if (!arr || arr.length === 0) return []
+      return [{ status: s, leads: arr }]
+    })
   }, [leads])
 
+  const priorityItems = useMemo(
+    () => leads.map(scoreLead).filter((s) => s.score > 0).sort((a, b) => b.score - a.score),
+    [leads],
+  )
+
   const renderViewSwitcher = () => (
-    <View style={{ flexDirection: 'row', gap: 4 }}>
+    <View style={{ flexDirection: 'row', gap: 6 }}>
       {(['flat', 'grouped', 'priority'] as const).map((mode) => {
         const active = viewMode === mode
         const icon: keyof typeof Ionicons.glyphMap =
@@ -195,33 +174,57 @@ export function LeadsListScreen() {
             key={mode}
             onPress={() => setViewMode(mode)}
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
+              width: 38,
+              height: 38,
+              borderRadius: 19,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: active ? colors.primary + '22' : colors.bgSecondary,
-              borderWidth: 1,
-              borderColor: active ? colors.primary : colors.border,
+              borderWidth: active ? 1 : 0,
+              borderColor: active ? colors.primary : 'transparent',
             }}
           >
-            <Ionicons name={icon} size={16} color={active ? colors.primary : colors.textSecondary} />
+            <Ionicons name={icon} size={18} color={active ? colors.primary : colors.textSecondary} />
           </Pressable>
         )
       })}
     </View>
   )
 
+  const renderLeadRow = (lead: Lead, isLast: boolean) => {
+    const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
+    const amount = formatAmount(lead.deal_amount)
+    const sourceLabel = lead.source.replace(/_/g, ' ')
+    return (
+      <ListRow
+        key={lead.id}
+        leading={<Avatar name={fullName} size={40} />}
+        title={fullName}
+        titleAccessory={<StatusBadge status={lead.status} size="sm" />}
+        subtitle={lead.phone ? `${sourceLabel} · ${lead.phone}` : sourceLabel}
+        trailing={
+          amount ? (
+            <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '600' }}>
+              {amount}
+            </Text>
+          ) : null
+        }
+        separator={!isLast}
+        onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id })}
+      />
+    )
+  }
+
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
         <View style={{ flex: 1 }}>
-          <NavLarge title="Leads" subtitle={`${counts} ${counts > 1 ? 'leads' : 'lead'}`} />
+          <NavLarge title="Leads" subtitle={`${counts} lead${counts > 1 ? 's' : ''}`} />
         </View>
-        <View style={{ paddingRight: 16, paddingBottom: 12 }}>{renderViewSwitcher()}</View>
+        <View style={{ paddingRight: 16, paddingBottom: 18 }}>{renderViewSwitcher()}</View>
       </View>
 
-      <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
         <SearchField
           placeholder="Rechercher un lead, un tag…"
           value={search}
@@ -229,7 +232,7 @@ export function LeadsListScreen() {
         />
       </View>
 
-      <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
         <Segmented
           items={SEGMENTS.map((s) => ({ label: s.label }))}
           activeIndex={segIdx}
@@ -238,18 +241,12 @@ export function LeadsListScreen() {
       </View>
 
       {viewMode === 'flat' ? (
-        <View style={{ marginBottom: 10 }}>
+        <View style={{ marginBottom: 14 }}>
           <FilterChips
             items={STATUS_FILTERS.map((f) => ({ label: f.label }))}
             activeIndex={statusIdx}
             onChange={setStatusIdx}
           />
-        </View>
-      ) : viewMode === 'priority' ? (
-        <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
-            ✨ Tri intelligent : urgence × valeur × fraîcheur
-          </Text>
         </View>
       ) : null}
 
@@ -258,137 +255,81 @@ export function LeadsListScreen() {
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : viewMode === 'flat' ? (
-        <FlatList
-          data={leads}
-          keyExtractor={(l) => l.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 12 }}
-          renderItem={({ item }) => (
-            <LeadCard
-              lead={item}
-              onPress={() => navigation.navigate('LeadDetail', { leadId: item.id })}
-            />
-          )}
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 15 }}>
-                Aucun lead pour l'instant.
-              </Text>
-            </View>
-          }
-        />
+        >
+          {leads.length === 0 ? (
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: 15,
+                textAlign: 'center',
+                marginTop: 60,
+              }}
+            >
+              Aucun lead pour l'instant.
+            </Text>
+          ) : (
+            <ListSection>
+              {leads.map((l, i) => renderLeadRow(l, i === leads.length - 1))}
+            </ListSection>
+          )}
+        </ScrollView>
       ) : viewMode === 'grouped' ? (
-        <FlatList
-          data={groupedItems}
-          keyExtractor={(it, i) =>
-            it.kind === 'header' ? `h-${it.status}` : `l-${it.lead.id}-${i}`
-          }
-          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-          renderItem={({ item }) => {
-            if (item.kind === 'header') {
-              const cfg = statusConfig[item.status]
-              return (
-                <Pressable
-                  onPress={() => setCollapsed((c) => ({ ...c, [item.status]: !c[item.status] }))}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 10,
-                    paddingVertical: 14,
-                    marginTop: 8,
-                  }}
-                >
-                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: cfg.color }} />
-                  <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', flex: 1 }}>
-                    {cfg.label}
-                  </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>{item.count}</Text>
-                  <Ionicons
-                    name={item.isCollapsed ? 'chevron-down' : 'chevron-up'}
-                    size={16}
-                    color={colors.textSecondary}
-                  />
-                </Pressable>
-              )
-            }
-            const accent = statusConfig[item.lead.status].color
-            return (
-              <View style={{ marginBottom: 12, marginLeft: 4 }}>
-                <Pressable
-                  onPress={() => navigation.navigate('LeadDetail', { leadId: item.lead.id })}
-                  style={({ pressed }) => ({
-                    backgroundColor: colors.bgElevated,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderLeftWidth: 4,
-                    borderLeftColor: accent,
-                    padding: 12,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <LeadCardInner lead={item.lead} />
-                </Pressable>
-              </View>
-            )
-          }}
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, gap: 24 }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
-        />
+        >
+          {groupedSections.map(({ status: s, leads: arr }) => (
+            <ListSection key={s} header={statusConfig[s].label}>
+              {arr.map((l, i) => renderLeadRow(l, i === arr.length - 1))}
+            </ListSection>
+          ))}
+        </ScrollView>
       ) : (
-        <FlatList
-          data={priorityItems}
-          keyExtractor={(s) => s.lead.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 14 }}
-          renderItem={({ item }) => (
-            <LeadCardLarge
-              lead={item.lead}
-              urgency={item.urgency}
-              ctaLabel={item.ctaLabel ?? undefined}
-              onPress={() => navigation.navigate('LeadDetail', { leadId: item.lead.id })}
-              onCta={() => navigation.navigate('LeadDetail', { leadId: item.lead.id })}
-            />
-          )}
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, gap: 14 }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-                Rien à traiter pour l'instant.
-              </Text>
-            </View>
-          }
-        />
+        >
+          <Text
+            style={{
+              color: colors.textTertiary,
+              fontSize: 13,
+              fontWeight: '500',
+              letterSpacing: 0.3,
+              marginBottom: 4,
+              textTransform: 'uppercase',
+            }}
+          >
+            ✨ Tri intelligent · urgence × valeur × fraîcheur
+          </Text>
+          {priorityItems.length === 0 ? (
+            <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: 'center', marginTop: 60 }}>
+              Rien à traiter pour l'instant.
+            </Text>
+          ) : (
+            priorityItems.map((item) => (
+              <LeadCardLarge
+                key={item.lead.id}
+                lead={item.lead}
+                urgency={item.urgency}
+                ctaLabel={item.ctaLabel ?? undefined}
+                onPress={() => navigation.navigate('LeadDetail', { leadId: item.lead.id })}
+                onCta={() => navigation.navigate('LeadDetail', { leadId: item.lead.id })}
+              />
+            ))
+          )}
+        </ScrollView>
       )}
 
-      <FAB onPress={() => {/* TODO: open create lead modal */}} />
+      <FAB onPress={() => {/* TODO: create lead modal */}} />
     </SafeAreaView>
-  )
-}
-
-// Mini card sans la bordure pour la vue grouped (la wrap externe a déjà la bordure)
-function LeadCardInner({ lead }: { lead: Lead }) {
-  const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
-  const amount = lead.deal_amount
-    ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(lead.deal_amount)
-    : null
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 }}>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
-          {fullName}
-        </Text>
-        {lead.phone ? (
-          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{lead.phone}</Text>
-        ) : null}
-      </View>
-      {amount ? (
-        <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>{amount}</Text>
-      ) : null}
-    </View>
   )
 }

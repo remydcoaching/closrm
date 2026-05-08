@@ -27,15 +27,14 @@ interface ColorTokens {
 }
 
 export const darkColors: ColorTokens = {
+  // Tokens iOS HIG natifs — mêmes valeurs que UIKit systemBackground.
   bgPrimary: '#000000',
-  bgSecondary: '#1c1c1e',
-  // bgElevated #2c2c2e — match exact des Group cells iOS natif (Settings,
-  // Mail). Sur OLED, le pas dramatique entre bgPrimary noir true black
-  // et bgElevated rend chaque card instantanément distincte.
-  bgElevated: '#2c2c2e',
+  bgSecondary: '#1c1c1e', // systemGroupedBackground
+  bgElevated: '#2c2c2e', // secondarySystemGroupedBackground (rows in groups)
   sheet: '#1c1c1e',
-  // border iOS natif separator dark : rgba(84, 84, 88, 0.65).
-  border: '#48484a',
+  // separator iOS natif (UIColor.separator dark) — rgba(84,84,88,0.65)
+  // résolu visuellement à #38383a sur fond bgElevated.
+  border: '#38383a',
   primary: '#00C853',
   warning: '#f59e0b',
   danger: '#ef4444',
@@ -44,9 +43,12 @@ export const darkColors: ColorTokens = {
   cyan: '#06b6d4',
   pink: '#ec4899',
   orange: '#f97316',
+  // textPrimary = label (UIColor.label dark)
   textPrimary: '#FFFFFF',
-  textSecondary: '#BFBFBF',
-  textTertiary: '#8A8A8A',
+  // textSecondary = secondaryLabel : rgba(235,235,245,0.6) ≈ #ebebf599
+  textSecondary: '#ebebf599',
+  // textTertiary = tertiaryLabel : rgba(235,235,245,0.3) ≈ #ebebf54d
+  textTertiary: '#ebebf54d',
 }
 
 export const lightColors: ColorTokens = {
