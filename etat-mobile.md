@@ -22,7 +22,7 @@ EAS Build au lieu de Xcode/Android Studio direct.
 | 3 | Services Supabase + API | ✅ | Supabase + SecureStore + api client + auth helpers |
 | 4 | Navigation (tab + stacks) | ✅ | RootNavigator (Auth gate) + 5 tabs + 4 stacks placeholder |
 | 5 | Design system (composants UI) | ✅ | 13 composants ui/ + theme/colors+status + icons Ionicons sur tabs |
-| 6 | LoginScreen + auth flow | ⏳ | |
+| 6 | LoginScreen + auth flow | ✅ | LoginScreen branché. Phase 1 fondations terminée |
 
 ## Phase 2 — Écrans
 

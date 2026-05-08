@@ -4,7 +4,7 @@ import { ActivityIndicator, View } from 'react-native'
 import type { RootStackParamList } from './types'
 import { supabase } from '../services/supabase'
 import TabNavigator from './TabNavigator'
-import { PlaceholderScreen } from '../components/screens/Placeholder'
+import { LoginScreen } from '../app/auth/LoginScreen'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
@@ -40,9 +40,7 @@ export default function RootNavigator() {
       {isAuthed ? (
         <Stack.Screen name="Main" component={TabNavigator} />
       ) : (
-        <Stack.Screen name="Login">
-          {() => <PlaceholderScreen name="Login" />}
-        </Stack.Screen>
+        <Stack.Screen name="Login" component={LoginScreen} />
       )}
     </Stack.Navigator>
   )
