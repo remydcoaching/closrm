@@ -60,6 +60,7 @@ export const createBookingCalendarSchema = z.object({
   purpose: z.enum(['setting', 'closing', 'other']).default('other'),
   reminders: z.array(calendarReminderSchema).max(10).default([]),
   is_active: z.boolean().default(true),
+  require_confirmation: z.boolean().default(false),
 })
 
 export const updateBookingCalendarSchema = createBookingCalendarSchema.partial()

@@ -9,6 +9,7 @@ export default function BookingConfirmationPage() {
   const searchParams = useSearchParams()
   const dateParam = searchParams.get('date') ?? ''
   const timeParam = searchParams.get('time') ?? ''
+  const pending = searchParams.get('pending') === '1'
 
   let dateLabel = ''
   try {
@@ -41,7 +42,7 @@ export default function BookingConfirmationPage() {
           marginBottom: '16px',
         }}
       >
-        Rendez-vous enregistré !
+        {pending ? 'Rendez-vous enregistré !' : 'Rendez-vous confirmé !'}
       </h1>
 
       {dateLabel && timeParam && (
@@ -58,7 +59,9 @@ export default function BookingConfirmationPage() {
       )}
 
       <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6 }}>
-        Vous recevrez un email de confirmation dès que votre coach aura confirmé le rendez-vous.
+        {pending
+          ? 'Vous recevrez un email de confirmation dès que votre coach aura confirmé le rendez-vous.'
+          : 'Vous recevrez un email de confirmation avec les détails de votre rendez-vous.'}
       </p>
     </div>
   )
