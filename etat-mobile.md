@@ -21,7 +21,7 @@ EAS Build au lieu de Xcode/Android Studio direct.
 | 2 | Dossier `shared/` | ✅ | types web extraits + zod schemas leads/calls |
 | 3 | Services Supabase + API | ✅ | Supabase + SecureStore + api client + auth helpers |
 | 4 | Navigation (tab + stacks) | ✅ | RootNavigator (Auth gate) + 5 tabs + 4 stacks placeholder |
-| 5 | Design system (composants UI) | ⏳ | |
+| 5 | Design system (composants UI) | ✅ | 13 composants ui/ + theme/colors+status + icons Ionicons sur tabs |
 | 6 | LoginScreen + auth flow | ⏳ | |
 
 ## Phase 2 — Écrans
