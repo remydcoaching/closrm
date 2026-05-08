@@ -78,12 +78,31 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
   // Discussion
   const [unreadCount, setUnreadCount] = useState(0)
 
+  // Role of current user (admin/monteur/etc) — drives UI gating (hide
+  // coach-only buttons for monteur etc.). Default 'admin' = optimist : on
+  // affiche tout pendant le fetch initial pour eviter un flash.
+  const [role, setRole] = useState<'admin' | 'monteur' | 'closer' | 'setter'>('admin')
+
   // Video annotations (Frame.io style)
   const [annotations, setAnnotations] = useState<VideoAnnotation[]>([])
   const [messagesVersion, setMessagesVersion] = useState(0)
   const [footerOpenTrigger, setFooterOpenTrigger] = useState(0)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
   const playerRef = useRef<VideoReviewPlayerHandle | null>(null)
+
+  // ─── Fetch role once on mount ───────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled || !j?.data?.role) return
+        const r = j.data.role as typeof role
+        if (r === 'monteur' || r === 'admin' || r === 'closer' || r === 'setter') setRole(r)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   // ─── Fetch slot on mount ────────────────────────────────────────────────
 
@@ -789,7 +808,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               generatingScript={generatingScript}
               hooksLibrary={hooksLibrary}
               onPickHook={(h) => updateSlot({ hook: h })}
-              transitionAction={transitionAction as { label: string; nextStatus: 'filmed' | 'ready' } | null}
+              transitionAction={role === 'monteur' ? null : (transitionAction as { label: string; nextStatus: 'filmed' | 'ready' } | null)}
               onTransition={transition}
             />
           )}
@@ -801,9 +820,12 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               onUploadFinal={uploadFinal}
               uploading={uploadingFinal}
               uploadPct={uploadFinalPct}
-              transitionAction={transitionAction as { label: string; nextStatus: 'ready' } | null}
+              // Le monteur ne valide pas son propre montage et ne demande pas
+              // de retouches : ce sont des actions COACH. On masque ces deux
+              // boutons quand le user est monteur.
+              transitionAction={role === 'monteur' ? null : (transitionAction as { label: string; nextStatus: 'ready' } | null)}
               onTransition={transition}
-              onRequestRevision={requestRevision}
+              onRequestRevision={role === 'monteur' ? undefined : requestRevision}
             />
           )}
           {activeStep === 'publication' && (
