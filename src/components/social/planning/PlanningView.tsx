@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { Settings, KanbanSquare, Calendar as CalIcon, Plus, CalendarRange } from 'lucide-react'
+import { KanbanSquare, Calendar as CalIcon, Plus, CalendarRange } from 'lucide-react'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
 import BoardView from './BoardView'
 import PlanningCalendarView from './PlanningCalendarView'
@@ -16,7 +16,13 @@ const PlanModal = dynamic(() => import('./PlanModal'), { ssr: false })
 
 export default function PlanningView() {
   const toast = useToast()
-  const [view, setView] = useState<'calendar' | 'board'>('board')
+  // Always start with 'calendar' to match SSR. Hydrate from localStorage after mount
+  // to avoid hydration mismatch (server can't read localStorage).
+  const [view, setView] = useState<'calendar' | 'board'>('calendar')
+  useEffect(() => {
+    const stored = window.localStorage.getItem('social_planning_view_mode')
+    if (stored === 'board') setView('board')
+  }, [])
   const [trame, setTrame] = useState<ContentTrame | null>(null)
   const [pillars, setPillars] = useState<ContentPillar[]>([])
   const [posts, setPosts] = useState<SocialPostWithPublications[]>([])
@@ -74,6 +80,11 @@ export default function PlanningView() {
 
   useEffect(() => { reloadStructure() }, [reloadStructure])
   useEffect(() => { reloadPosts() }, [reloadPosts])
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('social_planning_view_mode', view)
+    }
+  }, [view])
 
   const createPost = async (planDate?: string) => {
     const fallback = (() => {
@@ -96,7 +107,12 @@ export default function PlanningView() {
       setSelectedSlotId(json.data.id)
       reload()
     } else {
-      toast.error('Erreur création slot', json.error ?? 'inconnue')
+      const errMsg = typeof json.error === 'string'
+        ? json.error
+        : json.error?.formErrors?.join(', ')
+          || Object.values(json.error?.fieldErrors ?? {}).flat().join(', ')
+          || 'inconnue'
+      toast.error('Erreur création slot', errMsg)
     }
   }
 
@@ -136,16 +152,16 @@ export default function PlanningView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 6, background: 'var(--bg-secondary)', padding: 4, borderRadius: 10, border: '1px solid var(--border-primary)' }}>
           <button
-            onClick={() => setView('board')}
-            style={tabBtnStyle(view === 'board')}
-          >
-            <KanbanSquare size={14} /> Board
-          </button>
-          <button
             onClick={() => setView('calendar')}
             style={tabBtnStyle(view === 'calendar')}
           >
             <CalIcon size={14} /> Calendrier
+          </button>
+          <button
+            onClick={() => setView('board')}
+            style={tabBtnStyle(view === 'board')}
+          >
+            <KanbanSquare size={14} /> Board
           </button>
         </div>
 
@@ -162,22 +178,9 @@ export default function PlanningView() {
             <Plus size={14} /> Nouveau post
           </button>
           <button
-            onClick={() => setTrameModalOpen(true)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px', fontSize: 12, fontWeight: 600,
-              color: 'var(--text-secondary)',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-primary)', borderRadius: 8,
-              cursor: 'pointer',
-            }}
-          >
-            <Settings size={14} /> Trame
-          </button>
-          <button
             onClick={() => setPlanModalOpen(true)}
             disabled={generating}
-            title="Préparer des slots vides à partir de la trame"
+            title="Préparer des slots vides à partir de la trame (la trame est éditable depuis ce bouton)"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', fontSize: 12, fontWeight: 600,
@@ -189,7 +192,7 @@ export default function PlanningView() {
             }}
           >
             <CalendarRange size={13} />
-            {generating ? '…' : 'Planifier'}
+            {generating ? '…' : 'Générer slots'}
           </button>
         </div>
       </div>
@@ -225,6 +228,61 @@ export default function PlanningView() {
               onCursorChange={setCursor}
               onSelectSlot={setSelectedSlotId}
               onCreateSlot={createPost}
+              onMoveSlot={async (slotId, newDate) => {
+                // Optimistic update: on patch UNIQUEMENT le slot deplace
+                // (pas tout l'array). Sans ca, drag-rapide D1 + D2 en
+                // simultane, si D1 fail apres D2, le revert restaurait
+                // l'array d'avant D1 et ecrasait D2.
+                const moved = posts.find(p => p.id === slotId)
+                if (!moved) return
+                const oldDate = moved.plan_date?.slice(0, 10) ?? null
+                if (oldDate === newDate) return // no-op, meme cellule
+                // Snapshot de l'etat avant move (just le slot, pas tout)
+                const previousSnapshot: Partial<SocialPostWithPublications> = {
+                  plan_date: moved.plan_date,
+                  slot_index: moved.slot_index,
+                  scheduled_at: moved.scheduled_at,
+                }
+                let newScheduledAt: string | null = null
+                if (moved.scheduled_at) {
+                  const d = new Date(moved.scheduled_at)
+                  d.setFullYear(Number(newDate.slice(0, 4)), Number(newDate.slice(5, 7)) - 1, Number(newDate.slice(8, 10)))
+                  newScheduledAt = d.toISOString()
+                }
+                setPosts(prev => prev.map(p => p.id === slotId
+                  ? { ...p, plan_date: newDate, slot_index: null, scheduled_at: newScheduledAt ?? p.scheduled_at }
+                  : p
+                ))
+                try {
+                  const body: Record<string, unknown> = { plan_date: newDate, slot_index: null }
+                  if (newScheduledAt) {
+                    body.scheduled_at = newScheduledAt
+                    body.publications = (moved.publications ?? []).map(pub => ({
+                      platform: pub.platform,
+                      config: pub.config,
+                      scheduled_at: newScheduledAt,
+                    }))
+                  }
+                  const res = await fetch(`/api/social/posts/${slotId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                  })
+                  if (!res.ok) {
+                    const j = await res.json().catch(() => ({}))
+                    throw new Error((j as { error?: string }).error ?? `Erreur ${res.status}`)
+                  }
+                  toast.success('Slot déplacé', `Du ${oldDate ?? '—'} au ${newDate}`)
+                  void reloadSilent()
+                } catch (e) {
+                  // Revert UNIQUEMENT le slot concerne (pas tout l'array).
+                  setPosts(prev => prev.map(p => p.id === slotId
+                    ? { ...p, ...previousSnapshot }
+                    : p
+                  ))
+                  toast.error('Erreur déplacement', (e as Error).message)
+                }
+              }}
             />
           )}
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -235,6 +293,7 @@ export default function PlanningView() {
         <PlanModal
           onClose={() => setPlanModalOpen(false)}
           onConfirm={planRange}
+          onEditTrame={() => { setPlanModalOpen(false); setTrameModalOpen(true) }}
         />
       )}
 

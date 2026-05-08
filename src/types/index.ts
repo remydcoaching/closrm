@@ -1416,6 +1416,17 @@ export interface SocialPost {
   coach_notified_at: string | null
   pricing_tier_id: string | null
   paid_at: string | null
+  /** Historique des versions du montage final. La derniere = final_url. */
+  final_versions?: FinalVersion[]
+  /** Deadline souhaitee par le coach pour le montage. */
+  montage_deadline?: string | null
+}
+
+export interface FinalVersion {
+  version: number
+  url: string
+  uploaded_at: string
+  uploaded_by: string | null
 }
 
 export interface MonteurPricingTier {
