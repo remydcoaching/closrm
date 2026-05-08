@@ -173,6 +173,27 @@ export default function PublicationStep({
               Annuler la programmation
             </button>
           )}
+          {/* Bouton 'Réessayer maintenant' quand failed/partial — relance
+              publishPostNow direct, ignore l'heure programmee. */}
+          {(slot.status === 'failed' || slot.status === 'partial') && !readOnly && onPublishNow && (
+            <button
+              onClick={onPublishNow}
+              disabled={publishingNow}
+              style={{
+                padding: '6px 12px',
+                fontSize: 11, fontWeight: 700,
+                color: '#fff',
+                background: statusBanner.color,
+                border: 'none',
+                borderRadius: 6,
+                cursor: publishingNow ? 'not-allowed' : 'pointer',
+                opacity: publishingNow ? 0.5 : 1,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {publishingNow ? 'Publication…' : '↻ Réessayer'}
+            </button>
+          )}
           {/* Liens vers les posts publies, par plateforme */}
           {slot.status === 'published' && (slot.publications ?? []).some((p) => p.public_url) && (
             <span style={{ display: 'flex', gap: 8, fontSize: 11, fontWeight: 500 }}>
@@ -363,9 +384,15 @@ export default function PublicationStep({
       {/* 5. Schedule + Publish now buttons */}
       {canSchedule && (
         <>
-          {scheduledDateInPast && slot.status !== 'scheduled' && slot.status !== 'published' && (
+          {scheduledDateInPast && slot.status !== 'scheduled' && slot.status !== 'published' && slot.status !== 'failed' && slot.status !== 'partial' && (
             <div style={pastDateHintStyle}>
               ⚠️ La date sélectionnée est dans le passé. Tu peux soit changer la date, soit cliquer « Publier maintenant ».
+            </div>
+          )}
+          {/* Hint specifique pour failed/partial: clarifier la marche a suivre */}
+          {(slot.status === 'failed' || slot.status === 'partial') && scheduledDateInPast && (
+            <div style={pastDateHintStyle}>
+              💡 Pour réessayer plus tard, choisis une nouvelle date+heure futures puis clique « Reprogrammer ». Pour réessayer tout de suite, clique « Réessayer » dans le bandeau rouge.
             </div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
@@ -387,7 +414,11 @@ export default function PublicationStep({
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   <Spinner /> {slot.status === 'scheduled' ? 'Reprogrammation…' : 'Programmation…'}
                 </span>
-              ) : (slot.status === 'scheduled' ? 'Reprogrammer' : 'Programmer la publication')}
+              ) : (
+                slot.status === 'scheduled' ? 'Reprogrammer' :
+                (slot.status === 'failed' || slot.status === 'partial') ? 'Reprogrammer' :
+                'Programmer la publication'
+              )}
             </button>
             {onPublishNow && (
               <button
