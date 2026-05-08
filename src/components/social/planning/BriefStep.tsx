@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Sparkles } from 'lucide-react'
 import type { SocialPostWithPublications } from '@/types'
 
@@ -164,31 +165,68 @@ function AiButton({
   )
 }
 
+/**
+ * State local + sauvegarde on blur. Raison : chaque keystroke ne doit pas
+ * declencher un PATCH au serveur — la validation z.string().url() rejette
+ * "h", "ht", "htt"... et le rollback optimiste vide le champ. Resultat :
+ * le user ne peut rien taper. On debounce sur le blur (commit final).
+ */
 function ReferencesList({ urls, onChange }: { urls: string[]; onChange: (urls: string[]) => void }) {
-  if (urls.length === 0) {
+  // Drafts locaux : reflètent ce que tape le user, sans propager au parent
+  // tant qu'il n'a pas blur (ou cliqué + pour ajouter une autre ligne).
+  const [drafts, setDrafts] = useState<string[]>(urls)
+
+  // Sync down quand le parent change (ouverture d'un autre slot, hooks IA, etc.)
+  useEffect(() => {
+    setDrafts(urls)
+    // urls reference change OK ici — on resync uniquement si la prop change vraiment
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urls.join('|')])
+
+  function commit(next: string[]) {
+    // Filtre les entrees totalement vides avant de remonter — evite de
+    // sauvegarder des lignes blanches que le serveur rejetterait quand meme.
+    const cleaned = next.map(s => s.trim()).filter(s => s.length > 0)
+    // Eviter les noops
+    if (cleaned.length === urls.length && cleaned.every((u, i) => u === urls[i])) return
+    onChange(cleaned)
+  }
+
+  if (drafts.length === 0) {
     return (
-      <button onClick={() => onChange([''])} style={addBtnEmptyStyle}>
+      <button onClick={() => setDrafts([''])} style={addBtnEmptyStyle}>
         + Ajouter une référence
       </button>
     )
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {urls.map((url, i) => (
+      {drafts.map((url, i) => (
         <div key={i} style={{ display: 'flex', gap: 6 }}>
           <input
             type="text"
             value={url}
             onChange={(e) => {
-              const next = [...urls]
+              const next = [...drafts]
               next[i] = e.target.value
-              onChange(next)
+              setDrafts(next)
+            }}
+            onBlur={() => commit(drafts)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                ;(e.target as HTMLInputElement).blur()
+              }
             }}
             placeholder="https://…"
             style={{ ...inputStyle, flex: 1 }}
           />
           <button
-            onClick={() => onChange(urls.filter((_, idx) => idx !== i))}
+            onClick={() => {
+              const next = drafts.filter((_, idx) => idx !== i)
+              setDrafts(next)
+              commit(next)
+            }}
             style={removeBtnStyle}
             aria-label="Supprimer la référence"
           >
@@ -196,7 +234,7 @@ function ReferencesList({ urls, onChange }: { urls: string[]; onChange: (urls: s
           </button>
         </div>
       ))}
-      <button onClick={() => onChange([...urls, ''])} style={addBtnInlineStyle}>
+      <button onClick={() => setDrafts([...drafts, ''])} style={addBtnInlineStyle}>
         + Ajouter
       </button>
     </div>

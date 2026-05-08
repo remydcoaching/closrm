@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
   Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
   CalendarDays, CalendarRange, Layers, Share2, MessageCircle, MessagesSquare, Sparkles, Users2,
-  GraduationCap, Link2, Euro,
+  GraduationCap, Link2, Euro, Scissors,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isRouteVisible } from '@/lib/permissions'
@@ -17,6 +17,12 @@ import ThemeToggle from '@/components/theme/ThemeToggle'
 // Top-level entries point to the FIRST tab of their group. The PageTabs
 // component on each page renders the tab bar to switch between sub-views.
 const NAV = [
+  {
+    title: 'MONTAGE',
+    items: [
+      { label: 'Mes montages', href: '/montage', icon: Scissors, matchPaths: ['/montage'] },
+    ],
+  },
   {
     title: 'PRINCIPAL',
     items: [

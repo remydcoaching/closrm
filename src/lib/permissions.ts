@@ -187,7 +187,7 @@ export const ROUTE_VISIBILITY: Record<string, WorkspaceRole[]> = {
   '/parametres/assistant-ia': ['admin', 'setter', 'closer'],
   '/equipe/messages': ['admin', 'setter', 'closer'],
   '/equipe/formation': ['admin', 'setter', 'closer'],
-  '/montage': ['admin', 'monteur'],
+  '/montage': ['monteur'],
 }
 
 /**

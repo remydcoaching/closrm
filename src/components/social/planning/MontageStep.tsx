@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
+import { ChevronDown, Check } from 'lucide-react'
 import type { SocialPostWithPublications } from '@/types'
 
 interface MontageStepProps {
@@ -61,18 +62,11 @@ export default function MontageStep({
             Inviter un monteur →
           </a>
         ) : (
-          <select
-            value={slot.monteur_id ?? ''}
-            onChange={(e) => onUpdate({ monteur_id: e.target.value || null })}
-            style={selectStyle}
-          >
-            <option value="">— Aucun —</option>
-            {monteurs.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.full_name || m.email}
-              </option>
-            ))}
-          </select>
+          <MonteurDropdown
+            value={slot.monteur_id ?? null}
+            options={monteurs}
+            onChange={(id) => onUpdate({ monteur_id: id })}
+          />
         )}
       </Field>
 
@@ -229,6 +223,155 @@ export default function MontageStep({
   )
 }
 
+/**
+ * Dropdown thémé custom — remplace le `<select>` natif dont le menu deroulant
+ * (les `<option>`) ne respecte pas le theme dark sur Safari/Chrome (fond bleu
+ * macOS systeme moche).
+ */
+function MonteurDropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: string | null
+  options: Array<{ id: string; email: string; full_name?: string | null }>
+  onChange: (id: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleEsc)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleEsc)
+    }
+  }, [open])
+
+  const selected = options.find((o) => o.id === value)
+  const displayLabel = selected ? (selected.full_name || selected.email) : '— Aucun —'
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          ...inputStyle,
+          width: '100%',
+          textAlign: 'left',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+        }}
+      >
+        <span style={{ color: selected ? 'var(--text-primary)' : 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {displayLabel}
+        </span>
+        <ChevronDown size={14} style={{ flexShrink: 0, color: 'var(--text-tertiary)', transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'none' }} />
+      </button>
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 8,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            maxHeight: 240,
+            overflowY: 'auto',
+            padding: 4,
+          }}
+        >
+          <DropdownOption
+            label="— Aucun —"
+            selected={value === null}
+            onClick={() => { onChange(null); setOpen(false) }}
+            muted
+          />
+          {options.map((o) => (
+            <DropdownOption
+              key={o.id}
+              label={o.full_name || o.email}
+              hint={o.full_name ? o.email : undefined}
+              selected={o.id === value}
+              onClick={() => { onChange(o.id); setOpen(false) }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DropdownOption({
+  label,
+  hint,
+  selected,
+  onClick,
+  muted = false,
+}: {
+  label: string
+  hint?: string
+  selected: boolean
+  onClick: () => void
+  muted?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        padding: '8px 10px',
+        background: selected ? 'var(--bg-active)' : 'transparent',
+        color: muted ? 'var(--text-tertiary)' : 'var(--text-primary)',
+        border: 'none',
+        borderRadius: 6,
+        cursor: 'pointer',
+        fontSize: 13,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        transition: 'background 0.1s',
+      }}
+      onMouseEnter={(e) => {
+        if (!selected) e.currentTarget.style.background = 'var(--bg-hover)'
+      }}
+      onMouseLeave={(e) => {
+        if (!selected) e.currentTarget.style.background = 'transparent'
+      }}
+    >
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {label}
+        {hint && (
+          <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>
+            {hint}
+          </span>
+        )}
+      </span>
+      {selected && <Check size={13} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />}
+    </button>
+  )
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -277,20 +420,6 @@ const inputStyle: React.CSSProperties = {
   border: '1px solid var(--border-primary)',
   borderRadius: 8,
   outline: 'none',
-}
-
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  appearance: 'none',
-  WebkitAppearance: 'none',
-  MozAppearance: 'none',
-  cursor: 'pointer',
-  paddingRight: 28,
-  backgroundImage:
-    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/></svg>\")",
-  backgroundRepeat: 'no-repeat',
-  backgroundPosition: 'right 10px center',
-  colorScheme: 'dark',
 }
 
 const textareaStyle: React.CSSProperties = {
