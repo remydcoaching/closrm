@@ -23,6 +23,8 @@ export interface BookingConfirmationParams {
   template?: BookingEmailTemplate
   accentColor?: string
   manageUrl?: string
+  icsUrl?: string
+  googleCalendarUrl?: string
 }
 
 const DEFAULT_ACCENT = '#E53E3E'
@@ -155,13 +157,7 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
                 Votre rendez-vous avec <strong style="color: #111827;">${safeCoach || safeBrand}</strong> est confirmé. Voici le récapitulatif&nbsp;:
               </p>`
 
-  const signOff = hasCustomMessage
-    ? ''
-    : `
-              <p style="margin: 36px 0 0; font-size: 15px; color: #4B5563; line-height: 1.65;">
-                À très vite,<br/>
-                <strong style="color: #111827;">${safeCoach || safeBrand}</strong>
-              </p>`
+  const signOff = ''
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -173,7 +169,7 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
   <title>Rendez-vous confirmé</title>
 </head>
 <body style="margin: 0; padding: 0; background: #F4F4F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #111827;">
-  <div style="display:none; overflow:hidden; line-height:1px; opacity:0; max-height:0; max-width:0;">Votre rendez-vous avec ${safeCoach || safeBrand} le ${safeDate} à ${safeTime} est confirmé.</div>
+  <div style="display:none; overflow:hidden; line-height:1px; opacity:0; max-height:0; max-width:0;">Votre rendez-vous avec ${safeCoach || safeBrand} le ${safeDate} à ${safeTime} est confirmé.${'&#847;&zwnj;&#847;&zwnj;'.repeat(30)}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #F4F4F5; padding: 32px 16px;">
     <tr>
       <td align="center">
@@ -239,18 +235,37 @@ function buildPremiumHtml(params: BookingConfirmationParams): string {
               ${meetBlock}
               ${phoneBlock}
               ${locationBlock}
+
               ${signOff}
 
-              <!-- Bottom section: manage button (if available) + disclaimer -->
+              <!-- Bottom actions: calendar + manage -->
               <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 36px; border-top: 1px solid #F1F1F1;">
-                ${params.manageUrl ? `
                 <tr>
-                  <td style="padding: 28px 0 8px; text-align: center;">
-                    <a href="${escapeHtml(params.manageUrl)}" target="_blank" style="display: inline-block; padding: 11px 22px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 10px; color: #374151; text-decoration: none; font-size: 13px; font-weight: 600;">
-                      Reprogrammer ou annuler ce RDV
-                    </a>
+                  <td style="padding: 24px 0 0; text-align: center;">
+                    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;">
+                      <tr>
+                        ${params.googleCalendarUrl ? `
+                        <td style="padding: 0 5px;">
+                          <a href="${escapeHtml(params.googleCalendarUrl)}" target="_blank" style="display: inline-block; padding: 9px 16px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 8px; color: #374151; text-decoration: none; font-size: 12px; font-weight: 600;">
+                            Google Calendar
+                          </a>
+                        </td>` : ''}
+                        ${params.icsUrl ? `
+                        <td style="padding: 0 5px;">
+                          <a href="${escapeHtml(params.icsUrl)}" target="_blank" style="display: inline-block; padding: 9px 16px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 8px; color: #374151; text-decoration: none; font-size: 12px; font-weight: 600;">
+                            Outlook / Apple
+                          </a>
+                        </td>` : ''}
+                        ${params.manageUrl ? `
+                        <td style="padding: 0 5px;">
+                          <a href="${escapeHtml(params.manageUrl)}" target="_blank" style="display: inline-block; padding: 9px 16px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 8px; color: #6B7280; text-decoration: none; font-size: 12px; font-weight: 500;">
+                            Reprogrammer / annuler
+                          </a>
+                        </td>` : ''}
+                      </tr>
+                    </table>
                   </td>
-                </tr>` : ''}
+                </tr>
                 <tr>
                   <td style="padding: ${params.manageUrl ? '8px 0 0' : '24px 0 0'}; text-align: center;">
                     <p style="margin: 0; font-size: 12px; color: #9CA3AF; line-height: 1.6;">
@@ -318,7 +333,7 @@ function buildMinimalHtml(params: BookingConfirmationParams): string {
 <html lang="fr">
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Rendez-vous confirmé</title></head>
 <body style="margin: 0; padding: 0; background: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #111827;">
-  <div style="display:none; overflow:hidden; line-height:1px; opacity:0; max-height:0; max-width:0;">Votre rendez-vous avec ${safeCoach || safeBrand} le ${safeDate} à ${safeTime} est confirmé.</div>
+  <div style="display:none; overflow:hidden; line-height:1px; opacity:0; max-height:0; max-width:0;">Votre rendez-vous avec ${safeCoach || safeBrand} le ${safeDate} à ${safeTime} est confirmé.${'&#847;&zwnj;&#847;&zwnj;'.repeat(30)}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: #ffffff; padding: 48px 16px;">
     <tr><td align="center">
       <table role="presentation" width="540" cellpadding="0" cellspacing="0" style="max-width: 540px; width: 100%;">
@@ -337,6 +352,12 @@ function buildMinimalHtml(params: BookingConfirmationParams): string {
           ${meetBlock}
           ${phoneBlock}
           ${locationBlock}
+          ${params.icsUrl || params.googleCalendarUrl ? `
+          <p style="margin: 24px 0 0; font-size: 13px; color: #6B7280;">Ajouter à mon calendrier&nbsp;:
+            ${params.googleCalendarUrl ? ` <a href="${escapeHtml(params.googleCalendarUrl)}" target="_blank" style="color: ${accent}; font-weight: 600; text-decoration: none;">Google Calendar</a>` : ''}
+            ${params.googleCalendarUrl && params.icsUrl ? ' · ' : ''}
+            ${params.icsUrl ? `<a href="${escapeHtml(params.icsUrl)}" target="_blank" style="color: ${accent}; font-weight: 600; text-decoration: none;">Outlook / Apple</a>` : ''}
+          </p>` : ''}
           ${params.manageUrl ? `<p style="margin: 36px 0 0; text-align: center;">
             <a href="${escapeHtml(params.manageUrl)}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 8px; color: #374151; text-decoration: none; font-size: 13px; font-weight: 600;">Reprogrammer ou annuler</a>
           </p>` : ''}
@@ -386,10 +407,11 @@ function buildPlainHtml(params: BookingConfirmationParams): string {
     lines.push('')
     lines.push(`Lieu : ${safeLocationName}${safeLocationAddress ? ' — ' + safeLocationAddress : ''}`)
   }
-  if (!hasCustomMessage) {
+  if (params.icsUrl || params.googleCalendarUrl) {
     lines.push('')
-    lines.push('À très vite,')
-    lines.push(safeCoach || safeBrand)
+    lines.push('Ajouter à mon calendrier :')
+    if (params.googleCalendarUrl) lines.push(`Google Calendar : <a href="${escapeHtml(params.googleCalendarUrl)}" style="color:#1d4ed8;">${escapeHtml(params.googleCalendarUrl)}</a>`)
+    if (params.icsUrl) lines.push(`Outlook / Apple : <a href="${escapeHtml(params.icsUrl)}" style="color:#1d4ed8;">${escapeHtml(params.icsUrl)}</a>`)
   }
   if (params.manageUrl) {
     lines.push('')
@@ -450,7 +472,7 @@ export async function sendBookingConfirmationEmail(
   }
 
   const html = buildBookingConfirmationHtml(params)
-  const subject = `Votre rendez-vous avec ${params.coachName} est confirme`
+  const subject = `Votre rendez-vous avec ${params.coachName} est confirmé`
 
   // From-name priority: workspace brand name > coach legal name > fallback.
   // The brand name (workspaces.name) is what coaches expect to appear in

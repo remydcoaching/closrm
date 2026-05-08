@@ -5,6 +5,7 @@ import { createBookingSchema, bookingFiltersSchema } from '@/lib/validations/boo
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
+import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { createBookingReminders } from '@/lib/bookings/reminders'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import type { CalendarReminder } from '@/types'
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
         is_personal: parsed.data.is_personal,
         location_id: parsed.data.location_id ?? null,
         source: 'manual',
+        status: 'confirmed',
       })
       .select(BOOKING_SELECT)
       .single()
@@ -312,10 +314,21 @@ export async function POST(request: NextRequest) {
             ? `${appUrl}/booking/manage/${data.id}?token=${manageToken}`
             : undefined
 
+          const coachFullName = owner?.full_name ?? 'Votre coach'
+          const calName2 = (data.booking_calendar as { name?: string } | null)?.name ?? 'Coaching'
+          const calLocation = (result?.meetUrl) ? 'Google Meet' : locationName && locationAddress ? `${locationName}, ${locationAddress}` : locationName ?? ''
+          const calendarLinks = buildCalendarUrls({
+            title: `RDV ${calName2} — ${coachFullName}`,
+            startISO: scheduledAt.toISOString(),
+            durationMinutes: (data.booking_calendar as { duration_minutes?: number } | null)?.duration_minutes ?? 30,
+            location: calLocation,
+            description: `Rendez-vous ${calName2} avec ${coachFullName}`,
+          })
+
           await sendBookingConfirmationEmail({
             to: leadEmail,
             workspaceId,
-            coachName: owner?.full_name ?? 'Votre coach',
+            coachName: coachFullName,
             prospectName: `${leadFirst} ${leadLast}`.trim(),
             date: formatBookingDateFR(scheduledAt),
             time: formatBookingTimeFR(scheduledAt),
@@ -327,6 +340,8 @@ export async function POST(request: NextRequest) {
             accentColor: calAccent,
             customMessage,
             manageUrl,
+            icsUrl: calendarLinks.icsUrl,
+            googleCalendarUrl: calendarLinks.googleCalendarUrl,
           }).catch((err) => console.error('[booking] booking-confirmation email failed:', err instanceof Error ? err.message : err))
         }
       } catch (err) {

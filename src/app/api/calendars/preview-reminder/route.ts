@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createClient } from '@/lib/supabase/server'
 import { buildBookingConfirmationHtml } from '@/lib/email/templates/booking-confirmation'
+import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  let body: { message?: string; calendarName?: string; variant?: 'meet' | 'location' | 'phone'; template?: 'premium' | 'minimal' | 'plain'; accentColor?: string }
+  let body: { message?: string; calendarName?: string; variant?: 'meet' | 'location' | 'phone'; template?: 'premium' | 'minimal' | 'plain'; accentColor?: string; locationName?: string; locationAddress?: string; customLink?: string }
   try {
     body = await request.json()
   } catch {
@@ -63,6 +64,20 @@ export async function POST(request: NextRequest) {
   const dateStr = format(SAMPLE.scheduledAt, 'EEEE d MMMM yyyy', { locale: fr })
   const timeStr = format(SAMPLE.scheduledAt, 'HH:mm')
 
+  const locationForCalendar = variant === 'location'
+    ? [body.locationName, body.locationAddress].filter(Boolean).join(', ') || 'Bureau'
+    : variant === 'meet'
+      ? 'Google Meet'
+      : ''
+
+  const calendarLinks = buildCalendarUrls({
+    title: `RDV ${calendarName} — ${coachUser?.full_name ?? 'Coach'}`,
+    startISO: SAMPLE.scheduledAt.toISOString(),
+    durationMinutes: 30,
+    location: locationForCalendar,
+    description: `Rendez-vous ${calendarName} avec ${coachUser?.full_name ?? 'votre coach'}`,
+  })
+
   const html = buildBookingConfirmationHtml({
     to: 'preview@example.com',
     workspaceId,
@@ -71,14 +86,16 @@ export async function POST(request: NextRequest) {
     prospectName: SAMPLE.prospectFirstName,
     date: dateStr,
     time: timeStr,
-    meetUrl: variant === 'meet' ? 'https://meet.google.com/preview-link' : undefined,
-    locationName: variant === 'location' ? 'Bureau ' + (ws?.name ?? 'Coaching') : undefined,
-    locationAddress: variant === 'location' ? '12 rue de la Paix, 75002 Paris' : undefined,
+    meetUrl: variant === 'meet' ? (body.customLink || 'https://meet.google.com/preview-link') : undefined,
+    locationName: variant === 'location' ? (body.locationName || 'Bureau ' + (ws?.name ?? 'Coaching')) : undefined,
+    locationAddress: variant === 'location' ? (body.locationAddress || '12 rue de la Paix, 75002 Paris') : undefined,
     isPhoneCall: variant === 'phone',
     customMessage: message ? resolveTemplate(message, { calendarName }) : undefined,
     template,
     accentColor,
     manageUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://closrm.fr'}/booking/manage/preview?token=preview`,
+    icsUrl: calendarLinks.icsUrl,
+    googleCalendarUrl: calendarLinks.googleCalendarUrl,
   })
 
   return new NextResponse(html, {
