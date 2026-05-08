@@ -177,8 +177,13 @@ export default function NewBookingModal({
       return
     }
     const cal = calendars.find((c) => c.id === calendarId)
-    if (cal) setDuration(cal.duration_minutes)
-  }, [calendarId, calendars, isEditing])
+    if (cal) {
+      setDuration(cal.duration_minutes)
+      const calLocs = locations.filter((l) => l.is_active && cal.location_ids?.includes(l.id))
+      if (calLocs.length > 0) setLocationId(calLocs[0].id)
+      else setLocationId('')
+    }
+  }, [calendarId, calendars, locations, isEditing])
 
   // ── Lead search optimisée ──
   // Stratégie hybride :
@@ -988,7 +993,7 @@ function TimeSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       style={{
-        background: 'transparent',
+        background: 'var(--bg-primary)',
         border: '1px solid transparent',
         color: 'var(--text-primary)',
         fontSize: 13,
@@ -997,14 +1002,12 @@ function TimeSelect({
         cursor: 'pointer',
         fontFamily: 'inherit',
         outline: 'none',
-        appearance: 'none',
-        WebkitAppearance: 'none',
         textAlign: 'center',
         colorScheme: 'dark',
         transition: 'background 0.12s',
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-primary)' }}
     >
       {Array.from({ length: (rangeEnd - rangeStart) * 4 + 1 }, (_, i) => {
         const totalMin = rangeStart * 60 + i * 15
@@ -1027,7 +1030,7 @@ function DurationSelect({ value, onChange }: { value: number; onChange: (v: numb
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
       style={{
-        background: 'transparent',
+        background: 'var(--bg-primary)',
         border: '1px solid transparent',
         color: 'var(--text-primary)',
         fontSize: 13,
@@ -1036,14 +1039,12 @@ function DurationSelect({ value, onChange }: { value: number; onChange: (v: numb
         cursor: 'pointer',
         fontFamily: 'inherit',
         outline: 'none',
-        appearance: 'none',
-        WebkitAppearance: 'none',
         textAlign: 'center',
         colorScheme: 'dark',
         transition: 'background 0.12s',
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-primary)' }}
     >
       {options.map((m) => (
         <option key={m} value={m}>{formatDuration(m)}</option>

@@ -121,6 +121,7 @@ export async function POST(request: NextRequest) {
         is_personal: parsed.data.is_personal,
         location_id: parsed.data.location_id ?? null,
         source: 'manual',
+        status: 'confirmed',
       })
       .select(BOOKING_SELECT)
       .single()
