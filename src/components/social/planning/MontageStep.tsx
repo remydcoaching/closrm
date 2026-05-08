@@ -148,14 +148,20 @@ export default function MontageStep({
         />
       </Field>
 
-      {/* Demander des retouches (si final upload + monteur assigne + status >= edited) */}
-      {canRequestRevision && !revisionOpen && (
-        <button
-          onClick={() => setRevisionOpen(true)}
-          style={revisionBtnStyle}
-        >
-          🔄 Demander des retouches
-        </button>
+      {/* Action bar (coach) — Demander retouches + Valider montage cote a cote */}
+      {(canRequestRevision || transitionAction) && !revisionOpen && (
+        <div style={actionBarStyle}>
+          {canRequestRevision ? (
+            <button onClick={() => setRevisionOpen(true)} style={revisionBtnStyle}>
+              🔄 Demander des retouches
+            </button>
+          ) : <span />}
+          {transitionAction && (
+            <button onClick={onTransition} style={transitionBtnStyle}>
+              {transitionAction.label} →
+            </button>
+          )}
+        </div>
       )}
       {canRequestRevision && revisionOpen && (
         <div style={{
@@ -213,12 +219,9 @@ export default function MontageStep({
         </div>
       )}
 
-      {/* Bouton de transition (Valider le montage) */}
-      {transitionAction && (
-        <button onClick={onTransition} style={transitionBtnStyle}>
-          {transitionAction.label} →
-        </button>
-      )}
+      {/* Si pas de demande de retouches possible (= cas ou il n'y a que le
+          bouton 'Valider' a afficher SANS retouches a cote), on l'a deja
+          rendu dans la action bar plus haut, donc rien ici. */}
     </div>
   )
 }
@@ -449,21 +452,29 @@ const videoWrapperStyle: React.CSSProperties = {
   flexShrink: 0,
 }
 
+const actionBarStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  marginTop: 4,
+  paddingTop: 14,
+  borderTop: '1px solid var(--border-primary)',
+}
+
 const revisionBtnStyle: React.CSSProperties = {
-  alignSelf: 'flex-start',
-  padding: '8px 14px',
-  fontSize: 12,
+  padding: '10px 16px',
+  fontSize: 13,
   fontWeight: 600,
   color: '#d97706',
   background: 'rgba(245,158,11,0.08)',
   border: '1px solid rgba(245,158,11,0.4)',
   borderRadius: 8,
   cursor: 'pointer',
+  whiteSpace: 'nowrap',
 }
 
 const transitionBtnStyle: React.CSSProperties = {
-  alignSelf: 'flex-end',
-  marginTop: 8,
   padding: '10px 18px',
   fontSize: 13,
   fontWeight: 600,
@@ -472,4 +483,5 @@ const transitionBtnStyle: React.CSSProperties = {
   border: 'none',
   borderRadius: 8,
   cursor: 'pointer',
+  whiteSpace: 'nowrap',
 }
