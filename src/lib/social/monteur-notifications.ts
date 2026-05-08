@@ -146,6 +146,54 @@ export async function notifyCoachEdited(
   }
 }
 
+/** Envoie un email au monteur quand le coach demande des retouches (edited|ready → filmed). */
+export async function notifyMonteurRevisionRequested(
+  supabase: SupabaseClient,
+  slot: SlotForNotif,
+  feedback: string | null,
+): Promise<void> {
+  if (!slot.monteur_id) return
+
+  const admin = createServiceClient()
+  const { data: monteur } = await admin
+    .from('users').select('id, email, full_name').eq('id', slot.monteur_id).single<UserRow>()
+  if (!monteur?.email) return
+
+  const link = `${APP_URL}/acquisition/reseaux-sociaux`
+  const title = slotTitle(slot)
+  const fb = feedback?.trim()
+
+  const html = `
+    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fff;color:#111">
+      <h2 style="margin:0 0 8px;font-size:18px;font-weight:700">🔄 Retouches demandées</h2>
+      <p style="margin:0 0 16px;color:#555;font-size:14px">Le coach a relu ton montage et a quelques retours.</p>
+      <div style="border:1px solid #eee;border-radius:8px;padding:16px;margin-bottom:16px">
+        <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Pour le ${formatDate(slot.plan_date)}</div>
+        <div style="font-size:16px;font-weight:600;line-height:1.3;margin-bottom:12px">${escapeHtml(title)}</div>
+        ${fb ? `<div style="margin-top:10px;padding:10px;background:#fef3c7;border-radius:6px;font-size:13px;color:#444"><b style="font-size:11px;color:#d97706">Feedback du coach :</b> ${escapeHtml(fb)}</div>` : ''}
+      </div>
+      <a href="${link}" style="display:inline-block;padding:12px 22px;background:#f59e0b;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px">Voir les retouches</a>
+    </div>
+  `
+
+  const text = `Retouches demandées sur "${title}".\n${fb ? `Feedback : ${fb}\n` : ''}Voir : ${link}`
+
+  void supabase
+  try {
+    await sendThreadedEmail({
+      fromEmail: FROM_EMAIL,
+      fromName: 'ClosRM',
+      to: monteur.email,
+      subject: `🔄 Retouches demandées — ${title}`,
+      bodyHtml: html,
+      bodyText: text,
+      workspaceId: slot.workspace_id,
+    })
+  } catch (err) {
+    console.error('[monteur-notif] notifyMonteurRevisionRequested failed:', (err as Error).message)
+  }
+}
+
 /** Envoie un email au monteur quand le coach valide le montage (edited → ready). */
 export async function notifyMonteurValidated(
   supabase: SupabaseClient,

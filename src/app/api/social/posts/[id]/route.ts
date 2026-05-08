@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateSocialPostSchema } from '@/lib/validations/social-posts'
-import { notifyMonteurFilmed, notifyCoachEdited, notifyMonteurValidated } from '@/lib/social/monteur-notifications'
+import { notifyMonteurFilmed, notifyCoachEdited, notifyMonteurValidated, notifyMonteurRevisionRequested } from '@/lib/social/monteur-notifications'
 
 export async function GET(
   _request: NextRequest,
@@ -38,7 +38,10 @@ export async function PATCH(
     const body = await request.json()
     const parsed = updateSocialPostSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
-    const { publications, ...post } = parsed.data
+    // revision_feedback est un champ transient (pas une colonne DB) — on le sort
+    // du payload avant le update().
+    const { publications, revision_feedback: _revisionFeedback, ...post } = parsed.data
+    void _revisionFeedback
 
     const supabase = await createClient()
     const { data: existing } = await supabase
@@ -86,6 +89,15 @@ export async function PATCH(
       if (!wasReady && nowReady) {
         notifyMonteurValidated(supabase, updated).catch(err =>
           console.error('[social/posts PATCH] notify monteur validated failed:', err?.message)
+        )
+      }
+      // edited|ready → filmed avec un feedback : retouches demandees
+      const goingBackToFilmed =
+        nowFilmed && (existing.production_status === 'edited' || existing.production_status === 'ready')
+      if (goingBackToFilmed && updated.monteur_id) {
+        const feedback = (parsed.data as { revision_feedback?: string | null }).revision_feedback ?? null
+        notifyMonteurRevisionRequested(supabase, updated, feedback).catch(err =>
+          console.error('[social/posts PATCH] notify monteur revision failed:', err?.message)
         )
       }
     }
@@ -144,6 +156,21 @@ export async function DELETE(
       .eq('id', id)
       .eq('workspace_id', workspaceId)
     if (error) throw error
+
+    // Hard-delete des fichiers R2 du slot (final/media/rush). Best-effort:
+    // si ca echoue le slot DB est deja supprime, le cron cleanup-r2-orphans
+    // les rattrappera plus tard.
+    try {
+      const { isR2Configured } = await import('@/lib/storage/r2-client')
+      if (isR2Configured()) {
+        const { deleteByPrefix } = await import('@/lib/storage/signing')
+        const prefix = `workspaces/${workspaceId}/posts/${id}/`
+        await deleteByPrefix(prefix)
+      }
+    } catch (cleanupErr) {
+      console.error('[social/posts DELETE] R2 cleanup failed:', (cleanupErr as Error).message)
+    }
+
     return NextResponse.json({ ok: true })
   } catch (e) {
     if (e instanceof Error && e.message === 'Not authenticated') {

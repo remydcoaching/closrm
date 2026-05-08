@@ -577,6 +577,41 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     }
   }, [slot, slotId, toast, onChange, onClose])
 
+  // ─── Demander des retouches (edited|ready -> filmed avec feedback) ──────
+
+  const requestRevision = useCallback(async (feedback: string) => {
+    if (!slot) return
+    // Optimistic
+    const previous = slot
+    setSlot({ ...slot, production_status: 'filmed' })
+    try {
+      const res = await fetch(`/api/social/posts/${slotId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          production_status: 'filmed',
+          revision_feedback: feedback,
+        }),
+      })
+      if (!res.ok) throw new Error('PATCH failed')
+
+      // Aussi: poste le feedback dans la discussion pour le tracer
+      await fetch(`/api/social/posts/${slotId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: `🔄 Retouches demandées: ${feedback}` }),
+      }).catch(() => { /* best-effort */ })
+
+      setMessagesVersion((v) => v + 1)
+      setActiveStep('montage')
+      toast.success('Retouches demandées', 'Le monteur a été notifié et le slot est repassé en montage.')
+      onChange()
+    } catch (e) {
+      setSlot(previous)
+      toast.error('Erreur', (e as Error).message)
+    }
+  }, [slot, slotId, toast, onChange])
+
   // ─── Transition step ────────────────────────────────────────────────────
 
   const transition = useCallback(async () => {
@@ -768,6 +803,7 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               uploadPct={uploadFinalPct}
               transitionAction={transitionAction as { label: string; nextStatus: 'ready' } | null}
               onTransition={transition}
+              onRequestRevision={requestRevision}
             />
           )}
           {activeStep === 'publication' && (

@@ -60,6 +60,10 @@ export const updateSocialPostSchema = z.object({
   editor_notes: z.string().max(5000).optional().nullable(),
   pricing_tier_id: z.string().uuid().optional().nullable(),
   paid_at: z.string().datetime().optional().nullable(),
+  // Champ transient (non stocke en DB). Utilise pour passer un feedback au
+  // monteur lors d'une transition edited|ready -> filmed (= retouches demandees).
+  // Le serveur l'utilise pour le contenu de l'email + ne l'ecrit pas en DB.
+  revision_feedback: z.string().max(2000).optional().nullable(),
 })
 
 export const socialPostFiltersSchema = z.object({

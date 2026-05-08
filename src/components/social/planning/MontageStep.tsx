@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { SocialPostWithPublications } from '@/types'
 
 interface MontageStepProps {
@@ -12,6 +12,7 @@ interface MontageStepProps {
   uploadPct?: number
   transitionAction: { label: string; nextStatus: 'ready' } | null
   onTransition: () => void
+  onRequestRevision?: (feedback: string) => Promise<void>
 }
 
 export default function MontageStep({
@@ -23,8 +24,17 @@ export default function MontageStep({
   uploadPct = 0,
   transitionAction,
   onTransition,
+  onRequestRevision,
 }: MontageStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [revisionOpen, setRevisionOpen] = useState(false)
+  const [revisionFeedback, setRevisionFeedback] = useState('')
+  const [submittingRevision, setSubmittingRevision] = useState(false)
+  const canRequestRevision =
+    !!onRequestRevision &&
+    !!slot.final_url &&
+    !!slot.monteur_id &&
+    (slot.production_status === 'edited' || slot.production_status === 'ready')
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -144,7 +154,72 @@ export default function MontageStep({
         />
       </Field>
 
-      {/* Bouton de transition */}
+      {/* Demander des retouches (si final upload + monteur assigne + status >= edited) */}
+      {canRequestRevision && !revisionOpen && (
+        <button
+          onClick={() => setRevisionOpen(true)}
+          style={revisionBtnStyle}
+        >
+          🔄 Demander des retouches
+        </button>
+      )}
+      {canRequestRevision && revisionOpen && (
+        <div style={{
+          padding: 12, background: 'rgba(245,158,11,0.08)',
+          border: '1px solid rgba(245,158,11,0.4)', borderRadius: 8,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            Demande de retouches
+          </div>
+          <textarea
+            value={revisionFeedback}
+            onChange={(e) => setRevisionFeedback(e.target.value)}
+            placeholder="Explique ce qui doit être retouché (timing, choix de plans, sous-titres, etc.)…"
+            rows={3}
+            autoFocus
+            style={textareaStyle}
+          />
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => { setRevisionOpen(false); setRevisionFeedback('') }}
+              disabled={submittingRevision}
+              style={{
+                padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                background: 'transparent', color: 'var(--text-tertiary)',
+                border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              onClick={async () => {
+                if (!onRequestRevision || !revisionFeedback.trim()) return
+                setSubmittingRevision(true)
+                try {
+                  await onRequestRevision(revisionFeedback.trim())
+                  setRevisionOpen(false)
+                  setRevisionFeedback('')
+                } finally {
+                  setSubmittingRevision(false)
+                }
+              }}
+              disabled={submittingRevision || !revisionFeedback.trim()}
+              style={{
+                padding: '7px 14px', fontSize: 12, fontWeight: 700,
+                color: '#fff', background: '#f59e0b',
+                border: 'none', borderRadius: 6,
+                cursor: submittingRevision ? 'wait' : 'pointer',
+                opacity: submittingRevision || !revisionFeedback.trim() ? 0.5 : 1,
+              }}
+            >
+              {submittingRevision ? 'Envoi…' : 'Envoyer au monteur'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bouton de transition (Valider le montage) */}
       {transitionAction && (
         <button onClick={onTransition} style={transitionBtnStyle}>
           {transitionAction.label} →
@@ -243,6 +318,18 @@ const videoWrapperStyle: React.CSSProperties = {
   aspectRatio: '9/16',
   width: 140,
   flexShrink: 0,
+}
+
+const revisionBtnStyle: React.CSSProperties = {
+  alignSelf: 'flex-start',
+  padding: '8px 14px',
+  fontSize: 12,
+  fontWeight: 600,
+  color: '#d97706',
+  background: 'rgba(245,158,11,0.08)',
+  border: '1px solid rgba(245,158,11,0.4)',
+  borderRadius: 8,
+  cursor: 'pointer',
 }
 
 const transitionBtnStyle: React.CSSProperties = {
