@@ -9,11 +9,6 @@ import { colors } from '../../theme/colors'
 interface LeadCardProps {
   lead: Lead
   onPress?: () => void
-  variant?: 'dense' | 'large'
-  /** Si true, applique un divider bottom pour usage en list-row.
-   *  Default false (card individuelle). */
-  isInSection?: boolean
-  isLast?: boolean
 }
 
 const formatAmount = (amount: number | null): string | null => {
@@ -25,10 +20,9 @@ const formatAmount = (amount: number | null): string | null => {
   }).format(amount)
 }
 
-export function LeadCard({ lead, onPress, isInSection, isLast }: LeadCardProps) {
+export function LeadCard({ lead, onPress }: LeadCardProps) {
   const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
   const amount = formatAmount(lead.deal_amount)
-  // Subtitle = source en clair + phone si pas de deal, ou phone si deal
   const sourceLabel = lead.source.replace(/_/g, ' ')
   const subtitle = lead.phone ? `${sourceLabel} · ${lead.phone}` : sourceLabel
 
@@ -42,30 +36,34 @@ export function LeadCard({ lead, onPress, isInSection, isLast }: LeadCardProps) 
         paddingVertical: 14,
         paddingHorizontal: 16,
         backgroundColor: pressed ? colors.bgSecondary : colors.bgElevated,
-        // Si dans une section, divider bottom (sauf last)
-        borderBottomWidth: isInSection && !isLast ? 0.5 : 0,
-        borderBottomColor: colors.border,
-        // Coins arrondis seulement si standalone
-        ...(isInSection
-          ? {}
-          : {
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }),
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.border,
+        // Shadow iOS pour décoller la card du fond noir profond
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 8,
+        elevation: 3,
       })}
     >
-      <Avatar name={fullName} size={48} />
+      {/* Avatar : taille fixe explicite */}
+      <View style={{ width: 48, height: 48 }}>
+        <Avatar name={fullName} size={48} />
+      </View>
 
-      <View style={{ flex: 1, gap: 4 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      {/* Bloc central : flex 1 + minWidth 0 → permet de shrink correctement
+          et de pas pousser le bloc droit hors de la rangée. */}
+      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <Text
             numberOfLines={1}
             style={{
               color: colors.textPrimary,
               fontSize: 17,
-              fontWeight: '600',
+              fontWeight: '700',
               flexShrink: 1,
+              minWidth: 0,
             }}
           >
             {fullName}
@@ -77,6 +75,7 @@ export function LeadCard({ lead, onPress, isInSection, isLast }: LeadCardProps) 
           style={{
             color: colors.textSecondary,
             fontSize: 14,
+            fontWeight: '500',
             textTransform: 'capitalize',
           }}
         >
@@ -84,9 +83,10 @@ export function LeadCard({ lead, onPress, isInSection, isLast }: LeadCardProps) 
         </Text>
       </View>
 
-      <View style={{ alignItems: 'flex-end', flexDirection: 'row', gap: 6 }}>
+      {/* Bloc droit : amount + chevron, alignés au centre vertical */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         {amount ? (
-          <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '700' }}>{amount}</Text>
+          <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '800' }}>{amount}</Text>
         ) : null}
         <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
       </View>
