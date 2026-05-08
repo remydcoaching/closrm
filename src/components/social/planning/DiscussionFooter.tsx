@@ -118,6 +118,22 @@ export default function DiscussionFooter({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openTrigger])
 
+  // Auto-ouvre la discussion s'il y a des messages non-lus a l'ouverture du
+  // slot — sinon le user (notamment le monteur) rate les notifications type
+  // 'Retouches demandees: <feedback>' parce que le footer est replie par
+  // defaut. Ne s'execute qu'une seule fois (ref-flag) pour ne pas re-ouvrir
+  // apres un setOpen(false) explicite.
+  const autoOpenedRef = useRef(false)
+  useEffect(() => {
+    if (autoOpenedRef.current) return
+    if (unreadCount > 0) {
+      autoOpenedRef.current = true
+      setOpen(true)
+      if (!loaded) loadMessages()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unreadCount])
+
   // Scroll to highlighted message + clear highlight after 2.5s
   useEffect(() => {
     if (!highlightedMessageId || !open) return
