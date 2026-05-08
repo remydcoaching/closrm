@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import type { CallWithLead } from '../../hooks/useCalls'
 import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
@@ -147,6 +148,39 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
             <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>{amount}</Text>
           ) : null}
         </View>
+
+        {/* Bouton 'Préparer' si le call est imminent (cf spec 7.3).
+            On affiche le bouton uniquement pour le call qui est marqué isNext
+            ET qui n'est pas déjà parti — sinon ce serait du bruit visuel. */}
+        {isNext && !isDone ? (
+          <Pressable
+            onPress={(e) => {
+              // L'event ne doit pas remonter au Pressable parent (qui ouvre
+              // le détail) — l'utilisateur veut juste 'préparer' côté détail
+              // mais on laisse le tap agir comme open detail (même action V1).
+              e.stopPropagation?.()
+              onPress?.()
+            }}
+            style={({ pressed }) => ({
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: colors.primary + '22',
+              borderWidth: 1,
+              borderColor: colors.primary + '55',
+              borderRadius: 8,
+              paddingVertical: 6,
+              paddingHorizontal: 12,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Ionicons name="rocket-outline" size={14} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+              Préparer
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </Pressable>
   )

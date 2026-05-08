@@ -57,17 +57,18 @@ function QuickAction({
       style={({ pressed }) => ({
         flex: 1,
         backgroundColor: colors.bgElevated,
-        borderRadius: 12,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: colors.border,
-        padding: 14,
+        paddingVertical: 18,
+        paddingHorizontal: 12,
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
         opacity: pressed ? 0.7 : 1,
       })}
     >
-      <Ionicons name={icon} size={22} color={color} />
-      <Text style={{ color: colors.textPrimary, fontSize: 12, fontWeight: '600' }}>{label}</Text>
+      <Ionicons name={icon} size={26} color={color} />
+      <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{label}</Text>
     </Pressable>
   )
 }
@@ -252,22 +253,31 @@ export function LeadDetailScreen() {
           onPress={() => scheduleSheet.open({ lead })}
         />
 
-        {/* Quick actions */}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <QuickAction icon="call-outline" label="Appeler" onPress={callPhone} color={colors.info} />
-          <QuickAction
-            icon="logo-instagram"
-            label="DM Insta"
-            onPress={openInstagram}
-            color={colors.pink}
-          />
-          <QuickAction icon="mail-outline" label="Email" onPress={sendEmail} color={colors.purple} />
-          <QuickAction
-            icon="calendar-outline"
-            label="Reprogrammer"
-            color={colors.warning}
-            onPress={() => scheduleSheet.open({ lead })}
-          />
+        {/* Quick actions — grille 2x2 (cf spec 7.2) */}
+        <View style={{ gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <QuickAction icon="call-outline" label="Appeler" onPress={callPhone} color={colors.info} />
+            <QuickAction
+              icon="logo-instagram"
+              label="DM Insta"
+              onPress={openInstagram}
+              color={colors.pink}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <QuickAction
+              icon="mail-outline"
+              label="Email"
+              onPress={sendEmail}
+              color={colors.purple}
+            />
+            <QuickAction
+              icon="calendar-outline"
+              label="Reprogrammer"
+              color={colors.warning}
+              onPress={() => scheduleSheet.open({ lead })}
+            />
+          </View>
         </View>
 
         {/* Infos */}
@@ -293,41 +303,67 @@ export function LeadDetailScreen() {
             value={lead.instagram_handle ? `@${lead.instagram_handle}` : null}
             onPress={openInstagram}
           />
+          <Divider />
+          <InfoRow icon="megaphone-outline" label="Source" value={lead.source.replace(/_/g, ' ')} />
+          <Divider />
+          <InfoRow
+            icon="person-outline"
+            label="Assigné à"
+            value={lead.assigned_to ? 'Oui' : 'Personne'}
+          />
         </Card>
 
         {/* Tags */}
-        {lead.tags && lead.tags.length > 0 ? (
-          <Card>
-            <Text
-              style={{
-                color: colors.textSecondary,
-                fontSize: 11,
-                fontWeight: '700',
-                letterSpacing: 0.5,
-                marginBottom: 8,
-              }}
+        <Card>
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: 12,
+              fontWeight: '700',
+              letterSpacing: 0.5,
+              marginBottom: 10,
+            }}
+          >
+            TAGS
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {(lead.tags ?? []).map((t) => (
+              <View
+                key={t}
+                style={{
+                  paddingVertical: 5,
+                  paddingHorizontal: 12,
+                  borderRadius: 999,
+                  backgroundColor: colors.bgSecondary,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={{ color: colors.textPrimary, fontSize: 13 }}>{t}</Text>
+              </View>
+            ))}
+            {/* Bouton 'ajouter' dashed (cf spec 7.2) — placeholder qui ouvrira
+                un input modal une fois branché. */}
+            <Pressable
+              onPress={() => {/* TODO: ouvrir modal d'ajout de tag */}}
+              style={({ pressed }) => ({
+                paddingVertical: 5,
+                paddingHorizontal: 12,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderStyle: 'dashed',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                opacity: pressed ? 0.6 : 1,
+              })}
             >
-              TAGS
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {lead.tags.map((t) => (
-                <View
-                  key={t}
-                  style={{
-                    paddingVertical: 4,
-                    paddingHorizontal: 10,
-                    borderRadius: 999,
-                    backgroundColor: colors.bgSecondary,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}
-                >
-                  <Text style={{ color: colors.textPrimary, fontSize: 12 }}>{t}</Text>
-                </View>
-              ))}
-            </View>
-          </Card>
-        ) : null}
+              <Ionicons name="add" size={14} color={colors.textSecondary} />
+              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>ajouter</Text>
+            </Pressable>
+          </View>
+        </Card>
 
         {/* Notes */}
         {lead.notes ? (

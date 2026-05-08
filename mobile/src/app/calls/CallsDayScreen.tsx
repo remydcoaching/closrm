@@ -84,7 +84,7 @@ export function CallsDayScreen() {
         <FlatList
           data={calls}
           keyExtractor={(c) => c.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 12 }}
           renderItem={({ item }) => (
             <CallSlot
               call={item}
@@ -92,6 +92,26 @@ export function CallsDayScreen() {
               onPress={() => navigation.navigate('CallDetail', { callId: item.id })}
             />
           )}
+          /* Spec 7.3 : divider 'FIN DE JOURNÉE · 18h30' après le dernier call.
+             On l'affiche en footer si au moins 1 call existe. */
+          ListFooterComponent={
+            calls.length > 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: '700',
+                    letterSpacing: 0.6,
+                  }}
+                >
+                  FIN DE JOURNÉE
+                </Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+              </View>
+            ) : null
+          }
           refreshControl={
             <RefreshControl
               refreshing={loading}
