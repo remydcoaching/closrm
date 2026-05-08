@@ -91,30 +91,13 @@ export default function MontageStep({
           style={{ display: 'none' }}
         />
         {slot.final_url ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)', wordBreak: 'break-all' }}>
-              {slot.final_url.split('/').pop()?.slice(0, 60) ?? '—'}
-            </span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                style={uploadBtnStyle}
-              >
-                {uploading ? `Upload… ${uploadPct}%` : 'Remplacer'}
-              </button>
-              <button
-                onClick={() => onUpdate({ final_url: null })}
-                style={{
-                  padding: '6px 10px', fontSize: 11, fontWeight: 600,
-                  color: 'var(--text-tertiary)', background: 'transparent',
-                  border: 'none', cursor: 'pointer', textDecoration: 'underline',
-                }}
-              >
-                Supprimer
-              </button>
-            </div>
-          </div>
+          <FinalUrlActions
+            filename={slot.final_url.split('/').pop()?.slice(0, 60) ?? '—'}
+            uploading={uploading}
+            uploadPct={uploadPct}
+            onReplaceClick={() => fileInputRef.current?.click()}
+            onDelete={() => onUpdate({ final_url: null })}
+          />
         ) : (
           <>
             <input
@@ -372,6 +355,88 @@ function DropdownOption({
       </span>
       {selected && <Check size={13} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />}
     </button>
+  )
+}
+
+/**
+ * Bloc Remplacer / Supprimer du montage final.
+ * Suppression a confirmation explicite (require 2 clicks) — sinon un click
+ * accidentel a cote de 'Remplacer' nuke la video uploadee par le monteur,
+ * irrécupérable cote DB (le R2 file reste mais est orphelin).
+ */
+function FinalUrlActions({
+  filename,
+  uploading,
+  uploadPct,
+  onReplaceClick,
+  onDelete,
+}: {
+  filename: string
+  uploading: boolean
+  uploadPct: number
+  onReplaceClick: () => void
+  onDelete: () => void
+}) {
+  const [confirming, setConfirming] = useState(false)
+
+  // Reset l'etat 'je suis sur de vouloir supprimer' apres 4s d'inactivite
+  useEffect(() => {
+    if (!confirming) return
+    const t = setTimeout(() => setConfirming(false), 4000)
+    return () => clearTimeout(t)
+  }, [confirming])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', wordBreak: 'break-all' }}>
+        {filename}
+      </span>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button onClick={onReplaceClick} disabled={uploading} style={uploadBtnStyle}>
+          {uploading ? `Upload… ${uploadPct}%` : 'Remplacer'}
+        </button>
+        <div style={{ flex: 1 }} />
+        {confirming ? (
+          <>
+            <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
+              Sûr ?
+            </span>
+            <button
+              onClick={() => setConfirming(false)}
+              style={{
+                padding: '6px 10px', fontSize: 11, fontWeight: 600,
+                color: 'var(--text-tertiary)', background: 'transparent',
+                border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              onClick={() => { onDelete(); setConfirming(false) }}
+              style={{
+                padding: '6px 12px', fontSize: 11, fontWeight: 700,
+                color: '#fff', background: '#ef4444',
+                border: 'none', borderRadius: 6, cursor: 'pointer',
+              }}
+            >
+              Confirmer
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirming(true)}
+            title="Supprime la référence — la vidéo sera orpheline"
+            style={{
+              padding: '6px 10px', fontSize: 11, fontWeight: 600,
+              color: '#ef4444', background: 'transparent',
+              border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, cursor: 'pointer',
+            }}
+          >
+            Supprimer
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
