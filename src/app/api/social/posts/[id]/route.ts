@@ -143,8 +143,12 @@ export async function PATCH(
     }
 
     if (publications) {
-      // Strategy: upsert par (social_post_id, platform) — on remplace intégralement la liste.
-      // Defense en profondeur: dedupe par platform (la unique constraint le ferait planter sinon).
+      // Strategy: upsert par (social_post_id, platform). Avant on faisait
+      // DELETE-then-INSERT mais ca creait une race condition: 2 PATCHes
+      // concurrents (toggle IG puis YT en <1s) interleavaient leurs
+      // DELETE/INSERT → duplicate-key sur (social_post_id, platform).
+      // Maintenant: upsert + delete des plateformes qui ne sont plus dans
+      // la nouvelle liste. Idempotent et race-safe.
       const dedupedPubs: typeof publications = []
       const seen = new Set<string>()
       for (const p of publications) {
@@ -152,7 +156,19 @@ export async function PATCH(
         seen.add(p.platform)
         dedupedPubs.push(p)
       }
-      await supabase.from('social_post_publications').delete().eq('social_post_id', id)
+      const platformsKept = Array.from(seen)
+      // 1. Delete les pubs des plateformes qui ne sont plus actives
+      if (platformsKept.length === 0) {
+        await supabase.from('social_post_publications').delete().eq('social_post_id', id)
+      } else {
+        await supabase
+          .from('social_post_publications')
+          .delete()
+          .eq('social_post_id', id)
+          .not('platform', 'in', `(${platformsKept.map(p => `"${p}"`).join(',')})`)
+      }
+      // 2. Upsert les pubs actives. ON CONFLICT (social_post_id, platform)
+      //    UPDATE config + scheduled_at. Race-safe.
       if (dedupedPubs.length > 0) {
         const rows = dedupedPubs.map((p) => ({
           social_post_id: id,
@@ -162,7 +178,9 @@ export async function PATCH(
           scheduled_at: p.scheduled_at ?? post.scheduled_at ?? null,
           status: 'pending' as const,
         }))
-        const { error: pubErr } = await supabase.from('social_post_publications').insert(rows)
+        const { error: pubErr } = await supabase
+          .from('social_post_publications')
+          .upsert(rows, { onConflict: 'social_post_id,platform' })
         if (pubErr) throw pubErr
       }
     }

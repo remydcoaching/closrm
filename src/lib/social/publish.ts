@@ -178,6 +178,20 @@ async function publishToYoutube(supabase: Supabase, pub: Pub, post: Post) {
 }
 
 async function resolveMediaUrl(supabase: Supabase, url: string, expiresSec: number): Promise<string> {
+  // 1. Path R2 brut (workspaces/.../posts/.../filename.mp4) — sign via R2.
+  //    Sans ca, Meta/YouTube essaient de fetch le path comme URL → fail.
+  if (!url.startsWith('http')) {
+    try {
+      const { isR2Configured } = await import('@/lib/storage/r2-client')
+      if (isR2Configured()) {
+        const { signRead } = await import('@/lib/storage/signing')
+        return await signRead(url, expiresSec)
+      }
+    } catch (err) {
+      console.error('[resolveMediaUrl] R2 sign failed:', (err as Error).message)
+    }
+  }
+  // 2. Supabase Storage url (content-drafts bucket).
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   if (url.includes(supabaseUrl) && url.includes('/content-drafts/')) {
     const filePath = url.split('/content-drafts/').pop()
@@ -186,6 +200,7 @@ async function resolveMediaUrl(supabase: Supabase, url: string, expiresSec: numb
       if (signed?.signedUrl) return signed.signedUrl
     }
   }
+  // 3. URL publique deja signee — passthrough.
   return url
 }
 

@@ -655,6 +655,9 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
 
     // Si on valide le montage et que le slot n'a pas encore de media_urls,
     // on copie le final_url dedans pour eviter au coach de re-uploader.
+    // Et on set media_type=VIDEO pour que YouTube/IG sachent que c'est une
+    // video (sinon publishToYoutube throw 'YouTube accepte uniquement des
+    // videos' et IG passe en image_url au lieu de video_url).
     const patch: Partial<SocialPostWithPublications> = {
       production_status: action.nextStatus,
     }
@@ -664,6 +667,9 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       (!slot.media_urls || slot.media_urls.length === 0)
     ) {
       patch.media_urls = [slot.final_url]
+      if (!slot.media_type) {
+        patch.media_type = 'VIDEO'
+      }
     }
     await updateSlot(patch)
 
