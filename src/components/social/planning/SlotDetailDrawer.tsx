@@ -516,7 +516,15 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
     }
     setScheduling(true)
     try {
-      const scheduledAt = new Date(slot.plan_date + `T${scheduledTime}:00`).toISOString()
+      // plan_date peut etre au format 'YYYY-MM-DD' ou 'YYYY-MM-DDTxx...'
+      // On prend juste les 10 premiers chars (date pure) pour eviter
+      // 'YYYY-MM-DDT00:00:00T18:00:00' qui parse en Invalid Date.
+      const datePart = slot.plan_date.slice(0, 10)
+      const built = new Date(`${datePart}T${scheduledTime}:00`)
+      if (isNaN(built.getTime())) {
+        throw new Error(`Date invalide : ${datePart} ${scheduledTime}`)
+      }
+      const scheduledAt = built.toISOString()
       const res = await fetch(`/api/social/posts/${slotId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
