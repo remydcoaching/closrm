@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons'
 import type { LeadsStackParamList } from '../../navigation/types'
 import { useLead } from '../../hooks/useLead'
 import { Avatar, StatusBadge, SourceBadge, Button, Card, Divider } from '../../components/ui'
+import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
 import { colors } from '../../theme/colors'
 
 type R = RouteProp<LeadsStackParamList, 'LeadDetail'>
@@ -113,6 +114,7 @@ export function LeadDetailScreen() {
   const route = useRoute<R>()
   const navigation = useNavigation()
   const { lead, loading } = useLead(route.params.leadId)
+  const scheduleSheet = useScheduleSheet()
 
   if (loading) {
     return (
@@ -242,14 +244,12 @@ export function LeadDetailScreen() {
           </Card>
         </View>
 
-        {/* CTA principal */}
+        {/* CTA principal — ouvre la Schedule Sheet pour planifier/reprogrammer. */}
         <Button
           label={ctaLabel(lead.status)}
           fullWidth
           size="lg"
-          onPress={() => {
-            // TODO: Schedule sheet ou navigate vers Call
-          }}
+          onPress={() => scheduleSheet.open({ lead })}
         />
 
         {/* Quick actions */}
@@ -266,6 +266,7 @@ export function LeadDetailScreen() {
             icon="calendar-outline"
             label="Reprogrammer"
             color={colors.warning}
+            onPress={() => scheduleSheet.open({ lead })}
           />
         </View>
 

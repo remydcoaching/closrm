@@ -1,8 +1,11 @@
+import { useRef } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { NavigationContainer } from '@react-navigation/native'
+import { NavigationContainer, type NavigationContainerRef } from '@react-navigation/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import RootNavigator from './src/navigation/RootNavigator'
+import { ScheduleSheetProvider } from './src/components/schedule/ScheduleSheetProvider'
+import { useExpoPush } from './src/hooks/useExpoPush'
 import './global.css'
 
 const navTheme = {
@@ -25,12 +28,26 @@ const navTheme = {
   },
 }
 
+function PushHandler({
+  navRef,
+}: {
+  navRef: React.RefObject<NavigationContainerRef<Record<string, object | undefined>> | null>
+}) {
+  useExpoPush(navRef)
+  return null
+}
+
 export default function App() {
+  const navRef = useRef<NavigationContainerRef<Record<string, object | undefined>>>(null)
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <NavigationContainer theme={navTheme}>
-          <RootNavigator />
+        <NavigationContainer ref={navRef} theme={navTheme}>
+          <ScheduleSheetProvider>
+            <PushHandler navRef={navRef} />
+            <RootNavigator />
+          </ScheduleSheetProvider>
         </NavigationContainer>
         <StatusBar style="light" />
       </SafeAreaProvider>

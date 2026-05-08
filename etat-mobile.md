@@ -29,15 +29,15 @@ EAS Build au lieu de Xcode/Android Studio direct.
 | # | Task | Statut |
 |---|------|--------|
 | 7 | Leads List flat | ✅ | useLeads + LeadCard + segments/filters/search/realtime |
-| 8 | Leads List groupée + priorité | 🟠 reportée | flat suffit en MVP — vues custom à brancher après build preview |
+| 8 | Leads List groupée + priorité | ✅ | view switcher 3 modes : Flat / Groupé (sections collapsible) / Priorité (scoring urgence×valeur×fraîcheur) |
 | 9 | Lead Detail | ✅ | useLead + hero + KPI + CTA + quick actions + infos + tags + notes |
 | 10 | Calls Day | ✅ | useCalls + DayStrip + CallSlot + KPI summary + flatlist |
 | 11 | Call Detail | ✅ | useCall + countdown hero + Zoom CTA + contexte/objectif + notes auto-save |
-| 12 | Schedule Sheet | 🟠 reportée | bottom sheet + time picker + détection conflits — gros chunk, à faire après build preview |
+| 12 | Schedule Sheet | ✅ | @gorhom/bottom-sheet global via Provider, type/day/time pickers, conflict detection, POST /api/calls |
 | 13 | Inbox | ✅ | useConversations + ConvRow + sections non-lus/précédemment |
 | 14 | Conversation | ✅ | useMessages + bubbles + composer + lead context strip |
 | 15 | Notifications + table SQL | ✅ | migration 076 + useNotifications + filterChips + group day + mark all read |
-| 16 | Push notifications | 🟠 reportée | nécessite expo-notifications + APNs/FCM + backend dispatch — à faire après build preview |
+| 16 | Push notifications | ✅ client | migration 077 push_tokens + expo-notifications + register + save token + tap deep links. Backend dispatch à brancher côté API web (env-spécifique). |
 | 17 | Pulse Dashboard | ✅ | usePulseKpis + hero revenue + 4 KPI cards + funnel 30j + activity heatmap 7j |
 
 ## Historique
