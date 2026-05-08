@@ -26,6 +26,7 @@ export const updateBookingSchema = z.object({
   duration_minutes: z.number().int().min(5).max(480).optional(),
   status: z.enum(['pending', 'confirmed', 'cancelled', 'no_show', 'completed']).optional(),
   notes: z.string().max(5000).optional().nullable(),
+  notify_lead: z.boolean().optional(),
 })
 
 export const bookingFiltersSchema = z.object({
