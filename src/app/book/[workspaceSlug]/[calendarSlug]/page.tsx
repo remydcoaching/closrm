@@ -29,6 +29,7 @@ interface CalendarInfo {
   location_ids: string[]
   color: string
   form_fields: FormField[]
+  require_confirmation?: boolean
 }
 
 interface WorkspaceInfo {
@@ -200,8 +201,9 @@ export default function PublicBookingPage() {
       // Redirect to confirmation page
       const dateParam = encodeURIComponent(dateStr)
       const timeParam = encodeURIComponent(selectedTime)
+      const pendingParam = calendar?.require_confirmation ? '&pending=1' : ''
       router.push(
-        `/book/${params.workspaceSlug}/${params.calendarSlug}/confirmation?date=${dateParam}&time=${timeParam}`,
+        `/book/${params.workspaceSlug}/${params.calendarSlug}/confirmation?date=${dateParam}&time=${timeParam}${pendingParam}`,
       )
     } catch {
       setError('Erreur réseau. Veuillez réessayer.')

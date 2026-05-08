@@ -27,6 +27,7 @@ interface CalendarRow {
   purpose: string
   reminders: unknown[]
   max_advance_days: number | null
+  require_confirmation: boolean
 }
 
 async function getCalendarBySlug(
@@ -48,7 +49,7 @@ async function getCalendarBySlug(
   const { data: calendar, error: calError } = await supabase
     .from('booking_calendars')
     .select(
-      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose, reminders, max_advance_days',
+      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose, reminders, max_advance_days, require_confirmation',
     )
     .eq('workspace_id', slugRow.workspace_id)
     .eq('slug', calendarSlug)
@@ -156,6 +157,7 @@ export async function GET(
       color: calendar.color,
       form_fields: calendar.form_fields,
       max_advance_days: calendar.max_advance_days,
+      require_confirmation: calendar.require_confirmation,
     },
     workspace: {
       name: workspaceRow?.name ?? null,
@@ -329,7 +331,7 @@ export async function POST(
       title,
       scheduled_at,
       duration_minutes: calendar.duration_minutes,
-      status: 'pending',
+      status: calendar.require_confirmation ? 'pending' : 'confirmed',
       source: 'booking_page',
       form_data,
       is_personal: false,
@@ -438,13 +440,15 @@ export async function POST(
     let meetUrl: string | undefined
 
     try {
+      const gcalTitle = calendar.require_confirmation ? `[À confirmer] ${title}` : title
+      const gcalStatus = calendar.require_confirmation ? 'tentative' : undefined
       const result = await createGoogleCalendarEvent(
         calendar.workspace_id,
         {
-          summary: `[À confirmer] ${title}`,
+          summary: gcalTitle,
           start: { dateTime: bookingStartDt.toISOString() },
           end: { dateTime: bookingEndDt.toISOString() },
-          status: 'tentative',
+          ...(gcalStatus ? { status: gcalStatus } : {}),
         },
         { withMeet },
       )
@@ -463,7 +467,82 @@ export async function POST(
       console.error('[public-booking] Google Calendar event creation failed:', err instanceof Error ? err.message : err)
     }
 
-    // Confirmation email + reminders are sent when coach confirms the booking
+    // If no confirmation required, send email + create reminders immediately
+    if (!calendar.require_confirmation) {
+      if (leadId && calendar.reminders && (calendar.reminders as CalendarReminder[]).length > 0) {
+        createBookingReminders({
+          workspaceId: calendar.workspace_id,
+          bookingId: booking.id,
+          leadId,
+          bookingScheduledAt: scheduled_at,
+          calendarReminders: calendar.reminders as CalendarReminder[],
+          calendarName: calendar.name,
+          lead: { first_name: firstName, last_name: lastName },
+        }).catch((err) => console.error('[public-booking] Failed to create reminders:', err))
+      }
+
+      const email = form_data['email'] ?? null
+      if (email) {
+        try {
+          const [ownerRes, calRes] = await Promise.all([
+            supabase.from('users').select('full_name').eq('workspace_id', calendar.workspace_id).eq('role', 'coach').maybeSingle(),
+            supabase.from('booking_calendars').select('email_template, email_accent_color, name').eq('id', calendar.id).maybeSingle(),
+          ])
+          const calTemplate = (calRes.data as { email_template?: 'premium' | 'minimal' | 'plain' } | null)?.email_template ?? 'premium'
+          const calAccent = (calRes.data as { email_accent_color?: string } | null)?.email_accent_color ?? '#E53E3E'
+          const calName = (calRes.data as { name?: string } | null)?.name ?? ''
+
+          const emailConfirmationReminder = (calendar.reminders as CalendarReminder[] | undefined)?.find(
+            (r) => r.channel === 'email' && r.delay_value === 0,
+          )
+          const dateStr = formatBookingDateFR(bookingStartDt)
+          const timeStr = formatBookingTimeFR(bookingStartDt)
+          const customMessage = emailConfirmationReminder
+            ? emailConfirmationReminder.message
+                .replace(/\{\{prenom\}\}/g, firstName)
+                .replace(/\{\{nom\}\}/g, lastName)
+                .replace(/\{\{date_rdv\}\}/g, dateStr)
+                .replace(/\{\{heure_rdv\}\}/g, timeStr)
+                .replace(/\{\{nom_calendrier\}\}/g, calName)
+            : undefined
+
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+          const manageToken = (booking as unknown as { manage_token?: string }).manage_token
+          const manageUrl = appUrl && manageToken ? `${appUrl}/booking/manage/${booking.id}?token=${manageToken}` : undefined
+
+          const coachFullName = ownerRes.data?.full_name ?? 'Votre coach'
+          const calLocation = meetUrl ? 'Google Meet' : locationName && locationAddress ? `${locationName}, ${locationAddress}` : locationName ?? ''
+          const calendarLinks = buildCalendarUrls({
+            title: `RDV ${calName || 'Coaching'} — ${coachFullName}`,
+            startISO: bookingStartDt.toISOString(),
+            durationMinutes: calendar.duration_minutes,
+            location: calLocation,
+            description: `Rendez-vous ${calName || 'Coaching'} avec ${coachFullName}`,
+          })
+
+          await sendBookingConfirmationEmail({
+            to: email,
+            workspaceId: calendar.workspace_id,
+            coachName: coachFullName,
+            prospectName: `${firstName} ${lastName}`.trim(),
+            date: dateStr,
+            time: timeStr,
+            meetUrl,
+            locationName: locationName ?? undefined,
+            locationAddress: locationAddress ?? undefined,
+            isPhoneCall: locationName === 'Téléphone',
+            template: calTemplate,
+            accentColor: calAccent,
+            customMessage,
+            manageUrl,
+            icsUrl: calendarLinks.icsUrl,
+            googleCalendarUrl: calendarLinks.googleCalendarUrl,
+          })
+        } catch (err) {
+          console.error('[public-booking] Email failed:', err instanceof Error ? err.message : err)
+        }
+      }
+    }
   })
 
   return NextResponse.json({ booking }, { status: 201 })
