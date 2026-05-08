@@ -42,6 +42,7 @@ function isVideoUrl(url: string): boolean {
 
 export default function PublicationStep({
   slot,
+  onUpdate,
   onTogglePlatform,
   onUpdatePublication,
   onUploadMedia,
@@ -73,6 +74,17 @@ export default function PublicationStep({
       : enabledPlatforms[0]?.key ?? null
 
   const hasMedia = Array.isArray(slot.media_urls) && slot.media_urls.length > 0
+
+  // La date programmee est dans le passe ? On bloque "Programmer la publication"
+  // (mais "Publier maintenant" reste autorise — c'est une publication immediate).
+  const scheduledDateInPast = (() => {
+    if (!slot.plan_date) return false
+    const datePart = slot.plan_date.slice(0, 10)
+    const built = new Date(`${datePart}T${scheduledTime}:00`)
+    if (isNaN(built.getTime())) return false
+    return built.getTime() <= Date.now()
+  })()
+
   const canSchedule =
     !readOnly &&
     enabledPlatforms.length > 0 &&
@@ -100,8 +112,87 @@ export default function PublicationStep({
     }
   }
 
+  // Status banner: si le slot est deja programme/publie, on l'affiche en
+  // haut pour que le user voit clairement OU il est dans le flow.
+  const statusBanner = (() => {
+    if (slot.status === 'scheduled' && slot.scheduled_at) {
+      const d = new Date(slot.scheduled_at)
+      const fmt = d.toLocaleString('fr-FR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })
+      return { color: '#06b6d4', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.4)', icon: '📅', label: `Programmé pour le ${fmt}` }
+    }
+    if (slot.status === 'publishing') {
+      return { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)', icon: '⏳', label: 'Publication en cours…' }
+    }
+    if (slot.status === 'published') {
+      const d = slot.published_at ? new Date(slot.published_at) : null
+      const fmt = d ? d.toLocaleString('fr-FR', { day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''
+      return { color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.4)', icon: '✅', label: fmt ? `Publié le ${fmt}` : 'Publié' }
+    }
+    if (slot.status === 'partial') {
+      return { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)', icon: '⚠️', label: 'Publication partielle (certaines plateformes ont échoué)' }
+    }
+    if (slot.status === 'failed') {
+      return { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.4)', icon: '❌', label: 'Publication échouée' }
+    }
+    return null
+  })()
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 22px 24px' }}>
+
+      {/* Status banner (programme / publie / failed / etc.) */}
+      {statusBanner && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          padding: '12px 14px',
+          background: statusBanner.bg,
+          border: `1px solid ${statusBanner.border}`,
+          borderRadius: 8,
+          fontSize: 13, fontWeight: 600,
+          color: statusBanner.color,
+        }}>
+          <span>{statusBanner.icon} {statusBanner.label}</span>
+          {/* Bouton 'Annuler la programmation' uniquement quand status=scheduled */}
+          {slot.status === 'scheduled' && !readOnly && (
+            <button
+              onClick={() => onUpdate({ status: 'draft', scheduled_at: null })}
+              style={{
+                padding: '5px 10px',
+                fontSize: 11, fontWeight: 600,
+                color: 'var(--text-tertiary)',
+                background: 'transparent',
+                border: '1px solid var(--border-primary)',
+                borderRadius: 6,
+                cursor: 'pointer',
+              }}
+            >
+              Annuler la programmation
+            </button>
+          )}
+          {/* Liens vers les posts publies, par plateforme */}
+          {slot.status === 'published' && (slot.publications ?? []).some((p) => p.public_url) && (
+            <span style={{ display: 'flex', gap: 8, fontSize: 11, fontWeight: 500 }}>
+              {(slot.publications ?? [])
+                .filter((p) => p.public_url)
+                .map((p) => (
+                  <a
+                    key={p.platform}
+                    href={p.public_url ?? '#'}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      color: statusBanner.color,
+                      textDecoration: 'underline',
+                      textTransform: 'capitalize',
+                    }}
+                  >
+                    {p.platform} ↗
+                  </a>
+                ))}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* 1. Platform toggles */}
       <Field label="Plateformes">
@@ -246,11 +337,17 @@ export default function PublicationStep({
       {/* 5. Schedule + Publish now buttons */}
       {canSchedule && (
         <>
+          {scheduledDateInPast && slot.status !== 'scheduled' && slot.status !== 'published' && (
+            <div style={pastDateHintStyle}>
+              ⚠️ La date sélectionnée est dans le passé. Tu peux soit changer la date, soit cliquer « Publier maintenant ».
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={onSchedule}
-              disabled={scheduling || publishingNow}
-              style={{ ...scheduleBtnStyle, flex: 1, opacity: publishingNow ? 0.4 : 1 }}
+              disabled={scheduling || publishingNow || scheduledDateInPast}
+              title={scheduledDateInPast ? 'Date dans le passé — choisis une date future ou publie maintenant' : undefined}
+              style={{ ...scheduleBtnStyle, flex: 1, opacity: (publishingNow || scheduledDateInPast) ? 0.4 : 1, cursor: scheduledDateInPast ? 'not-allowed' : 'pointer' }}
             >
               {scheduling ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -544,6 +641,17 @@ const progressHintStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   background: 'rgba(0, 200, 83, 0.06)',
   border: '1px solid rgba(0, 200, 83, 0.25)',
+  borderRadius: 8,
+  lineHeight: 1.5,
+}
+
+const pastDateHintStyle: React.CSSProperties = {
+  padding: '10px 14px',
+  fontSize: 12,
+  fontWeight: 500,
+  color: '#f59e0b',
+  background: 'rgba(245, 158, 11, 0.08)',
+  border: '1px solid rgba(245, 158, 11, 0.3)',
   borderRadius: 8,
   lineHeight: 1.5,
 }

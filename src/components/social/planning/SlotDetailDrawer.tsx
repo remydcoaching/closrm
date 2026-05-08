@@ -541,6 +541,11 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
       if (isNaN(built.getTime())) {
         throw new Error(`Date invalide : ${datePart} ${scheduledTime}`)
       }
+      if (built.getTime() <= Date.now()) {
+        toast.error('Date dans le passé', 'Choisis une date/heure future, ou clique « Publier maintenant ».')
+        setScheduling(false)
+        return
+      }
       const scheduledAt = built.toISOString()
       const res = await fetch(`/api/social/posts/${slotId}`, {
         method: 'PATCH',
