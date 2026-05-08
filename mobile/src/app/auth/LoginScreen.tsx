@@ -62,31 +62,31 @@ export function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Logo / titre */}
-          <View style={{ alignItems: 'center', marginBottom: 40 }}>
+          <View style={{ alignItems: 'center', marginBottom: 44 }}>
             <View
               style={{
-                width: 64,
-                height: 64,
-                borderRadius: 16,
+                width: 72,
+                height: 72,
+                borderRadius: 18,
                 backgroundColor: colors.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: 16,
+                marginBottom: 18,
               }}
             >
-              <Text style={{ color: '#fff', fontSize: 28, fontWeight: '800' }}>C</Text>
+              <Text style={{ color: '#fff', fontSize: 32, fontWeight: '800' }}>C</Text>
             </View>
-            <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: '700' }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 26, fontWeight: '700' }}>
               ClosRM
             </Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 4 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 15, marginTop: 6 }}>
               Connecte-toi à ton workspace
             </Text>
           </View>
 
           {/* Email */}
           <View style={{ gap: 8, marginBottom: 14 }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
               Email
             </Text>
             <TextInput
@@ -102,17 +102,17 @@ export function LoginScreen() {
                 borderWidth: 1,
                 borderColor: colors.border,
                 color: colors.textPrimary,
-                fontSize: 15,
+                fontSize: 17,
                 borderRadius: 10,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 14,
               }}
             />
           </View>
 
           {/* Password */}
           <View style={{ gap: 8, marginBottom: 6 }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
               Mot de passe
             </Text>
             <View style={{ position: 'relative' }}>

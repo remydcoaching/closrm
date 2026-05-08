@@ -41,7 +41,7 @@ export default function TabNavigator() {
         },
         tabBarActiveTintColor: '#00C853',
         tabBarInactiveTintColor: '#A0A0A0',
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
         tabBarIcon: ({ focused, color, size }) => (
           <Ionicons name={iconFor(route.name, focused)} size={size ?? 22} color={color} />
         ),

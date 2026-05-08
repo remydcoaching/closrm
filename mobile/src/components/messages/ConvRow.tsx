@@ -33,14 +33,14 @@ export function ConvRow({ conv, onPress }: ConvRowProps) {
       onPress={onPress}
       style={({ pressed }) => ({
         flexDirection: 'row',
-        gap: 12,
-        paddingVertical: 12,
+        gap: 14,
+        paddingVertical: 14,
         paddingHorizontal: 16,
         backgroundColor: pressed ? colors.bgElevated : 'transparent',
       })}
     >
       <View>
-        <Avatar name={name} size={44} />
+        <Avatar name={name} size={48} />
         {/* Badge canal Instagram */}
         <View
           style={{
@@ -67,14 +67,14 @@ export function ConvRow({ conv, onPress }: ConvRowProps) {
             numberOfLines={1}
             style={{
               color: colors.textPrimary,
-              fontSize: 15,
+              fontSize: 17,
               fontWeight: unread ? '700' : '600',
               flex: 1,
             }}
           >
             {name}
           </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
             {formatRelative(conv.last_message_at)}
           </Text>
         </View>
@@ -82,14 +82,15 @@ export function ConvRow({ conv, onPress }: ConvRowProps) {
           numberOfLines={2}
           style={{
             color: unread ? colors.textPrimary : colors.textSecondary,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: unread ? '600' : '400',
+            lineHeight: 19,
           }}
         >
           {conv.last_message_text || '—'}
         </Text>
         {handle ? (
-          <Text style={{ color: colors.textSecondary, fontSize: 11 }}>{handle}</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{handle}</Text>
         ) : null}
       </View>
 

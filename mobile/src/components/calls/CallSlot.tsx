@@ -64,11 +64,11 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
       })}
     >
       {/* Gutter heure */}
-      <View style={{ width: 56, alignItems: 'flex-end', paddingTop: 12 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}>
+      <View style={{ width: 64, alignItems: 'flex-end', paddingTop: 14 }}>
+        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
           {formatTime(call.scheduled_at)}
         </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 10 }}>
+        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
           {call.duration_seconds ? `${Math.round(call.duration_seconds / 60)} min` : '—'}
         </Text>
       </View>
@@ -81,19 +81,19 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
           borderRadius: 12,
           borderWidth: 1,
           borderColor: colors.border,
-          borderLeftWidth: 3,
+          borderLeftWidth: 4,
           borderLeftColor: color,
-          padding: 12,
-          gap: 6,
+          padding: 14,
+          gap: 8,
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Text
             style={{
               color,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: '700',
-              letterSpacing: 0.5,
+              letterSpacing: 0.6,
             }}
           >
             {typeLabel(call.type)}
@@ -118,33 +118,33 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
                   backgroundColor: colors.primary,
                 }}
               />
-              <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '700' }}>
+              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
                 LIVE DANS {liveMin} MIN
               </Text>
             </View>
           ) : null}
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Avatar name={fullName} size={36} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Avatar name={fullName} size={40} />
           <View style={{ flex: 1 }}>
             <Text
               numberOfLines={1}
-              style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }}
+              style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }}
             >
               {fullName}
             </Text>
             {call.notes ? (
               <Text
                 numberOfLines={1}
-                style={{ color: colors.textSecondary, fontSize: 11 }}
+                style={{ color: colors.textSecondary, fontSize: 13 }}
               >
                 {call.notes}
               </Text>
             ) : null}
           </View>
           {amount ? (
-            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>{amount}</Text>
+            <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>{amount}</Text>
           ) : null}
         </View>
       </View>

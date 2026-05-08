@@ -10,9 +10,9 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, size = 'sm' }: StatusBadgeProps) {
   const config = statusConfig[status]
-  const py = size === 'sm' ? 2 : 4
-  const px = size === 'sm' ? 8 : 12
-  const fontSize = size === 'sm' ? 11 : 13
+  const py = size === 'sm' ? 3 : 5
+  const px = size === 'sm' ? 10 : 14
+  const fontSize = size === 'sm' ? 12 : 14
 
   return (
     <View

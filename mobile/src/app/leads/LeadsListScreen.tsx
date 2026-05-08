@@ -261,7 +261,7 @@ export function LeadsListScreen() {
         <FlatList
           data={leads}
           keyExtractor={(l) => l.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 8 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 14 }}
           renderItem={({ item }) => (
             <LeadCard
               lead={item}
@@ -295,19 +295,19 @@ export function LeadsListScreen() {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 8,
-                    paddingVertical: 12,
-                    marginTop: 6,
+                    gap: 10,
+                    paddingVertical: 14,
+                    marginTop: 8,
                   }}
                 >
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: cfg.color }} />
-                  <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700', flex: 1 }}>
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: cfg.color }} />
+                  <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', flex: 1 }}>
                     {cfg.label}
                   </Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{item.count}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>{item.count}</Text>
                   <Ionicons
                     name={item.isCollapsed ? 'chevron-down' : 'chevron-up'}
-                    size={14}
+                    size={16}
                     color={colors.textSecondary}
                   />
                 </Pressable>
@@ -315,7 +315,7 @@ export function LeadsListScreen() {
             }
             const accent = statusConfig[item.lead.status].color
             return (
-              <View style={{ marginBottom: 8, marginLeft: 4 }}>
+              <View style={{ marginBottom: 12, marginLeft: 4 }}>
                 <Pressable
                   onPress={() => navigation.navigate('LeadDetail', { leadId: item.lead.id })}
                   style={({ pressed }) => ({
@@ -342,7 +342,7 @@ export function LeadsListScreen() {
         <FlatList
           data={priorityItems}
           keyExtractor={(s) => s.lead.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 14 }}
           renderItem={({ item }) => (
             <LeadCardLarge
               lead={item.lead}
@@ -377,17 +377,17 @@ function LeadCardInner({ lead }: { lead: Lead }) {
     ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(lead.deal_amount)
     : null
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 4 }}>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
+        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }} numberOfLines={1}>
           {fullName}
         </Text>
         {lead.phone ? (
-          <Text style={{ color: colors.textSecondary, fontSize: 11 }}>{lead.phone}</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{lead.phone}</Text>
         ) : null}
       </View>
       {amount ? (
-        <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>{amount}</Text>
+        <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>{amount}</Text>
       ) : null}
     </View>
   )

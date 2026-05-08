@@ -46,13 +46,13 @@ export function LeadCardLarge({ lead, urgency, ctaLabel, onPress, onCta }: LeadC
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Avatar name={fullName} size={44} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <Avatar name={fullName} size={48} />
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Text
               numberOfLines={1}
-              style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700', flexShrink: 1 }}
+              style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700', flexShrink: 1 }}
             >
               {fullName}
             </Text>
@@ -63,19 +63,19 @@ export function LeadCardLarge({ lead, urgency, ctaLabel, onPress, onCta }: LeadC
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: 4,
-                marginTop: 4,
+                gap: 5,
+                marginTop: 6,
               }}
             >
               <View
                 style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
+                  width: 7,
+                  height: 7,
+                  borderRadius: 3.5,
                   backgroundColor: urgency.color,
                 }}
               />
-              <Text style={{ color: urgency.color, fontSize: 11, fontWeight: '700' }}>
+              <Text style={{ color: urgency.color, fontSize: 12, fontWeight: '700' }}>
                 {urgency.label}
               </Text>
             </View>
@@ -83,10 +83,10 @@ export function LeadCardLarge({ lead, urgency, ctaLabel, onPress, onCta }: LeadC
         </View>
         {amount ? (
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '700' }}>
+            <Text style={{ color: colors.primary, fontSize: 18, fontWeight: '700' }}>
               {amount}
             </Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 10 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
               {lead.deal_installments > 1 ? `x${lead.deal_installments}` : 'cash'}
             </Text>
           </View>
@@ -96,16 +96,16 @@ export function LeadCardLarge({ lead, urgency, ctaLabel, onPress, onCta }: LeadC
       {(ctaLabel || lead.call_attempts > 0) ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {lead.call_attempts > 0 ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="call-outline" size={12} color={colors.textSecondary} />
-              <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons name="call-outline" size={14} color={colors.textSecondary} />
+              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                 {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
               </Text>
             </View>
           ) : null}
           <View style={{ flex: 1 }} />
           {ctaLabel ? (
-            <Button label={ctaLabel} size="sm" variant="primary" onPress={onCta} />
+            <Button label={ctaLabel} size="md" variant="primary" onPress={onCta} />
           ) : null}
         </View>
       ) : null}

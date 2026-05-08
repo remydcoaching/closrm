@@ -50,38 +50,38 @@ export function LeadCard({ lead, onPress, variant = 'dense' }: LeadCardProps) {
         borderRadius: 14,
         borderWidth: 1,
         borderColor: colors.border,
-        padding: variant === 'large' ? 14 : 12,
+        padding: variant === 'large' ? 16 : 14,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 14,
         opacity: pressed ? 0.7 : 1,
       })}
     >
-      <Avatar name={fullName} size={variant === 'large' ? 48 : 40} />
+      <Avatar name={fullName} size={variant === 'large' ? 52 : 44} />
 
-      <View style={{ flex: 1, gap: 4 }}>
+      <View style={{ flex: 1, gap: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Text
             numberOfLines={1}
-            style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '600', flexShrink: 1 }}
+            style={{ color: colors.textPrimary, fontSize: 17, fontWeight: '600', flexShrink: 1 }}
           >
             {fullName}
           </Text>
           <StatusBadge status={lead.status} size="sm" />
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <SourceBadge source={lead.source} size="sm" />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Ionicons name="time-outline" size={11} color={colors.textSecondary} />
-            <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
+            <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
               {formatRelative(lastActivity)}
             </Text>
           </View>
           {lead.call_attempts > 0 ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="call-outline" size={11} color={colors.textSecondary} />
-              <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
+              <Ionicons name="call-outline" size={13} color={colors.textSecondary} />
+              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
                 {lead.call_attempts}
               </Text>
             </View>
@@ -91,9 +91,9 @@ export function LeadCard({ lead, onPress, variant = 'dense' }: LeadCardProps) {
 
       {amount ? (
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>{amount}</Text>
+          <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '700' }}>{amount}</Text>
           {lead.deal_installments > 1 ? (
-            <Text style={{ color: colors.textSecondary, fontSize: 10 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
               x{lead.deal_installments}
             </Text>
           ) : null}

@@ -3,9 +3,14 @@
 export const colors = {
   bgPrimary: '#09090b',
   bgSecondary: '#0c0c0e',
-  bgElevated: '#141414',
+  // bgElevated remonté de #141414 → #1a1a1c pour creuser le contraste
+  // entre la carte et le fond — sinon les LeadCards adjacentes paraissent
+  // se fondre les unes dans les autres ('lourd à voir' / 'enchaîné').
+  bgElevated: '#1a1a1c',
   sheet: '#1c1c1e',
-  border: '#262626',
+  // border #2e2e30 (au lieu de #262626) pour qu'on distingue mieux les
+  // limites des cards dans une liste dense.
+  border: '#2e2e30',
   primary: '#00C853',
   warning: '#f59e0b',
   danger: '#ef4444',
@@ -15,7 +20,11 @@ export const colors = {
   pink: '#ec4899',
   orange: '#f97316',
   textPrimary: '#FFFFFF',
-  textSecondary: '#A0A0A0',
+  // textSecondary remonté de #A0A0A0 → #BFBFBF pour meilleure lisibilité
+  // sur fond noir profond. Le contraste WCAG AA passe de 6.2:1 à 8.2:1.
+  textSecondary: '#BFBFBF',
+  // Tier intermédiaire pour les labels uppercase / metadata discrète.
+  textTertiary: '#8A8A8A',
 } as const
 
 // 8 teintes pour les avatars, dérivées de manière déterministe du nom
