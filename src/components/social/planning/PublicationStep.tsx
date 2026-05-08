@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import type { SocialPostWithPublications, SocialPostPublication } from '@/types'
+import DateTimePicker from './DateTimePicker'
 
 type Platform = 'instagram' | 'youtube' | 'tiktok'
 
@@ -324,19 +325,14 @@ export default function PublicationStep({
       {/* 4. Scheduled date + time */}
       {enabledPlatforms.length > 0 && (
         <Field label="Date et heure de publication">
-          <input
-            type="datetime-local"
-            value={`${(slot.plan_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10)}T${scheduledTime}`}
-            min={`${new Date().toISOString().slice(0, 10)}T00:00`}
-            onChange={(e) => {
-              const v = e.target.value
-              if (!v) return
-              const [datePart, timePart] = v.split('T')
-              if (datePart) onUpdate({ plan_date: datePart })
-              if (timePart) onScheduledTimeChange(timePart.slice(0, 5))
+          <DateTimePicker
+            date={(slot.plan_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10)}
+            time={scheduledTime}
+            onChange={(date, time) => {
+              if (date !== (slot.plan_date ?? '').slice(0, 10)) onUpdate({ plan_date: date })
+              if (time !== scheduledTime) onScheduledTimeChange(time)
             }}
             disabled={readOnly}
-            style={inputStyle}
           />
         </Field>
       )}
