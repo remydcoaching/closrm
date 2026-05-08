@@ -504,9 +504,9 @@ export default function NewBookingModal({
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                   >
-                    <option value={BLOCKED_CALENDAR_VALUE}>Horaire bloqué</option>
+                    <option value={BLOCKED_CALENDAR_VALUE} style={{ background: '#141414', color: '#fff' }}>Horaire bloqué</option>
                     {calendars.map((cal) => (
-                      <option key={cal.id} value={cal.id}>{cal.name}</option>
+                      <option key={cal.id} value={cal.id} style={{ background: '#141414', color: '#fff' }}>{cal.name}</option>
                     ))}
                   </select>
                   <ChevronDown size={13} style={{ position: 'absolute', right: 8, color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
@@ -688,9 +688,9 @@ export default function NewBookingModal({
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                         >
-                          <option value="">Choisir un lieu…</option>
+                          <option value="" style={{ background: '#141414', color: '#fff' }}>Choisir un lieu…</option>
                           {availableLocations.map((l) => (
-                            <option key={l.id} value={l.id}>
+                            <option key={l.id} value={l.id} style={{ background: '#141414', color: '#fff' }}>
                               {l.name}{l.location_type === 'online' ? ' (en ligne)' : ''}
                             </option>
                           ))}
@@ -730,10 +730,10 @@ export default function NewBookingModal({
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                       >
-                        <option value="none">Pas de récurrence</option>
-                        <option value="daily">Tous les jours</option>
-                        <option value="weekly">Toutes les semaines</option>
-                        <option value="monthly">Tous les mois</option>
+                        <option value="none" style={{ background: '#141414', color: '#fff' }}>Pas de récurrence</option>
+                        <option value="daily" style={{ background: '#141414', color: '#fff' }}>Tous les jours</option>
+                        <option value="weekly" style={{ background: '#141414', color: '#fff' }}>Toutes les semaines</option>
+                        <option value="monthly" style={{ background: '#141414', color: '#fff' }}>Tous les mois</option>
                       </select>
                       <ChevronDown size={13} style={{ position: 'absolute', right: 8, color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
                     </div>
@@ -1014,7 +1014,7 @@ function TimeSelect({
         const h = Math.floor(totalMin / 60)
         const m = totalMin % 60
         const val = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-        return <option key={val} value={val}>{val}</option>
+        return <option key={val} value={val} style={{ background: '#141414', color: '#fff' }}>{val}</option>
       })}
     </select>
   )
@@ -1047,7 +1047,7 @@ function DurationSelect({ value, onChange }: { value: number; onChange: (v: numb
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-primary)' }}
     >
       {options.map((m) => (
-        <option key={m} value={m}>{formatDuration(m)}</option>
+        <option key={m} value={m} style={{ background: '#141414', color: '#fff' }}>{formatDuration(m)}</option>
       ))}
     </select>
   )
