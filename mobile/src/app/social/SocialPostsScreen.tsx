@@ -252,91 +252,88 @@ function PostRow({
     post.hook ||
     (post.caption ? post.caption.slice(0, 80) : 'Sans titre')
 
+  // Pattern strict CallSlot : Pressable porte juste opacité, View interne
+  // fait le layout. Sinon RN casse parfois le flexDirection du style fonction.
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.md,
-        flexDirection: 'row',
-        gap: spacing.md,
-        alignItems: 'center',
-        opacity: pressed ? 0.6 : 1,
-        borderBottomWidth: separator ? 0.33 : 0,
-        borderBottomColor: colors.border,
-      })}
-    >
-      {/* Time pill */}
-      <View
-        style={{
-          width: 56,
-          alignItems: 'center',
-        }}
-      >
-        <Text
+    <Pressable onPress={onPress}>
+      {({ pressed }) => (
+        <View
           style={{
-            ...t.caption2,
-            color: colors.textSecondary,
-            fontWeight: '600',
+            paddingHorizontal: spacing.md,
+            paddingVertical: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            opacity: pressed ? 0.6 : 1,
+            borderBottomWidth: separator ? 0.33 : 0,
+            borderBottomColor: colors.border,
           }}
         >
-          HEURE
-        </Text>
-        <Text
-          style={{
-            ...t.bodyEmphasis,
-            color: colors.textPrimary,
-            marginTop: 2,
-          }}
-        >
-          {time}
-        </Text>
-      </View>
+          {/* Gutter heure — large 56px, aligné à droite */}
+          <View style={{ width: 56, alignItems: 'flex-end' }}>
+            <Text
+              style={{
+                color: colors.textPrimary,
+                fontSize: 17,
+                fontWeight: '700',
+                letterSpacing: -0.4,
+              }}
+            >
+              {time}
+            </Text>
+          </View>
 
-      {/* Status dot + content */}
-      <View style={{ flex: 1, gap: 4 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {/* Bordure gauche colorée selon statut */}
           <View
             style={{
-              width: 6,
-              height: 6,
-              borderRadius: 3,
+              width: 3,
+              alignSelf: 'stretch',
               backgroundColor: tint,
+              borderRadius: 1.5,
             }}
           />
-          <Text
-            style={{
-              ...t.caption2,
-              color: tint,
-              fontWeight: '700',
-              textTransform: 'uppercase',
-              letterSpacing: 0.4,
-            }}
-          >
-            {STATUS_LABELS[post.status]}
-          </Text>
-        </View>
-        <Text
-          numberOfLines={2}
-          style={{ ...t.body, color: colors.textPrimary }}
-        >
-          {title}
-        </Text>
-        {platforms.length > 0 ? (
-          <View style={{ flexDirection: 'row', gap: 6, marginTop: 2 }}>
-            {platforms.map((pl) => (
-              <Ionicons
-                key={pl}
-                name={PLATFORM_ICONS[pl]}
-                size={13}
-                color={colors.textSecondary}
-              />
-            ))}
-          </View>
-        ) : null}
-      </View>
 
-      <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+          {/* Contenu — title + platforms inline */}
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                ...t.bodyEmphasis,
+                color: colors.textPrimary,
+              }}
+            >
+              {title}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text
+                style={{
+                  ...t.caption2,
+                  color: tint,
+                  fontWeight: '600',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.4,
+                }}
+              >
+                {STATUS_LABELS[post.status]}
+              </Text>
+              {platforms.length > 0 ? (
+                <View style={{ flexDirection: 'row', gap: 5 }}>
+                  {platforms.map((pl) => (
+                    <Ionicons
+                      key={pl}
+                      name={PLATFORM_ICONS[pl]}
+                      size={12}
+                      color={colors.textSecondary}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          </View>
+
+          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        </View>
+      )}
     </Pressable>
   )
 }

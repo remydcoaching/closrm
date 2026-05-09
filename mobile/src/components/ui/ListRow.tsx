@@ -102,14 +102,18 @@ export function ListRow({
   return (
     <View>
       {onPress ? (
+        // Bug RN observé : un style fonction `({pressed}) => ({...})` sur
+        // Pressable casse parfois le flexDirection: 'row' du containerStyle
+        // au premier render → la row apparaît verticale (icône au-dessus
+        // du title). Le wrap explicite par un `View` interne avec le
+        // containerStyle évite le problème : Pressable ne porte plus que
+        // le hit-test + opacité, le layout est figé dans la View.
         <Pressable
           onPress={onPress}
-          style={({ pressed }) => ({
-            ...containerStyle,
-            backgroundColor: pressed ? '#ffffff10' : 'transparent',
-          })}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          android_ripple={{ color: '#ffffff10' }}
         >
-          {Inner}
+          <View style={containerStyle}>{Inner}</View>
         </Pressable>
       ) : (
         <View style={containerStyle}>{Inner}</View>
