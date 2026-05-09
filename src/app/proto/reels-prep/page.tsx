@@ -105,6 +105,9 @@ export default function PrepTournagePage() {
   const [state, setState] = useState<PrepState | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [addingLocation, setAddingLocation] = useState(false)
+  const [newLocationName, setNewLocationName] = useState('')
+  const [editingNotePhraseId, setEditingNotePhraseId] = useState<string | null>(null)
 
   useEffect(() => {
     const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
@@ -188,8 +191,17 @@ export default function PrepTournagePage() {
   }
 
   function addLocation() {
-    const name = prompt('Nom du nouveau lieu :')
-    if (name && name.trim()) update(s => ({ ...s, locations: [...s.locations, name.trim()] }))
+    setAddingLocation(true)
+    setNewLocationName('')
+  }
+
+  function confirmAddLocation() {
+    const name = newLocationName.trim()
+    if (name) {
+      update(s => s.locations.includes(name) ? s : ({ ...s, locations: [...s.locations, name] }))
+    }
+    setAddingLocation(false)
+    setNewLocationName('')
   }
 
   function clearAll() {
@@ -354,25 +366,40 @@ export default function PrepTournagePage() {
                             </span>
                             {p.text}
                           </div>
-                          <input
-                            type="text"
-                            placeholder="🎥 Cadrage / action (optionnel) — ex: gros plan visage, pointer la barre…"
-                            value={p.shotNote ?? ''}
-                            onClick={e => e.stopPropagation()}
-                            onChange={e => update(s => ({
-                              ...s,
-                              reels: s.reels.map(r => r.id === reel.id ? {
-                                ...r,
-                                phrases: r.phrases.map(pp => pp.id === p.id ? { ...pp, shotNote: e.target.value } : pp),
-                              } : r),
-                            }))}
-                            style={{
-                              width: '100%', marginTop: 4,
-                              padding: '4px 8px', background: 'transparent', border: 'none',
-                              borderBottom: '1px dashed #262626',
-                              color: '#888', fontSize: 11, outline: 'none', fontStyle: 'italic',
-                            }}
-                          />
+                          {/* Shot note : caché par défaut, affiché uniquement si rempli OU en édition */}
+                          {(p.shotNote || editingNotePhraseId === p.id) ? (
+                            <input
+                              type="text"
+                              autoFocus={editingNotePhraseId === p.id && !p.shotNote}
+                              placeholder="Cadrage / action…"
+                              value={p.shotNote ?? ''}
+                              onClick={e => e.stopPropagation()}
+                              onBlur={() => setEditingNotePhraseId(null)}
+                              onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur() }}
+                              onChange={e => update(s => ({
+                                ...s,
+                                reels: s.reels.map(r => r.id === reel.id ? {
+                                  ...r,
+                                  phrases: r.phrases.map(pp => pp.id === p.id ? { ...pp, shotNote: e.target.value } : pp),
+                                } : r),
+                              }))}
+                              style={{
+                                width: '100%', marginTop: 4,
+                                padding: '3px 0', background: 'transparent', border: 'none',
+                                color: '#d69e2e', fontSize: 11, outline: 'none', fontStyle: 'italic',
+                              }}
+                            />
+                          ) : (
+                            <button
+                              onClick={e => { e.stopPropagation(); setEditingNotePhraseId(p.id) }}
+                              style={{
+                                marginTop: 2, padding: 0, background: 'transparent', border: 'none',
+                                color: '#3a3a3a', fontSize: 10, cursor: 'pointer',
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                              }}>
+                              🎥 + cadrage
+                            </button>
+                          )}
                         </div>
 
                         <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
@@ -441,6 +468,71 @@ export default function PrepTournagePage() {
           </div>
         )}
       </div>
+
+      {/* Modale "Ajouter un lieu" — remplace prompt() natif */}
+      {addingLocation && (
+        <div
+          onClick={() => setAddingLocation(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 100,
+          }}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: 360, maxWidth: 'calc(100vw - 32px)',
+              background: '#141414', border: '1px solid #262626',
+              borderRadius: 12, padding: 20,
+              boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
+            }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+              Nouveau lieu de tournage
+            </div>
+            <div style={{ fontSize: 11, color: '#888', marginBottom: 14 }}>
+              Ex : Poulie, Banc plat, Devant le miroir, Plage…
+            </div>
+            <input
+              autoFocus
+              type="text"
+              value={newLocationName}
+              onChange={e => setNewLocationName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') confirmAddLocation()
+                if (e.key === 'Escape') setAddingLocation(false)
+              }}
+              placeholder="Nom du lieu…"
+              style={{
+                width: '100%', padding: '10px 12px',
+                background: '#0a0a0a', border: '1px solid #262626',
+                borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none',
+                marginBottom: 14,
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setAddingLocation(false)}
+                style={{
+                  padding: '8px 14px', background: 'transparent', color: '#888',
+                  border: '1px solid #262626', borderRadius: 7, fontSize: 12, cursor: 'pointer',
+                }}>
+                Annuler
+              </button>
+              <button
+                onClick={confirmAddLocation}
+                disabled={!newLocationName.trim()}
+                style={{
+                  padding: '8px 16px', background: newLocationName.trim() ? '#FF0000' : '#3a1a1a',
+                  color: '#fff', border: 'none', borderRadius: 7,
+                  fontSize: 12, fontWeight: 700,
+                  cursor: newLocationName.trim() ? 'pointer' : 'not-allowed',
+                }}>
+                + Créer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
