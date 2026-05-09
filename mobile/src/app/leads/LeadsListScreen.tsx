@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react'
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { LeadsStackParamList } from '../../navigation/types'
@@ -118,9 +117,6 @@ export function LeadsListScreen() {
   const navigation = useNavigation<Nav>()
   const { user } = useAuth()
   const createLeadSheet = useCreateLeadSheet()
-  // Hauteur exacte de la tab bar (incluant safe area) pour positionner
-  // le FAB juste au-dessus avec marge.
-  const tabBarHeight = useBottomTabBarHeight()
 
   const [viewMode, setViewMode] = useState<ViewMode>('flat')
   const [segIdx, setSegIdx] = useState(0)
@@ -165,7 +161,30 @@ export function LeadsListScreen() {
       <NavLarge
         title="Leads"
         subtitle={`${counts} lead${counts > 1 ? 's' : ''}`}
-        rightSlot={<ViewSwitcher mode={viewMode} onChange={setViewMode} />}
+        rightSlot={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <ViewSwitcher mode={viewMode} onChange={setViewMode} />
+            <Pressable
+              onPress={() => createLeadSheet.open(refetch)}
+              style={({ pressed }) => ({
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: '#00C853',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#00C853',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.4,
+                shadowRadius: 8,
+                opacity: pressed ? 0.8 : 1,
+                transform: [{ scale: pressed ? 0.92 : 1 }],
+              })}
+            >
+              <Ionicons name="add" size={22} color="#000" />
+            </Pressable>
+          </View>
+        }
       />
 
       <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
@@ -291,11 +310,7 @@ export function LeadsListScreen() {
         </ScrollView>
       )}
 
-      <FAB
-        label="Nouveau lead"
-        bottom={tabBarHeight + 16}
-        onPress={() => createLeadSheet.open(refetch)}
-      />
+      <FAB label="Nouveau lead" onPress={() => createLeadSheet.open(refetch)} />
     </SafeAreaView>
   )
 }
