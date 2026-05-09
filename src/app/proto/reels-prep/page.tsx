@@ -130,7 +130,10 @@ export default function PrepTournagePage() {
 
   const visibleReels = useMemo(() => {
     if (!state) return []
-    if (reelParam) return state.reels.filter(r => r.id === reelParam)
+    if (reelParam) {
+      const ids = reelParam.split(',').map(s => s.trim()).filter(Boolean)
+      return state.reels.filter(r => ids.includes(r.id))
+    }
     return state.reels
   }, [state, reelParam])
 
@@ -219,11 +222,13 @@ export default function PrepTournagePage() {
           <div style={{ fontSize: 22, fontWeight: 800, color: '#FF0000', minWidth: 32 }}>📋</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, color: '#fff', fontWeight: 700, marginBottom: 2 }}>
-              {reelParam ? 'Préparer ce reel' : 'Préparer mon tournage'} — V0 PROTO
+              {reelParam
+                ? `Préparer ${visibleReels.length} reel${visibleReels.length > 1 ? 's' : ''}`
+                : 'Préparer mon tournage'} — V0 PROTO
             </div>
             <div style={{ fontSize: 12, color: '#888' }}>
               {reelParam
-                ? 'Filtré sur 1 reel uniquement. '
+                ? `Filtré sur ${visibleReels.length} reel${visibleReels.length > 1 ? 's' : ''} sélectionné${visibleReels.length > 1 ? 's' : ''}. `
                 : 'Tous tes reels. '}
               localStorage seul, bypass auth. {reelParam && (
                 <Link href="/proto/reels-prep" style={{ color: '#FF0000', textDecoration: 'underline' }}>
