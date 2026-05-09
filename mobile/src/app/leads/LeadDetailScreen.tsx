@@ -52,8 +52,8 @@ const formatAmount = (n: number | null): string =>
         maximumFractionDigits: 0,
       }).format(n)
 
-/** Chip pill — élément réutilisable dans le détail (pour status, source,
- *  tags, infos) avec la même langue visuelle que les leads list. */
+/** Chip pill — réutilisable. Bug fix : View ne supporte pas la fn style,
+ *  on passe par un static style et un Pressable optional wrapper. */
 function Chip({
   icon,
   label,
@@ -67,23 +67,19 @@ function Chip({
   onPress?: () => void
   filled?: boolean
 }) {
-  const Container = onPress ? Pressable : View
-  return (
-    <Container
-      onPress={onPress}
-      style={({ pressed }: { pressed?: boolean }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 999,
-        backgroundColor: filled ? color : color + '14',
-        borderWidth: 1,
-        borderColor: color + (filled ? '00' : '30'),
-        opacity: pressed ? 0.7 : 1,
-      })}
-    >
+  const chipStyle = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: filled ? color : color + '14',
+    borderWidth: 1,
+    borderColor: filled ? color : color + '30',
+  }
+  const inner = (
+    <>
       {icon ? (
         <Ionicons name={icon} size={13} color={filled ? '#000' : color} />
       ) : (
@@ -106,8 +102,19 @@ function Chip({
       >
         {label}
       </Text>
-    </Container>
+    </>
   )
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [chipStyle, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        {inner}
+      </Pressable>
+    )
+  }
+  return <View style={chipStyle}>{inner}</View>
 }
 
 /** Action ronde Apple Contacts (Call/DM/Email/Planifier). */
@@ -456,7 +463,7 @@ export function LeadDetailScreen() {
           </View>
         </View>
 
-        {/* Section TAGS */}
+        {/* Section TAGS — chips colorés cyan plus présents */}
         {lead.tags && lead.tags.length > 0 ? (
           <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl, gap: 10 }}>
             <Text
@@ -471,15 +478,15 @@ export function LeadDetailScreen() {
             >
               Tags
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {lead.tags.map((tag) => (
-                <Chip key={tag} label={tag} color={colors.textSecondary} />
+                <Chip key={tag} label={tag} color={colors.cyan} icon="pricetag" />
               ))}
             </View>
           </View>
         ) : null}
 
-        {/* Section NOTES */}
+        {/* Section NOTES — card avec accent + icône en haut */}
         {lead.notes ? (
           <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
             <Text
@@ -496,11 +503,39 @@ export function LeadDetailScreen() {
             </Text>
             <View
               style={{
-                backgroundColor: '#1c1c1e',
+                backgroundColor: colors.warning + '10',
                 borderRadius: 18,
+                borderWidth: 1,
+                borderColor: colors.warning + '30',
                 padding: spacing.lg,
+                gap: spacing.sm,
               }}
             >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: colors.warning + '33',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="document-text" size={14} color={colors.warning} />
+                </View>
+                <Text
+                  style={{
+                    color: colors.warning,
+                    fontSize: 12,
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Note du lead
+                </Text>
+              </View>
               <Text style={{ ...t.body, color: colors.textPrimary, lineHeight: 22 }}>
                 {lead.notes}
               </Text>

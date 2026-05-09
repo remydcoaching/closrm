@@ -8,13 +8,14 @@ interface FABProps {
   icon?: keyof typeof Ionicons.glyphMap
   /** Label optionnel — si présent rend en extended FAB (pill + texte). */
   label?: string
-  /** Décalage par rapport au bord bas. Permet d'éviter recouvrement TabBar. */
+  /** Décalage par rapport au bord bas. Default 100 = au-dessus de la TabBar
+   *  iOS (49pt tab bar + 34pt safe area + 17pt margin). */
   bottom?: number
 }
 
 /** FAB — extended si label fourni (pill icon+label), sinon round 60pt.
  *  Glow primary subtle. */
-export function FAB({ onPress, icon = 'add', label, bottom = 24 }: FABProps) {
+export function FAB({ onPress, icon = 'add', label, bottom = 100 }: FABProps) {
   const isExtended = !!label
 
   return (
