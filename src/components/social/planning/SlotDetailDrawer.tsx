@@ -871,6 +871,20 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
             })}
           </span>
         )}
+        {slot.content_kind === 'reel' && (
+          <a
+            href={`/acquisition/reels/tournage/prep?reel=${slot.id}`}
+            title="Préparer mon tournage"
+            style={{
+              padding: '5px 10px', fontSize: 11, fontWeight: 700,
+              color: '#fff', background: '#FF0000',
+              borderRadius: 6, textDecoration: 'none',
+              whiteSpace: 'nowrap', flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+            📋 Préparer
+          </a>
+        )}
         {!readOnly && (
           <button
             onClick={handleDelete}
