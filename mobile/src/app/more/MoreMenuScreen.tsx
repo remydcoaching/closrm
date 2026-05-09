@@ -156,6 +156,12 @@ export function MoreMenuScreen() {
             onPress={() => navigation.navigate('Notifications')}
           />
           <ListRow
+            leading={<DotIcon name="calendar" tint={colors.pink} />}
+            title="Réseaux sociaux"
+            subtitle="Calendrier de publication"
+            onPress={() => navigation.navigate('SocialPosts')}
+          />
+          <ListRow
             leading={<DotIcon name="settings-outline" tint={colors.textSecondary} />}
             title="Réglages"
             subtitle="Depuis le web pour l'instant"

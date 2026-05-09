@@ -18,6 +18,9 @@ export type MessagesStackParamList = {
 export type MoreStackParamList = {
   MoreMenu: undefined
   Notifications: undefined
+  SocialPosts: undefined
+  SocialPostDetail: { postId: string }
+  SocialPostForm: { initialDate?: string }
 }
 
 export type TabParamList = {
