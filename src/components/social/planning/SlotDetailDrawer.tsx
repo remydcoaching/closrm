@@ -843,7 +843,21 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
             {pillar.name}
           </span>
         )}
-        {slot.content_kind && (
+        {!readOnly ? (
+          <select
+            value={slot.content_kind ?? 'post'}
+            onChange={(e) => updateSlot({ content_kind: e.target.value as 'post' | 'story' | 'reel' })}
+            style={{
+              fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4,
+              background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
+              border: '1px solid var(--border-primary)', outline: 'none', cursor: 'pointer',
+              whiteSpace: 'nowrap', flexShrink: 0, textTransform: 'uppercase',
+            }}>
+            <option value="post">POST</option>
+            <option value="story">STORY</option>
+            <option value="reel">REEL</option>
+          </select>
+        ) : slot.content_kind && (
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4,
             background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
