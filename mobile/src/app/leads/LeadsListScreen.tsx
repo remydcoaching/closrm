@@ -163,30 +163,7 @@ export function LeadsListScreen() {
       <NavLarge
         title="Leads"
         subtitle={`${counts} lead${counts > 1 ? 's' : ''}`}
-        rightSlot={
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <ViewSwitcher mode={viewMode} onChange={setViewMode} />
-            <Pressable
-              onPress={() => createLeadSheet.open(refetch)}
-              style={({ pressed }) => ({
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                backgroundColor: '#00C853',
-                alignItems: 'center',
-                justifyContent: 'center',
-                shadowColor: '#00C853',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.4,
-                shadowRadius: 8,
-                opacity: pressed ? 0.8 : 1,
-                transform: [{ scale: pressed ? 0.92 : 1 }],
-              })}
-            >
-              <Ionicons name="add" size={22} color="#000" />
-            </Pressable>
-          </View>
-        }
+        rightSlot={<ViewSwitcher mode={viewMode} onChange={setViewMode} />}
       />
 
       <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
