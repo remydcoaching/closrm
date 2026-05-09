@@ -7,6 +7,9 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Image,
+  Linking,
+  Dimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
@@ -151,6 +154,9 @@ export function SocialPostDetailScreen() {
             <RefreshControl refreshing={loading} onRefresh={fetch} tintColor={colors.primary} />
           }
         >
+          {/* Media preview — thumbnail / image / video poster avec play overlay */}
+          <MediaPreview post={post} />
+
           {/* Status badge */}
           <View
             style={{
@@ -363,5 +369,190 @@ function Row({ label, value }: { label: string; value: string }) {
         {value}
       </Text>
     </View>
+  )
+}
+
+const SCREEN_W = Dimensions.get('window').width
+
+const isHttp = (s: string | null | undefined): s is string =>
+  !!s && (s.startsWith('http://') || s.startsWith('https://'))
+
+const isVideoLike = (post: SocialPostWithPublications): boolean => {
+  const mt = post.media_type
+  if (mt === 'VIDEO' || mt === 'SHORT' || mt === 'LONG_VIDEO') return true
+  if (post.content_kind === 'reel') return true
+  return false
+}
+
+function MediaPreview({ post }: { post: SocialPostWithPublications }) {
+  const [failed, setFailed] = useState(false)
+
+  // Source de l'image à afficher : thumbnail_url > 1er media_url (s'il est HTTP)
+  // Les paths R2 (workspaces/...) sans préfixe public ne se chargent pas en
+  // l'état → on tombe sur le placeholder.
+  const imgSource = isHttp(post.thumbnail_url)
+    ? post.thumbnail_url
+    : isHttp(post.media_urls[0])
+    ? post.media_urls[0]
+    : null
+
+  const isVideo = isVideoLike(post)
+  const externalUrl = isHttp(post.final_url)
+    ? post.final_url
+    : isHttp(post.media_urls[0])
+    ? post.media_urls[0]
+    : null
+
+  const hasNothing = !imgSource && !externalUrl && post.media_urls.length === 0
+
+  if (hasNothing) {
+    return (
+      <View
+        style={{
+          height: 180,
+          borderRadius: radius.lg,
+          backgroundColor: colors.bgSecondary,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderStyle: 'dashed',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+        }}
+      >
+        <Ionicons name="image-outline" size={32} color={colors.textTertiary} />
+        <Text style={{ ...t.caption1, color: colors.textTertiary }}>
+          Aucun média
+        </Text>
+      </View>
+    )
+  }
+
+  const previewW = SCREEN_W - 2 * spacing.lg
+  const previewH = isVideo ? Math.round(previewW * 16 / 9 * 0.5) : Math.round(previewW * 1.0) // 1:1 par défaut, 16:9 partial pour vidéo
+
+  return (
+    <Pressable
+      onPress={externalUrl ? () => Linking.openURL(externalUrl) : undefined}
+      disabled={!externalUrl}
+      style={({ pressed }) => ({ opacity: pressed && externalUrl ? 0.85 : 1 })}
+    >
+      <View
+        style={{
+          width: '100%',
+          height: previewH,
+          borderRadius: radius.lg,
+          overflow: 'hidden',
+          backgroundColor: '#000',
+        }}
+      >
+        {imgSource && !failed ? (
+          <Image
+            source={{ uri: imgSource }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          // Placeholder si pas d'URL HTTP exploitable (R2 path nu)
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.bgSecondary,
+              gap: 8,
+            }}
+          >
+            <Ionicons
+              name={isVideo ? 'videocam-outline' : 'image-outline'}
+              size={36}
+              color={colors.textTertiary}
+            />
+            <Text style={{ ...t.caption1, color: colors.textTertiary, paddingHorizontal: 16, textAlign: 'center' }}>
+              {failed ? 'Impossible de charger le média' : 'Média stocké en privé — ouvre depuis le web'}
+            </Text>
+          </View>
+        )}
+
+        {/* Play overlay si vidéo */}
+        {isVideo ? (
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: 'rgba(0,0,0,0.55)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="play" size={28} color="#fff" style={{ marginLeft: 3 }} />
+            </View>
+          </View>
+        ) : null}
+
+        {/* Badge type média en haut-droite */}
+        {post.media_type ? (
+          <View
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 6,
+              backgroundColor: 'rgba(0,0,0,0.65)',
+            }}
+          >
+            <Text
+              style={{
+                ...t.caption2,
+                color: '#fff',
+                fontWeight: '700',
+                letterSpacing: 0.4,
+              }}
+            >
+              {post.media_type}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Compteur si carrousel */}
+        {post.media_urls.length > 1 ? (
+          <View
+            style={{
+              position: 'absolute',
+              top: 10,
+              left: 10,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 6,
+              backgroundColor: 'rgba(0,0,0,0.65)',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <Ionicons name="copy-outline" size={11} color="#fff" />
+            <Text style={{ ...t.caption2, color: '#fff', fontWeight: '700' }}>
+              {post.media_urls.length}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    </Pressable>
   )
 }

@@ -40,6 +40,8 @@ export interface SocialPostPublication {
   error_message: string | null
 }
 
+export type SocialMediaType = 'IMAGE' | 'VIDEO' | 'CAROUSEL' | 'SHORT' | 'LONG_VIDEO'
+
 export interface SocialPost {
   id: string
   workspace_id: string
@@ -47,6 +49,7 @@ export interface SocialPost {
   caption: string | null
   hashtags: string[]
   media_urls: string[]
+  media_type: SocialMediaType | null
   thumbnail_url: string | null
   status: SocialPostStatus
   scheduled_at: string | null
@@ -57,6 +60,8 @@ export interface SocialPost {
   plan_date: string | null
   slot_index: number | null
   hook: string | null
+  rush_url: string | null
+  final_url: string | null
   created_at: string
   updated_at: string
 }
