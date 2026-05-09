@@ -18,9 +18,9 @@ import {
   ListSection,
   ListRow,
   Avatar,
-  StatusBadge,
 } from '../../components/ui'
 import { colors } from '../../theme/colors'
+import { type as t, spacing } from '../../theme/tokens'
 import { statusConfig } from '../../theme/status'
 import type { Lead, LeadStatus } from '@shared/types'
 
@@ -143,7 +143,6 @@ export function LeadsListScreen() {
 
   const counts = leads.length
 
-  // Vue groupée : map status → leads, dans l'ordre GROUP_ORDER
   const groupedSections = useMemo(() => {
     const byStatus = new Map<LeadStatus, Lead[]>()
     for (const l of leads) {
@@ -163,50 +162,40 @@ export function LeadsListScreen() {
     [leads],
   )
 
-  const renderViewSwitcher = () => (
-    <View style={{ flexDirection: 'row', gap: 6 }}>
-      {(['flat', 'grouped', 'priority'] as const).map((mode) => {
-        const active = viewMode === mode
-        const icon: keyof typeof Ionicons.glyphMap =
-          mode === 'flat' ? 'list' : mode === 'grouped' ? 'layers-outline' : 'flash'
-        return (
-          <Pressable
-            key={mode}
-            onPress={() => setViewMode(mode)}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 19,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: active ? colors.primary + '22' : colors.bgSecondary,
-              borderWidth: active ? 1 : 0,
-              borderColor: active ? colors.primary : 'transparent',
-            }}
-          >
-            <Ionicons name={icon} size={18} color={active ? colors.primary : colors.textSecondary} />
-          </Pressable>
-        )
-      })}
-    </View>
-  )
-
   const renderLeadRow = (lead: Lead, isLast: boolean) => {
     const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
     const amount = formatAmount(lead.deal_amount)
     const sourceLabel = lead.source.replace(/_/g, ' ')
+    const statusLabel = statusConfig[lead.status].label
+    const statusColor = statusConfig[lead.status].color
     return (
       <ListRow
         key={lead.id}
-        leading={<Avatar name={fullName} size={40} />}
+        leading={
+          <View>
+            <Avatar name={fullName} size={40} />
+            {/* dot status en bas-droite de l'avatar — signal visuel
+                discret type Apple Mail unread dot. */}
+            <View
+              style={{
+                position: 'absolute',
+                bottom: -1,
+                right: -1,
+                width: 12,
+                height: 12,
+                borderRadius: 6,
+                backgroundColor: statusColor,
+                borderWidth: 2,
+                borderColor: colors.bgSecondary,
+              }}
+            />
+          </View>
+        }
         title={fullName}
-        titleAccessory={<StatusBadge status={lead.status} size="sm" />}
-        subtitle={lead.phone ? `${sourceLabel} · ${lead.phone}` : sourceLabel}
+        subtitle={`${statusLabel} · ${sourceLabel}${lead.phone ? ` · ${lead.phone}` : ''}`}
         trailing={
           amount ? (
-            <Text style={{ color: colors.primary, fontSize: 17, fontWeight: '600' }}>
-              {amount}
-            </Text>
+            <Text style={{ ...t.bodyEmphasis, color: colors.primary }}>{amount}</Text>
           ) : null
         }
         separator={!isLast}
@@ -217,14 +206,13 @@ export function LeadsListScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-        <View style={{ flex: 1 }}>
-          <NavLarge title="Leads" subtitle={`${counts} lead${counts > 1 ? 's' : ''}`} />
-        </View>
-        <View style={{ paddingRight: 16, paddingBottom: 18 }}>{renderViewSwitcher()}</View>
-      </View>
+      <NavLarge
+        title="Leads"
+        subtitle={`${counts} lead${counts > 1 ? 's' : ''}`}
+        rightSlot={<ViewSwitcher mode={viewMode} onChange={setViewMode} />}
+      />
 
-      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+      <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
         <SearchField
           placeholder="Rechercher un lead, un tag…"
           value={search}
@@ -232,7 +220,7 @@ export function LeadsListScreen() {
         />
       </View>
 
-      <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+      <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
         <Segmented
           items={SEGMENTS.map((s) => ({ label: s.label }))}
           activeIndex={segIdx}
@@ -241,7 +229,7 @@ export function LeadsListScreen() {
       </View>
 
       {viewMode === 'flat' ? (
-        <View style={{ marginBottom: 14 }}>
+        <View style={{ marginBottom: spacing.md }}>
           <FilterChips
             items={STATUS_FILTERS.map((f) => ({ label: f.label }))}
             activeIndex={statusIdx}
@@ -256,22 +244,13 @@ export function LeadsListScreen() {
         </View>
       ) : viewMode === 'flat' ? (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
         >
           {leads.length === 0 ? (
-            <Text
-              style={{
-                color: colors.textSecondary,
-                fontSize: 15,
-                textAlign: 'center',
-                marginTop: 60,
-              }}
-            >
-              Aucun lead pour l'instant.
-            </Text>
+            <EmptyState text="Aucun lead pour l'instant." />
           ) : (
             <ListSection>
               {leads.map((l, i) => renderLeadRow(l, i === leads.length - 1))}
@@ -280,7 +259,7 @@ export function LeadsListScreen() {
         </ScrollView>
       ) : viewMode === 'grouped' ? (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, gap: 24 }}
+          contentContainerStyle={{ paddingBottom: 100, gap: spacing.xxl }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
@@ -293,27 +272,24 @@ export function LeadsListScreen() {
         </ScrollView>
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, gap: 14 }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 100, gap: spacing.md }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
         >
           <Text
             style={{
-              color: colors.textTertiary,
-              fontSize: 13,
-              fontWeight: '500',
-              letterSpacing: 0.3,
-              marginBottom: 4,
+              ...t.footnote,
+              color: colors.textSecondary,
               textTransform: 'uppercase',
+              letterSpacing: 0.4,
+              marginBottom: spacing.xs,
             }}
           >
-            ✨ Tri intelligent · urgence × valeur × fraîcheur
+            Tri intelligent · urgence × valeur × fraîcheur
           </Text>
           {priorityItems.length === 0 ? (
-            <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: 'center', marginTop: 60 }}>
-              Rien à traiter pour l'instant.
-            </Text>
+            <EmptyState text="Rien à traiter pour l'instant." />
           ) : (
             priorityItems.map((item) => (
               <LeadCardLarge
@@ -331,5 +307,67 @@ export function LeadsListScreen() {
 
       <FAB onPress={() => {/* TODO: create lead modal */}} />
     </SafeAreaView>
+  )
+}
+
+function ViewSwitcher({
+  mode,
+  onChange,
+}: {
+  mode: ViewMode
+  onChange: (m: ViewMode) => void
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        backgroundColor: colors.bgSecondary,
+        borderRadius: 8,
+        padding: 2,
+      }}
+    >
+      {(['flat', 'grouped', 'priority'] as const).map((m) => {
+        const active = mode === m
+        const icon: keyof typeof Ionicons.glyphMap =
+          m === 'flat' ? 'list' : m === 'grouped' ? 'layers-outline' : 'flash'
+        return (
+          <Pressable
+            key={m}
+            onPress={() => onChange(m)}
+            style={{
+              width: 32,
+              height: 28,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: active ? colors.bgElevated : 'transparent',
+              borderRadius: 6,
+            }}
+          >
+            <Ionicons
+              name={icon}
+              size={14}
+              color={active ? colors.primary : colors.textSecondary}
+            />
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <View
+      style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 80,
+        paddingHorizontal: 32,
+      }}
+    >
+      <Text style={{ ...t.subheadline, color: colors.textSecondary, textAlign: 'center' }}>
+        {text}
+      </Text>
+    </View>
   )
 }

@@ -1,66 +1,58 @@
 import React from 'react'
 import { View, Text } from 'react-native'
 import { colors } from '../../theme/colors'
+import { type, spacing } from '../../theme/tokens'
 
 interface NavLargeProps {
   title: string
-  /** Si présent, affiché comme chip sous le titre (premium feel). */
+  /** Subtitle 13pt secondary, sous le large title. */
   subtitle?: string
-  /** Optionnel : précédé d'un eyebrow uppercase (ex: "VENDREDI · TEMPS RÉEL"). */
-  eyebrow?: string
+  /** Slot droit : icônes / boutons à hauteur du title. */
   rightSlot?: React.ReactNode
 }
 
-export function NavLarge({ title, subtitle, eyebrow, rightSlot }: NavLargeProps) {
+/** Header style iOS Large Title (Mail/Reminders/Photos).
+ *  - 34pt bold, letter-spacing 0.37
+ *  - Padding horizontal 16, padding vertical 8/12
+ *  - Subtitle optionnel 13pt secondary
+ */
+export function NavLarge({ title, subtitle, rightSlot }: NavLargeProps) {
   return (
     <View
       style={{
-        paddingHorizontal: 20,
-        paddingTop: 8,
-        paddingBottom: 16,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.sm,
+        paddingBottom: spacing.md,
         flexDirection: 'row',
         alignItems: 'flex-end',
-        justifyContent: 'space-between',
-        gap: 12,
+        gap: spacing.md,
       }}
     >
       <View style={{ flex: 1 }}>
-        {eyebrow ? (
-          <Text
-            style={{
-              color: colors.textTertiary,
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 0.8,
-              marginBottom: 4,
-            }}
-          >
-            {eyebrow.toUpperCase()}
-          </Text>
-        ) : null}
         <Text
           style={{
+            ...type.largeTitle,
             color: colors.textPrimary,
-            // Display title 34pt SF style — lettres légèrement resserrées
-            // pour un feel premium type Linear/Superhuman.
-            fontSize: 34,
-            fontWeight: '800',
-            letterSpacing: -0.6,
-            lineHeight: 40,
           }}
         >
           {title}
         </Text>
         {subtitle ? (
           <Text
-            style={{ color: colors.textSecondary, fontSize: 14, marginTop: 4, fontWeight: '500' }}
+            style={{
+              ...type.footnote,
+              color: colors.textSecondary,
+              marginTop: 2,
+            }}
           >
             {subtitle}
           </Text>
         ) : null}
       </View>
       {rightSlot ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>{rightSlot}</View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingBottom: 6 }}>
+          {rightSlot}
+        </View>
       ) : null}
     </View>
   )

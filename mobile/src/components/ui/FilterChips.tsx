@@ -1,6 +1,7 @@
 import React from 'react'
-import { ScrollView, Pressable, Text, View } from 'react-native'
+import { ScrollView, Pressable, Text } from 'react-native'
 import { colors } from '../../theme/colors'
+import { type, spacing } from '../../theme/tokens'
 
 interface ChipItem {
   label: string
@@ -13,12 +14,14 @@ interface FilterChipsProps {
   onChange: (index: number) => void
 }
 
+/** Pills horizontaux scrollables — pattern type Apple Photos / Maps
+ *  ('Catégories'). Sélectionné = bg primary tint, sinon bg secondary. */
 export function FilterChips({ items, activeIndex, onChange }: FilterChipsProps) {
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+      contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}
     >
       {items.map((it, i) => {
         const active = i === activeIndex
@@ -27,46 +30,22 @@ export function FilterChips({ items, activeIndex, onChange }: FilterChipsProps) 
             key={i}
             onPress={() => onChange(i)}
             style={{
-              paddingVertical: 7,
-              paddingHorizontal: 14,
+              paddingVertical: 6,
+              paddingHorizontal: spacing.md,
               borderRadius: 999,
-              backgroundColor: active ? colors.primary + '22' : colors.bgSecondary,
-              borderWidth: 1,
-              borderColor: active ? colors.primary : colors.border,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
+              backgroundColor: active ? colors.primary : colors.bgSecondary,
             }}
           >
             <Text
               style={{
-                color: active ? colors.primary : colors.textSecondary,
-                fontSize: 13,
+                ...type.subheadline,
+                color: active ? '#000000' : colors.textPrimary,
                 fontWeight: '600',
               }}
             >
               {it.label}
+              {typeof it.count === 'number' && it.count > 0 ? `  ${it.count}` : ''}
             </Text>
-            {typeof it.count === 'number' && (
-              <View
-                style={{
-                  backgroundColor: active ? colors.primary + '33' : colors.border,
-                  borderRadius: 999,
-                  paddingHorizontal: 6,
-                  paddingVertical: 1,
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.primary : colors.textSecondary,
-                    fontSize: 10,
-                    fontWeight: '700',
-                  }}
-                >
-                  {it.count}
-                </Text>
-              </View>
-            )}
           </Pressable>
         )
       })}

@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text } from 'react-native'
 import type { LeadSource } from '@shared/types'
 import { sourceConfig } from '../../theme/status'
+import { type } from '../../theme/tokens'
 
 interface SourceBadgeProps {
   source: LeadSource
@@ -10,29 +11,18 @@ interface SourceBadgeProps {
 
 export function SourceBadge({ source, size = 'sm' }: SourceBadgeProps) {
   const config = sourceConfig[source]
-  const py = size === 'sm' ? 3 : 5
-  const px = size === 'sm' ? 9 : 13
-  const fontSize = size === 'sm' ? 11 : 13
-
+  const py = size === 'sm' ? 2 : 4
+  const px = size === 'sm' ? 7 : 10
   return (
     <View
       style={{
-        backgroundColor: config.bg,
+        backgroundColor: config.color + '26',
         paddingVertical: py,
         paddingHorizontal: px,
         borderRadius: 999,
-        borderWidth: 1,
-        borderColor: config.color + '33',
       }}
     >
-      <Text
-        style={{
-          color: config.color,
-          fontSize,
-          fontWeight: '700',
-          letterSpacing: 0.2,
-        }}
-      >
+      <Text style={{ ...type.caption2, color: config.color, fontWeight: '600' }}>
         {config.label}
       </Text>
     </View>

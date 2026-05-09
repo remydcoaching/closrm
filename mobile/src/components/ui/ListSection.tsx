@@ -1,30 +1,35 @@
 import React from 'react'
 import { View, Text } from 'react-native'
 import { colors } from '../../theme/colors'
+import { type, spacing, radius } from '../../theme/tokens'
 
 interface ListSectionProps {
-  /** Header en uppercase au-dessus de la section (style iOS Settings). */
+  /** Header uppercase au-dessus de la section (style iOS Settings). */
   header?: string
-  /** Footer hint sous la section (gris, italique). */
+  /** Texte d'aide sous la section (gris, footnote). */
   footer?: string
+  /** Padding horizontal — par défaut 16, mais ListSection peut être en
+   *  bord à bord (0) si l'écran le souhaite. */
+  inset?: number
   children: React.ReactNode
 }
 
-/** Wrapper iOS-native pour les listes groupées. Children = ListRow.
- *  Match exact des Settings/Mail iOS. */
-export function ListSection({ header, footer, children }: ListSectionProps) {
+/** Wrapper iOS-native pour les listes groupées. Match exact des sections
+ *  Settings : header uppercase tertiary, card rounded #1c1c1e, footer
+ *  optionnel en footnote. Children = ListRow. */
+export function ListSection({ header, footer, inset = spacing.lg, children }: ListSectionProps) {
   return (
-    <View>
+    <View style={{ marginHorizontal: inset === 0 ? 0 : 0 }}>
       {header ? (
         <Text
           style={{
-            color: colors.textTertiary,
-            fontSize: 13,
-            fontWeight: '500',
-            letterSpacing: 0.3,
-            marginLeft: 16,
-            marginBottom: 6,
+            ...type.footnote,
+            color: colors.textSecondary,
+            marginLeft: inset + spacing.lg,
+            marginRight: inset + spacing.lg,
+            marginBottom: spacing.sm,
             textTransform: 'uppercase',
+            letterSpacing: 0.4,
           }}
         >
           {header}
@@ -32,8 +37,9 @@ export function ListSection({ header, footer, children }: ListSectionProps) {
       ) : null}
       <View
         style={{
-          backgroundColor: colors.bgElevated,
-          borderRadius: 10,
+          marginHorizontal: inset,
+          backgroundColor: colors.bgSecondary,
+          borderRadius: radius.lg,
           overflow: 'hidden',
         }}
       >
@@ -42,11 +48,11 @@ export function ListSection({ header, footer, children }: ListSectionProps) {
       {footer ? (
         <Text
           style={{
-            color: colors.textTertiary,
-            fontSize: 13,
-            marginLeft: 16,
-            marginRight: 16,
-            marginTop: 6,
+            ...type.footnote,
+            color: colors.textSecondary,
+            marginLeft: inset + spacing.lg,
+            marginRight: inset + spacing.lg,
+            marginTop: spacing.sm,
           }}
         >
           {footer}

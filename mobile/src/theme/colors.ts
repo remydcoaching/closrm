@@ -27,14 +27,15 @@ interface ColorTokens {
 }
 
 export const darkColors: ColorTokens = {
-  // Tokens iOS HIG natifs — mêmes valeurs que UIKit systemBackground.
-  bgPrimary: '#000000',
-  bgSecondary: '#1c1c1e', // systemGroupedBackground
-  bgElevated: '#2c2c2e', // secondarySystemGroupedBackground (rows in groups)
+  // Tokens iOS HIG natifs — Apple UIColor system colors dark mode.
+  // Réf : https://developer.apple.com/design/human-interface-guidelines/color
+  bgPrimary: '#000000', // systemBackground dark
+  bgSecondary: '#1c1c1e', // secondarySystemBackground / groupedBackground card
+  bgElevated: '#1c1c1e', // dans groupes : sections card unifiée bg #1c1c1e
   sheet: '#1c1c1e',
-  // separator iOS natif (UIColor.separator dark) — rgba(84,84,88,0.65)
-  // résolu visuellement à #38383a sur fond bgElevated.
-  border: '#38383a',
+  // UIColor.separator dark = rgba(84,84,88,0.65). Sur bg #1c1c1e ça donne
+  // visuellement #3a3a3c (ce que macOS affiche quand on screenshot).
+  border: '#3a3a3c',
   primary: '#00C853',
   warning: '#f59e0b',
   danger: '#ef4444',

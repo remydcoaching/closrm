@@ -2,28 +2,30 @@ import React from 'react'
 import { Pressable, View, Text } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../theme/colors'
+import { type, spacing } from '../../theme/tokens'
 
 interface ListRowProps {
-  /** Slot gauche : avatar, icône, illustration. Hauteur fixe, aligné center. */
+  /** Slot gauche : avatar / icône / illustration. */
   leading?: React.ReactNode
-  /** Texte principal (17pt regular, white). */
+  /** Texte principal — body emphasis (17pt regular). */
   title: string
-  /** Texte secondaire optionnel (15pt secondary, 1 ligne). */
+  /** Texte secondaire (15pt subheadline secondary). */
   subtitle?: string
-  /** Slot adjacent au titre (ex: status badge inline). */
+  /** Slot adjacent au titre (ex: status pill discret). */
   titleAccessory?: React.ReactNode
-  /** Slot droit : amount, badge, dot. */
+  /** Slot droit : amount, dot, badge. */
   trailing?: React.ReactNode
-  /** Affiche un chevron-forward iOS standard à droite. Default true. */
+  /** Chevron-forward iOS standard à droite. Default true. */
   showChevron?: boolean
-  /** Si true, hairline separator au bottom. ListSection passe ça automatiquement. */
+  /** Hairline separator au bottom. Géré par ListSection en général. */
   separator?: boolean
+  /** Inset du séparateur depuis la gauche. Default 60 (= aligné après l'avatar 40 + padding 16 + gap 4). */
+  separatorInset?: number
   onPress?: () => void
 }
 
-/** Row iOS-native (style Settings/Mail). Layout figé pour éviter les
- *  bugs flex (avatar | content flex 1 | trailing | chevron) avec
- *  `minWidth: 0` partout pour le shrink correct du middle. */
+/** ListRow iOS-native — match strict des cellules Mail / Settings / Reminders.
+ *  Layout figé pour éviter les bugs flex. Avatar | Title+Subtitle | Trailing | Chevron. */
 export function ListRow({
   leading,
   title,
@@ -32,87 +34,92 @@ export function ListRow({
   trailing,
   showChevron = true,
   separator = true,
+  separatorInset,
   onPress,
 }: ListRowProps) {
-  const Container = onPress ? Pressable : View
-  return (
-    <View>
-      <Container
-        onPress={onPress}
-        style={
-          onPress
-            ? ({ pressed }: { pressed: boolean }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                gap: 12,
-                backgroundColor: pressed ? colors.bgSecondary : 'transparent',
-                minHeight: 56,
-              })
-            : {
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                gap: 12,
-                minHeight: 56,
-              }
-        }
-      >
-        {leading ? <View>{leading}</View> : null}
+  const inset = separatorInset ?? (leading ? 60 : spacing.lg)
 
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <View
+  const containerStyle = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingVertical: subtitle ? 10 : 12,
+    paddingHorizontal: spacing.lg,
+    minHeight: 44,
+  }
+
+  const Inner = (
+    <>
+      {leading ? <View style={{ marginRight: spacing.md }}>{leading}</View> : null}
+
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            minWidth: 0,
+          }}
+        >
+          <Text
+            numberOfLines={1}
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
+              ...type.body,
+              color: colors.textPrimary,
+              flexShrink: 1,
               minWidth: 0,
             }}
           >
-            <Text
-              numberOfLines={1}
-              style={{
-                color: colors.textPrimary,
-                fontSize: 17,
-                fontWeight: '500',
-                flexShrink: 1,
-                minWidth: 0,
-              }}
-            >
-              {title}
-            </Text>
-            {titleAccessory}
-          </View>
-          {subtitle ? (
-            <Text
-              numberOfLines={1}
-              style={{
-                color: colors.textSecondary,
-                fontSize: 14,
-                fontWeight: '400',
-                marginTop: 2,
-              }}
-            >
-              {subtitle}
-            </Text>
-          ) : null}
+            {title}
+          </Text>
+          {titleAccessory}
         </View>
-
-        {trailing ? <View>{trailing}</View> : null}
-        {showChevron ? (
-          <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+        {subtitle ? (
+          <Text
+            numberOfLines={1}
+            style={{
+              ...type.subheadline,
+              color: colors.textSecondary,
+              marginTop: 2,
+            }}
+          >
+            {subtitle}
+          </Text>
         ) : null}
-      </Container>
-      {/* Hairline separator iOS native — inset à 16+leading width pour laisser
-          la respiration sous l'avatar. Custom inset cf Apple HIG. */}
+      </View>
+
+      {trailing ? <View style={{ marginLeft: spacing.sm }}>{trailing}</View> : null}
+      {showChevron ? (
+        <Ionicons
+          name="chevron-forward"
+          size={14}
+          color={colors.textTertiary}
+          style={{ marginLeft: spacing.xs }}
+        />
+      ) : null}
+    </>
+  )
+
+  return (
+    <View>
+      {onPress ? (
+        <Pressable
+          onPress={onPress}
+          style={({ pressed }) => ({
+            ...containerStyle,
+            backgroundColor: pressed ? '#ffffff10' : 'transparent',
+          })}
+        >
+          {Inner}
+        </Pressable>
+      ) : (
+        <View style={containerStyle}>{Inner}</View>
+      )}
       {separator ? (
         <View
           style={{
-            height: 0.5,
+            height: 0.33,
             backgroundColor: colors.border,
-            marginLeft: leading ? 68 : 16,
+            marginLeft: inset,
           }}
         />
       ) : null}
