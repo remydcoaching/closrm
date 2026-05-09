@@ -5,6 +5,7 @@ import { NavigationContainer, type NavigationContainerRef } from '@react-navigat
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import RootNavigator from './src/navigation/RootNavigator'
 import { ScheduleSheetProvider } from './src/components/schedule/ScheduleSheetProvider'
+import { CreateLeadSheetProvider } from './src/components/leads/CreateLeadSheet'
 import { useExpoPush } from './src/hooks/useExpoPush'
 import { ThemeProvider } from './src/theme/ThemeProvider'
 import { darkColors, lightColors } from './src/theme/colors'
@@ -54,8 +55,10 @@ export default function App() {
             // dark/light → composants relisent le proxy `colors`.
             <NavigationContainer key={theme} ref={navRef} theme={buildNavTheme(theme)}>
               <ScheduleSheetProvider>
-                <PushHandler navRef={navRef} />
-                <RootNavigator />
+                <CreateLeadSheetProvider>
+                  <PushHandler navRef={navRef} />
+                  <RootNavigator />
+                </CreateLeadSheetProvider>
               </ScheduleSheetProvider>
             </NavigationContainer>
           )}

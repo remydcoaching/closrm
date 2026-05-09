@@ -35,15 +35,15 @@ const formatRelative = (iso: string | null): string => {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
 
+const CARD_RADIUS = 22
+
 const styles = StyleSheet.create({
   container: {
-    borderRadius: radius.xl,
+    borderRadius: CARD_RADIUS,
     overflow: 'hidden',
-    // Shadow noire pour décoller la card — l'overflow:hidden ne casse pas
-    // le shadow puisqu'il est appliqué au container parent (pas au gradient).
   },
   shadowContainer: {
-    borderRadius: radius.xl,
+    borderRadius: CARD_RADIUS,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.5,

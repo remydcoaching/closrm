@@ -10,6 +10,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useDebounce } from '../../hooks/useDebounce'
 import { LeadCardLarge } from '../../components/leads/LeadCardLarge'
 import { LeadRow } from '../../components/leads/LeadRow'
+import { useCreateLeadSheet } from '../../components/leads/CreateLeadSheet'
 import { NavLarge, SearchField, Segmented, FilterChips, FAB } from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
@@ -115,6 +116,7 @@ const formatAmount = (n: number | null): string | null =>
 export function LeadsListScreen() {
   const navigation = useNavigation<Nav>()
   const { user } = useAuth()
+  const createLeadSheet = useCreateLeadSheet()
 
   const [viewMode, setViewMode] = useState<ViewMode>('flat')
   const [segIdx, setSegIdx] = useState(0)
@@ -287,7 +289,7 @@ export function LeadsListScreen() {
         </ScrollView>
       )}
 
-      <FAB onPress={() => {/* TODO: create lead modal */}} />
+      <FAB onPress={() => createLeadSheet.open(refetch)} />
     </SafeAreaView>
   )
 }
