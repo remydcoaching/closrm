@@ -11,7 +11,7 @@ interface LeadRowProps {
   onPress?: () => void
   /** Si true, hairline separator au bottom (intra-section). */
   separator?: boolean
-  /** Si true, rendu en card individuelle (bg secondary + radius). */
+  /** Si true, rendu en card individuelle (bg secondary + radius + accent border). */
   asCard?: boolean
 }
 
@@ -24,103 +24,121 @@ const formatAmount = (n: number | null): string | null =>
         maximumFractionDigits: 0,
       }).format(n)
 
-/** Lead row inline iOS-native — un seul Pressable flex-row avec 3
- *  colonnes (avatar | content flex 1 | trailing). Pas d'abstraction
- *  ListRow pour garantir le layout visuel. */
-export function LeadRow({ lead, onPress, separator, asCard }: LeadRowProps) {
+const formatRelative = (iso: string | null): string => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const diffMin = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000))
+  if (diffMin < 60) return `${diffMin}min`
+  const diffH = Math.round(diffMin / 60)
+  if (diffH < 24) return `${diffH}h`
+  const diffD = Math.round(diffH / 24)
+  if (diffD < 30) return `${diffD}j`
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+}
+
+/** Lead row premium iOS — pattern Pipedrive Mobile :
+ *  - bordure gauche 3pt couleur status (signal visuel instantané)
+ *  - card bg secondary radius xl
+ *  - 1ère ligne: avatar | name + status colored | amount
+ *  - 2e ligne (dans le content): source · phone · activity time
+ */
+export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
   const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
   const amount = formatAmount(lead.deal_amount)
   const sourceLabel = lead.source.replace(/_/g, ' ')
   const statusLabel = statusConfig[lead.status].label
   const statusColor = statusConfig[lead.status].color
+  const activity = formatRelative(
+    lead.last_activity_at ?? lead.updated_at ?? lead.created_at,
+  )
+
+  const cardStyle = asCard
+    ? {
+        backgroundColor: colors.bgSecondary,
+        borderRadius: radius.xl,
+        borderLeftWidth: 3,
+        borderLeftColor: statusColor,
+      }
+    : null
 
   return (
-    <View>
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingVertical: asCard ? 14 : 12,
-          paddingLeft: spacing.lg,
-          paddingRight: spacing.md,
-          backgroundColor: asCard
-            ? pressed
-              ? '#2c2c2e'
-              : colors.bgSecondary
-            : pressed
-            ? '#ffffff10'
-            : 'transparent',
-          borderRadius: asCard ? radius.xl : 0,
-          minHeight: 60,
-        })}
-      >
-        {/* Col 1 — Avatar avec dot status overlay */}
-        <View style={{ width: 40, height: 40, marginRight: spacing.md }}>
-          <Avatar name={fullName} size={40} />
-          <View
-            style={{
-              position: 'absolute',
-              right: -2,
-              bottom: -2,
-              width: 14,
-              height: 14,
-              borderRadius: 7,
-              backgroundColor: statusColor,
-              borderWidth: 2.5,
-              borderColor: colors.bgSecondary,
-            }}
-          />
-        </View>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingLeft: asCard ? spacing.md : spacing.lg,
+        paddingRight: spacing.md,
+        opacity: pressed ? 0.7 : 1,
+        ...cardStyle,
+      })}
+    >
+      {/* Avatar */}
+      <View style={{ marginRight: spacing.md }}>
+        <Avatar name={fullName} size={44} />
+      </View>
 
-        {/* Col 2 — Content flex 1 */}
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text
-            numberOfLines={1}
-            style={{
-              ...t.bodyEmphasis,
-              color: colors.textPrimary,
-            }}
-          >
-            {fullName}
-          </Text>
-          <Text
-            numberOfLines={1}
-            style={{
-              ...t.subheadline,
-              color: colors.textSecondary,
-              marginTop: 2,
-              textTransform: 'capitalize',
-            }}
-          >
-            {statusLabel} · {sourceLabel}
-            {lead.phone ? ` · ${lead.phone}` : ''}
-          </Text>
-        </View>
+      {/* Content middle — flex 1 */}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={{
+            ...t.bodyEmphasis,
+            color: colors.textPrimary,
+          }}
+        >
+          {fullName}
+        </Text>
 
-        {/* Col 3 — Amount à droite (si deal) */}
-        {amount ? (
+        {/* Status colored label */}
+        <Text
+          numberOfLines={1}
+          style={{
+            ...t.subheadline,
+            color: statusColor,
+            fontWeight: '600',
+            marginTop: 2,
+          }}
+        >
+          {statusLabel}
+        </Text>
+
+        {/* Metadata footnote */}
+        <Text
+          numberOfLines={1}
+          style={{
+            ...t.caption1,
+            color: colors.textSecondary,
+            marginTop: 2,
+            textTransform: 'capitalize',
+          }}
+        >
+          {sourceLabel}
+          {lead.phone ? ` · ${lead.phone}` : ''}
+          {activity ? ` · ${activity}` : ''}
+        </Text>
+      </View>
+
+      {/* Right column — amount big */}
+      {amount ? (
+        <View style={{ alignItems: 'flex-end', marginLeft: spacing.sm, gap: 2 }}>
           <Text
             style={{
-              ...t.bodyEmphasis,
+              ...t.title3,
               color: colors.primary,
-              marginLeft: spacing.sm,
+              letterSpacing: -0.3,
             }}
           >
             {amount}
           </Text>
-        ) : null}
-      </Pressable>
-
-      {separator ? (
-        <View
-          style={{
-            height: 0.33,
-            backgroundColor: colors.border,
-            marginLeft: 68, // 16 padding + 40 avatar + 12 gap
-          }}
-        />
+          {lead.deal_installments > 1 ? (
+            <Text style={{ ...t.caption2, color: colors.textSecondary }}>
+              ×{lead.deal_installments}
+            </Text>
+          ) : null}
+        </View>
       ) : null}
-    </View>
+    </Pressable>
   )
 }
