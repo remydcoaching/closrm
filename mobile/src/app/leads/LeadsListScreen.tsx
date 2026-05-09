@@ -9,6 +9,7 @@ import { useLeads } from '../../hooks/useLeads'
 import { useAuth } from '../../hooks/useAuth'
 import { useDebounce } from '../../hooks/useDebounce'
 import { LeadCardLarge } from '../../components/leads/LeadCardLarge'
+import { LeadRow } from '../../components/leads/LeadRow'
 import {
   NavLarge,
   SearchField,
@@ -16,8 +17,6 @@ import {
   FilterChips,
   FAB,
   ListSection,
-  ListRow,
-  Avatar,
 } from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
@@ -162,47 +161,14 @@ export function LeadsListScreen() {
     [leads],
   )
 
-  const renderLeadRow = (lead: Lead, isLast: boolean) => {
-    const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
-    const amount = formatAmount(lead.deal_amount)
-    const sourceLabel = lead.source.replace(/_/g, ' ')
-    const statusLabel = statusConfig[lead.status].label
-    const statusColor = statusConfig[lead.status].color
-    return (
-      <ListRow
-        key={lead.id}
-        leading={
-          <View>
-            <Avatar name={fullName} size={40} />
-            {/* dot status en bas-droite de l'avatar — signal visuel
-                discret type Apple Mail unread dot. */}
-            <View
-              style={{
-                position: 'absolute',
-                bottom: -1,
-                right: -1,
-                width: 12,
-                height: 12,
-                borderRadius: 6,
-                backgroundColor: statusColor,
-                borderWidth: 2,
-                borderColor: colors.bgSecondary,
-              }}
-            />
-          </View>
-        }
-        title={fullName}
-        subtitle={`${statusLabel} · ${sourceLabel}${lead.phone ? ` · ${lead.phone}` : ''}`}
-        trailing={
-          amount ? (
-            <Text style={{ ...t.bodyEmphasis, color: colors.primary }}>{amount}</Text>
-          ) : null
-        }
-        separator={!isLast}
-        onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id })}
-      />
-    )
-  }
+  const renderLeadRow = (lead: Lead, isLast: boolean) => (
+    <LeadRow
+      key={lead.id}
+      lead={lead}
+      separator={!isLast}
+      onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id })}
+    />
+  )
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>

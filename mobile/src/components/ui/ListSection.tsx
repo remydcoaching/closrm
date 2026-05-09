@@ -19,7 +19,7 @@ interface ListSectionProps {
  *  optionnel en footnote. Children = ListRow. */
 export function ListSection({ header, footer, inset = spacing.lg, children }: ListSectionProps) {
   return (
-    <View style={{ marginHorizontal: inset === 0 ? 0 : 0 }}>
+    <View>
       {header ? (
         <Text
           style={{
@@ -39,7 +39,7 @@ export function ListSection({ header, footer, inset = spacing.lg, children }: Li
         style={{
           marginHorizontal: inset,
           backgroundColor: colors.bgSecondary,
-          borderRadius: radius.lg,
+          borderRadius: radius.xl,
           overflow: 'hidden',
         }}
       >
