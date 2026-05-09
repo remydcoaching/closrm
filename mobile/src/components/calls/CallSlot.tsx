@@ -4,12 +4,11 @@ import { Ionicons } from '@expo/vector-icons'
 import type { CallWithLead } from '../../hooks/useCalls'
 import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
+import { type as t, spacing, radius } from '../../theme/tokens'
 
 interface CallSlotProps {
   call: CallWithLead
   onPress?: () => void
-  /** Si true : badge "LIVE DANS X MIN" avec dot pulsant.
-   *  Calculé côté écran parent (1 seul "next call" par liste). */
   isNext?: boolean
 }
 
@@ -25,14 +24,9 @@ const typeColor = (type: string): string => {
 }
 
 const typeLabel = (type: string): string => {
-  switch (type) {
-    case 'closing':
-      return 'CLOSING'
-    case 'setting':
-      return 'SETTING'
-    default:
-      return type.toUpperCase()
-  }
+  if (type === 'closing') return 'Closing'
+  if (type === 'setting') return 'Setting'
+  return type
 }
 
 const formatTime = (iso: string): string => {
@@ -40,16 +34,24 @@ const formatTime = (iso: string): string => {
   return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
-const minutesUntil = (iso: string): number => Math.round((new Date(iso).getTime() - Date.now()) / 60000)
+const minutesUntil = (iso: string): number =>
+  Math.round((new Date(iso).getTime() - Date.now()) / 60000)
 
 const formatAmount = (n: number | null) =>
   n == null
     ? null
-    : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
+    : new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        maximumFractionDigits: 0,
+      }).format(n)
 
+/** CallSlot — gutter heure à gauche + card sectionnée à droite.
+ *  Pattern proche d'Apple Calendar : heure visible avant la card.
+ */
 export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
   const color = typeColor(call.type)
-  const isDone = call.outcome === 'done' || call.outcome === 'no_show' || call.outcome === 'cancelled'
+  const isDone = call.outcome !== 'pending'
   const lead = call.lead
   const fullName = lead ? `${lead.first_name} ${lead.last_name}`.trim() || '—' : '—'
   const amount = lead ? formatAmount(lead.deal_amount) : null
@@ -60,16 +62,16 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
       onPress={onPress}
       style={({ pressed }) => ({
         flexDirection: 'row',
-        gap: 8,
-        opacity: isDone ? 0.55 : pressed ? 0.7 : 1,
+        gap: spacing.md,
+        opacity: isDone ? 0.5 : pressed ? 0.7 : 1,
       })}
     >
       {/* Gutter heure */}
-      <View style={{ width: 64, alignItems: 'flex-end', paddingTop: 14 }}>
-        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '700' }}>
+      <View style={{ width: 56, alignItems: 'flex-end', paddingTop: 14 }}>
+        <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>
           {formatTime(call.scheduled_at)}
         </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+        <Text style={{ ...t.caption1, color: colors.textSecondary }}>
           {call.duration_seconds ? `${Math.round(call.duration_seconds / 60)} min` : '—'}
         </Text>
       </View>
@@ -78,22 +80,28 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
       <View
         style={{
           flex: 1,
-          backgroundColor: colors.bgElevated,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderLeftWidth: 4,
+          backgroundColor: colors.bgSecondary,
+          borderRadius: radius.xl,
+          borderLeftWidth: 3,
           borderLeftColor: color,
-          padding: 14,
-          gap: 8,
+          padding: spacing.md,
+          gap: spacing.sm,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            flexWrap: 'wrap',
+          }}
+        >
           <Text
             style={{
+              ...t.caption2,
               color,
-              fontSize: 11,
               fontWeight: '700',
+              textTransform: 'uppercase',
               letterSpacing: 0.6,
             }}
           >
@@ -102,13 +110,13 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
           {isNext && liveMin >= 0 && liveMin <= 60 ? (
             <View
               style={{
-                backgroundColor: colors.primary + '22',
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                borderRadius: 6,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 4,
+                backgroundColor: colors.primary + '26',
+                borderRadius: 999,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
               }}
             >
               <View
@@ -119,66 +127,60 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
                   backgroundColor: colors.primary,
                 }}
               />
-              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700' }}>
+              <Text
+                style={{
+                  ...t.caption2,
+                  color: colors.primary,
+                  fontWeight: '700',
+                  letterSpacing: 0.4,
+                }}
+              >
                 LIVE DANS {liveMin} MIN
               </Text>
             </View>
           ) : null}
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <Avatar name={fullName} size={40} />
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text
               numberOfLines={1}
-              style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600' }}
+              style={{ ...t.bodyEmphasis, color: colors.textPrimary }}
             >
               {fullName}
             </Text>
             {call.notes ? (
               <Text
                 numberOfLines={1}
-                style={{ color: colors.textSecondary, fontSize: 13 }}
+                style={{ ...t.subheadline, color: colors.textSecondary, marginTop: 2 }}
               >
                 {call.notes}
               </Text>
             ) : null}
           </View>
           {amount ? (
-            <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>{amount}</Text>
+            <Text style={{ ...t.bodyEmphasis, color: colors.primary }}>{amount}</Text>
           ) : null}
         </View>
 
-        {/* Bouton 'Préparer' si le call est imminent (cf spec 7.3).
-            On affiche le bouton uniquement pour le call qui est marqué isNext
-            ET qui n'est pas déjà parti — sinon ce serait du bruit visuel. */}
         {isNext && !isDone ? (
           <Pressable
-            onPress={(e) => {
-              // L'event ne doit pas remonter au Pressable parent (qui ouvre
-              // le détail) — l'utilisateur veut juste 'préparer' côté détail
-              // mais on laisse le tap agir comme open detail (même action V1).
-              e.stopPropagation?.()
-              onPress?.()
-            }}
+            onPress={onPress}
             style={({ pressed }) => ({
               alignSelf: 'flex-start',
               flexDirection: 'row',
               alignItems: 'center',
               gap: 6,
-              backgroundColor: colors.primary + '22',
-              borderWidth: 1,
-              borderColor: colors.primary + '55',
-              borderRadius: 8,
+              backgroundColor: colors.primary,
+              borderRadius: radius.md,
               paddingVertical: 6,
               paddingHorizontal: 12,
-              opacity: pressed ? 0.7 : 1,
+              opacity: pressed ? 0.8 : 1,
             })}
           >
-            <Ionicons name="rocket-outline" size={14} color={colors.primary} />
-            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
-              Préparer
-            </Text>
+            <Ionicons name="rocket" size={13} color="#000" />
+            <Text style={{ ...t.subheadline, color: '#000', fontWeight: '700' }}>Préparer</Text>
           </Pressable>
         ) : null}
       </View>

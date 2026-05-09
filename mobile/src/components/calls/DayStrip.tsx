@@ -1,13 +1,12 @@
 import React, { useMemo } from 'react'
 import { View, Text, Pressable, ScrollView } from 'react-native'
 import { colors } from '../../theme/colors'
+import { type as t, spacing } from '../../theme/tokens'
 
 interface DayStripProps {
   selectedDate: Date
   onSelect: (d: Date) => void
-  /** Nombre de jours à afficher autour de today. Default 14 (-3 / +10). */
   range?: { before: number; after: number }
-  /** Map ISO date (YYYY-MM-DD) → count de calls pour afficher un dot. */
   countsByDate?: Record<string, number>
 }
 
@@ -15,8 +14,12 @@ const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10)
 const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate()
 
+/** DayStrip — pattern Apple Calendar / Fitness : pills jour avec
+ *  numéro centré, today underlined, sélection = bg primary. */
 export function DayStrip({
   selectedDate,
   onSelect,
@@ -43,12 +46,11 @@ export function DayStrip({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 16, gap: 6 }}
+      contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}
     >
       {days.map((d) => {
         const isSelected = sameDay(d, selectedDate)
         const isToday = sameDay(d, today)
-        // dayOfWeek : 0=dimanche → on remappe en 0=lundi
         const dayIdx = (d.getDay() + 6) % 7
         const count = countsByDate?.[isoDate(d)] ?? 0
         return (
@@ -56,31 +58,29 @@ export function DayStrip({
             key={isoDate(d)}
             onPress={() => onSelect(d)}
             style={{
-              width: 48,
+              width: 52,
               paddingVertical: 8,
               borderRadius: 12,
               alignItems: 'center',
-              backgroundColor: isSelected ? colors.primary : colors.bgSecondary,
-              borderWidth: 1,
-              borderColor: isSelected ? colors.primary : colors.border,
+              backgroundColor: isSelected ? colors.primary : 'transparent',
+              gap: 2,
             }}
           >
             <Text
               style={{
-                color: isSelected ? '#fff' : colors.textSecondary,
-                fontSize: 10,
+                ...t.caption2,
+                color: isSelected ? '#000' : colors.textSecondary,
                 fontWeight: '600',
-                textTransform: 'uppercase',
+                letterSpacing: 0.5,
               }}
             >
               {DAY_LABELS[dayIdx]}
             </Text>
             <Text
               style={{
-                color: isSelected ? '#fff' : isToday ? colors.primary : colors.textPrimary,
-                fontSize: 16,
+                ...t.title3,
+                color: isSelected ? '#000' : isToday ? colors.primary : colors.textPrimary,
                 fontWeight: '700',
-                marginTop: 2,
               }}
             >
               {d.getDate()}
@@ -91,12 +91,11 @@ export function DayStrip({
                   width: 4,
                   height: 4,
                   borderRadius: 2,
-                  backgroundColor: isSelected ? '#fff' : colors.primary,
-                  marginTop: 3,
+                  backgroundColor: isSelected ? '#000' : colors.primary,
                 }}
               />
             ) : (
-              <View style={{ height: 7 }} />
+              <View style={{ height: 4 }} />
             )}
           </Pressable>
         )
