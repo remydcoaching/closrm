@@ -31,8 +31,7 @@ const formatRelative = (iso: string | null): string => {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
 
-/** Lead row chip premium — bg avec tint subtil status (sauf nouveau gris),
- *  avatar 30, padding aéré, amount/activity à droite. */
+/** Lead row chip — bg tint subtil + border tint + dot status + activity. */
 export function LeadRow({ lead, onPress }: LeadRowProps) {
   const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
   const amount = formatAmount(lead.deal_amount)
@@ -41,10 +40,10 @@ export function LeadRow({ lead, onPress }: LeadRowProps) {
   const activity = formatRelative(
     lead.last_activity_at ?? lead.updated_at ?? lead.created_at,
   )
-  // Tint bg : nouveau = neutre, autres = couleur status à 8% alpha sur
-  // bg #1c1c1e → mix subtil qui fait ressortir les leads non-nouveaux.
-  const isNeutral = lead.status === 'nouveau'
-  const chipBg = isNeutral ? '#1c1c1e' : statusColor + '14' // 8% alpha hex
+  // Tint subtil appliqué à TOUS les statuts (y compris Nouveau gris) —
+  // chaque chip a une présence visuelle cohérente avec sa couleur status.
+  const chipBg = statusColor + '14'
+  const chipBorder = statusColor + '30'
 
   return (
     <Pressable onPress={onPress}>
@@ -57,6 +56,8 @@ export function LeadRow({ lead, onPress }: LeadRowProps) {
             paddingHorizontal: 12,
             borderRadius: 999,
             backgroundColor: chipBg,
+            borderWidth: 1,
+            borderColor: chipBorder,
             opacity: pressed ? 0.7 : 1,
           }}
         >
@@ -77,28 +78,45 @@ export function LeadRow({ lead, onPress }: LeadRowProps) {
             {fullName}
           </Text>
 
-          <Text
-            numberOfLines={1}
+          {/* Status pill : dot + texte coloré, séparation visuelle nette */}
+          <View
             style={{
-              color: statusColor,
-              fontSize: 13,
-              fontWeight: '700',
-              marginLeft: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 5,
+              marginLeft: 10,
             }}
           >
-            {statusLabel}
-          </Text>
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: statusColor,
+              }}
+            />
+            <Text
+              numberOfLines={1}
+              style={{
+                color: statusColor,
+                fontSize: 13,
+                fontWeight: '700',
+                letterSpacing: -0.1,
+              }}
+            >
+              {statusLabel}
+            </Text>
+          </View>
 
           <View style={{ flex: 1 }} />
 
-          {/* Right side : amount si deal, sinon activity time */}
           {amount ? (
             <Text
               style={{
                 color: colors.primary,
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: '800',
-                letterSpacing: -0.24,
+                letterSpacing: -0.4,
                 marginLeft: 8,
               }}
             >
