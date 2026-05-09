@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { LeadsStackParamList } from '../../navigation/types'
@@ -117,6 +118,9 @@ export function LeadsListScreen() {
   const navigation = useNavigation<Nav>()
   const { user } = useAuth()
   const createLeadSheet = useCreateLeadSheet()
+  // Hauteur exacte de la tab bar (incluant safe area) pour positionner
+  // le FAB juste au-dessus avec marge.
+  const tabBarHeight = useBottomTabBarHeight()
 
   const [viewMode, setViewMode] = useState<ViewMode>('flat')
   const [segIdx, setSegIdx] = useState(0)
@@ -287,7 +291,11 @@ export function LeadsListScreen() {
         </ScrollView>
       )}
 
-      <FAB label="Nouveau lead" onPress={() => createLeadSheet.open(refetch)} />
+      <FAB
+        label="Nouveau lead"
+        bottom={tabBarHeight + 16}
+        onPress={() => createLeadSheet.open(refetch)}
+      />
     </SafeAreaView>
   )
 }
