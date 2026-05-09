@@ -12,19 +12,13 @@ import { useDebounce } from '../../hooks/useDebounce'
 import { LeadCardLarge } from '../../components/leads/LeadCardLarge'
 import { LeadRow } from '../../components/leads/LeadRow'
 import { useCreateLeadSheet } from '../../components/leads/CreateLeadSheet'
-import { NavLarge, SearchField, Segmented, FilterChips, FAB } from '../../components/ui'
+import { NavLarge, SearchField, FilterChips, FAB } from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
 import { statusConfig } from '../../theme/status'
 import type { Lead, LeadStatus } from '@shared/types'
 
 type Nav = NativeStackNavigationProp<LeadsStackParamList, 'LeadsList'>
-
-const SEGMENTS = [
-  { key: 'actifs', label: 'Actifs' },
-  { key: 'mes_leads', label: 'Mes leads' },
-  { key: 'archives', label: 'Archivés' },
-] as const
 
 const STATUS_FILTERS = [
   { key: 'tous', label: 'Tous' },
@@ -33,6 +27,7 @@ const STATUS_FILTERS = [
   { key: 'nouveau', label: 'Nouveaux' },
   { key: 'no_show_setting', label: 'No-show' },
   { key: 'clos', label: 'Closés' },
+  { key: 'archives', label: 'Archivés' },
 ] as const
 
 type ViewMode = 'flat' | 'grouped' | 'priority'
@@ -121,17 +116,17 @@ export function LeadsListScreen() {
   const tabBarHeight = useBottomTabBarHeight()
 
   const [viewMode, setViewMode] = useState<ViewMode>('flat')
-  const [segIdx, setSegIdx] = useState(0)
   const [statusIdx, setStatusIdx] = useState(0)
   const [search, setSearch] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
 
-  const segment = SEGMENTS[segIdx].key
   const status = STATUS_FILTERS[statusIdx].key
-  const effectiveStatus = viewMode === 'flat' ? status : 'tous'
+  const isArchives = status === 'archives'
+  const effectiveStatus = viewMode === 'flat' && !isArchives ? status : 'tous'
   const debouncedSearch = useDebounce(search, 300)
 
   const { leads, loading, refetch } = useLeads({
-    segment,
+    segment: isArchives ? 'archives' : 'actifs',
     status: effectiveStatus,
     search: debouncedSearch,
     myUserId: user?.id,
@@ -163,24 +158,47 @@ export function LeadsListScreen() {
       <NavLarge
         title="Leads"
         subtitle={`${counts} lead${counts > 1 ? 's' : ''}`}
-        rightSlot={<ViewSwitcher mode={viewMode} onChange={setViewMode} />}
+        rightSlot={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Pressable
+              onPress={() => {
+                if (searchOpen) {
+                  setSearch('')
+                  setSearchOpen(false)
+                } else {
+                  setSearchOpen(true)
+                }
+              }}
+              hitSlop={8}
+              style={{
+                width: 36,
+                height: 32,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.bgSecondary,
+                borderRadius: 8,
+              }}
+            >
+              <Ionicons
+                name={searchOpen ? 'close' : 'search'}
+                size={15}
+                color={searchOpen ? colors.primary : colors.textSecondary}
+              />
+            </Pressable>
+            <ViewSwitcher mode={viewMode} onChange={setViewMode} />
+          </View>
+        }
       />
 
-      <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
-        <SearchField
-          placeholder="Rechercher un lead, un tag…"
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
-
-      <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
-        <Segmented
-          items={SEGMENTS.map((s) => ({ label: s.label }))}
-          activeIndex={segIdx}
-          onChange={setSegIdx}
-        />
-      </View>
+      {searchOpen ? (
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
+          <SearchField
+            placeholder="Rechercher un lead, un tag…"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+      ) : null}
 
       {viewMode === 'flat' ? (
         <View style={{ marginBottom: spacing.md }}>
@@ -200,7 +218,7 @@ export function LeadsListScreen() {
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
-            paddingBottom: 100,
+            paddingBottom: tabBarHeight + 80,
             gap: 10,
           }}
           refreshControl={
@@ -223,7 +241,7 @@ export function LeadsListScreen() {
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
-            paddingBottom: 100,
+            paddingBottom: tabBarHeight + 80,
             gap: spacing.xxl,
           }}
           refreshControl={
@@ -256,7 +274,7 @@ export function LeadsListScreen() {
         </ScrollView>
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 100, gap: spacing.md }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: tabBarHeight + 80, gap: spacing.md }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
