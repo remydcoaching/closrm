@@ -11,6 +11,7 @@ import {
   Linking,
   Dimensions,
 } from 'react-native'
+import { useVideoPlayer, VideoView } from 'expo-video'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
@@ -387,60 +388,83 @@ const isVideoLike = (post: SocialPostWithPublications): boolean => {
   return false
 }
 
+// Détecte un final_url "playable inline" : direct MP4/MOV/WebM. YouTube,
+// Vimeo, Drive ne le sont pas — ils sont opens en Safari.
+const isDirectVideoUrl = (s: string | null | undefined): boolean => {
+  if (!s) return false
+  const lower = s.toLowerCase().split('?')[0]
+  return lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.webm') || lower.endsWith('.m4v')
+}
+
+const isExternalPlayer = (s: string | null | undefined): boolean => {
+  if (!s) return false
+  return /youtube\.com|youtu\.be|vimeo\.com|drive\.google\.com/.test(s)
+}
+
 function MediaPreview({ post }: { post: SocialPostWithPublications }) {
   const [failed, setFailed] = useState(false)
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null)
+  const [resolvedImg, setResolvedImg] = useState<string | null>(null)
+  const [resolvedVideo, setResolvedVideo] = useState<string | null>(null)
   const [resolving, setResolving] = useState(false)
 
-  // Pick le path "le plus visuellement utile" pour la preview :
-  // 1. thumbnail_url (s'il existe)
-  // 2. 1er media_url
-  // Peut être une URL HTTP directe OU un path R2 (workspaces/...).
-  const rawSource = post.thumbnail_url || post.media_urls[0] || null
+  const isVideo = isVideoLike(post)
 
-  // Résolution async : si c'est un path R2, on demande à l'API une URL signée
-  // (l'endpoint /api/storage/sign existe déjà côté web et utilise getWorkspaceId
-  // qui supporte le Bearer mobile depuis le fix d'aujourd'hui).
+  // Sources brutes :
+  // - imgSrc = poster pour la preview (thumbnail_url > 1er media_url si pas vidéo)
+  // - videoSrc = la vidéo elle-même (1er media_url si vidéo OU final_url si direct
+  //   MP4/MOV)
+  const rawImgSource = post.thumbnail_url || (!isVideo ? post.media_urls[0] : null) || null
+  const rawVideoSource = isVideo
+    ? post.media_urls.find((u) => isHttp(u) || isR2Path(u)) ||
+      (isDirectVideoUrl(post.final_url) ? post.final_url : null)
+    : null
+
+  // Résolution async des paths R2 → URL signées via /api/storage/sign
   useEffect(() => {
     let cancelled = false
-    setResolvedUrl(null)
+    setResolvedImg(null)
+    setResolvedVideo(null)
     setFailed(false)
 
-    if (!rawSource) return
-    if (isHttp(rawSource)) {
-      setResolvedUrl(rawSource)
-      return
+    const resolve = async (src: string | null): Promise<string | null> => {
+      if (!src) return null
+      if (isHttp(src)) return src
+      if (isR2Path(src)) {
+        const res = await api.get<{ url: string }>(
+          `/api/storage/sign?path=${encodeURIComponent(src)}`,
+        )
+        return res.url
+      }
+      return null
     }
-    if (isR2Path(rawSource)) {
-      setResolving(true)
-      ;(async () => {
-        try {
-          const res = await api.get<{ url: string }>(
-            `/api/storage/sign?path=${encodeURIComponent(rawSource)}`,
-          )
-          if (!cancelled) setResolvedUrl(res.url)
-        } catch {
-          if (!cancelled) setFailed(true)
-        } finally {
-          if (!cancelled) setResolving(false)
-        }
-      })()
-    }
+
+    if (!rawImgSource && !rawVideoSource) return
+
+    setResolving(true)
+    ;(async () => {
+      try {
+        const [img, vid] = await Promise.all([
+          resolve(rawImgSource),
+          resolve(rawVideoSource),
+        ])
+        if (cancelled) return
+        setResolvedImg(img)
+        setResolvedVideo(vid)
+      } catch {
+        if (!cancelled) setFailed(true)
+      } finally {
+        if (!cancelled) setResolving(false)
+      }
+    })()
     return () => {
       cancelled = true
     }
-  }, [rawSource])
+  }, [rawImgSource, rawVideoSource])
 
-  const imgSource = resolvedUrl
+  const externalUrl =
+    isExternalPlayer(post.final_url) ? post.final_url : null
 
-  const isVideo = isVideoLike(post)
-  const externalUrl = isHttp(post.final_url)
-    ? post.final_url
-    : isHttp(post.media_urls[0])
-    ? post.media_urls[0]
-    : null
-
-  const hasNothing = !rawSource && post.media_urls.length === 0
+  const hasNothing = !rawImgSource && !rawVideoSource && !externalUrl
 
   if (hasNothing) {
     return (
@@ -466,70 +490,67 @@ function MediaPreview({ post }: { post: SocialPostWithPublications }) {
   }
 
   const previewW = SCREEN_W - 2 * spacing.lg
-  const previewH = isVideo ? Math.round(previewW * 16 / 9 * 0.5) : Math.round(previewW * 1.0) // 1:1 par défaut, 16:9 partial pour vidéo
+  const previewH = isVideo ? Math.round(previewW * 9 / 16) : previewW // 16:9 vidéo, 1:1 image
 
-  // Tap : ouvre l'URL externe (final_url) ou l'image elle-même (signed URL R2)
-  // dans Safari pour voir en grand / lire la vidéo.
-  const tapTarget = externalUrl ?? imgSource
+  // Décide du mode de rendu :
+  // - INLINE_VIDEO : on a une URL vidéo directe (R2 signée OU MP4 direct)
+  //   → VideoView natif iOS avec play/scrub/fullscreen
+  // - EXTERNAL : YouTube/Vimeo/Drive → tap ouvre Safari (rien à faire d'autre,
+  //   ces players ne marchent que dans leur webview maison)
+  // - IMAGE : poster ou photo classique
+  const renderMode: 'inline-video' | 'external' | 'image' | 'placeholder' = (() => {
+    if (resolvedVideo) return 'inline-video'
+    if (isVideo && externalUrl) return 'external'
+    if (resolvedImg) return 'image'
+    return 'placeholder'
+  })()
 
   return (
-    <Pressable
-      onPress={tapTarget ? () => Linking.openURL(tapTarget) : undefined}
-      disabled={!tapTarget}
-      style={({ pressed }) => ({ opacity: pressed && tapTarget ? 0.85 : 1 })}
+    <View
+      style={{
+        width: '100%',
+        height: previewH,
+        borderRadius: radius.lg,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+      }}
     >
-      <View
-        style={{
-          width: '100%',
-          height: previewH,
-          borderRadius: radius.lg,
-          overflow: 'hidden',
-          backgroundColor: '#000',
-        }}
-      >
-        {imgSource && !failed ? (
+      {renderMode === 'inline-video' && resolvedVideo ? (
+        <InlineVideo uri={resolvedVideo} />
+      ) : renderMode === 'image' && resolvedImg ? (
+        <Pressable
+          onPress={() => Linking.openURL(resolvedImg)}
+          style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}
+        >
           <Image
-            source={{ uri: imgSource }}
+            source={{ uri: resolvedImg }}
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
             onError={() => setFailed(true)}
           />
-        ) : resolving ? (
-          // En train de signer l'URL R2
-          <View
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: colors.bgSecondary,
-            }}
-          >
-            <ActivityIndicator color={colors.primary} />
-          </View>
-        ) : (
-          // Placeholder si pas d'URL exploitable
-          <View
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: colors.bgSecondary,
-              gap: 8,
-            }}
-          >
-            <Ionicons
-              name={isVideo ? 'videocam-outline' : 'image-outline'}
-              size={36}
-              color={colors.textTertiary}
+        </Pressable>
+      ) : renderMode === 'external' && externalUrl ? (
+        <Pressable
+          onPress={() => Linking.openURL(externalUrl)}
+          style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}
+        >
+          {resolvedImg ? (
+            <Image
+              source={{ uri: resolvedImg }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
             />
-            <Text style={{ ...t.caption1, color: colors.textTertiary, paddingHorizontal: 16, textAlign: 'center' }}>
-              {failed ? 'Impossible de charger le média' : 'Aperçu indisponible'}
-            </Text>
-          </View>
-        )}
-
-        {/* Play overlay si vidéo */}
-        {isVideo ? (
+          ) : (
+            <View
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.bgSecondary,
+              }}
+            />
+          )}
+          {/* Play overlay — externe uniquement */}
           <View
             style={{
               position: 'absolute',
@@ -539,8 +560,8 @@ function MediaPreview({ post }: { post: SocialPostWithPublications }) {
               bottom: 0,
               alignItems: 'center',
               justifyContent: 'center',
-              pointerEvents: 'none',
             }}
+            pointerEvents="none"
           >
             <View
               style={{
@@ -555,7 +576,38 @@ function MediaPreview({ post }: { post: SocialPostWithPublications }) {
               <Ionicons name="play" size={28} color="#fff" style={{ marginLeft: 3 }} />
             </View>
           </View>
-        ) : null}
+        </Pressable>
+      ) : resolving ? (
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.bgSecondary,
+          }}
+        >
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : (
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.bgSecondary,
+            gap: 8,
+          }}
+        >
+          <Ionicons
+            name={isVideo ? 'videocam-outline' : 'image-outline'}
+            size={36}
+            color={colors.textTertiary}
+          />
+          <Text style={{ ...t.caption1, color: colors.textTertiary, paddingHorizontal: 16, textAlign: 'center' }}>
+            {failed ? 'Impossible de charger le média' : 'Aperçu indisponible'}
+          </Text>
+        </View>
+      )}
 
         {/* Badge type média en haut-droite */}
         {post.media_type ? (
@@ -605,7 +657,25 @@ function MediaPreview({ post }: { post: SocialPostWithPublications }) {
             </Text>
           </View>
         ) : null}
-      </View>
-    </Pressable>
+    </View>
+  )
+}
+
+// Lecteur vidéo inline natif iOS — controls Apple standard, fullscreen,
+// scrub, mute. Pas d'autoplay (poids data + dérangeant en liste).
+function InlineVideo({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = false
+    p.muted = false
+  })
+  return (
+    <VideoView
+      player={player}
+      style={{ width: '100%', height: '100%' }}
+      contentFit="cover"
+      allowsFullscreen
+      allowsPictureInPicture
+      nativeControls
+    />
   )
 }
