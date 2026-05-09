@@ -13,9 +13,17 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 import { Ionicons } from '@expo/vector-icons'
 import type { LeadsStackParamList } from '../../navigation/types'
 import { useLead } from '../../hooks/useLead'
-import { Avatar, StatusBadge, SourceBadge, Button, Card, Divider } from '../../components/ui'
+import {
+  Avatar,
+  StatusBadge,
+  SourceBadge,
+  Button,
+  ListSection,
+  ListRow,
+} from '../../components/ui'
 import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
 import { colors } from '../../theme/colors'
+import { type as t, spacing } from '../../theme/tokens'
 
 type R = RouteProp<LeadsStackParamList, 'LeadDetail'>
 
@@ -27,7 +35,7 @@ const ctaLabel = (status: string): string => {
       return 'Rejoindre le setting'
     case 'no_show_setting':
     case 'no_show_closing':
-      return 'Reprogrammer le call'
+      return 'Reprogrammer'
     case 'nouveau':
     case 'scripte':
       return 'Planifier un setting'
@@ -40,76 +48,47 @@ const ctaLabel = (status: string): string => {
   }
 }
 
-function QuickAction({
+/** Action ronde style Apple Contacts (Call/Message/Mail/Video). */
+function ContactAction({
   icon,
   label,
   onPress,
-  color = colors.primary,
+  disabled,
 }: {
   icon: keyof typeof Ionicons.glyphMap
   label: string
   onPress?: () => void
-  color?: string
+  disabled?: boolean
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        backgroundColor: colors.bgElevated,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: colors.border,
-        paddingVertical: 18,
-        paddingHorizontal: 12,
-        alignItems: 'center',
-        gap: 8,
-        opacity: pressed ? 0.7 : 1,
-      })}
-    >
-      <Ionicons name={icon} size={26} color={color} />
-      <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: '600' }}>{label}</Text>
-    </Pressable>
+    <View style={{ alignItems: 'center', gap: 6, flex: 1 }}>
+      <Pressable
+        onPress={disabled ? undefined : onPress}
+        style={({ pressed }) => ({
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: colors.bgSecondary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
+        })}
+      >
+        <Ionicons name={icon} size={22} color={colors.primary} />
+      </Pressable>
+      <Text style={{ ...t.caption1, color: colors.primary }}>{label}</Text>
+    </View>
   )
 }
 
-function InfoRow({
-  icon,
-  label,
-  value,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap
-  label: string
-  value: string | null
-  onPress?: () => void
-}) {
-  if (!value) return null
-  const Wrapper = onPress ? Pressable : View
-  return (
-    <Wrapper
-      onPress={onPress}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        paddingVertical: 10,
-      }}
-    >
-      <Ionicons name={icon} size={16} color={colors.textSecondary} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.textSecondary, fontSize: 11 }}>{label}</Text>
-        <Text style={{ color: colors.textPrimary, fontSize: 14 }}>{value}</Text>
-      </View>
-      {onPress ? <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} /> : null}
-    </Wrapper>
-  )
-}
-
-const formatAmount = (amount: number | null): string =>
-  amount == null
+const formatAmount = (n: number | null): string =>
+  n == null
     ? '—'
-    : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(amount)
+    : new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+        maximumFractionDigits: 0,
+      }).format(n)
 
 export function LeadDetailScreen() {
   const route = useRoute<R>()
@@ -119,24 +98,31 @@ export function LeadDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgPrimary, justifyContent: 'center' }}>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: colors.bgPrimary, justifyContent: 'center' }}
+      >
         <ActivityIndicator color={colors.primary} />
       </SafeAreaView>
     )
   }
-
   if (!lead) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: colors.textSecondary }}>Lead introuvable.</Text>
-        <View style={{ height: 12 }} />
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: colors.bgPrimary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing.md,
+        }}
+      >
+        <Text style={{ ...t.subheadline, color: colors.textSecondary }}>Lead introuvable.</Text>
         <Button label="Retour" variant="outline" onPress={() => navigation.goBack()} />
       </SafeAreaView>
     )
   }
 
   const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
-
   const callPhone = () => {
     if (lead.phone) Linking.openURL(`tel:${lead.phone}`)
   }
@@ -145,10 +131,10 @@ export function LeadDetailScreen() {
   }
   const openInstagram = () => {
     if (lead.instagram_handle) {
-      // Tente le scheme natif iOS, fallback web.
-      const url = Platform.OS === 'ios'
-        ? `instagram://user?username=${lead.instagram_handle}`
-        : `https://instagram.com/${lead.instagram_handle}`
+      const url =
+        Platform.OS === 'ios'
+          ? `instagram://user?username=${lead.instagram_handle}`
+          : `https://instagram.com/${lead.instagram_handle}`
       Linking.openURL(url).catch(() => {
         Linking.openURL(`https://instagram.com/${lead.instagram_handle}`)
       })
@@ -157,234 +143,237 @@ export function LeadDetailScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      {/* Top bar : retour + menu */}
+      {/* Top bar — minimaliste style Apple Contacts */}
       <View
         style={{
-          paddingHorizontal: 12,
-          paddingBottom: 8,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
           flexDirection: 'row',
           justifyContent: 'space-between',
+          alignItems: 'center',
         }}
       >
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={({ pressed }) => ({
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: colors.bgSecondary,
-            borderWidth: 1,
-            borderColor: colors.border,
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ padding: 4 }}>
+          <Ionicons name="chevron-back" size={28} color={colors.primary} />
         </Pressable>
-        <Pressable
-          style={({ pressed }) => ({
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: colors.bgSecondary,
-            borderWidth: 1,
-            borderColor: colors.border,
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Ionicons name="ellipsis-horizontal" size={18} color={colors.textPrimary} />
+        <Pressable hitSlop={12} style={{ padding: 4 }}>
+          <Text style={{ ...t.body, color: colors.primary }}>Modifier</Text>
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60, gap: 16 }}>
-        {/* Hero */}
-        <View style={{ alignItems: 'center', gap: 10 }}>
-          <Avatar name={fullName} size={76} />
-          <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: '700' }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
+        {/* Hero — avatar XL + nom + badges */}
+        <View style={{ alignItems: 'center', paddingTop: spacing.md, gap: spacing.md }}>
+          <Avatar name={fullName} size={100} />
+          <Text style={{ ...t.title1, color: colors.textPrimary, textAlign: 'center' }}>
             {fullName}
           </Text>
-          <View style={{ flexDirection: 'row', gap: 6 }}>
+          <View style={{ flexDirection: 'row', gap: spacing.sm, justifyContent: 'center' }}>
             <StatusBadge status={lead.status} size="md" />
             <SourceBadge source={lead.source} size="md" />
           </View>
         </View>
 
-        {/* KPI grid */}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Card style={{ flex: 1, alignItems: 'center', padding: 12 }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}>DEAL</Text>
-            <Text style={{ color: colors.primary, fontSize: 18, fontWeight: '700', marginTop: 4 }}>
-              {formatAmount(lead.deal_amount)}
-            </Text>
-            {lead.deal_installments > 1 ? (
-              <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
-                x{lead.deal_installments}
-              </Text>
-            ) : null}
-          </Card>
-          <Card style={{ flex: 1, alignItems: 'center', padding: 12 }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}>
-              TENTATIVES
-            </Text>
-            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700', marginTop: 4 }}>
-              {lead.call_attempts}
-            </Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
-              {lead.reached ? 'jointe' : 'pas jointe'}
-            </Text>
-          </Card>
-          <Card style={{ flex: 1, alignItems: 'center', padding: 12 }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}>SCORE</Text>
-            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700', marginTop: 4 }}>
-              —
-            </Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 11 }}>à venir</Text>
-          </Card>
-        </View>
-
-        {/* CTA principal — ouvre la Schedule Sheet pour planifier/reprogrammer. */}
-        <Button
-          label={ctaLabel(lead.status)}
-          fullWidth
-          size="lg"
-          onPress={() => scheduleSheet.open({ lead })}
-        />
-
-        {/* Quick actions — grille 2x2 (cf spec 7.2) */}
-        <View style={{ gap: 10 }}>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <QuickAction icon="call-outline" label="Appeler" onPress={callPhone} color={colors.info} />
-            <QuickAction
-              icon="logo-instagram"
-              label="DM Insta"
-              onPress={openInstagram}
-              color={colors.pink}
-            />
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <QuickAction
-              icon="mail-outline"
-              label="Email"
-              onPress={sendEmail}
-              color={colors.purple}
-            />
-            <QuickAction
-              icon="calendar-outline"
-              label="Reprogrammer"
-              color={colors.warning}
-              onPress={() => scheduleSheet.open({ lead })}
-            />
-          </View>
-        </View>
-
-        {/* Infos */}
-        <Card>
-          <Text
-            style={{
-              color: colors.textSecondary,
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 0.5,
-              marginBottom: 4,
-            }}
-          >
-            INFOS
-          </Text>
-          <InfoRow icon="call-outline" label="Téléphone" value={lead.phone || null} onPress={callPhone} />
-          <Divider />
-          <InfoRow icon="mail-outline" label="Email" value={lead.email} onPress={sendEmail} />
-          <Divider />
-          <InfoRow
+        {/* Quick actions — 4 boutons ronds style Apple Contacts */}
+        <View
+          style={{
+            flexDirection: 'row',
+            paddingHorizontal: spacing.xxl,
+            paddingVertical: spacing.xl,
+            gap: spacing.lg,
+          }}
+        >
+          <ContactAction
+            icon="call"
+            label="Appeler"
+            onPress={callPhone}
+            disabled={!lead.phone}
+          />
+          <ContactAction
             icon="logo-instagram"
-            label="Instagram"
-            value={lead.instagram_handle ? `@${lead.instagram_handle}` : null}
+            label="DM"
             onPress={openInstagram}
+            disabled={!lead.instagram_handle}
           />
-          <Divider />
-          <InfoRow icon="megaphone-outline" label="Source" value={lead.source.replace(/_/g, ' ')} />
-          <Divider />
-          <InfoRow
-            icon="person-outline"
-            label="Assigné à"
-            value={lead.assigned_to ? 'Oui' : 'Personne'}
+          <ContactAction
+            icon="mail"
+            label="Email"
+            onPress={sendEmail}
+            disabled={!lead.email}
           />
-        </Card>
+          <ContactAction
+            icon="calendar"
+            label="Planifier"
+            onPress={() => scheduleSheet.open({ lead })}
+          />
+        </View>
 
-        {/* Tags */}
-        <Card>
-          <Text
-            style={{
-              color: colors.textSecondary,
-              fontSize: 12,
-              fontWeight: '700',
-              letterSpacing: 0.5,
-              marginBottom: 10,
-            }}
-          >
-            TAGS
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {(lead.tags ?? []).map((t) => (
-              <View
-                key={t}
-                style={{
-                  paddingVertical: 5,
-                  paddingHorizontal: 12,
-                  borderRadius: 999,
-                  backgroundColor: colors.bgSecondary,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <Text style={{ color: colors.textPrimary, fontSize: 13 }}>{t}</Text>
-              </View>
-            ))}
-            {/* Bouton 'ajouter' dashed (cf spec 7.2) — placeholder qui ouvrira
-                un input modal une fois branché. */}
-            <Pressable
-              onPress={() => {/* TODO: ouvrir modal d'ajout de tag */}}
-              style={({ pressed }) => ({
-                paddingVertical: 5,
-                paddingHorizontal: 12,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderStyle: 'dashed',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <Ionicons name="add" size={14} color={colors.textSecondary} />
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>ajouter</Text>
-            </Pressable>
+        {/* CTA principal */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
+          <Button
+            label={ctaLabel(lead.status)}
+            fullWidth
+            size="lg"
+            onPress={() => scheduleSheet.open({ lead })}
+          />
+        </View>
+
+        {/* Section Deal — visible si deal */}
+        {lead.deal_amount ? (
+          <View style={{ marginBottom: spacing.xxl }}>
+            <ListSection header="Deal">
+              <ListRow
+                title="Montant"
+                trailing={
+                  <Text style={{ ...t.bodyEmphasis, color: colors.primary }}>
+                    {formatAmount(lead.deal_amount)}
+                  </Text>
+                }
+                showChevron={false}
+                separator={lead.deal_installments > 1}
+              />
+              {lead.deal_installments > 1 ? (
+                <ListRow
+                  title="Mensualités"
+                  trailing={
+                    <Text style={{ ...t.body, color: colors.textSecondary }}>
+                      ×{lead.deal_installments}
+                    </Text>
+                  }
+                  showChevron={false}
+                  separator={false}
+                />
+              ) : null}
+            </ListSection>
           </View>
-        </Card>
+        ) : null}
+
+        {/* Section Contact */}
+        <View style={{ marginBottom: spacing.xxl }}>
+          <ListSection header="Contact">
+            {lead.phone ? (
+              <ListRow
+                leading={<DotIcon name="call" />}
+                title={lead.phone}
+                subtitle="téléphone"
+                onPress={callPhone}
+                separator={!!lead.email || !!lead.instagram_handle}
+              />
+            ) : null}
+            {lead.email ? (
+              <ListRow
+                leading={<DotIcon name="mail" />}
+                title={lead.email}
+                subtitle="email"
+                onPress={sendEmail}
+                separator={!!lead.instagram_handle}
+              />
+            ) : null}
+            {lead.instagram_handle ? (
+              <ListRow
+                leading={<DotIcon name="logo-instagram" tint={colors.pink} />}
+                title={`@${lead.instagram_handle}`}
+                subtitle="instagram"
+                onPress={openInstagram}
+                separator={false}
+              />
+            ) : null}
+          </ListSection>
+        </View>
+
+        {/* Section Pipeline */}
+        <View style={{ marginBottom: spacing.xxl }}>
+          <ListSection header="Pipeline">
+            <ListRow
+              title="Statut"
+              trailing={<StatusBadge status={lead.status} size="sm" />}
+              showChevron={false}
+            />
+            <ListRow
+              title="Source"
+              trailing={<SourceBadge source={lead.source} size="sm" />}
+              showChevron={false}
+            />
+            <ListRow
+              title="Tentatives"
+              trailing={
+                <Text style={{ ...t.body, color: colors.textSecondary }}>
+                  {lead.call_attempts} {lead.reached ? '· joint' : ''}
+                </Text>
+              }
+              showChevron={false}
+              separator={false}
+            />
+          </ListSection>
+        </View>
+
+        {/* Section Tags */}
+        {lead.tags && lead.tags.length > 0 ? (
+          <View style={{ marginBottom: spacing.xxl, paddingHorizontal: spacing.lg }}>
+            <Text
+              style={{
+                ...t.footnote,
+                color: colors.textSecondary,
+                textTransform: 'uppercase',
+                letterSpacing: 0.4,
+                marginBottom: spacing.sm,
+              }}
+            >
+              Tags
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {lead.tags.map((tag) => (
+                <View
+                  key={tag}
+                  style={{
+                    paddingVertical: 5,
+                    paddingHorizontal: 12,
+                    borderRadius: 999,
+                    backgroundColor: colors.bgSecondary,
+                  }}
+                >
+                  <Text style={{ ...t.subheadline, color: colors.textPrimary }}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         {/* Notes */}
         {lead.notes ? (
-          <Card>
-            <Text
-              style={{
-                color: colors.textSecondary,
-                fontSize: 11,
-                fontWeight: '700',
-                letterSpacing: 0.5,
-                marginBottom: 8,
-              }}
-            >
-              NOTES
-            </Text>
-            <Text style={{ color: colors.textPrimary, fontSize: 14, lineHeight: 20 }}>
-              {lead.notes}
-            </Text>
-          </Card>
+          <View style={{ marginBottom: spacing.xxl }}>
+            <ListSection header="Notes">
+              <View style={{ padding: spacing.lg }}>
+                <Text style={{ ...t.body, color: colors.textPrimary }}>{lead.notes}</Text>
+              </View>
+            </ListSection>
+          </View>
         ) : null}
       </ScrollView>
     </SafeAreaView>
+  )
+}
+
+/** Petit cercle 32pt avec icône colorée — leading des ListRow contact. */
+function DotIcon({
+  name,
+  tint = colors.primary,
+}: {
+  name: keyof typeof Ionicons.glyphMap
+  tint?: string
+}) {
+  return (
+    <View
+      style={{
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: tint + '22',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Ionicons name={name} size={16} color={tint} />
+    </View>
   )
 }
