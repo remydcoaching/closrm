@@ -38,15 +38,16 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 16,
+    paddingLeft: 14,
+    paddingRight: 16,
   },
   card: {
     backgroundColor: colors.bgSecondary,
     borderRadius: radius.xl,
   },
   avatarWrap: {
-    marginRight: spacing.md,
+    marginRight: 14,
   },
   middle: {
     flex: 1,
@@ -54,7 +55,7 @@ const styles = StyleSheet.create({
   },
   amountWrap: {
     alignItems: 'flex-end',
-    marginLeft: spacing.sm,
+    marginLeft: 12,
   },
 })
 
@@ -77,30 +78,42 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
         styles.row,
         asCard && styles.card,
         asCard && {
-          borderLeftWidth: 3,
+          // Border gauche 4pt accent + ombre pour décoller la card du fond
+          borderLeftWidth: 4,
           borderLeftColor: statusColor,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 8,
+          elevation: 2,
         },
       ]}
       android_ripple={{ color: '#ffffff10' }}
     >
       <View style={styles.avatarWrap}>
-        <Avatar name={fullName} size={44} />
+        <Avatar name={fullName} size={48} />
       </View>
 
       <View style={styles.middle}>
         <Text
           numberOfLines={1}
-          style={{ ...t.bodyEmphasis, color: colors.textPrimary }}
+          style={{
+            color: colors.textPrimary,
+            fontSize: 17,
+            fontWeight: '600',
+            letterSpacing: -0.3,
+          }}
         >
           {fullName}
         </Text>
         <Text
           numberOfLines={1}
           style={{
-            ...t.subheadline,
             color: statusColor,
-            fontWeight: '600',
-            marginTop: 2,
+            fontSize: 14,
+            fontWeight: '700',
+            marginTop: 3,
+            letterSpacing: -0.1,
           }}
         >
           {statusLabel}
@@ -108,9 +121,10 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
         <Text
           numberOfLines={1}
           style={{
-            ...t.caption1,
             color: colors.textSecondary,
-            marginTop: 2,
+            fontSize: 13,
+            fontWeight: '400',
+            marginTop: 3,
             textTransform: 'capitalize',
           }}
         >
@@ -122,11 +136,18 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
 
       {amount ? (
         <View style={styles.amountWrap}>
-          <Text style={{ ...t.title3, color: colors.primary, letterSpacing: -0.3 }}>
+          <Text
+            style={{
+              color: colors.primary,
+              fontSize: 20,
+              fontWeight: '800',
+              letterSpacing: -0.5,
+            }}
+          >
             {amount}
           </Text>
           {lead.deal_installments > 1 ? (
-            <Text style={{ ...t.caption2, color: colors.textSecondary, marginTop: 2 }}>
+            <Text style={{ ...t.caption2, color: colors.textSecondary, marginTop: 3 }}>
               ×{lead.deal_installments}
             </Text>
           ) : null}

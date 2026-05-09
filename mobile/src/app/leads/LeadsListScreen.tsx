@@ -197,7 +197,7 @@ export function LeadsListScreen() {
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
             paddingBottom: 100,
-            gap: spacing.sm,
+            gap: 10,
           }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
