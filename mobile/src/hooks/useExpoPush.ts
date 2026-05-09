@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { Alert } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import { useAuth } from './useAuth'
 import { registerForPushNotifications, savePushToken } from '../services/push'
@@ -31,15 +32,23 @@ export function useExpoPush(
       const { token, error } = await registerForPushNotifications()
       if (cancelled) return
       if (error) {
-        if (__DEV__) console.warn('Push register error:', error)
+        // TEMP DEBUG : visible Alert pour traquer pourquoi certains tokens
+        // ne s'enregistrent pas. À retirer une fois le bug compris.
+        Alert.alert('Push register error', error)
         return
       }
-      if (token) {
-        try {
-          await savePushToken(token)
-        } catch (e) {
-          if (__DEV__) console.warn('savePushToken error:', e)
-        }
+      if (!token) {
+        Alert.alert('Push register error', 'Token Expo null sans erreur')
+        return
+      }
+      try {
+        await savePushToken(token)
+        Alert.alert('Push OK', `Token enregistré : ${token.slice(0, 30)}…`)
+      } catch (e) {
+        Alert.alert(
+          'savePushToken error',
+          e instanceof Error ? e.message : String(e),
+        )
       }
     })()
     return () => {

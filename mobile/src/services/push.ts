@@ -70,20 +70,36 @@ export async function registerForPushNotifications(): Promise<RegisterResult> {
 }
 
 export async function savePushToken(token: string): Promise<void> {
-  // Récup user + workspace
   const {
     data: { user },
+    error: userErr,
   } = await supabase.auth.getUser()
-  if (!user) return
+  if (userErr) throw new Error(`auth.getUser: ${userErr.message}`)
+  if (!user) throw new Error('savePushToken: user null')
+
+  // Workspace_id : on essaie users d'abord (legacy), puis workspace_members
+  // si pas trouvé. Sinon le save serait silencieusement skippé pour les
+  // users multi-tenant (cf get-workspace.ts côté web).
+  let workspaceId: string | undefined
   const { data: profile } = await supabase
     .from('users')
     .select('workspace_id')
     .eq('id', user.id)
     .maybeSingle()
-  const workspaceId = (profile as { workspace_id?: string } | null)?.workspace_id
-  if (!workspaceId) return
+  workspaceId = (profile as { workspace_id?: string } | null)?.workspace_id ?? undefined
+  if (!workspaceId) {
+    const { data: members } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .limit(1)
+    const first = (members ?? [])[0] as { workspace_id?: string } | undefined
+    workspaceId = first?.workspace_id
+  }
+  if (!workspaceId) throw new Error('savePushToken: workspace_id introuvable')
 
-  await supabase.from('push_tokens').upsert(
+  const { error: upErr } = await supabase.from('push_tokens').upsert(
     {
       user_id: user.id,
       workspace_id: workspaceId,
@@ -93,4 +109,5 @@ export async function savePushToken(token: string): Promise<void> {
     },
     { onConflict: 'token' },
   )
+  if (upErr) throw new Error(`upsert push_tokens: ${upErr.message}`)
 }
