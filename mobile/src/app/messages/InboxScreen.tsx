@@ -2,38 +2,17 @@ import React, { useMemo, useState } from 'react'
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
-import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { MessagesStackParamList } from '../../navigation/types'
 import { useConversations } from '../../hooks/useConversations'
-import {
-  NavLarge,
-  SearchField,
-  Segmented,
-  ListSection,
-  ListRow,
-  Avatar,
-} from '../../components/ui'
+import { NavLarge, SearchField, Segmented } from '../../components/ui'
+import { ConvRow } from '../../components/messages/ConvRow'
 import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
-import type { IgConversation } from '@shared/types'
 
 type Nav = NativeStackNavigationProp<MessagesStackParamList, 'Inbox'>
 
 const SEGMENTS = ['Tous', 'Instagram', 'SMS', 'Email']
-
-const formatRelative = (iso: string | null): string => {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const diffMin = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000))
-  if (diffMin < 1) return "à l'instant"
-  if (diffMin < 60) return `${diffMin}min`
-  const diffH = Math.round(diffMin / 60)
-  if (diffH < 24) return `${diffH}h`
-  const diffD = Math.round(diffH / 24)
-  if (diffD < 7) return `${diffD}j`
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
-}
 
 export function InboxScreen() {
   const navigation = useNavigation<Nav>()
@@ -55,75 +34,7 @@ export function InboxScreen() {
     return list
   }, [conversations, segIdx, search])
 
-  const unreadList = filtered.filter((c) => (c.unread_count ?? 0) > 0)
-  const readList = filtered.filter((c) => (c.unread_count ?? 0) === 0)
-  const totalUnread = unreadList.reduce((acc, c) => acc + (c.unread_count ?? 0), 0)
-
-  const renderRow = (conv: IgConversation, isLast: boolean) => {
-    const name = conv.participant_name || conv.participant_username || '—'
-    const unread = (conv.unread_count ?? 0) > 0
-    return (
-      <ListRow
-        key={conv.id}
-        leading={
-          <View>
-            <Avatar name={name} size={44} />
-            {/* badge canal Instagram en bas-droite avatar */}
-            <View
-              style={{
-                position: 'absolute',
-                bottom: -2,
-                right: -2,
-                width: 18,
-                height: 18,
-                borderRadius: 9,
-                backgroundColor: colors.pink,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 2,
-                borderColor: colors.bgSecondary,
-              }}
-            >
-              <Ionicons name="logo-instagram" size={9} color="#fff" />
-            </View>
-            {unread ? (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -2,
-                  left: -2,
-                  width: 10,
-                  height: 10,
-                  borderRadius: 5,
-                  backgroundColor: colors.primary,
-                  borderWidth: 2,
-                  borderColor: colors.bgSecondary,
-                }}
-              />
-            ) : null}
-          </View>
-        }
-        title={name}
-        titleAccessory={
-          unread ? null : null /* timestamp goes in trailing instead */
-        }
-        subtitle={conv.last_message_text || '—'}
-        trailing={
-          <Text style={{ ...t.caption1, color: colors.textSecondary }}>
-            {formatRelative(conv.last_message_at)}
-          </Text>
-        }
-        showChevron={false}
-        separator={!isLast}
-        onPress={() =>
-          navigation.navigate('Conversation', {
-            conversationId: conv.id,
-            leadId: conv.lead_id ?? undefined,
-          })
-        }
-      />
-    )
-  }
+  const totalUnread = filtered.reduce((acc, c) => acc + (c.unread_count ?? 0), 0)
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
@@ -154,21 +65,15 @@ export function InboxScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 100, gap: spacing.xxl }}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: 100,
+            gap: 10,
+          }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
         >
-          {unreadList.length > 0 ? (
-            <ListSection header="Non lus">
-              {unreadList.map((c, i) => renderRow(c, i === unreadList.length - 1))}
-            </ListSection>
-          ) : null}
-          {readList.length > 0 ? (
-            <ListSection header={unreadList.length > 0 ? 'Précédemment' : ''}>
-              {readList.map((c, i) => renderRow(c, i === readList.length - 1))}
-            </ListSection>
-          ) : null}
           {filtered.length === 0 ? (
             <Text
               style={{
@@ -180,7 +85,20 @@ export function InboxScreen() {
             >
               Aucune conversation.
             </Text>
-          ) : null}
+          ) : (
+            filtered.map((c) => (
+              <ConvRow
+                key={c.id}
+                conv={c}
+                onPress={() =>
+                  navigation.navigate('Conversation', {
+                    conversationId: c.id,
+                    leadId: c.lead_id ?? undefined,
+                  })
+                }
+              />
+            ))
+          )}
         </ScrollView>
       )}
     </SafeAreaView>

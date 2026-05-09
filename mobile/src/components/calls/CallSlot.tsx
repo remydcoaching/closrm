@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons'
 import type { CallWithLead } from '../../hooks/useCalls'
 import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
-import { type as t, spacing, radius } from '../../theme/tokens'
 
 interface CallSlotProps {
   call: CallWithLead
@@ -46,9 +45,8 @@ const formatAmount = (n: number | null) =>
         maximumFractionDigits: 0,
       }).format(n)
 
-/** CallSlot — gutter heure à gauche + card sectionnée à droite.
- *  Pattern proche d'Apple Calendar : heure visible avant la card.
- */
+/** CallSlot — chip pill match style LeadRow : pill tint colored par type
+ *  call (purple closing, blue setting), dot status, gutter heure à gauche. */
 export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
   const color = typeColor(call.type)
   const isDone = call.outcome !== 'pending'
@@ -56,67 +54,72 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
   const fullName = lead ? `${lead.first_name} ${lead.last_name}`.trim() || '—' : '—'
   const amount = lead ? formatAmount(lead.deal_amount) : null
   const liveMin = isNext ? minutesUntil(call.scheduled_at) : 0
+  const showLive = isNext && !isDone && liveMin >= 0 && liveMin <= 60
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        gap: spacing.md,
-        opacity: isDone ? 0.5 : pressed ? 0.7 : 1,
-      })}
-    >
-      {/* Gutter heure */}
-      <View style={{ width: 56, alignItems: 'flex-end', paddingTop: 14 }}>
-        <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>
-          {formatTime(call.scheduled_at)}
-        </Text>
-        <Text style={{ ...t.caption1, color: colors.textSecondary }}>
-          {call.duration_seconds ? `${Math.round(call.duration_seconds / 60)} min` : '—'}
-        </Text>
-      </View>
-
-      {/* Card */}
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.bgSecondary,
-          borderRadius: radius.xl,
-          borderLeftWidth: 3,
-          borderLeftColor: color,
-          padding: spacing.md,
-          gap: spacing.sm,
-        }}
-      >
+    <Pressable onPress={onPress}>
+      {({ pressed }) => (
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: spacing.sm,
-            flexWrap: 'wrap',
+            opacity: isDone ? 0.5 : pressed ? 0.7 : 1,
           }}
         >
-          <Text
+          {/* Gutter heure */}
+          <View style={{ width: 56, alignItems: 'flex-end', marginRight: 10 }}>
+            <Text
+              style={{
+                color: colors.textPrimary,
+                fontSize: 17,
+                fontWeight: '700',
+                letterSpacing: -0.4,
+              }}
+            >
+              {formatTime(call.scheduled_at)}
+            </Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '500' }}>
+              {call.duration_seconds ? `${Math.round(call.duration_seconds / 60)} min` : '—'}
+            </Text>
+          </View>
+
+          {/* Chip pill */}
+          <View
             style={{
-              ...t.caption2,
-              color,
-              fontWeight: '700',
-              textTransform: 'uppercase',
-              letterSpacing: 0.6,
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: 999,
+              backgroundColor: color + '14',
+              borderWidth: 1,
+              borderColor: color + '30',
             }}
           >
-            {typeLabel(call.type)}
-          </Text>
-          {isNext && liveMin >= 0 && liveMin <= 60 ? (
+            <View style={{ marginRight: 10 }}>
+              <Avatar name={fullName} size={32} />
+            </View>
+
+            <Text
+              numberOfLines={1}
+              style={{
+                color: colors.textPrimary,
+                fontSize: 15,
+                fontWeight: '600',
+                letterSpacing: -0.24,
+                flexShrink: 1,
+              }}
+            >
+              {fullName}
+            </Text>
+
             <View
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: 4,
-                backgroundColor: colors.primary + '26',
-                borderRadius: 999,
-                paddingHorizontal: 8,
-                paddingVertical: 2,
+                gap: 5,
+                marginLeft: 10,
               }}
             >
               <View
@@ -124,66 +127,56 @@ export function CallSlot({ call, onPress, isNext }: CallSlotProps) {
                   width: 6,
                   height: 6,
                   borderRadius: 3,
-                  backgroundColor: colors.primary,
+                  backgroundColor: color,
                 }}
               />
               <Text
+                numberOfLines={1}
                 style={{
-                  ...t.caption2,
-                  color: colors.primary,
+                  color,
+                  fontSize: 13,
                   fontWeight: '700',
-                  letterSpacing: 0.4,
+                  letterSpacing: -0.1,
                 }}
               >
-                LIVE DANS {liveMin} MIN
+                {showLive ? `Live · ${liveMin}min` : typeLabel(call.type)}
               </Text>
             </View>
-          ) : null}
-        </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <Avatar name={fullName} size={40} />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text
-              numberOfLines={1}
-              style={{ ...t.bodyEmphasis, color: colors.textPrimary }}
-            >
-              {fullName}
-            </Text>
-            {call.notes ? (
+            <View style={{ flex: 1 }} />
+
+            {amount ? (
               <Text
-                numberOfLines={1}
-                style={{ ...t.subheadline, color: colors.textSecondary, marginTop: 2 }}
+                style={{
+                  color: colors.primary,
+                  fontSize: 15,
+                  fontWeight: '800',
+                  letterSpacing: -0.24,
+                  marginLeft: 8,
+                }}
               >
-                {call.notes}
+                {amount}
               </Text>
             ) : null}
-          </View>
-          {amount ? (
-            <Text style={{ ...t.bodyEmphasis, color: colors.primary }}>{amount}</Text>
-          ) : null}
-        </View>
 
-        {isNext && !isDone ? (
-          <Pressable
-            onPress={onPress}
-            style={({ pressed }) => ({
-              alignSelf: 'flex-start',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              backgroundColor: colors.primary,
-              borderRadius: radius.md,
-              paddingVertical: 6,
-              paddingHorizontal: 12,
-              opacity: pressed ? 0.8 : 1,
-            })}
-          >
-            <Ionicons name="rocket" size={13} color="#000" />
-            <Text style={{ ...t.subheadline, color: '#000', fontWeight: '700' }}>Préparer</Text>
-          </Pressable>
-        ) : null}
-      </View>
+            {showLive ? (
+              <View
+                style={{
+                  marginLeft: 8,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="rocket" size={14} color="#000" />
+              </View>
+            ) : null}
+          </View>
+        </View>
+      )}
     </Pressable>
   )
 }

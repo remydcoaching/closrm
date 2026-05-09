@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { useNotifications } from '../../hooks/useNotifications'
-import { NavLarge, FilterChips, ListSection, ListRow } from '../../components/ui'
+import { NavLarge, FilterChips } from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
 import type { AppNotification, AppNotificationType } from '@shared/types'
@@ -62,6 +62,83 @@ const dayLabel = (d: Date): string => {
   yesterday.setDate(yesterday.getDate() - 1)
   if (sameDay(d, yesterday)) return 'Hier'
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+}
+
+function NotifChip({ n }: { n: AppNotification }) {
+  const { icon, color } = iconAndColor(n.type)
+  const unread = !n.read
+
+  return (
+    <Pressable>
+      {({ pressed }) => (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 10,
+            paddingHorizontal: 12,
+            borderRadius: 999,
+            backgroundColor: color + '14',
+            borderWidth: 1,
+            borderColor: color + '30',
+            opacity: pressed ? 0.7 : 1,
+          }}
+        >
+          {/* Icon box */}
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: color + '33',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 10,
+            }}
+          >
+            <Ionicons name={icon} size={18} color={color} />
+          </View>
+
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                color: colors.textPrimary,
+                fontSize: 15,
+                fontWeight: unread ? '700' : '600',
+                letterSpacing: -0.24,
+              }}
+            >
+              {n.title}
+            </Text>
+            {n.subtitle ? (
+              <Text
+                numberOfLines={1}
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: 13,
+                  marginTop: 2,
+                }}
+              >
+                {n.subtitle}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={{ alignItems: 'flex-end', gap: 4, marginLeft: 8 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '500' }}>
+              {formatRelative(n.created_at)}
+            </Text>
+            {unread ? (
+              <View
+                style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }}
+              />
+            ) : null}
+          </View>
+        </View>
+      )}
+    </Pressable>
+  )
 }
 
 export function NotificationsScreen() {
@@ -131,7 +208,11 @@ export function NotificationsScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 80, gap: spacing.xxl }}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: 80,
+            gap: spacing.lg,
+          }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
@@ -149,51 +230,22 @@ export function NotificationsScreen() {
             </Text>
           ) : (
             grouped.map(([day, items]) => (
-              <ListSection key={day} header={day}>
-                {items.map((n, i) => {
-                  const { icon, color } = iconAndColor(n.type)
-                  return (
-                    <ListRow
-                      key={n.id}
-                      leading={
-                        <View
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 10,
-                            backgroundColor: color + '22',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Ionicons name={icon} size={18} color={color} />
-                        </View>
-                      }
-                      title={n.title}
-                      subtitle={n.subtitle ?? undefined}
-                      trailing={
-                        <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                          <Text style={{ ...t.caption1, color: colors.textSecondary }}>
-                            {formatRelative(n.created_at)}
-                          </Text>
-                          {!n.read ? (
-                            <View
-                              style={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: 4,
-                                backgroundColor: colors.primary,
-                              }}
-                            />
-                          ) : null}
-                        </View>
-                      }
-                      separator={i < items.length - 1}
-                      showChevron={false}
-                    />
-                  )
-                })}
-              </ListSection>
+              <View key={day} style={{ gap: 10 }}>
+                <Text
+                  style={{
+                    ...t.footnote,
+                    color: colors.textSecondary,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                    marginLeft: 8,
+                  }}
+                >
+                  {day}
+                </Text>
+                {items.map((n) => (
+                  <NotifChip key={n.id} n={n} />
+                ))}
+              </View>
             ))
           )}
         </ScrollView>
