@@ -1,5 +1,6 @@
 import React from 'react'
 import { Pressable, View, Text, StyleSheet } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import type { Lead } from '@shared/types'
 import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
@@ -9,7 +10,7 @@ import { statusConfig } from '../../theme/status'
 interface LeadRowProps {
   lead: Lead
   onPress?: () => void
-  /** Si true, rendu en card individuelle (bg secondary + radius + accent border). */
+  /** Si true, rendu en card individuelle avec glass effect. */
   asCard?: boolean
 }
 
@@ -35,6 +36,20 @@ const formatRelative = (iso: string | null): string => {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    // Shadow noire pour décoller la card — l'overflow:hidden ne casse pas
+    // le shadow puisqu'il est appliqué au container parent (pas au gradient).
+  },
+  shadowContainer: {
+    borderRadius: radius.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 3,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -42,9 +57,15 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: 16,
   },
-  card: {
-    backgroundColor: colors.bgSecondary,
-    borderRadius: radius.xl,
+  // Inner top highlight — fine ligne blanche très transparente qui simule
+  // le bord lumineux du verre Apple (iOS Liquid Glass / Vibrancy).
+  topHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: '#ffffff10',
   },
   avatarWrap: {
     marginRight: 14,
@@ -59,8 +80,12 @@ const styles = StyleSheet.create({
   },
 })
 
-/** Lead row pattern Pipedrive Mobile — flexDirection 'row' garanti via
- *  StyleSheet (pas de spread de fonction qui casse parfois le layout). */
+/** Lead row — pattern Pipedrive + glass Apple subtle.
+ *  - Linear gradient subtile top→bottom (effet lift)
+ *  - Top highlight 1px blanc 6% (simule bord lumineux verre iOS)
+ *  - Border gauche 4pt couleur status
+ *  - Shadow noire 10pt pour décoller du fond
+ */
 export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
   const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
   const amount = formatAmount(lead.deal_amount)
@@ -71,25 +96,96 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
     lead.last_activity_at ?? lead.updated_at ?? lead.created_at,
   )
 
+  if (!asCard) {
+    // Mode list-row simple (pas de card)
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.row,
+          { backgroundColor: pressed ? '#ffffff10' : 'transparent' },
+        ]}
+      >
+        <RowContent
+          fullName={fullName}
+          statusLabel={statusLabel}
+          statusColor={statusColor}
+          sourceLabel={sourceLabel}
+          phone={lead.phone}
+          activity={activity}
+          amount={amount}
+          installments={lead.deal_installments}
+        />
+      </Pressable>
+    )
+  }
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.row,
-        asCard && styles.card,
-        asCard && {
-          // Border gauche 4pt accent + ombre pour décoller la card du fond
-          borderLeftWidth: 4,
-          borderLeftColor: statusColor,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.4,
-          shadowRadius: 8,
-          elevation: 2,
-        },
-      ]}
-      android_ripple={{ color: '#ffffff10' }}
-    >
+    <View style={styles.shadowContainer}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.container,
+          {
+            opacity: pressed ? 0.85 : 1,
+            transform: [{ scale: pressed ? 0.99 : 1 }],
+          },
+        ]}
+      >
+        {/* Glass gradient bg — top plus clair (#2c2c2e) → bottom plus
+            sombre (#1c1c1e). Donne l'illusion d'une surface vitrée. */}
+        <LinearGradient
+          colors={['#2a2a2c', '#1c1c1e']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={[
+            styles.row,
+            {
+              borderLeftWidth: 4,
+              borderLeftColor: statusColor,
+            },
+          ]}
+        >
+          {/* Highlight top 1px — bord lumineux du verre */}
+          <View style={styles.topHighlight} />
+
+          <RowContent
+            fullName={fullName}
+            statusLabel={statusLabel}
+            statusColor={statusColor}
+            sourceLabel={sourceLabel}
+            phone={lead.phone}
+            activity={activity}
+            amount={amount}
+            installments={lead.deal_installments}
+          />
+        </LinearGradient>
+      </Pressable>
+    </View>
+  )
+}
+
+function RowContent({
+  fullName,
+  statusLabel,
+  statusColor,
+  sourceLabel,
+  phone,
+  activity,
+  amount,
+  installments,
+}: {
+  fullName: string
+  statusLabel: string
+  statusColor: string
+  sourceLabel: string
+  phone: string | null
+  activity: string
+  amount: string | null
+  installments: number
+}) {
+  return (
+    <>
       <View style={styles.avatarWrap}>
         <Avatar name={fullName} size={48} />
       </View>
@@ -129,7 +225,7 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
           }}
         >
           {sourceLabel}
-          {lead.phone ? ` · ${lead.phone}` : ''}
+          {phone ? ` · ${phone}` : ''}
           {activity ? ` · ${activity}` : ''}
         </Text>
       </View>
@@ -146,13 +242,13 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
           >
             {amount}
           </Text>
-          {lead.deal_installments > 1 ? (
+          {installments > 1 ? (
             <Text style={{ ...t.caption2, color: colors.textSecondary, marginTop: 3 }}>
-              ×{lead.deal_installments}
+              ×{installments}
             </Text>
           ) : null}
         </View>
       ) : null}
-    </Pressable>
+    </>
   )
 }
