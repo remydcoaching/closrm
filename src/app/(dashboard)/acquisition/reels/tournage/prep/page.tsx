@@ -1,87 +1,28 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-interface Phrase {
+interface ReelShot {
   id: string
+  workspace_id: string
+  social_post_id: string
+  position: number
   text: string
   location: string | null
-  aiSuggested: string | null
+  shot_note: string | null
   done: boolean
+  skipped: boolean
+  ai_suggested_location: string | null
 }
 
-interface Reel {
+interface SocialPost {
   id: string
-  title: string
-  hook: string
-  phrases: Phrase[]
-}
-
-interface PrepState {
-  reels: Reel[]
-  locations: string[]
-  filter: 'all' | 'unplaced' | 'placed'
-  search: string
-  collapsedReels: Record<string, boolean>
-  aiApplied: boolean
-}
-
-const STORAGE_KEY = 'closrm-reels-prep-v0'
-
-function defaultState(): PrepState {
-  const reelTopics = [
-    {
-      title: 'Dos large en 3 exos',
-      hook: 'Le truc que personne dit pour avoir un dos en V',
-      phrases: [
-        { text: "Le truc qui change tout c'est de descendre lentement à la poulie", suggested: 'Poulie' },
-        { text: 'Vraiment lentement, genre 4 secondes', suggested: null },
-        { text: 'Sur le banc tu vois la barre, tu la fixes pas', suggested: 'Banc plat' },
-        { text: 'Là tu vas sentir le brûler dans le grand dorsal en tirant', suggested: 'Poulie' },
-        { text: "La position de départ c'est genoux fléchis au sol", suggested: 'Sol' },
-        { text: "Et tu vois ton dos s'élargir devant le miroir", suggested: 'Devant le miroir' },
-      ],
-    },
-    {
-      title: 'Pull-over technique',
-      hook: "L'exo que tout le monde fait mal",
-      phrases: [
-        { text: "L'erreur la plus fréquente c'est de plier les coudes sur le banc", suggested: 'Banc plat' },
-        { text: 'La vraie technique : bras quasi tendus à la poulie', suggested: 'Poulie' },
-        { text: "Et là tu sens ton dos qui s'étire au sol", suggested: 'Sol' },
-      ],
-    },
-    {
-      title: 'Routine cardio matin',
-      hook: '15 min pour réveiller le métabolisme',
-      phrases: [
-        { text: "Première chose le matin : 1 verre d'eau devant le miroir", suggested: 'Devant le miroir' },
-        { text: 'Puis 20 burpees au sol', suggested: 'Sol' },
-        { text: 'Et on finit par 10 tractions à la poulie', suggested: 'Poulie' },
-      ],
-    },
-  ]
-  const reels: Reel[] = reelTopics.map((t, i) => ({
-    id: `r${i}`,
-    title: t.title,
-    hook: t.hook,
-    phrases: t.phrases.map((p, j) => ({
-      id: `r${i}-p${j}`,
-      text: p.text,
-      location: null,
-      aiSuggested: p.suggested,
-      done: false,
-    })),
-  }))
-  return {
-    reels,
-    locations: ['Poulie', 'Banc plat', 'Sol', 'Devant le miroir'],
-    filter: 'all',
-    search: '',
-    collapsedReels: {},
-    aiApplied: false,
-  }
+  title: string | null
+  hook: string | null
+  script: string | null
+  content_kind: string | null
 }
 
 function placeIcon(loc: string | null): string {
@@ -96,125 +37,145 @@ function placeIcon(loc: string | null): string {
 }
 
 export default function PrepTournagePage() {
-  const [state, setState] = useState<PrepState | null>(null)
+  const searchParams = useSearchParams()
+  const reelParam = searchParams.get('reel')
+
+  const [reels, setReels] = useState<SocialPost[]>([])
+  const [shots, setShots] = useState<ReelShot[]>([])
+  const [knownLocations, setKnownLocations] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [filter, setFilter] = useState<'all' | 'unplaced' | 'placed'>('all')
+  const [search, setSearch] = useState('')
+  const [collapsedReels, setCollapsedReels] = useState<Record<string, boolean>>({})
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [addingLocation, setAddingLocation] = useState(false)
+  const [newLocationName, setNewLocationName] = useState('')
 
-  useEffect(() => {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
-    if (raw) {
-      try {
-        setState(JSON.parse(raw))
-        return
-      } catch {}
-    }
-    setState(defaultState())
-  }, [])
+  const reelIds = useMemo(() => {
+    if (!reelParam) return null
+    return reelParam.split(',').map(s => s.trim()).filter(Boolean)
+  }, [reelParam])
 
-  useEffect(() => {
-    if (state && typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-    }
-  }, [state])
+  // Charge les reels + shots + locations
+  const loadAll = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      // 1. Reels
+      const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=100')
+      if (!reelsRes.ok) throw new Error(`Reels fetch failed: ${reelsRes.status}`)
+      const reelsJson = await reelsRes.json()
+      const allReels: SocialPost[] = reelsJson.data ?? []
+      const filtered = reelIds ? allReels.filter(r => reelIds.includes(r.id)) : allReels
+      setReels(filtered)
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const onClick = () => setOpenDropdown(null)
-    if (openDropdown) {
-      const t = setTimeout(() => document.addEventListener('click', onClick), 50)
-      return () => {
-        clearTimeout(t)
-        document.removeEventListener('click', onClick)
+      // 2. Sync les shots des reels visibles (split script → reel_shots)
+      await Promise.all(filtered.map(r =>
+        fetch('/api/reel-shots/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ social_post_id: r.id }),
+        }).catch(() => null)
+      ))
+
+      // 3. Charge les shots
+      let shotsUrl = '/api/reel-shots'
+      if (filtered.length > 0) shotsUrl += `?social_post_ids=${filtered.map(r => r.id).join(',')}`
+      const shotsRes = await fetch(shotsUrl)
+      if (!shotsRes.ok) throw new Error(`Shots fetch failed: ${shotsRes.status}`)
+      const shotsJson = await shotsRes.json()
+      setShots(shotsJson.data ?? [])
+
+      // 4. Locations autocomplete
+      const locRes = await fetch('/api/reel-shots/locations')
+      if (locRes.ok) {
+        const locJson = await locRes.json()
+        setKnownLocations(locJson.data ?? [])
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur de chargement')
+    } finally {
+      setLoading(false)
     }
-  }, [openDropdown])
+  }, [reelIds])
 
-  const totals = useMemo(() => {
-    if (!state) return { total: 0, placed: 0 }
-    let total = 0, placed = 0
-    state.reels.forEach(r => r.phrases.forEach(p => {
-      total++
-      if (p.location) placed++
-    }))
-    return { total, placed }
-  }, [state])
+  useEffect(() => { loadAll() }, [loadAll])
 
-  if (!state) {
-    return <div style={{ padding: 40, color: '#888' }}>Chargement…</div>
-  }
-
-  function update(fn: (s: PrepState) => PrepState) {
-    setState(prev => prev ? fn(prev) : prev)
-  }
-
-  function setPhraseLocation(reelId: string, phraseId: string, location: string | null) {
-    update(s => ({
-      ...s,
-      reels: s.reels.map(r => r.id === reelId ? {
-        ...r,
-        phrases: r.phrases.map(p => p.id === phraseId ? { ...p, location } : p),
-      } : r),
-      locations: location && !s.locations.includes(location) ? [...s.locations, location] : s.locations,
-    }))
-  }
-
-  function aiSuggestAll() {
-    update(s => {
-      let count = 0
-      const reels = s.reels.map(r => ({
-        ...r,
-        phrases: r.phrases.map(p => {
-          if (!p.location && p.aiSuggested) { count++; return { ...p, location: p.aiSuggested } }
-          return p
-        }),
-      }))
-      setTimeout(() => alert(`✨ IA a placé ${count} phrase(s).`), 50)
-      return { ...s, reels, aiApplied: true }
+  // Update local + API
+  async function updateShot(id: string, patch: Partial<Pick<ReelShot, 'location' | 'shot_note' | 'done' | 'skipped'>>) {
+    setShots(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s))
+    const res = await fetch(`/api/reel-shots/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
     })
-  }
-
-  function batchAssign(location: string | null) {
-    update(s => ({
-      ...s,
-      reels: s.reels.map(r => ({
-        ...r,
-        phrases: r.phrases.map(p => selectedIds.includes(p.id) ? { ...p, location } : p),
-      })),
-      locations: location && !s.locations.includes(location) ? [...s.locations, location] : s.locations,
-    }))
-    setSelectedIds([])
-  }
-
-  function addLocation() {
-    const name = prompt('Nom du nouveau lieu :')
-    if (name && name.trim()) {
-      update(s => ({ ...s, locations: [...s.locations, name.trim()] }))
+    if (!res.ok) {
+      // rollback en cas d'erreur
+      loadAll()
+    } else if (patch.location && !knownLocations.includes(patch.location)) {
+      setKnownLocations(prev => [...prev, patch.location!].sort())
     }
   }
 
-  function clearAll() {
-    if (!confirm('Vider toutes les assignations ?')) return
-    update(s => ({
-      ...s,
-      reels: s.reels.map(r => ({ ...r, phrases: r.phrases.map(p => ({ ...p, location: null })) })),
-      aiApplied: false,
-    }))
-  }
-
-  function resetAll() {
-    if (!confirm('Reset complet (regénère 3 reels demo) ?')) return
-    setState(defaultState())
+  async function batchUpdate(ids: string[], patch: Partial<Pick<ReelShot, 'location' | 'shot_note' | 'done' | 'skipped'>>) {
+    setShots(prev => prev.map(s => ids.includes(s.id) ? { ...s, ...patch } : s))
+    const res = await fetch('/api/reel-shots/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, patch }),
+    })
+    if (!res.ok) {
+      loadAll()
+    } else if (patch.location && !knownLocations.includes(patch.location)) {
+      setKnownLocations(prev => [...prev, patch.location!].sort())
+    }
     setSelectedIds([])
   }
 
   function toggleSelected(id: string) {
-    setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id])
+    setSelectedIds(s => s.includes(id) ? s.filter(i => i !== id) : [...s, id])
+  }
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!openDropdown) return
+    const onClick = () => setOpenDropdown(null)
+    const t = setTimeout(() => document.addEventListener('click', onClick), 50)
+    return () => { clearTimeout(t); document.removeEventListener('click', onClick) }
+  }, [openDropdown])
+
+  const totals = useMemo(() => {
+    let total = 0, placed = 0
+    shots.forEach(s => { total++; if (s.location) placed++ })
+    return { total, placed }
+  }, [shots])
+
+  if (loading) return <div style={{ padding: 40, color: '#888' }}>Chargement…</div>
+  if (error) return (
+    <div style={{ padding: 40, color: '#E53E3E' }}>
+      Erreur : {error}
+      <button onClick={loadAll} style={{ marginLeft: 12, padding: '6px 12px', background: '#E53E3E', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>↻ Réessayer</button>
+    </div>
+  )
+
+  if (reels.length === 0) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
+        <div style={{ fontSize: 14, color: '#fff', marginBottom: 8 }}>Aucun reel à préparer</div>
+        <div style={{ fontSize: 12 }}>
+          Crée d&apos;abord un post avec le type &quot;Reel&quot; depuis le composer.
+        </div>
+      </div>
+    )
   }
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1100, margin: '0 auto' }}>
-
-      {/* Banner */}
       <div style={{
         background: '#141414', border: '1px solid #262626', borderLeft: '3px solid #FF0000',
         borderRadius: 10, padding: '14px 18px', marginBottom: 16,
@@ -223,160 +184,162 @@ export default function PrepTournagePage() {
         <div style={{ fontSize: 22, fontWeight: 800, color: '#FF0000', minWidth: 32 }}>📋</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, color: '#fff', fontWeight: 700, marginBottom: 2 }}>
-            Préparer mon tournage
+            {reelIds ? `Préparer ${reels.length} reel${reels.length > 1 ? 's' : ''}` : 'Préparer mon tournage'}
           </div>
           <div style={{ fontSize: 12, color: '#888' }}>
-            V0 — données en localStorage uniquement, aucune écriture DB. Les boutons IA/lieux fonctionnent vraiment.
+            Assigne un lieu à chaque phrase. {reelIds && (
+              <Link href="/acquisition/reels/tournage/prep" style={{ color: '#FF0000', textDecoration: 'underline' }}>
+                Voir tous les reels →
+              </Link>
+            )}
           </div>
         </div>
-        <Link href="/acquisition/reels/tournage/jour-j" style={{
+        <Link href={reelParam ? `/acquisition/reels/tournage/jour-j?reel=${reelParam}` : '/acquisition/reels/tournage/jour-j'} style={{
           padding: '8px 14px', fontSize: 12, fontWeight: 600,
           color: '#FF0000', background: 'rgba(255,0,0,0.08)',
           border: '1px solid rgba(255,0,0,0.25)', borderRadius: 8, textDecoration: 'none',
-        }}>
-          🎬 Jour J →
-        </Link>
+        }}>🎬 Jour J →</Link>
       </div>
 
-      {/* Toolbar */}
       <div style={{
         background: '#141414', border: '1px solid #262626', borderRadius: 10,
         padding: '12px 14px', marginBottom: 14,
         display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
       }}>
-        <button onClick={aiSuggestAll} style={{
-          padding: '9px 16px', background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
-          color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700,
-          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-        }}>✨ {state.aiApplied ? 'Re-suggérer' : 'Suggérer auto (IA)'}</button>
-
-        <button onClick={addLocation} style={btnSecondary}>+ Lieu</button>
-        <button onClick={clearAll} style={btnSecondary}>↻ Vider</button>
-        <button onClick={resetAll} style={{ ...btnSecondary, color: '#E53E3E', borderColor: '#3a1a1a' }}>
-          ↻ Reset demo
-        </button>
-
+        <button onClick={() => setAddingLocation(true)} style={btnSecondary}>+ Lieu</button>
+        <button onClick={loadAll} style={btnSecondary}>↻ Recharger</button>
         <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
           {totals.placed} / {totals.total} placées · <b style={{ color: '#fff' }}>{totals.total - totals.placed}</b> restantes
         </span>
       </div>
 
-      {/* Filters */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 0', flexWrap: 'wrap', marginBottom: 8 }}>
         {(['all', 'unplaced', 'placed'] as const).map(f => {
           const labels = { all: 'Toutes', unplaced: '🔴 Non placées', placed: '✓ Placées' }
-          const isActive = state.filter === f
+          const isActive = filter === f
           return (
-            <button key={f}
-              onClick={() => update(s => ({ ...s, filter: f }))}
-              style={{
-                padding: '6px 12px',
-                background: isActive ? '#FF0000' : '#141414',
-                border: `1px solid ${isActive ? '#FF0000' : '#262626'}`,
-                borderRadius: 99, fontSize: 11,
-                color: isActive ? '#fff' : '#888', cursor: 'pointer',
-              }}>
-              {labels[f]}
-            </button>
+            <button key={f} onClick={() => setFilter(f)} style={{
+              padding: '6px 12px',
+              background: isActive ? '#FF0000' : '#141414',
+              border: `1px solid ${isActive ? '#FF0000' : '#262626'}`,
+              borderRadius: 99, fontSize: 11,
+              color: isActive ? '#fff' : '#888', cursor: 'pointer',
+            }}>{labels[f]}</button>
           )
         })}
-        <input
-          placeholder="🔎 Rechercher dans les phrases…"
-          value={state.search}
-          onChange={e => update(s => ({ ...s, search: e.target.value }))}
+        <input placeholder="🔎 Rechercher dans les phrases…"
+          value={search} onChange={e => setSearch(e.target.value)}
           style={{
             flex: 1, minWidth: 200, maxWidth: 320,
             padding: '8px 12px', background: '#141414', border: '1px solid #262626',
             borderRadius: 8, color: '#fff', fontSize: 12, outline: 'none',
-          }}
-        />
+          }} />
       </div>
 
-      {/* Reel groups */}
-      {state.reels.map(reel => {
-        const isCollapsed = !!state.collapsedReels[reel.id]
-        let phrases = reel.phrases
-        if (state.filter === 'unplaced') phrases = phrases.filter(p => !p.location)
-        if (state.filter === 'placed') phrases = phrases.filter(p => p.location)
-        if (state.search) {
-          const s = state.search.toLowerCase()
-          phrases = phrases.filter(p => p.text.toLowerCase().includes(s))
+      {reels.map(reel => {
+        const reelShots = shots.filter(s => s.social_post_id === reel.id).sort((a, b) => a.position - b.position)
+        let visible = reelShots
+        if (filter === 'unplaced') visible = visible.filter(s => !s.location)
+        if (filter === 'placed') visible = visible.filter(s => s.location)
+        if (search) {
+          const q = search.toLowerCase()
+          visible = visible.filter(s => s.text.toLowerCase().includes(q))
         }
-        if (phrases.length === 0) return null
+        if (visible.length === 0) return null
 
-        const placedCount = reel.phrases.filter(p => p.location).length
-        const total = reel.phrases.length
+        const placedCount = reelShots.filter(s => s.location).length
+        const total = reelShots.length
         const pct = total ? (placedCount / total) * 100 : 0
+        const isCollapsed = !!collapsedReels[reel.id]
 
         return (
           <div key={reel.id} style={{
             background: '#141414', border: '1px solid #262626', borderRadius: 10,
             marginBottom: 10, overflow: 'hidden',
           }}>
-            <div
-              onClick={() => update(s => ({ ...s, collapsedReels: { ...s.collapsedReels, [reel.id]: !isCollapsed } }))}
-              style={{
-                padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', cursor: 'pointer', userSelect: 'none',
-                background: '#1a1a1a', borderBottom: isCollapsed ? 'none' : '1px solid #262626',
-              }}>
+            <div onClick={() => setCollapsedReels(prev => ({ ...prev, [reel.id]: !isCollapsed }))} style={{
+              padding: '12px 16px', display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', cursor: 'pointer', userSelect: 'none',
+              background: '#1a1a1a', borderBottom: isCollapsed ? 'none' : '1px solid #262626',
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ color: '#666', fontSize: 11 }}>{isCollapsed ? '▸' : '▾'}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{reel.title}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{reel.title || '(sans titre)'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <span style={{ fontSize: 11, color: '#888' }}>{placedCount} / {total} placées</span>
                 <div style={{ width: 60, height: 4, background: '#262626', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: '#38A169', transition: 'width 0.2s' }} />
+                  <div style={{ width: `${pct}%`, height: '100%', background: '#38A169' }} />
                 </div>
               </div>
             </div>
 
             {!isCollapsed && (
               <div style={{ padding: '4px 0' }}>
-                {phrases.map(p => {
-                  const isSelected = selectedIds.includes(p.id)
-                  const showAi = p.aiSuggested && !p.location && state.aiApplied === false
-                  const display = p.location
+                {visible.map(s => {
+                  const isSelected = selectedIds.includes(s.id)
                   return (
-                    <div key={p.id} style={{
+                    <div key={s.id} style={{
                       display: 'grid', gridTemplateColumns: '24px 1fr 200px',
                       gap: 12, alignItems: 'center', padding: '8px 16px',
                       borderBottom: '1px solid #1a1a1a',
                       background: isSelected ? 'rgba(255,0,0,0.06)' : 'transparent',
                       fontSize: 13,
                     }}>
-                      <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(p.id)}
+                      <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(s.id)}
                         style={{ width: 16, height: 16, accentColor: '#FF0000' }} />
-                      <div style={{
-                        color: p.location ? '#fff' : '#ccc', lineHeight: 1.4,
-                        overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>{p.text}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{
+                          color: s.location ? '#fff' : '#ccc', lineHeight: 1.4,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          <span style={{ color: '#555', fontSize: 11, marginRight: 6 }}>
+                            {s.position + 1}/{total}
+                          </span>
+                          {s.text}
+                        </div>
+                        {(s.shot_note || editingNoteId === s.id) ? (
+                          <input type="text"
+                            autoFocus={editingNoteId === s.id && !s.shot_note}
+                            placeholder="Cadrage / action…"
+                            defaultValue={s.shot_note ?? ''}
+                            onClick={e => e.stopPropagation()}
+                            onBlur={(e) => { setEditingNoteId(null); updateShot(s.id, { shot_note: e.target.value || null }) }}
+                            onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur() }}
+                            style={{
+                              width: '100%', marginTop: 4,
+                              padding: '3px 0', background: 'transparent', border: 'none',
+                              color: '#d69e2e', fontSize: 11, outline: 'none', fontStyle: 'italic',
+                            }}
+                          />
+                        ) : (
+                          <button onClick={(e) => { e.stopPropagation(); setEditingNoteId(s.id) }} style={{
+                            marginTop: 2, padding: 0, background: 'transparent', border: 'none',
+                            color: '#3a3a3a', fontSize: 10, cursor: 'pointer',
+                          }}>🎥 + cadrage</button>
+                        )}
+                      </div>
 
-                      {/* Place picker */}
                       <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
-                        <button
-                          onClick={() => setOpenDropdown(openDropdown === p.id ? null : p.id)}
-                          style={{
-                            width: '100%', padding: '7px 10px',
-                            background: '#0a0a0a',
-                            border: `1px ${display ? 'solid' : 'dashed'} ${showAi ? 'rgba(139,92,246,0.4)' : '#262626'}`,
-                            borderRadius: 7, color: display ? '#fff' : '#555', fontSize: 12,
-                            cursor: 'pointer', textAlign: 'left',
-                            display: 'flex', alignItems: 'center', gap: 6,
-                          }}>
-                          <span>{placeIcon(display)}</span>
+                        <button onClick={() => setOpenDropdown(openDropdown === s.id ? null : s.id)} style={{
+                          width: '100%', padding: '7px 10px', background: '#0a0a0a',
+                          border: `1px ${s.location ? 'solid' : 'dashed'} #262626`,
+                          borderRadius: 7, color: s.location ? '#fff' : '#555', fontSize: 12,
+                          cursor: 'pointer', textAlign: 'left',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}>
+                          <span>{placeIcon(s.location)}</span>
                           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {display || (showAi ? `✨ ${p.aiSuggested} (IA)` : 'Choisir un lieu')}
+                            {s.location || 'Choisir un lieu'}
                           </span>
                           <span style={{ opacity: 0.4, fontSize: 9 }}>▾</span>
                         </button>
 
-                        {openDropdown === p.id && (
+                        {openDropdown === s.id && (
                           <PlaceDropdown
-                            phrase={p}
-                            locations={state.locations}
-                            onPick={(loc) => { setPhraseLocation(reel.id, p.id, loc); setOpenDropdown(null) }}
+                            current={s.location}
+                            locations={knownLocations}
+                            onPick={(loc) => { updateShot(s.id, { location: loc }); setOpenDropdown(null) }}
                             onClose={() => setOpenDropdown(null)}
                           />
                         )}
@@ -390,7 +353,6 @@ export default function PrepTournagePage() {
         )
       })}
 
-      {/* Floating batch bar */}
       {selectedIds.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
@@ -406,7 +368,7 @@ export default function PrepTournagePage() {
             onChange={e => {
               const v = e.target.value
               if (!v) return
-              batchAssign(v === '__clear__' ? null : v)
+              batchUpdate(selectedIds, { location: v === '__clear__' ? null : v })
               e.target.value = ''
             }}
             style={{
@@ -414,21 +376,71 @@ export default function PrepTournagePage() {
               borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none',
             }}>
             <option value="">Choisir lieu…</option>
-            {state.locations.map(l => <option key={l} value={l}>{l}</option>)}
+            {knownLocations.map(l => <option key={l} value={l}>{l}</option>)}
             <option value="__clear__">↻ Retirer le lieu</option>
           </select>
           <button onClick={() => setSelectedIds([])} style={btnSecondary}>✕ Désélectionner</button>
+        </div>
+      )}
+
+      {addingLocation && (
+        <div onClick={() => setAddingLocation(false)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: 360, maxWidth: 'calc(100vw - 32px)',
+            background: '#141414', border: '1px solid #262626',
+            borderRadius: 12, padding: 20,
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 }}>Nouveau lieu</div>
+            <div style={{ fontSize: 11, color: '#888', marginBottom: 14 }}>
+              Ex : Poulie, Banc plat, Devant le miroir, Plage…
+            </div>
+            <input autoFocus type="text" value={newLocationName}
+              onChange={e => setNewLocationName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  if (newLocationName.trim()) {
+                    setKnownLocations(prev => [...prev, newLocationName.trim()].sort())
+                    setAddingLocation(false); setNewLocationName('')
+                  }
+                }
+                if (e.key === 'Escape') setAddingLocation(false)
+              }}
+              placeholder="Nom du lieu…"
+              style={{
+                width: '100%', padding: '10px 12px',
+                background: '#0a0a0a', border: '1px solid #262626',
+                borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none',
+                marginBottom: 14,
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setAddingLocation(false)} style={btnSecondary}>Annuler</button>
+              <button onClick={() => {
+                if (newLocationName.trim()) {
+                  setKnownLocations(prev => [...prev, newLocationName.trim()].sort())
+                  setAddingLocation(false); setNewLocationName('')
+                }
+              }} disabled={!newLocationName.trim()} style={{
+                padding: '8px 16px', background: newLocationName.trim() ? '#FF0000' : '#3a1a1a',
+                color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 700,
+                cursor: newLocationName.trim() ? 'pointer' : 'not-allowed',
+              }}>+ Créer</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-function PlaceDropdown({
-  phrase, locations, onPick, onClose,
-}: {
-  phrase: Phrase; locations: string[];
-  onPick: (loc: string | null) => void; onClose: () => void
+function PlaceDropdown({ current, locations, onPick, onClose }: {
+  current: string | null
+  locations: string[]
+  onPick: (loc: string | null) => void
+  onClose: () => void
 }) {
   const [filter, setFilter] = useState('')
   const filtered = locations.filter(l => l.toLowerCase().includes(filter.toLowerCase()))
@@ -441,10 +453,7 @@ function PlaceDropdown({
       overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
       zIndex: 100, maxHeight: 280, overflowY: 'auto',
     }}>
-      <input
-        autoFocus
-        placeholder="Filtrer ou créer un lieu…"
-        value={filter}
+      <input autoFocus placeholder="Filtrer ou créer…" value={filter}
         onChange={e => setFilter(e.target.value)}
         onKeyDown={e => {
           if (e.key === 'Escape') onClose()
@@ -465,12 +474,7 @@ function PlaceDropdown({
           <span>+</span><span>Créer &laquo; {filter} &raquo;</span>
         </div>
       )}
-      {phrase.aiSuggested && phrase.location !== phrase.aiSuggested && (
-        <div onClick={() => onPick(phrase.aiSuggested)} style={{ ...ddItem, color: '#8b5cf6', fontWeight: 600 }}>
-          <span>✨</span><span>Suggestion IA : {phrase.aiSuggested}</span>
-        </div>
-      )}
-      {phrase.location && (
+      {current && (
         <div onClick={() => onPick(null)} style={{ ...ddItem, color: '#888', borderTop: '1px solid #262626' }}>
           <span>↻</span><span>Retirer le lieu</span>
         </div>
@@ -483,7 +487,6 @@ const btnSecondary: React.CSSProperties = {
   padding: '8px 14px', background: 'transparent', color: '#888',
   border: '1px solid #262626', borderRadius: 8, fontSize: 12, cursor: 'pointer',
 }
-
 const ddItem: React.CSSProperties = {
   padding: '8px 10px', fontSize: 12, color: '#ccc', cursor: 'pointer',
   display: 'flex', alignItems: 'center', gap: 6,
