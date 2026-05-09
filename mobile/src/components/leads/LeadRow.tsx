@@ -4,14 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient'
 import type { Lead } from '@shared/types'
 import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
-import { type as t, spacing, radius } from '../../theme/tokens'
+import { type as t } from '../../theme/tokens'
 import { statusConfig } from '../../theme/status'
 
 interface LeadRowProps {
   lead: Lead
   onPress?: () => void
-  /** Si true, rendu en card individuelle avec glass effect. */
-  asCard?: boolean
 }
 
 const formatAmount = (n: number | null): string | null =>
@@ -35,61 +33,50 @@ const formatRelative = (iso: string | null): string => {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
 
-// Full pill — match exactement le style des FilterChips au-dessus de la liste.
-const CARD_RADIUS = 999
-
 const styles = StyleSheet.create({
-  container: {
-    borderRadius: CARD_RADIUS,
-    overflow: 'hidden',
-  },
   shadowContainer: {
-    borderRadius: CARD_RADIUS,
+    borderRadius: 999,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  row: {
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    // Padding gauche +4 pour compenser la courbe pill et donner de l'air
-    // à l'avatar dans la forme arrondie.
-    paddingLeft: 18,
-    paddingRight: 20,
+    paddingVertical: 8,
+    paddingLeft: 8,
+    paddingRight: 18,
+    borderRadius: 999,
+    overflow: 'hidden',
   },
-  // Inner top highlight — fine ligne blanche très transparente qui simule
-  // le bord lumineux du verre Apple (iOS Liquid Glass / Vibrancy).
   topHighlight: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
+    left: 12,
+    right: 12,
     height: 1,
     backgroundColor: '#ffffff10',
-  },
-  avatarWrap: {
-    marginRight: 14,
+    borderRadius: 999,
   },
   middle: {
     flex: 1,
     minWidth: 0,
+    marginLeft: 12,
   },
   amountWrap: {
     alignItems: 'flex-end',
-    marginLeft: 12,
+    marginLeft: 10,
   },
 })
 
-/** Lead row — pattern Pipedrive + glass Apple subtle.
- *  - Linear gradient subtile top→bottom (effet lift)
- *  - Top highlight 1px blanc 6% (simule bord lumineux verre iOS)
- *  - Border gauche 4pt couleur status
- *  - Shadow noire 10pt pour décoller du fond
+/** Lead row pill — match exact des FilterChips au-dessus de la liste.
+ *  Forme stadium (radius 999) avec hauteur réduite (1 ligne content) :
+ *  Avatar | Nom + Status (inline) | Amount
+ *  Source · Activity en sous-ligne footnote dans le content.
  */
-export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
+export function LeadRow({ lead, onPress }: LeadRowProps) {
   const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
   const amount = formatAmount(lead.deal_amount)
   const sourceLabel = lead.source.replace(/_/g, ' ')
@@ -99,159 +86,127 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
     lead.last_activity_at ?? lead.updated_at ?? lead.created_at,
   )
 
-  if (!asCard) {
-    // Mode list-row simple (pas de card)
-    return (
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.row,
-          { backgroundColor: pressed ? '#ffffff10' : 'transparent' },
-        ]}
-      >
-        <RowContent
-          fullName={fullName}
-          statusLabel={statusLabel}
-          statusColor={statusColor}
-          sourceLabel={sourceLabel}
-          phone={lead.phone}
-          activity={activity}
-          amount={amount}
-          installments={lead.deal_installments}
-        />
-      </Pressable>
-    )
-  }
-
   return (
     <View style={styles.shadowContainer}>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
-          styles.container,
+          styles.pill,
           {
             opacity: pressed ? 0.85 : 1,
-            transform: [{ scale: pressed ? 0.99 : 1 }],
+            transform: [{ scale: pressed ? 0.98 : 1 }],
           },
         ]}
       >
-        {/* Glass gradient bg — top plus clair (#2c2c2e) → bottom plus
-            sombre (#1c1c1e). Donne l'illusion d'une surface vitrée. */}
+        {/* Glass gradient subtle */}
         <LinearGradient
           colors={['#2a2a2c', '#1c1c1e']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={[
-            styles.row,
-            {
-              borderLeftWidth: 4,
-              borderLeftColor: statusColor,
-            },
-          ]}
-        >
-          {/* Highlight top 1px — bord lumineux du verre */}
-          <View style={styles.topHighlight} />
+          style={[StyleSheet.absoluteFill, { borderRadius: 999 }]}
+        />
+        {/* Top highlight glass — la ligne lumineuse subtile */}
+        <View style={styles.topHighlight} />
 
-          <RowContent
-            fullName={fullName}
-            statusLabel={statusLabel}
-            statusColor={statusColor}
-            sourceLabel={sourceLabel}
-            phone={lead.phone}
-            activity={activity}
-            amount={amount}
-            installments={lead.deal_installments}
-          />
-        </LinearGradient>
-      </Pressable>
-    </View>
-  )
-}
-
-function RowContent({
-  fullName,
-  statusLabel,
-  statusColor,
-  sourceLabel,
-  phone,
-  activity,
-  amount,
-  installments,
-}: {
-  fullName: string
-  statusLabel: string
-  statusColor: string
-  sourceLabel: string
-  phone: string | null
-  activity: string
-  amount: string | null
-  installments: number
-}) {
-  return (
-    <>
-      <View style={styles.avatarWrap}>
-        <Avatar name={fullName} size={48} />
-      </View>
-
-      <View style={styles.middle}>
-        <Text
-          numberOfLines={1}
-          style={{
-            color: colors.textPrimary,
-            fontSize: 17,
-            fontWeight: '600',
-            letterSpacing: -0.3,
-          }}
-        >
-          {fullName}
-        </Text>
-        <Text
-          numberOfLines={1}
-          style={{
-            color: statusColor,
-            fontSize: 14,
-            fontWeight: '700',
-            marginTop: 3,
-            letterSpacing: -0.1,
-          }}
-        >
-          {statusLabel}
-        </Text>
-        <Text
-          numberOfLines={1}
-          style={{
-            color: colors.textSecondary,
-            fontSize: 13,
-            fontWeight: '400',
-            marginTop: 3,
-            textTransform: 'capitalize',
-          }}
-        >
-          {sourceLabel}
-          {phone ? ` · ${phone}` : ''}
-          {activity ? ` · ${activity}` : ''}
-        </Text>
-      </View>
-
-      {amount ? (
-        <View style={styles.amountWrap}>
-          <Text
+        {/* Avatar avec dot status overlay (signal couleur sans bordure
+            qui clip mal sur pill). */}
+        <View>
+          <Avatar name={fullName} size={44} />
+          <View
             style={{
-              color: colors.primary,
-              fontSize: 20,
-              fontWeight: '800',
-              letterSpacing: -0.5,
+              position: 'absolute',
+              right: -2,
+              bottom: -2,
+              width: 14,
+              height: 14,
+              borderRadius: 7,
+              backgroundColor: statusColor,
+              borderWidth: 2.5,
+              borderColor: '#1c1c1e',
+            }}
+          />
+        </View>
+
+        <View style={styles.middle}>
+          {/* Ligne 1 : Nom + Status pill inline */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              minWidth: 0,
             }}
           >
-            {amount}
-          </Text>
-          {installments > 1 ? (
-            <Text style={{ ...t.caption2, color: colors.textSecondary, marginTop: 3 }}>
-              ×{installments}
+            <Text
+              numberOfLines={1}
+              style={{
+                color: colors.textPrimary,
+                fontSize: 16,
+                fontWeight: '600',
+                letterSpacing: -0.3,
+                flexShrink: 1,
+              }}
+            >
+              {fullName}
             </Text>
-          ) : null}
+            <View
+              style={{
+                backgroundColor: statusColor + '26',
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: 999,
+              }}
+            >
+              <Text
+                style={{
+                  color: statusColor,
+                  fontSize: 11,
+                  fontWeight: '700',
+                  letterSpacing: -0.1,
+                }}
+                numberOfLines={1}
+              >
+                {statusLabel}
+              </Text>
+            </View>
+          </View>
+          {/* Ligne 2 : metadata footnote */}
+          <Text
+            numberOfLines={1}
+            style={{
+              color: colors.textSecondary,
+              fontSize: 12,
+              fontWeight: '400',
+              marginTop: 3,
+              textTransform: 'capitalize',
+            }}
+          >
+            {sourceLabel}
+            {lead.phone ? ` · ${lead.phone}` : ''}
+            {activity ? ` · ${activity}` : ''}
+          </Text>
         </View>
-      ) : null}
-    </>
+
+        {amount ? (
+          <View style={styles.amountWrap}>
+            <Text
+              style={{
+                color: colors.primary,
+                fontSize: 18,
+                fontWeight: '800',
+                letterSpacing: -0.5,
+              }}
+            >
+              {amount}
+            </Text>
+            {lead.deal_installments > 1 ? (
+              <Text style={{ ...t.caption2, color: colors.textSecondary, marginTop: 2 }}>
+                ×{lead.deal_installments}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </Pressable>
+    </View>
   )
 }

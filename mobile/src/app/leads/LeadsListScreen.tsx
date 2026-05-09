@@ -212,7 +212,6 @@ export function LeadsListScreen() {
               <LeadRow
                 key={l.id}
                 lead={l}
-                asCard
                 onPress={() => navigation.navigate('LeadDetail', { leadId: l.id })}
               />
             ))
@@ -247,7 +246,6 @@ export function LeadsListScreen() {
                 <LeadRow
                   key={l.id}
                   lead={l}
-                  asCard
                   onPress={() => navigation.navigate('LeadDetail', { leadId: l.id })}
                 />
               ))}
