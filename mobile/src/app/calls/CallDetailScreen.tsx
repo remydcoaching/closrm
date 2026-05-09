@@ -13,20 +13,25 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 import { Ionicons } from '@expo/vector-icons'
 import type { CallsStackParamList } from '../../navigation/types'
 import { useCall } from '../../hooks/useCall'
-import { Avatar, Button, Card, NavIcon } from '../../components/ui'
+import { Avatar, Button, ListSection, ListRow } from '../../components/ui'
 import { colors } from '../../theme/colors'
+import { type as t, spacing, radius } from '../../theme/tokens'
 import { api } from '../../services/api'
 
 type R = RouteProp<CallsStackParamList, 'CallDetail'>
 
 const formatDateLong = (iso: string) => {
   const d = new Date(iso)
-  return `${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} · ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+  return `${d.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })} · ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
 }
 
-const minutesUntil = (iso: string): number => Math.round((new Date(iso).getTime() - Date.now()) / 60000)
+const minutesUntil = (iso: string): number =>
+  Math.round((new Date(iso).getTime() - Date.now()) / 60000)
 
-// Templates d'objectifs statiques (pas d'IA en V1, cf spec).
 const objectivesByType = (type: string): string[] => {
   if (type === 'closing') {
     return [
@@ -35,11 +40,7 @@ const objectivesByType = (type: string): string[] => {
       'Valider le mode de paiement',
     ]
   }
-  return [
-    'Qualifier le lead',
-    "Présenter l'offre",
-    'Planifier le closing',
-  ]
+  return ['Qualifier le lead', "Présenter l'offre", 'Planifier le closing']
 }
 
 export function CallDetailScreen() {
@@ -54,7 +55,6 @@ export function CallDetailScreen() {
     if (call) setNotes(call.notes ?? '')
   }, [call])
 
-  // Auto-save notes 1.2s après dernière frappe.
   useEffect(() => {
     if (!call) return
     if (notes === (call.notes ?? '')) return
@@ -63,7 +63,7 @@ export function CallDetailScreen() {
       try {
         await api.patch(`/api/calls/${call.id}`, { notes })
       } catch {
-        // erreur silencieuse — le user retentera (toast à brancher plus tard)
+        /* swallow V1 */
       } finally {
         setSavingNotes(false)
       }
@@ -73,7 +73,9 @@ export function CallDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgPrimary, justifyContent: 'center' }}>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: colors.bgPrimary, justifyContent: 'center' }}
+      >
         <ActivityIndicator color={colors.primary} />
       </SafeAreaView>
     )
@@ -81,9 +83,16 @@ export function CallDetailScreen() {
 
   if (!call) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bgPrimary, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: colors.textSecondary }}>Call introuvable.</Text>
-        <View style={{ height: 12 }} />
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: colors.bgPrimary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing.md,
+        }}
+      >
+        <Text style={{ ...t.subheadline, color: colors.textSecondary }}>Call introuvable.</Text>
         <Button label="Retour" variant="outline" onPress={() => navigation.goBack()} />
       </SafeAreaView>
     )
@@ -93,39 +102,39 @@ export function CallDetailScreen() {
   const fullName = lead ? `${lead.first_name} ${lead.last_name}`.trim() || '—' : '—'
   const liveMin = minutesUntil(call.scheduled_at)
   const isUpcoming = liveMin >= 0 && liveMin <= 60
-  const typeLabel = call.type === 'closing' ? 'CLOSING' : 'SETTING'
+  const typeLabel = call.type === 'closing' ? 'Closing' : 'Setting'
   const typeColor = call.type === 'closing' ? colors.purple : colors.info
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <View
         style={{
-          paddingHorizontal: 12,
-          paddingBottom: 8,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
           flexDirection: 'row',
           justifyContent: 'space-between',
         }}
       >
-        <NavIcon onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
-        </NavIcon>
-        <NavIcon>
-          <Ionicons name="ellipsis-horizontal" size={18} color={colors.textPrimary} />
-        </NavIcon>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ padding: 4 }}>
+          <Ionicons name="chevron-back" size={28} color={colors.primary} />
+        </Pressable>
+        <Pressable hitSlop={12} style={{ padding: 4 }}>
+          <Text style={{ ...t.body, color: colors.primary }}>Modifier</Text>
+        </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60, gap: 16 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Hero countdown */}
-        <View style={{ alignItems: 'center', gap: 10 }}>
+        <View style={{ alignItems: 'center', paddingTop: spacing.md, gap: spacing.md }}>
           {isUpcoming ? (
             <View
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 6,
-                backgroundColor: colors.primary + '22',
-                paddingVertical: 4,
-                paddingHorizontal: 10,
+                backgroundColor: colors.primary + '26',
+                paddingVertical: 5,
+                paddingHorizontal: 12,
                 borderRadius: 999,
               }}
             >
@@ -137,32 +146,58 @@ export function CallDetailScreen() {
                   backgroundColor: colors.primary,
                 }}
               />
-              <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }}>
+              <Text
+                style={{
+                  ...t.caption2,
+                  color: colors.primary,
+                  fontWeight: '700',
+                  letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                }}
+              >
                 {typeLabel} · DANS {liveMin} MIN
               </Text>
             </View>
           ) : (
-            <Text style={{ color: typeColor, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }}>
+            <Text
+              style={{
+                ...t.caption2,
+                color: typeColor,
+                fontWeight: '700',
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+              }}
+            >
               {typeLabel}
             </Text>
           )}
-          <Avatar name={fullName} size={72} />
-          <Text style={{ color: colors.textPrimary, fontSize: 22, fontWeight: '700' }}>
+          <Avatar name={fullName} size={88} />
+          <Text
+            style={{ ...t.title1, color: colors.textPrimary, textAlign: 'center' }}
+          >
             {fullName}
           </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+          <Text style={{ ...t.subheadline, color: colors.textSecondary }}>
             {formatDateLong(call.scheduled_at)}
             {call.duration_seconds ? ` · ${Math.round(call.duration_seconds / 60)} min` : ''}
           </Text>
         </View>
 
-        {/* CTA principaux : Zoom + Phone */}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        {/* CTAs */}
+        <View
+          style={{
+            flexDirection: 'row',
+            paddingHorizontal: spacing.lg,
+            paddingVertical: spacing.xl,
+            gap: spacing.md,
+          }}
+        >
           <View style={{ flex: 3 }}>
             <Button
               label="Rejoindre Zoom"
               size="lg"
               fullWidth
+              iconLeft={<Ionicons name="videocam" size={18} color="#fff" />}
               onPress={() => Linking.openURL('https://zoom.us')}
             />
           </View>
@@ -177,73 +212,92 @@ export function CallDetailScreen() {
           </View>
         </View>
 
-        {/* Contexte clé */}
-        <Card borderColor={colors.primary} borderPosition="left">
-          <Text
-            style={{
-              color: colors.textSecondary,
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 0.5,
-              marginBottom: 6,
-            }}
-          >
-            CONTEXTE
-          </Text>
-          {lead ? (
-            <View style={{ gap: 4 }}>
-              <Text style={{ color: colors.textPrimary, fontSize: 13 }}>
-                · Statut : {lead.status}
-              </Text>
+        {/* Contexte */}
+        {lead ? (
+          <View style={{ marginBottom: spacing.xxl }}>
+            <ListSection header="Contexte">
+              <ListRow
+                title="Statut"
+                trailing={
+                  <Text style={{ ...t.body, color: colors.textSecondary }}>
+                    {lead.status.replace(/_/g, ' ')}
+                  </Text>
+                }
+                showChevron={false}
+              />
               {lead.deal_amount ? (
-                <Text style={{ color: colors.textPrimary, fontSize: 13 }}>
-                  · Deal : {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(lead.deal_amount)}
-                </Text>
+                <ListRow
+                  title="Deal"
+                  trailing={
+                    <Text style={{ ...t.bodyEmphasis, color: colors.primary }}>
+                      {new Intl.NumberFormat('fr-FR', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        maximumFractionDigits: 0,
+                      }).format(lead.deal_amount)}
+                    </Text>
+                  }
+                  showChevron={false}
+                />
               ) : null}
-              <Text style={{ color: colors.textPrimary, fontSize: 13 }}>
-                · Tentatives : {call.attempt_number}
-              </Text>
-            </View>
-          ) : (
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Pas de lead associé.</Text>
-          )}
-        </Card>
+              <ListRow
+                title="Tentatives"
+                trailing={
+                  <Text style={{ ...t.body, color: colors.textSecondary }}>
+                    {call.attempt_number}
+                  </Text>
+                }
+                showChevron={false}
+                separator={false}
+              />
+            </ListSection>
+          </View>
+        ) : null}
 
-        {/* Objectifs */}
-        <Card borderColor={colors.purple} borderPosition="left">
-          <Text
-            style={{
-              color: colors.textSecondary,
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 0.5,
-              marginBottom: 6,
-            }}
-          >
-            OBJECTIF
-          </Text>
-          {objectivesByType(call.type).map((o) => (
-            <Text key={o} style={{ color: colors.textPrimary, fontSize: 13, marginVertical: 1 }}>
-              · {o}
-            </Text>
-          ))}
-        </Card>
+        {/* Objectif */}
+        <View style={{ marginBottom: spacing.xxl }}>
+          <ListSection header="Objectif du call">
+            {objectivesByType(call.type).map((o, i, arr) => (
+              <ListRow
+                key={o}
+                leading={
+                  <View
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: typeColor + '22',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="checkmark" size={14} color={typeColor} />
+                  </View>
+                }
+                title={o}
+                showChevron={false}
+                separator={i < arr.length - 1}
+                separatorInset={52}
+              />
+            ))}
+          </ListSection>
+        </View>
 
-        {/* Notes pré-call */}
-        <View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        {/* Notes */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xxl }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm }}>
             <Text
               style={{
+                ...t.footnote,
                 color: colors.textSecondary,
-                fontSize: 11,
-                fontWeight: '700',
-                letterSpacing: 0.5,
+                textTransform: 'uppercase',
+                letterSpacing: 0.4,
               }}
             >
-              NOTES PRÉ-CALL
+              Notes pré-call
             </Text>
             {savingNotes ? (
-              <Text style={{ color: colors.textSecondary, fontSize: 11 }}>Sauvegarde…</Text>
+              <Text style={{ ...t.caption2, color: colors.textSecondary }}>Sauvegarde…</Text>
             ) : null}
           </View>
           <TextInput
@@ -253,15 +307,12 @@ export function CallDetailScreen() {
             placeholder="Tape tes notes ici…"
             placeholderTextColor={colors.textSecondary}
             style={{
-              backgroundColor: colors.bgElevated,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderStyle: 'dashed',
-              padding: 12,
-              minHeight: 100,
+              ...t.body,
+              backgroundColor: colors.bgSecondary,
+              borderRadius: radius.lg,
+              padding: spacing.md,
+              minHeight: 120,
               color: colors.textPrimary,
-              fontSize: 14,
               textAlignVertical: 'top',
             }}
           />

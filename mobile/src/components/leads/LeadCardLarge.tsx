@@ -3,15 +3,13 @@ import { Pressable, View, Text } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import type { Lead } from '@shared/types'
 import { Avatar } from '../ui/Avatar'
-import { StatusBadge } from '../ui/StatusBadge'
 import { Button } from '../ui/Button'
 import { colors } from '../../theme/colors'
-import { statusConfig } from '../../theme/status'
+import { type as t, spacing, radius } from '../../theme/tokens'
 
 interface LeadCardLargeProps {
   lead: Lead
-  /** Calculé côté parent — null si pas d'urgence à afficher. */
-  urgency?: { label: string; color: string; pulsing?: boolean } | null
+  urgency?: { label: string; color: string } | null
   ctaLabel?: string
   onPress?: () => void
   onCta?: () => void
@@ -26,87 +24,89 @@ const formatAmount = (n: number | null): string | null =>
         maximumFractionDigits: 0,
       }).format(n)
 
+/** Card large pour la vue priority — design featured avec urgency badge
+ *  prominent, CTA dédié. */
 export function LeadCardLarge({ lead, urgency, ctaLabel, onPress, onCta }: LeadCardLargeProps) {
   const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
   const amount = formatAmount(lead.deal_amount)
-  const accent = statusConfig[lead.status].color
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        backgroundColor: colors.bgElevated,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderTopWidth: 4,
-        borderTopColor: accent,
-        padding: 14,
-        gap: 10,
+        backgroundColor: colors.bgSecondary,
+        borderRadius: radius.xl,
+        padding: spacing.lg,
+        gap: spacing.md,
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+      {urgency ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            alignSelf: 'flex-start',
+            backgroundColor: urgency.color + '26',
+            paddingVertical: 4,
+            paddingHorizontal: 10,
+            borderRadius: 999,
+          }}
+        >
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: urgency.color,
+            }}
+          />
+          <Text
+            style={{
+              ...t.caption2,
+              color: urgency.color,
+              fontWeight: '700',
+              letterSpacing: 0.4,
+              textTransform: 'uppercase',
+            }}
+          >
+            {urgency.label}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
         <Avatar name={fullName} size={48} />
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Text
-              numberOfLines={1}
-              style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700', flexShrink: 1 }}
-            >
-              {fullName}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            numberOfLines={1}
+            style={{ ...t.title3, color: colors.textPrimary }}
+          >
+            {fullName}
+          </Text>
+          {lead.call_attempts > 0 || lead.phone ? (
+            <Text style={{ ...t.subheadline, color: colors.textSecondary, marginTop: 2 }}>
+              {lead.phone ?? '—'}
+              {lead.call_attempts > 0 ? ` · ${lead.call_attempts} appel${lead.call_attempts > 1 ? 's' : ''}` : ''}
             </Text>
-            <StatusBadge status={lead.status} size="sm" />
-          </View>
-          {urgency ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5,
-                marginTop: 6,
-              }}
-            >
-              <View
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: 3.5,
-                  backgroundColor: urgency.color,
-                }}
-              />
-              <Text style={{ color: urgency.color, fontSize: 12, fontWeight: '700' }}>
-                {urgency.label}
-              </Text>
-            </View>
           ) : null}
         </View>
         {amount ? (
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: colors.primary, fontSize: 18, fontWeight: '700' }}>
-              {amount}
-            </Text>
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-              {lead.deal_installments > 1 ? `x${lead.deal_installments}` : 'cash'}
-            </Text>
+            <Text style={{ ...t.title3, color: colors.primary }}>{amount}</Text>
+            {lead.deal_installments > 1 ? (
+              <Text style={{ ...t.caption1, color: colors.textSecondary }}>
+                ×{lead.deal_installments}
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </View>
 
-      {(ctaLabel || lead.call_attempts > 0) ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {lead.call_attempts > 0 ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Ionicons name="call-outline" size={14} color={colors.textSecondary} />
-              <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
-              </Text>
-            </View>
-          ) : null}
-          <View style={{ flex: 1 }} />
-          {ctaLabel ? (
-            <Button label={ctaLabel} size="md" variant="primary" onPress={onCta} />
-          ) : null}
+      {ctaLabel ? (
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+          <Button label={ctaLabel} size="sm" variant="primary" onPress={onCta} />
         </View>
       ) : null}
     </Pressable>
