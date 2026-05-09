@@ -272,33 +272,29 @@ export function LeadDetailScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      {/* Top bar */}
-      <View
-        style={{
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ padding: 4 }}>
-          <Ionicons name="chevron-back" size={28} color={colors.primary} />
-        </Pressable>
-        <Pressable hitSlop={12} style={{ padding: 4 }}>
-          <Text style={{ ...t.body, color: colors.primary }}>Modifier</Text>
-        </Pressable>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
-        {/* Hero — gradient bg + avatar XL + nom + 2 chips status/source */}
+        {/* Hero gradient FULL — remonte jusqu'au status bar iOS pour
+            l'effet wash de couleur status (style Apple Music album view).
+            Top bar absolute par-dessus pour rester accessible. */}
         <LinearGradient
-          colors={[statusColor + '22', 'transparent']}
-          style={{ alignItems: 'center', paddingTop: spacing.lg, paddingBottom: spacing.xl, gap: spacing.md }}
+          colors={[statusColor + '40', statusColor + '15', 'transparent']}
+          style={{
+            alignItems: 'center',
+            paddingTop: 110, // status bar 50pt + top bar 60pt
+            paddingBottom: spacing.xl,
+            gap: spacing.md,
+          }}
         >
           <Avatar name={fullName} size={104} />
-          <Text style={{ ...t.title1, color: colors.textPrimary, textAlign: 'center', letterSpacing: -0.5 }}>
+          <Text
+            style={{
+              ...t.title1,
+              color: colors.textPrimary,
+              textAlign: 'center',
+              letterSpacing: -0.5,
+            }}
+          >
             {fullName}
           </Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm, justifyContent: 'center' }}>
@@ -543,6 +539,35 @@ export function LeadDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Top bar absolute par-dessus le gradient — accessibles toujours. */}
+      <SafeAreaView
+        edges={['top']}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+        }}
+        pointerEvents="box-none"
+      >
+        <View
+          style={{
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ padding: 4 }}>
+            <Ionicons name="chevron-back" size={28} color={colors.primary} />
+          </Pressable>
+          <Pressable hitSlop={12} style={{ padding: 4 }}>
+            <Text style={{ ...t.body, color: colors.primary }}>Modifier</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    </View>
   )
 }
