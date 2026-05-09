@@ -377,6 +377,9 @@ const SCREEN_W = Dimensions.get('window').width
 const isHttp = (s: string | null | undefined): s is string =>
   !!s && (s.startsWith('http://') || s.startsWith('https://'))
 
+const isR2Path = (s: string | null | undefined): s is string =>
+  !!s && s.startsWith('workspaces/')
+
 const isVideoLike = (post: SocialPostWithPublications): boolean => {
   const mt = post.media_type
   if (mt === 'VIDEO' || mt === 'SHORT' || mt === 'LONG_VIDEO') return true
@@ -386,15 +389,49 @@ const isVideoLike = (post: SocialPostWithPublications): boolean => {
 
 function MediaPreview({ post }: { post: SocialPostWithPublications }) {
   const [failed, setFailed] = useState(false)
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null)
+  const [resolving, setResolving] = useState(false)
 
-  // Source de l'image à afficher : thumbnail_url > 1er media_url (s'il est HTTP)
-  // Les paths R2 (workspaces/...) sans préfixe public ne se chargent pas en
-  // l'état → on tombe sur le placeholder.
-  const imgSource = isHttp(post.thumbnail_url)
-    ? post.thumbnail_url
-    : isHttp(post.media_urls[0])
-    ? post.media_urls[0]
-    : null
+  // Pick le path "le plus visuellement utile" pour la preview :
+  // 1. thumbnail_url (s'il existe)
+  // 2. 1er media_url
+  // Peut être une URL HTTP directe OU un path R2 (workspaces/...).
+  const rawSource = post.thumbnail_url || post.media_urls[0] || null
+
+  // Résolution async : si c'est un path R2, on demande à l'API une URL signée
+  // (l'endpoint /api/storage/sign existe déjà côté web et utilise getWorkspaceId
+  // qui supporte le Bearer mobile depuis le fix d'aujourd'hui).
+  useEffect(() => {
+    let cancelled = false
+    setResolvedUrl(null)
+    setFailed(false)
+
+    if (!rawSource) return
+    if (isHttp(rawSource)) {
+      setResolvedUrl(rawSource)
+      return
+    }
+    if (isR2Path(rawSource)) {
+      setResolving(true)
+      ;(async () => {
+        try {
+          const res = await api.get<{ url: string }>(
+            `/api/storage/sign?path=${encodeURIComponent(rawSource)}`,
+          )
+          if (!cancelled) setResolvedUrl(res.url)
+        } catch {
+          if (!cancelled) setFailed(true)
+        } finally {
+          if (!cancelled) setResolving(false)
+        }
+      })()
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [rawSource])
+
+  const imgSource = resolvedUrl
 
   const isVideo = isVideoLike(post)
   const externalUrl = isHttp(post.final_url)
@@ -403,7 +440,7 @@ function MediaPreview({ post }: { post: SocialPostWithPublications }) {
     ? post.media_urls[0]
     : null
 
-  const hasNothing = !imgSource && !externalUrl && post.media_urls.length === 0
+  const hasNothing = !rawSource && post.media_urls.length === 0
 
   if (hasNothing) {
     return (
@@ -431,11 +468,15 @@ function MediaPreview({ post }: { post: SocialPostWithPublications }) {
   const previewW = SCREEN_W - 2 * spacing.lg
   const previewH = isVideo ? Math.round(previewW * 16 / 9 * 0.5) : Math.round(previewW * 1.0) // 1:1 par défaut, 16:9 partial pour vidéo
 
+  // Tap : ouvre l'URL externe (final_url) ou l'image elle-même (signed URL R2)
+  // dans Safari pour voir en grand / lire la vidéo.
+  const tapTarget = externalUrl ?? imgSource
+
   return (
     <Pressable
-      onPress={externalUrl ? () => Linking.openURL(externalUrl) : undefined}
-      disabled={!externalUrl}
-      style={({ pressed }) => ({ opacity: pressed && externalUrl ? 0.85 : 1 })}
+      onPress={tapTarget ? () => Linking.openURL(tapTarget) : undefined}
+      disabled={!tapTarget}
+      style={({ pressed }) => ({ opacity: pressed && tapTarget ? 0.85 : 1 })}
     >
       <View
         style={{
@@ -453,8 +494,20 @@ function MediaPreview({ post }: { post: SocialPostWithPublications }) {
             resizeMode="cover"
             onError={() => setFailed(true)}
           />
+        ) : resolving ? (
+          // En train de signer l'URL R2
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.bgSecondary,
+            }}
+          >
+            <ActivityIndicator color={colors.primary} />
+          </View>
         ) : (
-          // Placeholder si pas d'URL HTTP exploitable (R2 path nu)
+          // Placeholder si pas d'URL exploitable
           <View
             style={{
               flex: 1,
@@ -470,7 +523,7 @@ function MediaPreview({ post }: { post: SocialPostWithPublications }) {
               color={colors.textTertiary}
             />
             <Text style={{ ...t.caption1, color: colors.textTertiary, paddingHorizontal: 16, textAlign: 'center' }}>
-              {failed ? 'Impossible de charger le média' : 'Média stocké en privé — ouvre depuis le web'}
+              {failed ? 'Impossible de charger le média' : 'Aperçu indisponible'}
             </Text>
           </View>
         )}
