@@ -1,5 +1,5 @@
 import React from 'react'
-import { Pressable, View, Text } from 'react-native'
+import { Pressable, View, Text, StyleSheet } from 'react-native'
 import type { Lead } from '@shared/types'
 import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
@@ -9,8 +9,6 @@ import { statusConfig } from '../../theme/status'
 interface LeadRowProps {
   lead: Lead
   onPress?: () => void
-  /** Si true, hairline separator au bottom (intra-section). */
-  separator?: boolean
   /** Si true, rendu en card individuelle (bg secondary + radius + accent border). */
   asCard?: boolean
 }
@@ -36,12 +34,32 @@ const formatRelative = (iso: string | null): string => {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
 
-/** Lead row premium iOS — pattern Pipedrive Mobile :
- *  - bordure gauche 3pt couleur status (signal visuel instantané)
- *  - card bg secondary radius xl
- *  - 1ère ligne: avatar | name + status colored | amount
- *  - 2e ligne (dans le content): source · phone · activity time
- */
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+  },
+  card: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius: radius.xl,
+  },
+  avatarWrap: {
+    marginRight: spacing.md,
+  },
+  middle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  amountWrap: {
+    alignItems: 'flex-end',
+    marginLeft: spacing.sm,
+  },
+})
+
+/** Lead row pattern Pipedrive Mobile — flexDirection 'row' garanti via
+ *  StyleSheet (pas de spread de fonction qui casse parfois le layout). */
 export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
   const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
   const amount = formatAmount(lead.deal_amount)
@@ -52,46 +70,30 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
     lead.last_activity_at ?? lead.updated_at ?? lead.created_at,
   )
 
-  const cardStyle = asCard
-    ? {
-        backgroundColor: colors.bgSecondary,
-        borderRadius: radius.xl,
-        borderLeftWidth: 3,
-        borderLeftColor: statusColor,
-      }
-    : null
-
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 14,
-        paddingLeft: asCard ? spacing.md : spacing.lg,
-        paddingRight: spacing.md,
-        opacity: pressed ? 0.7 : 1,
-        ...cardStyle,
-      })}
+      style={[
+        styles.row,
+        asCard && styles.card,
+        asCard && {
+          borderLeftWidth: 3,
+          borderLeftColor: statusColor,
+        },
+      ]}
+      android_ripple={{ color: '#ffffff10' }}
     >
-      {/* Avatar */}
-      <View style={{ marginRight: spacing.md }}>
+      <View style={styles.avatarWrap}>
         <Avatar name={fullName} size={44} />
       </View>
 
-      {/* Content middle — flex 1 */}
-      <View style={{ flex: 1, minWidth: 0 }}>
+      <View style={styles.middle}>
         <Text
           numberOfLines={1}
-          style={{
-            ...t.bodyEmphasis,
-            color: colors.textPrimary,
-          }}
+          style={{ ...t.bodyEmphasis, color: colors.textPrimary }}
         >
           {fullName}
         </Text>
-
-        {/* Status colored label */}
         <Text
           numberOfLines={1}
           style={{
@@ -103,8 +105,6 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
         >
           {statusLabel}
         </Text>
-
-        {/* Metadata footnote */}
         <Text
           numberOfLines={1}
           style={{
@@ -120,20 +120,13 @@ export function LeadRow({ lead, onPress, asCard = true }: LeadRowProps) {
         </Text>
       </View>
 
-      {/* Right column — amount big */}
       {amount ? (
-        <View style={{ alignItems: 'flex-end', marginLeft: spacing.sm, gap: 2 }}>
-          <Text
-            style={{
-              ...t.title3,
-              color: colors.primary,
-              letterSpacing: -0.3,
-            }}
-          >
+        <View style={styles.amountWrap}>
+          <Text style={{ ...t.title3, color: colors.primary, letterSpacing: -0.3 }}>
             {amount}
           </Text>
           {lead.deal_installments > 1 ? (
-            <Text style={{ ...t.caption2, color: colors.textSecondary }}>
+            <Text style={{ ...t.caption2, color: colors.textSecondary, marginTop: 2 }}>
               ×{lead.deal_installments}
             </Text>
           ) : null}
