@@ -16,15 +16,18 @@ import type { MessagesStackParamList } from '../../navigation/types'
 import { useMessages } from '../../hooks/useMessages'
 import { useLead } from '../../hooks/useLead'
 import { useConversations } from '../../hooks/useConversations'
-import { Avatar, NavIcon, StatusBadge } from '../../components/ui'
+import { Avatar, StatusBadge } from '../../components/ui'
 import { colors } from '../../theme/colors'
+import { type as t, spacing, radius } from '../../theme/tokens'
 import { api } from '../../services/api'
 import type { IgMessage } from '@shared/types'
 
 type R = RouteProp<MessagesStackParamList, 'Conversation'>
 
 const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate()
 
 const formatDayDivider = (d: Date): string => {
   const today = new Date()
@@ -32,7 +35,16 @@ const formatDayDivider = (d: Date): string => {
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
   if (sameDay(d, yesterday)) return 'Hier'
-  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return d.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+}
+
+const formatTime = (iso: string): string => {
+  const d = new Date(iso)
+  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
 interface DayDividerItem {
@@ -43,6 +55,8 @@ interface DayDividerItem {
 interface MessageItem {
   kind: 'msg'
   msg: IgMessage
+  /** True si pas de message du même sender dans les 60s avant. */
+  showSenderBoundary: boolean
 }
 type Item = DayDividerItem | MessageItem
 
@@ -55,6 +69,7 @@ export function ConversationScreen() {
   const { lead } = useLead(leadId ?? null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const listRef = useRef<FlatList>(null)
 
   const conv = conversations.find((c) => c.id === conversationId) ?? null
@@ -62,33 +77,35 @@ export function ConversationScreen() {
   const items = useMemo<Item[]>(() => {
     const out: Item[] = []
     let lastDay: Date | null = null
+    let lastSender: string | null = null
+    let lastTs = 0
     for (const m of messages) {
       const d = new Date(m.sent_at)
       if (!lastDay || !sameDay(d, lastDay)) {
         out.push({ kind: 'day', label: formatDayDivider(d), key: `d-${d.toISOString().slice(0, 10)}` })
         lastDay = d
+        lastSender = null
       }
-      out.push({ kind: 'msg', msg: m })
+      const ts = d.getTime()
+      const showBoundary = lastSender !== m.sender_type || ts - lastTs > 60000
+      out.push({ kind: 'msg', msg: m, showSenderBoundary: showBoundary })
+      lastSender = m.sender_type
+      lastTs = ts
     }
     return out
   }, [messages])
 
-  // Scroll en bas quand un nouveau message arrive
   useEffect(() => {
     if (items.length === 0) return
     const t = setTimeout(() => {
-      // try/catch : sur certaines versions RN, scrollToEnd lève
-      // si la FlatList n'a pas encore mesuré ses items.
       try {
         listRef.current?.scrollToEnd({ animated: true })
       } catch {
-        /* swallow — scroll best-effort */
+        /* swallow */
       }
     }, 50)
     return () => clearTimeout(t)
   }, [items.length])
-
-  const [sendError, setSendError] = useState<string | null>(null)
 
   const send = async () => {
     const text = draft.trim()
@@ -100,8 +117,6 @@ export function ConversationScreen() {
         conversation_id: conversationId,
         text,
       })
-      // On clear le draft UNIQUEMENT après succès — sinon en cas d'erreur
-      // réseau le message est perdu et l'utilisateur doit retaper.
       setDraft('')
     } catch (e) {
       setSendError(e instanceof Error ? e.message : 'Erreur envoi')
@@ -115,62 +130,60 @@ export function ConversationScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      {/* Header */}
+      {/* Header style Apple Messages */}
       <View
         style={{
-          paddingHorizontal: 12,
-          paddingBottom: 8,
+          paddingHorizontal: spacing.md,
+          paddingBottom: spacing.sm,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 10,
+          gap: spacing.sm,
         }}
       >
-        <NavIcon onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
-        </NavIcon>
-        <Avatar name={participantName} size={36} />
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: '700' }} numberOfLines={1}>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ padding: 4 }}>
+          <Ionicons name="chevron-back" size={28} color={colors.primary} />
+        </Pressable>
+        <View style={{ alignItems: 'center', flex: 1 }}>
+          <Avatar name={participantName} size={32} />
+          <Text
+            numberOfLines={1}
+            style={{ ...t.caption1, color: colors.textPrimary, fontWeight: '600', marginTop: 2 }}
+          >
             {participantName}
           </Text>
           {handle ? (
-            <Text style={{ color: colors.textSecondary, fontSize: 11 }}>@{handle}</Text>
+            <Text style={{ ...t.caption2, color: colors.textSecondary }}>@{handle}</Text>
           ) : null}
         </View>
-        <NavIcon>
-          <Ionicons name="ellipsis-horizontal" size={18} color={colors.textPrimary} />
-        </NavIcon>
+        <Pressable hitSlop={12} style={{ padding: 4 }}>
+          <Ionicons name="information-circle-outline" size={26} color={colors.primary} />
+        </Pressable>
       </View>
 
       {/* Lead context strip */}
       {lead ? (
-        <Pressable
-          onPress={() => {
-            // TODO: navigate to LeadDetail (cross-tab nav)
-          }}
+        <View
           style={{
-            marginHorizontal: 16,
-            marginBottom: 8,
+            marginHorizontal: spacing.lg,
+            marginBottom: spacing.sm,
             backgroundColor: colors.primary + '15',
-            borderRadius: 10,
-            borderWidth: 1,
-            borderColor: colors.primary + '40',
-            paddingVertical: 8,
-            paddingHorizontal: 12,
+            borderRadius: radius.lg,
+            paddingVertical: spacing.sm,
+            paddingHorizontal: spacing.md,
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 8,
+            gap: spacing.sm,
           }}
         >
           <StatusBadge status={lead.status} size="sm" />
-          <Text style={{ color: colors.textPrimary, fontSize: 13, flex: 1 }}>
+          <Text style={{ ...t.subheadline, color: colors.textPrimary, flex: 1 }} numberOfLines={1}>
             {lead.first_name} {lead.last_name}
             {lead.deal_amount
               ? ` · ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(lead.deal_amount)}`
               : ''}
           </Text>
           <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
-        </Pressable>
+        </View>
       ) : null}
 
       <KeyboardAvoidingView
@@ -187,12 +200,21 @@ export function ConversationScreen() {
             ref={listRef}
             data={items}
             keyExtractor={(it) => (it.kind === 'day' ? it.key : it.msg.id)}
-            contentContainerStyle={{ padding: 16, gap: 6 }}
+            contentContainerStyle={{
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.md,
+            }}
             renderItem={({ item }) => {
               if (item.kind === 'day') {
                 return (
-                  <View style={{ alignItems: 'center', marginVertical: 10 }}>
-                    <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}>
+                  <View style={{ alignItems: 'center', marginVertical: spacing.md }}>
+                    <Text
+                      style={{
+                        ...t.caption2,
+                        color: colors.textSecondary,
+                        fontWeight: '600',
+                      }}
+                    >
                       {item.label}
                     </Text>
                   </View>
@@ -204,25 +226,25 @@ export function ConversationScreen() {
                   style={{
                     flexDirection: 'row',
                     justifyContent: isMine ? 'flex-end' : 'flex-start',
+                    marginTop: item.showSenderBoundary ? 8 : 1,
                   }}
                 >
                   <View
                     style={{
                       maxWidth: '78%',
-                      backgroundColor: isMine ? colors.primary : '#262629',
+                      backgroundColor: isMine ? colors.primary : '#2c2c2e',
                       borderRadius: 18,
                       borderBottomRightRadius: isMine ? 4 : 18,
                       borderBottomLeftRadius: isMine ? 18 : 4,
-                      paddingVertical: 8,
+                      paddingVertical: 7,
                       paddingHorizontal: 12,
                     }}
                   >
                     {item.msg.text ? (
-                      <Text style={{ color: '#fff', fontSize: 14 }}>{item.msg.text}</Text>
+                      <Text style={{ ...t.body, color: isMine ? '#000' : '#fff' }}>
+                        {item.msg.text}
+                      </Text>
                     ) : null}
-                    <Text style={{ color: '#ffffff90', fontSize: 9, marginTop: 2, alignSelf: 'flex-end' }}>
-                      {new Date(item.msg.sent_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
                   </View>
                 </View>
               )
@@ -234,7 +256,7 @@ export function ConversationScreen() {
           <View
             style={{
               backgroundColor: colors.danger + '22',
-              paddingHorizontal: 12,
+              paddingHorizontal: spacing.md,
               paddingVertical: 6,
               flexDirection: 'row',
               alignItems: 'center',
@@ -242,19 +264,19 @@ export function ConversationScreen() {
             }}
           >
             <Ionicons name="alert-circle" size={14} color={colors.danger} />
-            <Text style={{ color: colors.danger, fontSize: 12 }}>{sendError}</Text>
+            <Text style={{ ...t.caption1, color: colors.danger }}>{sendError}</Text>
           </View>
         ) : null}
 
-        {/* Composer */}
+        {/* Composer style iMessage */}
         <View
           style={{
             flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderTopWidth: 1,
+            alignItems: 'flex-end',
+            gap: spacing.sm,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+            borderTopWidth: 0.33,
             borderTopColor: colors.border,
             backgroundColor: colors.bgPrimary,
           }}
@@ -264,25 +286,23 @@ export function ConversationScreen() {
               flex: 1,
               backgroundColor: colors.bgSecondary,
               borderRadius: 22,
-              borderWidth: 1,
-              borderColor: colors.border,
-              paddingHorizontal: 14,
+              paddingHorizontal: spacing.md,
               paddingVertical: 4,
+              minHeight: 36,
+              justifyContent: 'center',
             }}
           >
             <TextInput
               value={draft}
               onChangeText={setDraft}
-              placeholder="Message…"
+              placeholder="iMessage"
               placeholderTextColor={colors.textSecondary}
               multiline
               style={{
+                ...t.body,
                 color: colors.textPrimary,
-                fontSize: 14,
-                minHeight: 36,
                 maxHeight: 120,
-                paddingTop: Platform.OS === 'ios' ? 8 : 4,
-                paddingBottom: Platform.OS === 'ios' ? 8 : 4,
+                paddingVertical: 6,
               }}
             />
           </View>
@@ -290,19 +310,19 @@ export function ConversationScreen() {
             onPress={send}
             disabled={!draft.trim() || sending}
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: draft.trim() ? colors.primary : colors.border,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: draft.trim() ? colors.primary : colors.bgSecondary,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: sending ? 0.5 : 1,
             }}
           >
             {sending ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#000" />
             ) : (
-              <Ionicons name="send" size={16} color="#fff" />
+              <Ionicons name="arrow-up" size={20} color={draft.trim() ? '#000' : colors.textSecondary} />
             )}
           </Pressable>
         </View>

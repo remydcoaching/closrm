@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react'
-import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl } from 'react-native'
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { useNotifications } from '../../hooks/useNotifications'
-import { NavLarge, NavIcon, FilterChips, Divider } from '../../components/ui'
+import { NavLarge, FilterChips, ListSection, ListRow } from '../../components/ui'
 import { colors } from '../../theme/colors'
+import { type as t, spacing } from '../../theme/tokens'
 import type { AppNotification, AppNotificationType } from '@shared/types'
 
 const FILTERS = ['Tout', 'Deals', 'Leads', 'No-shows', 'Rappels'] as const
@@ -38,22 +39,9 @@ const iconAndColor = (
   }
 }
 
-const cta = (type: AppNotificationType): string | null => {
-  switch (type) {
-    case 'no_show':
-      return 'Reprogrammer'
-    case 'deal_closed':
-      return 'Voir le deal'
-    case 'dm_reply':
-      return 'Ouvrir'
-    default:
-      return null
-  }
-}
-
 const formatRelative = (iso: string): string => {
   const d = new Date(iso)
-  const diffMin = Math.round((Date.now() - d.getTime()) / 60000)
+  const diffMin = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000))
   if (diffMin < 1) return 'maintenant'
   if (diffMin < 60) return `${diffMin}min`
   const diffH = Math.round(diffMin / 60)
@@ -63,15 +51,17 @@ const formatRelative = (iso: string): string => {
 }
 
 const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate()
 
 const dayLabel = (d: Date): string => {
   const today = new Date()
-  if (sameDay(d, today)) return "AUJOURD'HUI"
+  if (sameDay(d, today)) return "Aujourd'hui"
   const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
-  if (sameDay(d, yesterday)) return 'HIER'
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }).toUpperCase()
+  if (sameDay(d, yesterday)) return 'Hier'
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 }
 
 export function NotificationsScreen() {
@@ -84,52 +74,55 @@ export function NotificationsScreen() {
     [notifications, filterIdx],
   )
 
-  // Group par jour avec headers
-  const items = useMemo(() => {
-    const out: ({ kind: 'header'; label: string; key: string } | { kind: 'notif'; n: AppNotification })[] = []
-    let lastDay: Date | null = null
+  const grouped = useMemo(() => {
+    const map = new Map<string, AppNotification[]>()
     for (const n of filtered) {
       const d = new Date(n.created_at)
-      if (!lastDay || !sameDay(d, lastDay)) {
-        out.push({ kind: 'header', label: dayLabel(d), key: `h-${d.toDateString()}` })
-        lastDay = d
-      }
-      out.push({ kind: 'notif', n })
+      const key = dayLabel(d)
+      const arr = map.get(key) ?? []
+      arr.push(n)
+      map.set(key, arr)
     }
-    return out
+    return Array.from(map.entries())
   }, [filtered])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 }}>
-        <NavIcon onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
-        </NavIcon>
-        <View style={{ flex: 1, marginLeft: 4 }}>
-          <NavLarge
-            title="Activité"
-            subtitle={`${unreadCount} non lue${unreadCount > 1 ? 's' : ''} · ${filtered.length} aujourd'hui`}
-          />
-        </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 10, gap: 8 }}>
-        <View style={{ flex: 1 }}>
-          <FilterChips
-            items={FILTERS.map((f) => ({ label: f }))}
-            activeIndex={filterIdx}
-            onChange={setFilterIdx}
-          />
-        </View>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+        }}
+      >
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ padding: 4 }}>
+          <Ionicons name="chevron-back" size={28} color={colors.primary} />
+        </Pressable>
         {unreadCount > 0 ? (
-          <Pressable onPress={markAllRead} style={{ paddingHorizontal: 8, justifyContent: 'center' }}>
-            <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
-              Tout lu
-            </Text>
+          <Pressable
+            onPress={markAllRead}
+            hitSlop={12}
+            style={{ marginLeft: 'auto', padding: 4 }}
+          >
+            <Text style={{ ...t.body, color: colors.primary }}>Tout lu</Text>
           </Pressable>
         ) : null}
+      </View>
+
+      <NavLarge
+        title="Activité"
+        subtitle={`${unreadCount} non lue${unreadCount > 1 ? 's' : ''} · ${filtered.length} notification${filtered.length > 1 ? 's' : ''}`}
+      />
+
+      <View style={{ marginBottom: spacing.lg }}>
+        <FilterChips
+          items={FILTERS.map((f) => ({ label: f }))}
+          activeIndex={filterIdx}
+          onChange={setFilterIdx}
+        />
       </View>
 
       {loading && notifications.length === 0 ? (
@@ -137,101 +130,73 @@ export function NotificationsScreen() {
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(it) => (it.kind === 'header' ? it.key : it.n.id)}
-          ItemSeparatorComponent={({ leadingItem }: { leadingItem?: { kind: string } }) =>
-            leadingItem?.kind === 'header' ? null : <Divider marginHorizontal={16} />
-          }
-          contentContainerStyle={{ paddingBottom: 80 }}
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 80, gap: spacing.xxl }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
-          renderItem={({ item }) => {
-            if (item.kind === 'header') {
-              return (
-                <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }}>
-                    {item.label}
-                  </Text>
-                </View>
-              )
-            }
-            const n = item.n
-            const { icon, color } = iconAndColor(n.type)
-            const ctaLabel = cta(n.type)
-            return (
-              <Pressable
-                style={({ pressed }) => ({
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  flexDirection: 'row',
-                  gap: 12,
-                  backgroundColor: pressed ? colors.bgElevated : 'transparent',
+        >
+          {grouped.length === 0 ? (
+            <Text
+              style={{
+                ...t.subheadline,
+                color: colors.textSecondary,
+                textAlign: 'center',
+                paddingVertical: 60,
+              }}
+            >
+              Aucune notification.
+            </Text>
+          ) : (
+            grouped.map(([day, items]) => (
+              <ListSection key={day} header={day}>
+                {items.map((n, i) => {
+                  const { icon, color } = iconAndColor(n.type)
+                  return (
+                    <ListRow
+                      key={n.id}
+                      leading={
+                        <View
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 10,
+                            backgroundColor: color + '22',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Ionicons name={icon} size={18} color={color} />
+                        </View>
+                      }
+                      title={n.title}
+                      subtitle={n.subtitle ?? undefined}
+                      trailing={
+                        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                          <Text style={{ ...t.caption1, color: colors.textSecondary }}>
+                            {formatRelative(n.created_at)}
+                          </Text>
+                          {!n.read ? (
+                            <View
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: colors.primary,
+                              }}
+                            />
+                          ) : null}
+                        </View>
+                      }
+                      separator={i < items.length - 1}
+                      showChevron={false}
+                    />
+                  )
                 })}
-              >
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: color + '22',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons name={icon} size={18} color={color} />
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text
-                      style={{
-                        color: colors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: n.read ? '400' : '700',
-                        flex: 1,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {n.title}
-                    </Text>
-                    <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
-                      {formatRelative(n.created_at)}
-                    </Text>
-                  </View>
-                  {n.subtitle ? (
-                    <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                      {n.subtitle}
-                    </Text>
-                  ) : null}
-                  {ctaLabel ? (
-                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600', marginTop: 2 }}>
-                      {ctaLabel} →
-                    </Text>
-                  ) : null}
-                </View>
-                {!n.read ? (
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: colors.primary,
-                      alignSelf: 'center',
-                    }}
-                  />
-                ) : null}
-              </Pressable>
-            )
-          }}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
-                Aucune notification.
-              </Text>
-            </View>
-          }
-        />
+              </ListSection>
+            ))
+          )}
+        </ScrollView>
       )}
     </SafeAreaView>
   )
