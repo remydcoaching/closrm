@@ -7,8 +7,18 @@ import CallsStack from './stacks/CallsStack'
 import MessagesStack from './stacks/MessagesStack'
 import MoreStack from './stacks/MoreStack'
 import { PulseScreen } from '../app/pulse/PulseScreen'
+import { useUnreadCounts } from '../hooks/useUnreadCounts'
 
 const Tab = createBottomTabNavigator<TabParamList>()
+
+const BADGE_STYLE = {
+  backgroundColor: '#FF3B30',
+  color: '#fff',
+  fontSize: 11,
+  fontWeight: '600' as const,
+  minWidth: 18,
+  height: 18,
+}
 
 type IoniconName = keyof typeof Ionicons.glyphMap
 
@@ -28,6 +38,7 @@ const iconFor = (route: keyof TabParamList, focused: boolean): IoniconName => {
 }
 
 export default function TabNavigator() {
+  const { unreadMessages, unreadNotifications } = useUnreadCounts()
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -53,9 +64,25 @@ export default function TabNavigator() {
     >
       <Tab.Screen name="LeadsTab" component={LeadsStack} options={{ title: 'Leads' }} />
       <Tab.Screen name="CallsTab" component={CallsStack} options={{ title: 'Calls' }} />
-      <Tab.Screen name="MessagesTab" component={MessagesStack} options={{ title: 'Messages' }} />
+      <Tab.Screen
+        name="MessagesTab"
+        component={MessagesStack}
+        options={{
+          title: 'Messages',
+          tabBarBadge: unreadMessages > 0 ? unreadMessages : undefined,
+          tabBarBadgeStyle: BADGE_STYLE,
+        }}
+      />
       <Tab.Screen name="PulseTab" component={PulseScreen} options={{ title: 'Pulse' }} />
-      <Tab.Screen name="MoreTab" component={MoreStack} options={{ title: 'Plus' }} />
+      <Tab.Screen
+        name="MoreTab"
+        component={MoreStack}
+        options={{
+          title: 'Plus',
+          tabBarBadge: unreadNotifications > 0 ? unreadNotifications : undefined,
+          tabBarBadgeStyle: BADGE_STYLE,
+        }}
+      />
     </Tab.Navigator>
   )
 }

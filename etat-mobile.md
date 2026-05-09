@@ -39,6 +39,7 @@ EAS Build au lieu de Xcode/Android Studio direct.
 | 15 | Notifications + table SQL | ✅ | migration 076 + useNotifications + filterChips + group day + mark all read |
 | 16 | Push notifications | ✅ client | migration 077 push_tokens + expo-notifications + register + save token + tap deep links. Backend dispatch à brancher côté API web (env-spécifique). |
 | 17 | Pulse Dashboard | ✅ | usePulseKpis + hero revenue + 4 KPI cards + funnel 30j + activity heatmap 7j |
+| 18 | Tab badges + useUnreadCounts | ✅ | Hook + badges Messages (unread DM) + More (unread notifs), realtime subs |
 
 ## Historique
 
