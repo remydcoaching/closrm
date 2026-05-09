@@ -35,7 +35,8 @@ const formatRelative = (iso: string | null): string => {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
 
-const CARD_RADIUS = 22
+// Full pill — match exactement le style des FilterChips au-dessus de la liste.
+const CARD_RADIUS = 999
 
 const styles = StyleSheet.create({
   container: {
@@ -53,9 +54,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingLeft: 14,
-    paddingRight: 16,
+    paddingVertical: 14,
+    // Padding gauche +4 pour compenser la courbe pill et donner de l'air
+    // à l'avatar dans la forme arrondie.
+    paddingLeft: 18,
+    paddingRight: 20,
   },
   // Inner top highlight — fine ligne blanche très transparente qui simule
   // le bord lumineux du verre Apple (iOS Liquid Glass / Vibrancy).
