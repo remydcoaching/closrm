@@ -3,6 +3,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import MetaIntegrationCard from './meta-card'
 import GoogleCalendarCard from './google-card'
 import TelegramCard from './telegram-card'
+import YoutubeCard from './youtube-card'
 import DomainWizardCard from '@/components/emails/DomainWizardCard'
 import SuppressionList from '@/components/emails/SuppressionList'
 
@@ -23,9 +24,11 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
   const metaIntegration = integrations?.find(i => i.type === 'meta')
   const googleIntegration = integrations?.find(i => i.type === 'google_calendar')
   const telegramIntegration = integrations?.find(i => i.type === 'telegram')
+  const youtubeIntegration = integrations?.find(i => i.type === 'youtube')
 
   const successMessage: Record<string, string> = {
     meta_connected: 'Facebook Meta Ads + Instagram connecté avec succès ! Les leads arrivent maintenant automatiquement.',
+    'YouTube connecté': 'YouTube connecté avec succès. La synchronisation des vidéos tourne en arrière-plan.',
   }
   const errorMessage: Record<string, string> = {
     auth_required: 'Vous devez être connecté pour accéder à cette page.',
@@ -79,6 +82,9 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
 
         {/* Google Agenda */}
         <GoogleCalendarCard integration={googleIntegration ?? null} />
+
+        {/* YouTube */}
+        <YoutubeCard integration={youtubeIntegration ?? null} />
 
         {/* Domaine Email */}
         <DomainWizardCard />
