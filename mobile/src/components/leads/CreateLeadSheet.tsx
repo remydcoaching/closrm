@@ -174,9 +174,10 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
       {children}
       <BottomSheet
         ref={sheetRef}
-        snapPoints={['80%']}
+        snapPoints={['90%']}
         index={-1}
         enablePanDownToClose
+        enableDynamicSizing={false}
         backgroundStyle={{ backgroundColor: '#1c1c1e' }}
         handleIndicatorStyle={{ backgroundColor: colors.border }}
         backdropComponent={renderBackdrop}

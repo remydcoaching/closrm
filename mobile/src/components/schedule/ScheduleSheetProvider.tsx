@@ -180,9 +180,10 @@ export function ScheduleSheetProvider({ children }: { children: React.ReactNode 
       {children}
       <BottomSheet
         ref={sheetRef}
-        snapPoints={['85%']}
+        snapPoints={['90%']}
         index={-1}
         enablePanDownToClose
+        enableDynamicSizing={false}
         backgroundStyle={{ backgroundColor: colors.sheet }}
         handleIndicatorStyle={{ backgroundColor: colors.border }}
         backdropComponent={renderBackdrop}
