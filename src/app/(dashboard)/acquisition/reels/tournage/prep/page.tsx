@@ -54,6 +54,7 @@ export default function PrepTournagePage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [addingLocation, setAddingLocation] = useState(false)
   const [newLocationName, setNewLocationName] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
 
   const reelIds = useMemo(() => {
     if (!reelParam) return null
@@ -140,6 +141,29 @@ export default function PrepTournagePage() {
     setSelectedIds(s => s.includes(id) ? s.filter(i => i !== id) : [...s, id])
   }
 
+  async function aiSuggest() {
+    setAiLoading(true)
+    try {
+      const body = reels.length > 0 ? { social_post_ids: reels.map(r => r.id) } : {}
+      const res = await fetch('/api/reel-shots/ai-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        alert(`Erreur IA : ${json.error ?? res.status}`)
+      } else {
+        alert(`✨ IA a placé ${json.applied} / ${json.total} phrases.`)
+        loadAll()
+      }
+    } catch (e) {
+      alert(`Erreur réseau : ${(e as Error).message}`)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   // Close dropdown on outside click
   useEffect(() => {
     if (!openDropdown) return
@@ -206,6 +230,14 @@ export default function PrepTournagePage() {
         padding: '12px 14px', marginBottom: 14,
         display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
       }}>
+        <button onClick={aiSuggest} disabled={aiLoading} style={{
+          padding: '9px 16px', background: aiLoading ? '#3a1a3a' : 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+          color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700,
+          cursor: aiLoading ? 'wait' : 'pointer',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+        }}>
+          ✨ {aiLoading ? 'IA en cours…' : 'Suggérer auto (IA)'}
+        </button>
         <button onClick={() => setAddingLocation(true)} style={btnSecondary}>+ Lieu</button>
         <button onClick={loadAll} style={btnSecondary}>↻ Recharger</button>
         <span style={{ marginLeft: 'auto', fontSize: 12, color: '#888' }}>
