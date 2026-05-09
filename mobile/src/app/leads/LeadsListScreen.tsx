@@ -287,7 +287,7 @@ export function LeadsListScreen() {
         </ScrollView>
       )}
 
-      <FAB onPress={() => createLeadSheet.open(refetch)} />
+      <FAB label="Nouveau lead" onPress={() => createLeadSheet.open(refetch)} />
     </SafeAreaView>
   )
 }

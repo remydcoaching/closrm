@@ -1,17 +1,22 @@
 import React from 'react'
-import { Pressable } from 'react-native'
+import { Pressable, View, Text } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors } from '../../theme/colors'
 
 interface FABProps {
   onPress?: () => void
   icon?: keyof typeof Ionicons.glyphMap
-  /** Décalage par rapport au bord bas. Permet d'éviter les recouvrements
-   *  avec la TabBar quand le FAB est dans un écran tabulé. */
+  /** Label optionnel — si présent rend en extended FAB (pill + texte). */
+  label?: string
+  /** Décalage par rapport au bord bas. Permet d'éviter recouvrement TabBar. */
   bottom?: number
 }
 
-export function FAB({ onPress, icon = 'add', bottom = 24 }: FABProps) {
+/** FAB — extended si label fourni (pill icon+label), sinon round 60pt.
+ *  Glow primary subtle. */
+export function FAB({ onPress, icon = 'add', label, bottom = 24 }: FABProps) {
+  const isExtended = !!label
+
   return (
     <Pressable
       onPress={onPress}
@@ -19,27 +24,41 @@ export function FAB({ onPress, icon = 'add', bottom = 24 }: FABProps) {
         position: 'absolute',
         right: 20,
         bottom,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: colors.primary,
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: isExtended ? 8 : 0,
+        height: isExtended ? 52 : 60,
+        paddingHorizontal: isExtended ? 18 : 0,
+        width: isExtended ? undefined : 60,
+        borderRadius: isExtended ? 26 : 30,
+        backgroundColor: colors.primary,
         justifyContent: 'center',
-        // Glow premium : 2 shadows superposées (proche + far) pour un
-        // effet plus riche qu'une simple shadow.
+        // Glow primary subtle
         shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.55,
-        shadowRadius: 20,
-        elevation: 12,
-        // Inner border subtil pour donner du relief
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.5,
+        shadowRadius: 16,
+        elevation: 10,
+        // Inner border
         borderWidth: 1,
         borderColor: '#FFFFFF22',
-        transform: [{ scale: pressed ? 0.94 : 1 }],
+        transform: [{ scale: pressed ? 0.96 : 1 }],
         opacity: pressed ? 0.95 : 1,
       })}
     >
-      <Ionicons name={icon} size={28} color="#fff" />
+      <Ionicons name={icon} size={isExtended ? 22 : 28} color="#000" />
+      {label ? (
+        <Text
+          style={{
+            color: '#000',
+            fontSize: 15,
+            fontWeight: '700',
+            letterSpacing: -0.24,
+          }}
+        >
+          {label}
+        </Text>
+      ) : null}
     </Pressable>
   )
 }
