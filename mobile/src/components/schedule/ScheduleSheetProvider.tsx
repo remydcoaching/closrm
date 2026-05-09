@@ -1,8 +1,7 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native'
 import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetScrollView,
   BottomSheetView,
 } from '@gorhom/bottom-sheet'
 import { Ionicons } from '@expo/vector-icons'
@@ -38,18 +37,8 @@ const TYPES = [
   { key: 'follow_up', label: 'Follow-up', color: colors.orange },
 ] as const
 
-const TIME_SLOTS: { h: number; m: number }[] = (() => {
-  const out: { h: number; m: number }[] = []
-  for (let h = 8; h <= 20; h++) {
-    for (const m of [0, 15, 30, 45]) {
-      if (h === 20 && m > 0) break
-      out.push({ h, m })
-    }
-  }
-  return out
-})()
-const SLOT_WIDTH = 68
-const SLOT_GAP = 6
+const HOURS_RANGE = Array.from({ length: 12 }, (_, i) => 8 + i) // 08-19
+const MINUTES_RANGE = [0, 15, 30, 45]
 const DAYS_AHEAD = 7
 
 const sameDay = (a: Date, b: Date) =>
@@ -195,10 +184,9 @@ export function ScheduleSheetProvider({ children }: { children: React.ReactNode 
       {children}
       <BottomSheet
         ref={sheetRef}
-        snapPoints={['62%']}
         index={-1}
         enablePanDownToClose
-        enableDynamicSizing={false}
+        enableDynamicSizing
         backgroundStyle={{ backgroundColor: colors.sheet }}
         handleIndicatorStyle={{ backgroundColor: colors.border }}
         backdropComponent={renderBackdrop}
@@ -210,7 +198,7 @@ export function ScheduleSheetProvider({ children }: { children: React.ReactNode 
           }
         }}
       >
-        <BottomSheetView style={{ flex: 1, padding: 16 }}>
+        <BottomSheetView style={{ padding: 16, paddingBottom: 32 }}>
           {state ? (
             <ScheduleSheetContent
               state={state}
@@ -264,27 +252,9 @@ function ScheduleSheetContent({
   onClose,
 }: ContentProps) {
   const fullName = `${state.lead.first_name} ${state.lead.last_name}`.trim() || '—'
-  const timeScrollRef = useRef<ScrollView>(null)
-  const selectedSlotIdx = useMemo(
-    () => TIME_SLOTS.findIndex((s) => s.h === state.hour && s.m === state.minute),
-    [state.hour, state.minute],
-  )
-
-  // Auto-scroll la liste d'heures pour que le créneau sélectionné soit visible
-  // (utile à l'ouverture et au changement de jour).
-  useEffect(() => {
-    if (selectedSlotIdx < 0) return
-    const x = Math.max(0, selectedSlotIdx * (SLOT_WIDTH + SLOT_GAP) - SLOT_WIDTH)
-    const t = setTimeout(() => {
-      timeScrollRef.current?.scrollTo({ x, animated: false })
-    }, 50)
-    return () => clearTimeout(t)
-  }, [selectedSlotIdx, state.selectedDate])
 
   return (
-    // BottomSheetScrollView : version qui coopère avec le pan-down du sheet.
-    // Sans ça, scroller dans la sheet déclencherait parfois la fermeture.
-    <BottomSheetScrollView contentContainerStyle={{ gap: 16, paddingBottom: 24 }}>
+    <View style={{ gap: 14 }}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700' }}>
@@ -396,27 +366,57 @@ function ScheduleSheetContent({
         </ScrollView>
       </View>
 
-      {/* Time picker — single horizontal list, 15-min slots, auto-scrolls
-          to the selected one. One tap = both hour + minute. */}
+      {/* Time picker — grille compacte 4 colonnes pour les heures, 4
+          boutons inline pour les minutes. Tout visible, 0 scroll. */}
       <View>
         <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
           HEURE
         </Text>
-        <ScrollView
-          ref={timeScrollRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: SLOT_GAP }}
-        >
-          {TIME_SLOTS.map(({ h, m }) => {
-            const selected = h === state.hour && m === state.minute
-            const conflicted = conflicts.has(`${isoDay(state.selectedDate)}-${h}:${m}`)
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {HOURS_RANGE.map((h) => {
+            const selected = h === state.hour
+            // un créneau est "tout pris" si les 4 minutes sont en conflit
+            const fullyTaken = [0, 15, 30, 45].every((m) =>
+              conflicts.has(`${isoDay(state.selectedDate)}-${h}:${m}`),
+            )
             return (
               <Pressable
-                key={`${h}-${m}`}
-                onPress={() => onTimeChange(h, m)}
+                key={h}
+                onPress={() => onTimeChange(h, state.minute)}
                 style={{
-                  width: SLOT_WIDTH,
+                  width: '23.5%', // 4 colonnes
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  backgroundColor: selected ? colors.primary : colors.bgElevated,
+                  borderWidth: 1,
+                  borderColor: selected ? colors.primary : colors.border,
+                  alignItems: 'center',
+                  opacity: fullyTaken && !selected ? 0.4 : 1,
+                }}
+              >
+                <Text
+                  style={{
+                    color: selected ? '#fff' : colors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: '600',
+                  }}
+                >
+                  {h.toString().padStart(2, '0')}h
+                </Text>
+              </Pressable>
+            )
+          })}
+        </View>
+        <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+          {MINUTES_RANGE.map((m) => {
+            const selected = m === state.minute
+            const conflicted = conflicts.has(`${isoDay(state.selectedDate)}-${state.hour}:${m}`)
+            return (
+              <Pressable
+                key={m}
+                onPress={() => onTimeChange(state.hour, m)}
+                style={{
+                  flex: 1,
                   paddingVertical: 10,
                   borderRadius: 10,
                   backgroundColor: selected
@@ -431,7 +431,6 @@ function ScheduleSheetContent({
                     ? colors.danger + '55'
                     : colors.border,
                   alignItems: 'center',
-                  opacity: conflicted && !selected ? 0.6 : 1,
                 }}
               >
                 <Text
@@ -445,12 +444,12 @@ function ScheduleSheetContent({
                     fontWeight: '600',
                   }}
                 >
-                  {h.toString().padStart(2, '0')}h{m.toString().padStart(2, '0')}
+                  :{m.toString().padStart(2, '0')}
                 </Text>
               </Pressable>
             )
           })}
-        </ScrollView>
+        </View>
       </View>
 
       {/* Conflict / Past status */}
@@ -516,6 +515,6 @@ function ScheduleSheetContent({
       </View>
 
       {state.submitting ? <ActivityIndicator color={colors.primary} /> : null}
-    </BottomSheetScrollView>
+    </View>
   )
 }
