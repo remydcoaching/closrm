@@ -490,7 +490,21 @@ function MediaPreview({ post }: { post: SocialPostWithPublications }) {
   }
 
   const previewW = SCREEN_W - 2 * spacing.lg
-  const previewH = isVideo ? Math.round(previewW * 9 / 16) : previewW // 16:9 vidéo, 1:1 image
+  // Aspect ratio adaptatif selon le format réel du contenu :
+  // - reel / SHORT → 9:16 portrait (Instagram Reels, TikTok, YT Shorts)
+  // - LONG_VIDEO → 16:9 landscape (YouTube long format)
+  // - CAROUSEL → 4:5 (format Instagram natif portrait)
+  // - sinon (IMAGE, VIDEO générique) → 1:1
+  const previewH = (() => {
+    const isShort =
+      post.content_kind === 'reel' ||
+      post.media_type === 'SHORT' ||
+      post.media_type === 'VIDEO' // par défaut format vertical pour social
+    if (isShort) return Math.min(Math.round(previewW * 16 / 9), Math.round(SCREEN_W * 1.4))
+    if (post.media_type === 'LONG_VIDEO') return Math.round(previewW * 9 / 16)
+    if (post.media_type === 'CAROUSEL') return Math.round(previewW * 5 / 4)
+    return previewW // 1:1
+  })()
 
   // Décide du mode de rendu :
   // - INLINE_VIDEO : on a une URL vidéo directe (R2 signée OU MP4 direct)
@@ -672,7 +686,10 @@ function InlineVideo({ uri }: { uri: string }) {
     <VideoView
       player={player}
       style={{ width: '100%', height: '100%' }}
-      contentFit="cover"
+      // contain : pas de crop, letterbox si l'aspect du conteneur diffère
+      // de la vidéo réelle. Mieux pour vidéo qu'un cover qui zoomerait
+      // dans le centre et coupe le haut/bas (ou les côtés).
+      contentFit="contain"
       allowsFullscreen
       allowsPictureInPicture
       nativeControls
