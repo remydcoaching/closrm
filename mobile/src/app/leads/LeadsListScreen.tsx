@@ -10,14 +10,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useDebounce } from '../../hooks/useDebounce'
 import { LeadCardLarge } from '../../components/leads/LeadCardLarge'
 import { LeadRow } from '../../components/leads/LeadRow'
-import {
-  NavLarge,
-  SearchField,
-  Segmented,
-  FilterChips,
-  FAB,
-  ListSection,
-} from '../../components/ui'
+import { NavLarge, SearchField, Segmented, FilterChips, FAB } from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
 import { statusConfig } from '../../theme/status'
@@ -161,15 +154,6 @@ export function LeadsListScreen() {
     [leads],
   )
 
-  const renderLeadRow = (lead: Lead, isLast: boolean) => (
-    <LeadRow
-      key={lead.id}
-      lead={lead}
-      separator={!isLast}
-      onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id })}
-    />
-  )
-
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <NavLarge
@@ -210,7 +194,11 @@ export function LeadsListScreen() {
         </View>
       ) : viewMode === 'flat' ? (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: 100,
+            gap: spacing.sm,
+          }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
@@ -218,22 +206,50 @@ export function LeadsListScreen() {
           {leads.length === 0 ? (
             <EmptyState text="Aucun lead pour l'instant." />
           ) : (
-            <ListSection>
-              {leads.map((l, i) => renderLeadRow(l, i === leads.length - 1))}
-            </ListSection>
+            leads.map((l) => (
+              <LeadRow
+                key={l.id}
+                lead={l}
+                asCard
+                onPress={() => navigation.navigate('LeadDetail', { leadId: l.id })}
+              />
+            ))
           )}
         </ScrollView>
       ) : viewMode === 'grouped' ? (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 100, gap: spacing.xxl }}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: 100,
+            gap: spacing.xxl,
+          }}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
           }
         >
           {groupedSections.map(({ status: s, leads: arr }) => (
-            <ListSection key={s} header={statusConfig[s].label}>
-              {arr.map((l, i) => renderLeadRow(l, i === arr.length - 1))}
-            </ListSection>
+            <View key={s} style={{ gap: spacing.sm }}>
+              <Text
+                style={{
+                  ...t.footnote,
+                  color: colors.textSecondary,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  marginLeft: spacing.xs,
+                  marginBottom: 4,
+                }}
+              >
+                {statusConfig[s].label} · {arr.length}
+              </Text>
+              {arr.map((l) => (
+                <LeadRow
+                  key={l.id}
+                  lead={l}
+                  asCard
+                  onPress={() => navigation.navigate('LeadDetail', { leadId: l.id })}
+                />
+              ))}
+            </View>
           ))}
         </ScrollView>
       ) : (

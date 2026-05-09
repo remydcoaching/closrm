@@ -3,7 +3,7 @@ import { Pressable, View, Text } from 'react-native'
 import type { Lead } from '@shared/types'
 import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
-import { type as t, spacing } from '../../theme/tokens'
+import { type as t, spacing, radius } from '../../theme/tokens'
 import { statusConfig } from '../../theme/status'
 
 interface LeadRowProps {
@@ -11,6 +11,8 @@ interface LeadRowProps {
   onPress?: () => void
   /** Si true, hairline separator au bottom (intra-section). */
   separator?: boolean
+  /** Si true, rendu en card individuelle (bg secondary + radius). */
+  asCard?: boolean
 }
 
 const formatAmount = (n: number | null): string | null =>
@@ -25,7 +27,7 @@ const formatAmount = (n: number | null): string | null =>
 /** Lead row inline iOS-native — un seul Pressable flex-row avec 3
  *  colonnes (avatar | content flex 1 | trailing). Pas d'abstraction
  *  ListRow pour garantir le layout visuel. */
-export function LeadRow({ lead, onPress, separator }: LeadRowProps) {
+export function LeadRow({ lead, onPress, separator, asCard }: LeadRowProps) {
   const fullName = `${lead.first_name} ${lead.last_name}`.trim() || '—'
   const amount = formatAmount(lead.deal_amount)
   const sourceLabel = lead.source.replace(/_/g, ' ')
@@ -39,10 +41,17 @@ export function LeadRow({ lead, onPress, separator }: LeadRowProps) {
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
-          paddingVertical: 12,
+          paddingVertical: asCard ? 14 : 12,
           paddingLeft: spacing.lg,
           paddingRight: spacing.md,
-          backgroundColor: pressed ? '#ffffff10' : 'transparent',
+          backgroundColor: asCard
+            ? pressed
+              ? '#2c2c2e'
+              : colors.bgSecondary
+            : pressed
+            ? '#ffffff10'
+            : 'transparent',
+          borderRadius: asCard ? radius.xl : 0,
           minHeight: 60,
         })}
       >
