@@ -12,7 +12,12 @@ interface DayStripProps {
 
 const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 
-const isoDate = (d: Date) => d.toISOString().slice(0, 10)
+const isoDate = (d: Date) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
