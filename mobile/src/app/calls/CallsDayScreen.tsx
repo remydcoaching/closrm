@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
@@ -10,6 +10,11 @@ import { DayStrip } from '../../components/calls/DayStrip'
 import { NavLarge } from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
+import { supabase } from '../../services/supabase'
+
+const STRIP_BEFORE = 3
+const STRIP_AFTER = 10
+const isoDay = (d: Date) => d.toISOString().slice(0, 10)
 
 type Nav = NativeStackNavigationProp<CallsStackParamList, 'CallsDay'>
 
@@ -20,6 +25,43 @@ export function CallsDayScreen() {
   const navigation = useNavigation<Nav>()
   const [date, setDate] = useState<Date>(() => new Date())
   const { calls, loading, refetch } = useCalls(date)
+  const [countsByDate, setCountsByDate] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    const fetchCounts = async () => {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const from = new Date(today)
+      from.setDate(today.getDate() - STRIP_BEFORE)
+      const to = new Date(today)
+      to.setDate(today.getDate() + STRIP_AFTER + 1)
+      const { data } = await supabase
+        .from('calls')
+        .select('scheduled_at, outcome')
+        .gte('scheduled_at', from.toISOString())
+        .lt('scheduled_at', to.toISOString())
+      if (cancelled) return
+      const counts: Record<string, number> = {}
+      for (const c of (data ?? []) as { scheduled_at: string; outcome: string }[]) {
+        if (c.outcome === 'cancelled') continue
+        const k = isoDay(new Date(c.scheduled_at))
+        counts[k] = (counts[k] ?? 0) + 1
+      }
+      setCountsByDate(counts)
+    }
+    void fetchCounts()
+    const channel = supabase
+      .channel('calls-strip-counts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calls' }, () => {
+        void fetchCounts()
+      })
+      .subscribe()
+    return () => {
+      cancelled = true
+      void supabase.removeChannel(channel)
+    }
+  }, [])
 
   const { plannedCount, doneCount, closedAmount, nextCallId } = useMemo(() => {
     let planned = 0
@@ -65,7 +107,12 @@ export function CallsDayScreen() {
       />
 
       <View style={{ marginBottom: spacing.lg }}>
-        <DayStrip selectedDate={date} onSelect={setDate} />
+        <DayStrip
+          selectedDate={date}
+          onSelect={setDate}
+          range={{ before: STRIP_BEFORE, after: STRIP_AFTER }}
+          countsByDate={countsByDate}
+        />
       </View>
 
       {/* KPI summary inline grouped */}
