@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface Phrase { id: string; text: string; location: string | null; aiSuggested: string | null; done: boolean; skipped?: boolean; shotNote?: string }
@@ -35,6 +36,13 @@ function placeIcon(loc: string | null): string {
 }
 
 export default function JourJPage() {
+  const searchParams = useSearchParams()
+  const reelParam = searchParams.get('reel')
+  const reelFilter = useMemo(() => {
+    if (!reelParam) return null
+    return reelParam.split(',').map(s => s.trim()).filter(Boolean)
+  }, [reelParam])
+
   const [state, setState] = useState<PrepState | null>(null)
   const [placeIdx, setPlaceIdx] = useState(0)
 
@@ -56,7 +64,8 @@ export default function JourJPage() {
   const byPlace = useMemo(() => {
     if (!state) return {} as Record<string, ShotInfo[]>
     const r: Record<string, ShotInfo[]> = {}
-    state.reels.forEach(reel => {
+    const filteredReels = reelFilter ? state.reels.filter(reel => reelFilter.includes(reel.id)) : state.reels
+    filteredReels.forEach(reel => {
       const total = reel.phrases.length
       reel.phrases.forEach((p, idx) => {
         if (!p.text || p.done || !p.location) return
@@ -76,7 +85,7 @@ export default function JourJPage() {
       })
     })
     return r
-  }, [state])
+  }, [state, reelFilter])
 
   // Trier les places par count des shots NON-skipped (priorité)
   const places = useMemo(() => Object.keys(byPlace).sort((a, b) => {
@@ -164,8 +173,15 @@ export default function JourJPage() {
         borderRadius: 10, padding: '12px 16px', marginBottom: 20, width: '100%', maxWidth: 360,
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
-        <Link href="/proto/reels-prep" style={{ color: '#FF0000', textDecoration: 'none', fontSize: 12 }}>← Prep</Link>
-        <div style={{ flex: 1, fontSize: 12, color: '#888', textAlign: 'right' }}>🎬 Jour J</div>
+        <Link href={reelParam ? `/proto/reels-prep?reel=${reelParam}` : '/proto/reels-prep'} style={{ color: '#FF0000', textDecoration: 'none', fontSize: 12 }}>← Prep</Link>
+        <div style={{ flex: 1, fontSize: 12, color: '#888', textAlign: 'right' }}>
+          🎬 Jour J{reelFilter ? ` · ${reelFilter.length} reel${reelFilter.length > 1 ? 's' : ''}` : ''}
+        </div>
+        {reelFilter && (
+          <Link href="/proto/reels-jour-j" style={{ color: '#FF0000', textDecoration: 'none', fontSize: 11, opacity: 0.7 }}>
+            (tout)
+          </Link>
+        )}
       </div>
 
       <div style={{

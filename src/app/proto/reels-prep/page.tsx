@@ -249,7 +249,7 @@ export default function PrepTournagePage() {
               )}
             </div>
           </div>
-          <Link href="/proto/reels-jour-j" style={{
+          <Link href={reelParam ? `/proto/reels-jour-j?reel=${reelParam}` : '/proto/reels-jour-j'} style={{
             padding: '8px 14px', fontSize: 12, fontWeight: 600,
             color: '#FF0000', background: 'rgba(255,0,0,0.08)',
             border: '1px solid rgba(255,0,0,0.25)', borderRadius: 8, textDecoration: 'none',
