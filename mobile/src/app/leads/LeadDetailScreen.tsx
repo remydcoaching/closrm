@@ -121,13 +121,16 @@ function Chip({
       </Text>
     </>
   )
+  // Note RN : un style fonction `({pressed}) => [...]` sur Pressable casse
+  // parfois le flexDirection du chipStyle au premier render → la chip rend
+  // verticale (icône au-dessus du label). On wrap le layout dans une View
+  // interne, Pressable ne porte plus que l'opacité.
   if (onPress) {
     return (
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => [chipStyle, { opacity: pressed ? 0.7 : 1 }]}
-      >
-        {inner}
+      <Pressable onPress={onPress}>
+        {({ pressed }) => (
+          <View style={{ ...chipStyle, opacity: pressed ? 0.7 : 1 }}>{inner}</View>
+        )}
       </Pressable>
     )
   }
