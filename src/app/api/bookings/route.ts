@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createBookingSchema, bookingFiltersSchema } from '@/lib/validations/bookings'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
 import { buildCalendarUrls } from '@/lib/email/calendar-links'
@@ -217,6 +218,28 @@ export async function POST(request: NextRequest) {
         calendar_name: (data.booking_calendar as { name?: string } | null)?.name,
         scheduled_at: data.scheduled_at,
       }).catch(() => {})
+    }
+
+    // Push mobile : un lead vient de réserver
+    {
+      const calName =
+        (data.booking_calendar as { name?: string } | null)?.name ?? 'créneau'
+      const when = data.scheduled_at
+        ? new Date(data.scheduled_at).toLocaleString('fr-FR', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : null
+      void sendPushToWorkspace({
+        workspaceId,
+        type: 'booking_created',
+        title: '📅 Nouveau booking',
+        body: when ? `${calName} · ${when}` : calName,
+        data: { entity_type: 'lead', entity_id: data.lead_id ?? '' },
+      })
     }
 
     // Create Google Calendar event (non-blocking)
