@@ -975,6 +975,15 @@ function formatNoteDate(iso: string): string {
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
+// Normalise les notes des imports Meta Ads / GHL qui ont souvent
+// 3-5 sauts de ligne consécutifs après chaque section emoji →
+// on cap à max 1 ligne vide pour éviter les colonnes blanches.
+function cleanNoteContent(s: string): string {
+  return s.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+const NOTE_COLLAPSE_LINES = 6
+
 function NoteRow({
   note,
   separator,
@@ -987,20 +996,41 @@ function NoteRow({
   onDelete: () => void
 }) {
   const edited = note.updated_at && note.updated_at !== note.created_at
+  const cleaned = cleanNoteContent(note.content)
+  const lineCount = cleaned.split('\n').length
+  const tooLong = lineCount > NOTE_COLLAPSE_LINES || cleaned.length > 280
+  const [expanded, setExpanded] = useState(false)
+
   return (
     <View
       style={{
         paddingHorizontal: spacing.md,
-        paddingVertical: 12,
+        paddingVertical: 14,
         borderBottomWidth: separator ? 0.33 : 0,
         borderBottomColor: colors.border,
-        gap: 6,
+        gap: 8,
       }}
     >
-      <Text style={{ ...t.body, color: colors.textPrimary, lineHeight: 22 }}>
-        {note.content}
+      <Text
+        style={{
+          ...t.body,
+          color: colors.textPrimary,
+          lineHeight: 21,
+        }}
+        numberOfLines={tooLong && !expanded ? NOTE_COLLAPSE_LINES : undefined}
+      >
+        {cleaned}
       </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+
+      {tooLong ? (
+        <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={6}>
+          <Text style={{ ...t.caption1, color: colors.primary, fontWeight: '600' }}>
+            {expanded ? 'Voir moins' : 'Voir plus'}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 }}>
         <Text style={{ ...t.caption2, color: colors.textTertiary }}>
           {formatNoteDate(note.created_at)}
           {edited ? ' · modifiée' : ''}
