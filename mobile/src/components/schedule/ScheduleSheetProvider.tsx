@@ -6,7 +6,7 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet'
 import { Ionicons } from '@expo/vector-icons'
 import type { Lead, Call } from '@shared/types'
-import { Avatar, StatusBadge, Button, Segmented } from '../ui'
+import { Avatar, StatusBadge, Button, Segmented, WheelPicker } from '../ui'
 import { colors } from '../../theme/colors'
 import { supabase } from '../../services/supabase'
 import { api } from '../../services/api'
@@ -366,89 +366,49 @@ function ScheduleSheetContent({
         </ScrollView>
       </View>
 
-      {/* Time picker — grille compacte 4 colonnes pour les heures, 4
-          boutons inline pour les minutes. Tout visible, 0 scroll. */}
+      {/* Time picker — wheel iOS UIDatePicker style, 2 colonnes (heures
+          / minutes) avec snap. La row du milieu = sélection. */}
       <View>
         <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>
           HEURE
         </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-          {HOURS_RANGE.map((h) => {
-            const selected = h === state.hour
-            // un créneau est "tout pris" si les 4 minutes sont en conflit
-            const fullyTaken = [0, 15, 30, 45].every((m) =>
-              conflicts.has(`${isoDay(state.selectedDate)}-${h}:${m}`),
-            )
-            return (
-              <Pressable
-                key={h}
-                onPress={() => onTimeChange(h, state.minute)}
-                style={{
-                  width: '23.5%', // 4 colonnes
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  backgroundColor: selected ? colors.primary : colors.bgElevated,
-                  borderWidth: 1,
-                  borderColor: selected ? colors.primary : colors.border,
-                  alignItems: 'center',
-                  opacity: fullyTaken && !selected ? 0.4 : 1,
-                }}
-              >
-                <Text
-                  style={{
-                    color: selected ? '#fff' : colors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: '600',
-                  }}
-                >
-                  {h.toString().padStart(2, '0')}h
-                </Text>
-              </Pressable>
-            )
-          })}
-        </View>
-        <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-          {MINUTES_RANGE.map((m) => {
-            const selected = m === state.minute
-            const conflicted = conflicts.has(`${isoDay(state.selectedDate)}-${state.hour}:${m}`)
-            return (
-              <Pressable
-                key={m}
-                onPress={() => onTimeChange(state.hour, m)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  backgroundColor: selected
-                    ? colors.primary
-                    : conflicted
-                    ? colors.danger + '15'
-                    : colors.bgElevated,
-                  borderWidth: 1,
-                  borderColor: selected
-                    ? colors.primary
-                    : conflicted
-                    ? colors.danger + '55'
-                    : colors.border,
-                  alignItems: 'center',
-                }}
-              >
-                <Text
-                  style={{
-                    color: selected
-                      ? '#fff'
-                      : conflicted
-                      ? colors.danger
-                      : colors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: '600',
-                  }}
-                >
-                  :{m.toString().padStart(2, '0')}
-                </Text>
-              </Pressable>
-            )
-          })}
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 8,
+            backgroundColor: colors.bgElevated,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+          }}
+        >
+          <WheelPicker
+            values={HOURS_RANGE}
+            selected={state.hour}
+            onSelect={(h) => onTimeChange(h, state.minute)}
+            format={(h) => `${h.toString().padStart(2, '0')}h`}
+            width={90}
+          />
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: '600',
+              color: colors.textTertiary,
+              marginHorizontal: 4,
+            }}
+          >
+            :
+          </Text>
+          <WheelPicker
+            values={MINUTES_RANGE}
+            selected={state.minute}
+            onSelect={(m) => onTimeChange(state.hour, m)}
+            width={70}
+          />
         </View>
       </View>
 
