@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
       .from('reel_shots')
       .select('*')
       .eq('workspace_id', workspaceId)
+      .is('deleted_at', null)
       .order('social_post_id', { ascending: true })
       .order('position', { ascending: true })
 
