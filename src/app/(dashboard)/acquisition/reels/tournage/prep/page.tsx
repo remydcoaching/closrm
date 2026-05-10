@@ -95,38 +95,26 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
       const filtered = reelIds ? allFetched.filter(r => reelIds.includes(r.id)) : allFetched
       setReels(filtered)
 
-      // 2. Charge d'abord les shots existants
+      // 2. Sync les shots de tous les reels visibles (split script → reel_shots)
+      // CRITIQUE pour la correctness : si l'user a modifié son script, il faut re-sync
+      // pour que les phrases affichées reflètent le nouveau texte.
+      // L'API sync est idempotent et préserve location/shot_note (et done/skipped sauf
+      // si le texte a changé, voir route sync).
+      await Promise.all(filtered.map(r =>
+        fetch('/api/reel-shots/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ social_post_id: r.id }),
+        }).catch(() => null)
+      ))
+
+      // 3. Charge les shots après sync
       let shotsUrl = '/api/reel-shots'
       if (filtered.length > 0) shotsUrl += `?social_post_ids=${filtered.map(r => r.id).join(',')}`
       const shotsRes = await fetch(shotsUrl)
       if (!shotsRes.ok) throw new Error(`Shots fetch failed: ${shotsRes.status}`)
       const shotsJson = await shotsRes.json()
-      const existingShots: ReelShot[] = shotsJson.data ?? []
-
-      // 3. Sync uniquement les reels qui n'ont AUCUN shot (premier ouverture)
-      // Évite N appels au load quand les shots sont déjà présents (perf 50+ reels).
-      // L'utilisateur peut cliquer "↻ Recharger" pour forcer un re-sync si script édité.
-      const reelsWithShots = new Set(existingShots.map(s => s.social_post_id))
-      const reelsToSync = filtered.filter(r => !reelsWithShots.has(r.id))
-      if (reelsToSync.length > 0) {
-        await Promise.all(reelsToSync.map(r =>
-          fetch('/api/reel-shots/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ social_post_id: r.id }),
-          }).catch(() => null)
-        ))
-        // Re-fetch shots après sync (pour récupérer les nouveaux)
-        const reSyncRes = await fetch(shotsUrl)
-        if (reSyncRes.ok) {
-          const reSyncJson = await reSyncRes.json()
-          setShots(reSyncJson.data ?? [])
-        } else {
-          setShots(existingShots)
-        }
-      } else {
-        setShots(existingShots)
-      }
+      setShots(shotsJson.data ?? [])
 
       // 4. Locations autocomplete
       const locRes = await fetch('/api/reel-shots/locations')
