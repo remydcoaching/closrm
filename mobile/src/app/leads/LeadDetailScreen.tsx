@@ -696,10 +696,14 @@ export function LeadDetailScreen() {
               Aucune note pour ce lead.
             </Text>
           ) : (
+            // Container "post-it" jaune — toutes les notes empilées dans
+            // une carte tinted warning pour un look stylo + papier.
             <View
               style={{
-                backgroundColor: colors.bgSecondary,
-                borderRadius: 14,
+                backgroundColor: colors.warning + '10',
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: colors.warning + '30',
                 overflow: 'hidden',
               }}
             >
@@ -1006,8 +1010,9 @@ function NoteRow({
       style={{
         paddingHorizontal: spacing.md,
         paddingVertical: 14,
-        borderBottomWidth: separator ? 0.33 : 0,
-        borderBottomColor: colors.border,
+        borderBottomWidth: separator ? 1 : 0,
+        // Séparateur teinté warning pour rester dans le ton "post-it"
+        borderBottomColor: colors.warning + '25',
         gap: 8,
       }}
     >
@@ -1024,20 +1029,20 @@ function NoteRow({
 
       {tooLong ? (
         <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={6}>
-          <Text style={{ ...t.caption1, color: colors.primary, fontWeight: '600' }}>
+          <Text style={{ ...t.caption1, color: colors.warning, fontWeight: '700' }}>
             {expanded ? 'Voir moins' : 'Voir plus'}
           </Text>
         </Pressable>
       ) : null}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 }}>
-        <Text style={{ ...t.caption2, color: colors.textTertiary }}>
+        <Text style={{ ...t.caption2, color: colors.warning, fontWeight: '600' }}>
           {formatNoteDate(note.created_at)}
           {edited ? ' · modifiée' : ''}
         </Text>
         <View style={{ flex: 1 }} />
         <Pressable onPress={onEdit} hitSlop={8} style={{ padding: 4 }}>
-          <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+          <Ionicons name="pencil" size={14} color={colors.warning} />
         </Pressable>
         <Pressable onPress={onDelete} hitSlop={8} style={{ padding: 4 }}>
           <Ionicons name="trash-outline" size={14} color={colors.danger} />
