@@ -18,6 +18,7 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 import { Ionicons } from '@expo/vector-icons'
 import type { LeadsStackParamList } from '../../navigation/types'
 import { useLead } from '../../hooks/useLead'
+import { useLeadNotes, type LeadNote } from '../../hooks/useLeadNotes'
 import { Avatar, Button } from '../../components/ui'
 import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
 import { api } from '../../services/api'
@@ -239,9 +240,11 @@ export function LeadDetailScreen() {
   const route = useRoute<R>()
   const navigation = useNavigation()
   const { lead, loading, refetch, mutate } = useLead(route.params.leadId)
+  const leadNotes = useLeadNotes(route.params.leadId)
   const scheduleSheet = useScheduleSheet()
   const [statusModalOpen, setStatusModalOpen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
+  const [editingNote, setEditingNote] = useState<LeadNote | null>(null)
 
   const updateStatus = async (newStatus: LeadStatus) => {
     if (!lead || newStatus === lead.status) {
@@ -261,18 +264,26 @@ export function LeadDetailScreen() {
     }
   }
 
-  const updateNotes = async (newNotes: string) => {
-    if (!lead) return
-    const trimmed = newNotes.trim()
-    const nextNotes = trimmed || null
+  const submitNote = async (content: string) => {
     setNotesModalOpen(false)
-    mutate({ notes: nextNotes })
-    try {
-      await api.patch(`/api/leads/${lead.id}`, { notes: nextNotes })
-    } catch (e) {
-      Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec mise à jour')
-      void refetch()
+    if (editingNote) {
+      const id = editingNote.id
+      setEditingNote(null)
+      await leadNotes.updateNote(id, content)
+    } else {
+      await leadNotes.addNote(content)
     }
+  }
+
+  const handleDeleteNote = (note: LeadNote) => {
+    Alert.alert('Supprimer cette note ?', 'Action irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: () => void leadNotes.removeNote(note.id),
+      },
+    ])
   }
 
   if (loading) {
@@ -610,77 +621,102 @@ export function LeadDetailScreen() {
           </View>
         ) : null}
 
-        {/* Section NOTES — toujours visible. Empty state cliquable pour
-            ajouter, sinon card avec icône Edit en haut-droite. */}
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
-          <Text
-            style={{
-              ...t.footnote,
-              color: colors.textSecondary,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginLeft: 8,
-              marginBottom: 8,
+        {/* Section NOTES — multi-notes timeline (sync avec le widget web).
+            Card "+ Ajouter une note" en haut, puis liste chronologique. */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl, gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <Text
+              style={{
+                ...t.footnote,
+                color: colors.textSecondary,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                marginLeft: 8,
+              }}
+            >
+              Notes {leadNotes.notes.length > 0 ? `(${leadNotes.notes.length})` : ''}
+            </Text>
+          </View>
+
+          {/* CTA add note */}
+          <Pressable
+            onPress={() => {
+              setEditingNote(null)
+              setNotesModalOpen(true)
             }}
           >
-            Notes
-          </Text>
-          <Pressable onPress={() => setNotesModalOpen(true)}>
             {({ pressed }) => (
               <View
                 style={{
-                  backgroundColor: colors.warning + '10',
-                  borderRadius: 18,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  backgroundColor: colors.warning + '14',
+                  borderRadius: 14,
                   borderWidth: 1,
                   borderColor: colors.warning + '30',
-                  padding: spacing.lg,
-                  gap: spacing.sm,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: 12,
                   opacity: pressed ? 0.7 : 1,
                 }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 14,
-                      backgroundColor: colors.warning + '33',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons name="document-text" size={14} color={colors.warning} />
-                  </View>
-                  <Text
-                    style={{
-                      color: colors.warning,
-                      fontSize: 12,
-                      fontWeight: '700',
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.5,
-                      flex: 1,
-                    }}
-                  >
-                    Note du lead
-                  </Text>
-                  <Ionicons
-                    name={lead.notes ? 'pencil' : 'add'}
-                    size={16}
-                    color={colors.warning}
-                  />
+                <View
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: colors.warning + '33',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="add" size={18} color={colors.warning} />
                 </View>
-                {lead.notes ? (
-                  <Text style={{ ...t.body, color: colors.textPrimary, lineHeight: 22 }}>
-                    {lead.notes}
-                  </Text>
-                ) : (
-                  <Text style={{ ...t.subheadline, color: colors.textTertiary, fontStyle: 'italic' }}>
-                    Aucune note pour l'instant — tape ici pour en ajouter une.
-                  </Text>
-                )}
+                <Text style={{ ...t.body, color: colors.warning, fontWeight: '600' }}>
+                  Ajouter une note
+                </Text>
               </View>
             )}
           </Pressable>
+
+          {leadNotes.loading && leadNotes.notes.length === 0 ? (
+            <View style={{ paddingVertical: spacing.md }}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : leadNotes.notes.length === 0 ? (
+            <Text
+              style={{
+                ...t.caption1,
+                color: colors.textTertiary,
+                fontStyle: 'italic',
+                textAlign: 'center',
+                paddingVertical: spacing.md,
+              }}
+            >
+              Aucune note pour ce lead.
+            </Text>
+          ) : (
+            <View
+              style={{
+                backgroundColor: colors.bgSecondary,
+                borderRadius: 14,
+                overflow: 'hidden',
+              }}
+            >
+              {leadNotes.notes.map((note, idx) => (
+                <NoteRow
+                  key={note.id}
+                  note={note}
+                  separator={idx < leadNotes.notes.length - 1}
+                  onEdit={() => {
+                    setEditingNote(note)
+                    setNotesModalOpen(true)
+                  }}
+                  onDelete={() => handleDeleteNote(note)}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -721,9 +757,13 @@ export function LeadDetailScreen() {
       />
       <NotesEditorModal
         visible={notesModalOpen}
-        initialNotes={lead.notes ?? ''}
-        onSave={(n) => void updateNotes(n)}
-        onClose={() => setNotesModalOpen(false)}
+        initialNotes={editingNote?.content ?? ''}
+        title={editingNote ? 'Modifier la note' : 'Nouvelle note'}
+        onSave={(n) => void submitNote(n)}
+        onClose={() => {
+          setNotesModalOpen(false)
+          setEditingNote(null)
+        }}
       />
     </View>
   )
@@ -826,11 +866,13 @@ function StatusEditorModal({
 function NotesEditorModal({
   visible,
   initialNotes,
+  title = 'Note du lead',
   onSave,
   onClose,
 }: {
   visible: boolean
   initialNotes: string
+  title?: string
   onSave: (n: string) => void
   onClose: () => void
 }) {
@@ -879,7 +921,7 @@ function NotesEditorModal({
             <Pressable onPress={onClose}>
               <Text style={{ ...t.body, color: colors.textSecondary }}>Annuler</Text>
             </Pressable>
-            <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>Note du lead</Text>
+            <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>{title}</Text>
             <Pressable onPress={() => onSave(draft)} disabled={!dirty}>
               <Text
                 style={{
@@ -917,5 +959,60 @@ function NotesEditorModal({
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  )
+}
+
+function formatNoteDate(iso: string): string {
+  const d = new Date(iso)
+  const now = Date.now()
+  const diffMin = Math.round((now - d.getTime()) / 60000)
+  if (diffMin < 1) return "à l'instant"
+  if (diffMin < 60) return `il y a ${diffMin}min`
+  const diffH = Math.round(diffMin / 60)
+  if (diffH < 24) return `il y a ${diffH}h`
+  const diffD = Math.round(diffH / 24)
+  if (diffD < 7) return `il y a ${diffD}j`
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
+function NoteRow({
+  note,
+  separator,
+  onEdit,
+  onDelete,
+}: {
+  note: LeadNote
+  separator: boolean
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const edited = note.updated_at && note.updated_at !== note.created_at
+  return (
+    <View
+      style={{
+        paddingHorizontal: spacing.md,
+        paddingVertical: 12,
+        borderBottomWidth: separator ? 0.33 : 0,
+        borderBottomColor: colors.border,
+        gap: 6,
+      }}
+    >
+      <Text style={{ ...t.body, color: colors.textPrimary, lineHeight: 22 }}>
+        {note.content}
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Text style={{ ...t.caption2, color: colors.textTertiary }}>
+          {formatNoteDate(note.created_at)}
+          {edited ? ' · modifiée' : ''}
+        </Text>
+        <View style={{ flex: 1 }} />
+        <Pressable onPress={onEdit} hitSlop={8} style={{ padding: 4 }}>
+          <Ionicons name="pencil" size={14} color={colors.textSecondary} />
+        </Pressable>
+        <Pressable onPress={onDelete} hitSlop={8} style={{ padding: 4 }}>
+          <Ionicons name="trash-outline" size={14} color={colors.danger} />
+        </Pressable>
+      </View>
+    </View>
   )
 }
