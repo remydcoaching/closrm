@@ -44,6 +44,21 @@ function placeIcon(loc: string): string {
   return '📍'
 }
 
+function reelDisplayName(reel: SocialPost | undefined, allShots: ReelShot[], reelId: string): string {
+  const t = reel?.title?.trim()
+  if (t) return t
+  const h = reel?.hook?.trim()
+  if (h) return h
+  const firstShot = allShots
+    .filter(s => s.social_post_id === reelId)
+    .sort((a, b) => a.position - b.position)[0]
+  if (firstShot?.text?.trim()) {
+    const txt = firstShot.text.trim()
+    return txt.length > 40 ? txt.slice(0, 40) + '…' : txt
+  }
+  return '(sans titre)'
+}
+
 export default function JourJPageWrapper() {
   return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><JourJView /></Suspense>
 }
@@ -152,7 +167,7 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
       const arr = byReel.get(s.social_post_id) ?? []
       const idx = arr.findIndex(x => x.id === s.id)
       const reel = reels.find(re => re.id === s.social_post_id)
-      const reelTitle = reel?.title || reel?.hook || '(sans titre)'
+      const reelTitle = reelDisplayName(reel, shots, s.social_post_id)
       if (!r[s.location]) r[s.location] = []
       r[s.location].push({
         id: s.id,
@@ -399,7 +414,7 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
       {previewReelId && (
         <ReelPreviewModal
           reelId={previewReelId}
-          reelTitle={(() => { const r = reels.find(x => x.id === previewReelId); return r?.title || r?.hook || '(sans titre)' })()}
+          reelTitle={reelDisplayName(reels.find(r => r.id === previewReelId), shots, previewReelId)}
           shots={shots.filter(x => x.social_post_id === previewReelId).slice().sort((a, b) => a.position - b.position)}
           highlightShotId={previewHighlightShotId}
           onClose={() => { setPreviewReelId(null); setPreviewHighlightShotId(null) }}
