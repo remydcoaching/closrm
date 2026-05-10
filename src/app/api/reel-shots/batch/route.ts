@@ -16,7 +16,10 @@ export async function POST(request: NextRequest) {
     const update: Record<string, unknown> = {}
     if ('location' in patch) update.location = patch.location || null
     if ('shot_note' in patch) update.shot_note = patch.shot_note || null
-    if ('done' in patch) update.done = !!patch.done
+    if ('done' in patch) {
+      update.done = !!patch.done
+      if (patch.done) update.done_at = new Date().toISOString()
+    }
     if ('skipped' in patch) update.skipped = !!patch.skipped
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: 'Aucun champ à mettre à jour' }, { status: 400 })

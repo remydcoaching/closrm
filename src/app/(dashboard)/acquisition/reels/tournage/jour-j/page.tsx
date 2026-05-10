@@ -88,7 +88,27 @@ function JourJPage() {
 
   useEffect(() => { loadAll() }, [loadAll])
 
+  // Wake lock — empêche l'écran de s'éteindre pendant le tournage
+  useEffect(() => {
+    type WL = { release: () => Promise<void> }
+    let lock: WL | null = null
+    const nav = navigator as Navigator & { wakeLock?: { request: (type: 'screen') => Promise<WL> } }
+    if (nav.wakeLock?.request) {
+      nav.wakeLock.request('screen')
+        .then(s => { lock = s })
+        .catch(() => {/* ignore — pas critique */})
+    }
+    return () => { lock?.release().catch(() => {}) }
+  }, [])
+
+  function buzz() {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try { navigator.vibrate(30) } catch {/* iOS Safari peut bloquer */}
+    }
+  }
+
   async function patchShot(id: string, patch: Partial<Pick<ReelShot, 'done' | 'skipped'>>) {
+    if (patch.done) buzz()
     setShots(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s))
     const res = await fetch(`/api/reel-shots/${id}`, {
       method: 'PATCH',

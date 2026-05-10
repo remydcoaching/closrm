@@ -35,12 +35,13 @@ export async function POST(request: NextRequest) {
     const script: string = post.script ?? ''
     const newPhrases = script.split('\n').map(s => s.trim()).filter(Boolean)
 
-    // 2. Lit les shots existants
+    // 2. Lit les shots existants (NON soft-deleted)
     const { data: existing, error: exErr } = await supabase
       .from('reel_shots')
       .select('id, position, text')
       .eq('workspace_id', workspaceId)
       .eq('social_post_id', social_post_id)
+      .is('deleted_at', null)
       .order('position', { ascending: true })
     if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 })
 
@@ -75,11 +76,14 @@ export async function POST(request: NextRequest) {
       if (upErr) return NextResponse.json({ error: 'Sync upsert: ' + upErr.message }, { status: 500 })
     }
     if (toDeleteIds.length > 0) {
+      // Soft-delete : préserve les phrases marquées tournées si l'user a raccourci le script
+      // (sinon on perd l'historique de tournage). Le brief filtre WHERE deleted_at IS NULL,
+      // mais en cas de regret on peut restaurer.
       const { error: delErr } = await supabase
         .from('reel_shots')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .in('id', toDeleteIds)
-      if (delErr) return NextResponse.json({ error: 'Sync delete: ' + delErr.message }, { status: 500 })
+      if (delErr) return NextResponse.json({ error: 'Sync soft-delete: ' + delErr.message }, { status: 500 })
     }
 
     return NextResponse.json({
