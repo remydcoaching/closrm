@@ -5,6 +5,14 @@ import { BrandingInjector } from '@/lib/branding/BrandingInjector'
 import { WorkspaceConfigProvider } from '@/lib/workspace/config-context'
 import type { SourceConfig, StatusConfig } from '@/types'
 
+// Force dynamic rendering pour TOUTES les pages dashboard. Sans ça, Vercel
+// pré-rend certains pages et sert un HTML caché jusqu'à 44 minutes — qui
+// pointe vers d'anciens JS chunks. Résultat : nouveau code déployé mais
+// l'utilisateur voit toujours l'ancienne UI tant que le edge cache n'expire pas.
+// Le dashboard étant 100 % authentifié + interactif, force-dynamic n'a pas
+// d'impact perf significatif.
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
