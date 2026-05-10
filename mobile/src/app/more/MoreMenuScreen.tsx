@@ -231,9 +231,9 @@ export function MoreMenuScreen() {
             />
             <ListRow
               leading={<DotIcon name="videocam" tint="#FF0000" />}
-              title="Plan de tournage"
-              subtitle="Reels — préparation et jour J"
-              onPress={() => navigation.navigate('ReelsJourJ', { reelIds: null })}
+              title="Sessions de tournage"
+              subtitle="Choisir une session — Brief, Prep, Jour J"
+              onPress={() => navigation.navigate('TournageSessions')}
               separator={false}
             />
           </ListSection>
@@ -263,6 +263,12 @@ export function MoreMenuScreen() {
         <SectionLabel>Compte</SectionLabel>
         <View style={{ marginBottom: spacing.xxl }}>
           <ListSection>
+            <ListRow
+              leading={<DotIcon name="color-palette" tint="#8b5cf6" />}
+              title="Apparence"
+              subtitle="Couleur d'accent du workspace"
+              onPress={() => navigation.navigate('Branding')}
+            />
             <ListRow
               leading={<DotIcon name="settings-sharp" tint="#8e8e93" />}
               title="Réglages"

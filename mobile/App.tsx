@@ -8,6 +8,8 @@ import { ScheduleSheetProvider } from './src/components/schedule/ScheduleSheetPr
 import { CreateLeadSheetProvider } from './src/components/leads/CreateLeadSheet'
 import { useExpoPush } from './src/hooks/useExpoPush'
 import { useAgendaReminders } from './src/hooks/useAgendaReminders'
+import { useWorkspaceBranding } from './src/hooks/useWorkspaceBranding'
+import { useTheme } from './src/theme/ThemeProvider'
 import { ThemeProvider } from './src/theme/ThemeProvider'
 import { checkAndApplyUpdate } from './src/services/updates'
 import { darkColors, lightColors } from './src/theme/colors'
@@ -41,8 +43,14 @@ function PushHandler({
 }: {
   navRef: React.RefObject<NavigationContainerRef<Record<string, object | undefined>> | null>
 }) {
+  const { setMode, mode } = useTheme()
   useExpoPush(navRef)
   useAgendaReminders()
+  // Charge l'accent color du workspace au boot + force un remount quand
+  // appliquée. Sans ça la couleur cachée ne se voit qu'après navigation.
+  useWorkspaceBranding(() => {
+    void setMode(mode)
+  })
   return null
 }
 

@@ -22,6 +22,8 @@ import {
   setReminderMinutes,
   scheduleAgendaReminders,
   cancelAllAgendaReminders,
+  getAlarmEnabled,
+  setAlarmEnabled,
   type ReminderMinutes,
 } from '../../services/agenda-reminders'
 import { supabase } from '../../services/supabase'
@@ -37,21 +39,17 @@ export function NotificationSettingsScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reminderMins, setReminderMins] = useState<ReminderMinutes[]>([])
+  const [alarmOn, setAlarmOn] = useState(false)
 
   useEffect(() => {
     void getReminderMinutes().then(setReminderMins)
+    void getAlarmEnabled().then(setAlarmOn)
   }, [])
 
-  // Toggle d'une lead-time → met à jour SecureStore + relance le scheduler
-  // local pour que le changement soit immédiatement visible (sinon il faut
-  // attendre le prochain refresh d'agenda).
-  const toggleReminder = async (min: ReminderMinutes) => {
-    const next = reminderMins.includes(min)
-      ? reminderMins.filter((m) => m !== min)
-      : [...reminderMins, min].sort((a, b) => a - b)
-    setReminderMins(next)
-    await setReminderMinutes(next)
-    // Reschedule immédiat
+  // Reschedule de tous les rappels (lead-time + alarmes) à partir des
+  // bookings + calls des prochaines 24h. À appeler après chaque changement
+  // de prefs pour que ça soit immédiatement visible.
+  const reschedule = async () => {
     try {
       await cancelAllAgendaReminders()
       const now = new Date()
@@ -112,9 +110,24 @@ export function NotificationSettingsScreen() {
       ]
       await scheduleAgendaReminders(events)
     } catch (e) {
-      // Best-effort, ne bloque pas la UI
       if (__DEV__) console.warn('[reminders] reschedule failed:', e)
     }
+  }
+
+  // Toggle d'une lead-time → met à jour SecureStore + relance le scheduler.
+  const toggleReminder = async (min: ReminderMinutes) => {
+    const next = reminderMins.includes(min)
+      ? reminderMins.filter((m) => m !== min)
+      : [...reminderMins, min].sort((a, b) => a - b)
+    setReminderMins(next)
+    await setReminderMinutes(next)
+    await reschedule()
+  }
+
+  const toggleAlarm = async (next: boolean) => {
+    setAlarmOn(next)
+    await setAlarmEnabled(next)
+    await reschedule()
   }
 
   const fetchPrefs = useCallback(async () => {
@@ -267,6 +280,47 @@ export function NotificationSettingsScreen() {
                 indépendantes.
               </Text>
             ) : null}
+          </View>
+
+          {/* Alarme à l'heure de chaque event */}
+          <View
+            style={{
+              backgroundColor: colors.bgSecondary,
+              borderRadius: radius.md,
+              padding: spacing.md,
+              flexDirection: 'row',
+              gap: spacing.md,
+              alignItems: 'center',
+            }}
+          >
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: '#ef444422',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="alarm" size={20} color="#ef4444" />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>
+                Alarme à chaque événement
+              </Text>
+              <Text style={{ ...t.caption1, color: colors.textSecondary, marginTop: 2 }}>
+                Notif time-sensitive au moment précis de chaque RDV /
+                appel — bypass le mode Focus.
+              </Text>
+            </View>
+            <Switch
+              value={alarmOn}
+              onValueChange={(v) => void toggleAlarm(v)}
+              trackColor={{ false: colors.border, true: '#ef444488' }}
+              thumbColor={alarmOn ? '#ef4444' : colors.textTertiary}
+              ios_backgroundColor={colors.bgElevated}
+            />
           </View>
 
           <Text
