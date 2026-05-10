@@ -386,11 +386,35 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
                         <div style={{
                           color: s.location ? '#fff' : '#ccc', lineHeight: 1.4,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          opacity: s.done ? 0.55 : 1,
+                          textDecoration: s.done ? 'line-through' : 'none',
                         }}>
                           <span style={{ color: '#555', fontSize: 11, marginRight: 6 }}>
                             {s.position + 1}/{total}
                           </span>
+                          {s.done && (
+                            <span title="Phrase déjà tournée"
+                              style={{
+                                color: '#38A169', marginRight: 6, fontSize: 11, fontWeight: 700,
+                              }}>✓ tournée</span>
+                          )}
+                          {s.skipped && !s.done && (
+                            <span title="Reportée à plus tard"
+                              style={{
+                                color: '#d69e2e', marginRight: 6, fontSize: 11, fontWeight: 700,
+                              }}>⏭ reportée</span>
+                          )}
                           {s.text}
+                          {(s.done || s.skipped) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); updateShot(s.id, { done: false, skipped: false }) }}
+                              title="Réinitialiser le statut (re-tourner)"
+                              style={{
+                                marginLeft: 8, padding: '0 6px', fontSize: 10,
+                                color: '#888', background: 'transparent',
+                                border: '1px solid #262626', borderRadius: 4, cursor: 'pointer',
+                              }}>↻</button>
+                          )}
                         </div>
                         {(s.shot_note || editingNoteId === s.id) ? (
                           <input type="text"
