@@ -18,6 +18,7 @@ interface ReelShot {
 interface SocialPost {
   id: string
   title: string | null
+  hook: string | null
 }
 
 interface ShotInfo {
@@ -150,7 +151,8 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
       if (!s.text || s.done || !s.location) return
       const arr = byReel.get(s.social_post_id) ?? []
       const idx = arr.findIndex(x => x.id === s.id)
-      const reelTitle = reels.find(re => re.id === s.social_post_id)?.title ?? '(sans titre)'
+      const reel = reels.find(re => re.id === s.social_post_id)
+      const reelTitle = reel?.title || reel?.hook || '(sans titre)'
       if (!r[s.location]) r[s.location] = []
       r[s.location].push({
         id: s.id,
@@ -238,11 +240,11 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
   return (
     <div style={{
       padding: '12px max(12px, env(safe-area-inset-left)) 12px max(12px, env(safe-area-inset-right))',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', background: '#000', color: '#e5e5e5',
+      display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#000', color: '#e5e5e5',
     }}>
       <div style={{
         background: '#141414', border: '1px solid #262626', borderLeft: '3px solid #FF0000',
-        borderRadius: 10, padding: '12px 16px', marginBottom: 20, width: '100%', maxWidth: 360,
+        borderRadius: 10, padding: '12px 16px', marginBottom: 16, width: '100%',
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
         {embedded && onSwitchView ? (
@@ -254,20 +256,13 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
           🎬 Jour J{reelIds ? ` · ${reelIds.length}` : ''}
         </div>
         {embedded && onClose && (
-          <button onClick={onClose} style={{ color: '#666', background: 'transparent', border: 'none', fontSize: 12, cursor: 'pointer', padding: 0, marginRight: 8 }}>✕</button>
-        )}
-        {embedded && onSwitchView ? (
-          <button onClick={() => onSwitchView('brief')} style={{ color: '#FF0000', background: 'transparent', border: 'none', fontSize: 12, cursor: 'pointer', padding: 0 }}>📄 Brief →</button>
-        ) : (
-          <Link href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'}
-            style={{ color: '#FF0000', textDecoration: 'none', fontSize: 12 }}>📄 Brief →</Link>
+          <button onClick={onClose} style={{ color: '#666', background: 'transparent', border: 'none', fontSize: 14, cursor: 'pointer', padding: 0 }}>✕</button>
         )}
       </div>
 
       <div style={{
-        width: '100%', maxWidth: 360, background: '#0a0a0a',
-        border: '1px solid #1a1a1a', borderRadius: 24, overflow: 'hidden',
-        boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
+        width: '100%', background: '#0a0a0a',
+        border: '1px solid #1a1a1a', borderRadius: 12, overflow: 'hidden',
       }}>
         <div style={{ padding: '18px 20px', background: '#141414', borderBottom: '1px solid #262626' }}>
           <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
@@ -404,7 +399,7 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
       {previewReelId && (
         <ReelPreviewModal
           reelId={previewReelId}
-          reelTitle={reels.find(r => r.id === previewReelId)?.title ?? '(sans titre)'}
+          reelTitle={(() => { const r = reels.find(x => x.id === previewReelId); return r?.title || r?.hook || '(sans titre)' })()}
           shots={shots.filter(x => x.social_post_id === previewReelId).slice().sort((a, b) => a.position - b.position)}
           highlightShotId={previewHighlightShotId}
           onClose={() => { setPreviewReelId(null); setPreviewHighlightShotId(null) }}

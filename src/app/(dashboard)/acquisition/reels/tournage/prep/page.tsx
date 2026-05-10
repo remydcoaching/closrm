@@ -278,17 +278,6 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
             border: '1px solid rgba(255,0,0,0.25)', borderRadius: 8, textDecoration: 'none', cursor: 'pointer',
           }}
         >🎬 Jour J →</NavBtn>
-        <NavBtn
-          embedded={embedded}
-          onSwitchView={onSwitchView}
-          target="brief"
-          href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'}
-          style={{
-            padding: '8px 14px', fontSize: 12, fontWeight: 600,
-            color: '#888', background: 'transparent',
-            border: '1px solid #262626', borderRadius: 8, textDecoration: 'none', cursor: 'pointer',
-          }}
-        >📄 Brief</NavBtn>
       </div>
 
       <div style={{
@@ -370,7 +359,7 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ color: '#666', fontSize: 11 }}>{isCollapsed ? '▸' : '▾'}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{reel.title || '(sans titre)'}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{reel.title || reel.hook || '(sans titre)'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <span style={{ fontSize: 11, color: '#888' }}>{placedCount} / {total} placées</span>
@@ -398,8 +387,6 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
                         <div style={{
                           color: s.location ? '#fff' : '#ccc', lineHeight: 1.4,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          opacity: s.done ? 0.55 : 1,
-                          textDecoration: s.done ? 'line-through' : 'none',
                         }}>
                           <span style={{ color: '#555', fontSize: 11, marginRight: 6 }}>
                             {s.position + 1}/{total}
@@ -416,7 +403,10 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
                                 color: '#d69e2e', marginRight: 6, fontSize: 11, fontWeight: 700,
                               }}>⏭ reportée</span>
                           )}
-                          {s.text}
+                          <span style={{
+                            opacity: s.done ? 0.55 : 1,
+                            textDecoration: s.done ? 'line-through' : 'none',
+                          }}>{s.text}</span>
                           {(s.done || s.skipped) && (
                             <button
                               onClick={(e) => { e.stopPropagation(); updateShot(s.id, { done: false, skipped: false }) }}
