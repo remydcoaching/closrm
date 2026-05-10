@@ -8,7 +8,6 @@ import type { LeadsStackParamList } from '../../navigation/types'
 import { useLeads } from '../../hooks/useLeads'
 import { useAuth } from '../../hooks/useAuth'
 import { useDebounce } from '../../hooks/useDebounce'
-import { LeadCardLarge } from '../../components/leads/LeadCardLarge'
 import { LeadRow } from '../../components/leads/LeadRow'
 import { useCreateLeadSheet } from '../../components/leads/CreateLeadSheet'
 import { NavLarge, SearchField, FilterChips, FAB } from '../../components/ui'
@@ -29,7 +28,7 @@ const STATUS_FILTERS = [
   { key: 'archives', label: 'Archivés' },
 ] as const
 
-type ViewMode = 'flat' | 'grouped' | 'priority'
+type ViewMode = 'flat' | 'grouped'
 
 const GROUP_ORDER: LeadStatus[] = [
   'closing_planifie',
@@ -41,63 +40,6 @@ const GROUP_ORDER: LeadStatus[] = [
   'clos',
   'dead',
 ]
-
-interface ScoredLead {
-  lead: Lead
-  score: number
-  urgency: { label: string; color: string } | null
-  ctaLabel: string | null
-}
-
-const HOURS = (n: number) => n * 60 * 60 * 1000
-const MS_PER_DAY = HOURS(24)
-
-function scoreLead(lead: Lead): ScoredLead {
-  const now = Date.now()
-  const lastActivity = new Date(
-    lead.last_activity_at ?? lead.updated_at ?? lead.created_at,
-  ).getTime()
-  const ageMs = now - lastActivity
-  const amountBonus = lead.deal_amount ? Math.min(20, lead.deal_amount / 500) : 0
-  let score = 0
-  let urgency: ScoredLead['urgency'] = null
-  let ctaLabel: string | null = null
-
-  switch (lead.status) {
-    case 'closing_planifie':
-      score = 100 + amountBonus
-      urgency = { label: 'Closing imminent', color: colors.primary }
-      ctaLabel = 'Rejoindre'
-      break
-    case 'setting_planifie':
-      score = 80 + amountBonus
-      urgency = { label: 'Setting prévu', color: colors.info }
-      ctaLabel = 'Préparer'
-      break
-    case 'no_show_closing':
-      score = 90 + amountBonus
-      urgency = { label: 'No-show — reprogrammer', color: colors.orange }
-      ctaLabel = 'Reprogrammer'
-      break
-    case 'no_show_setting':
-      score = 75 + amountBonus
-      urgency = { label: 'No-show', color: colors.warning }
-      ctaLabel = 'Reprogrammer'
-      break
-    case 'nouveau':
-      score = Math.max(0, 50 - Math.floor(ageMs / MS_PER_DAY) * 5) + amountBonus
-      urgency = ageMs < HOURS(24) ? { label: 'Nouveau lead', color: colors.cyan } : null
-      ctaLabel = 'Contacter'
-      break
-    case 'scripte':
-      score = 40 + amountBonus
-      ctaLabel = 'Planifier setting'
-      break
-    default:
-      score = 0
-  }
-  return { lead, score, urgency, ctaLabel }
-}
 
 const formatAmount = (n: number | null): string | null =>
   n == null
@@ -145,11 +87,6 @@ export function LeadsListScreen() {
       return [{ status: s, leads: arr }]
     })
   }, [leads])
-
-  const priorityItems = useMemo(
-    () => leads.map(scoreLead).filter((s) => s.score > 0).sort((a, b) => b.score - a.score),
-    [leads],
-  )
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
@@ -235,7 +172,7 @@ export function LeadsListScreen() {
             ))
           )}
         </ScrollView>
-      ) : viewMode === 'grouped' ? (
+      ) : (
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
@@ -270,39 +207,6 @@ export function LeadsListScreen() {
             </View>
           ))}
         </ScrollView>
-      ) : (
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 96, gap: spacing.md }}
-          refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />
-          }
-        >
-          <Text
-            style={{
-              ...t.footnote,
-              color: colors.textSecondary,
-              textTransform: 'uppercase',
-              letterSpacing: 0.4,
-              marginBottom: spacing.xs,
-            }}
-          >
-            Tri intelligent · urgence × valeur × fraîcheur
-          </Text>
-          {priorityItems.length === 0 ? (
-            <EmptyState text="Rien à traiter pour l'instant." />
-          ) : (
-            priorityItems.map((item) => (
-              <LeadCardLarge
-                key={item.lead.id}
-                lead={item.lead}
-                urgency={item.urgency}
-                ctaLabel={item.ctaLabel ?? undefined}
-                onPress={() => navigation.navigate('LeadDetail', { leadId: item.lead.id })}
-                onCta={() => navigation.navigate('LeadDetail', { leadId: item.lead.id })}
-              />
-            ))
-          )}
-        </ScrollView>
       )}
 
       <FAB bottom={16} onPress={() => createLeadSheet.open(refetch)} />
@@ -326,10 +230,10 @@ function ViewSwitcher({
         padding: 2,
       }}
     >
-      {(['flat', 'grouped', 'priority'] as const).map((m) => {
+      {(['flat', 'grouped'] as const).map((m) => {
         const active = mode === m
         const icon: keyof typeof Ionicons.glyphMap =
-          m === 'flat' ? 'list' : m === 'grouped' ? 'layers-outline' : 'flash'
+          m === 'flat' ? 'list' : 'layers-outline'
         return (
           <Pressable
             key={m}
