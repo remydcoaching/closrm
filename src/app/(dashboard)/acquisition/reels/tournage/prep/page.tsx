@@ -398,8 +398,6 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
                         <div style={{
                           color: s.location ? '#fff' : '#ccc', lineHeight: 1.4,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          opacity: s.done ? 0.55 : 1,
-                          textDecoration: s.done ? 'line-through' : 'none',
                         }}>
                           <span style={{ color: '#555', fontSize: 11, marginRight: 6 }}>
                             {s.position + 1}/{total}
@@ -416,7 +414,10 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
                                 color: '#d69e2e', marginRight: 6, fontSize: 11, fontWeight: 700,
                               }}>⏭ reportée</span>
                           )}
-                          {s.text}
+                          <span style={{
+                            opacity: s.done ? 0.55 : 1,
+                            textDecoration: s.done ? 'line-through' : 'none',
+                          }}>{s.text}</span>
                           {(s.done || s.skipped) && (
                             <button
                               onClick={(e) => { e.stopPropagation(); updateShot(s.id, { done: false, skipped: false }) }}
