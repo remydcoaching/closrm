@@ -16,7 +16,7 @@
 import { useEffect, useState } from 'react'
 import { addMinutes, format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Check, Clock, ExternalLink, Mail, MapPin, Palette, Pencil, Phone, Repeat, Trash2, Video, X, XCircle, UserX } from 'lucide-react'
+import { Check, Clock, ExternalLink, Mail, MapPin, Phone, Repeat, Trash2, Video, X, XCircle, UserX } from 'lucide-react'
 import Link from 'next/link'
 import type { AgendaEvent } from '@/types/agenda'
 import type { BookingStatus } from '@/types'
@@ -99,9 +99,10 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
   const isRecurring = isBooking && Boolean(event.booking.recurrence_group_id)
   const [showDeleteScope, setShowDeleteScope] = useState(false)
 
-  // ── Édition inline (uniquement bookings) ──
-  // Pas de modal — tout se passe dans le panel.
-  const [isEditing, setIsEditing] = useState(false)
+  // ── Édition inline directe (pas de mode toggle) ──
+  // Tous les champs sont éditables au clic / focus. Auto-save sur blur
+  // (title/notes) ou onChange (date/time/color). Pas de bouton « Modifier ».
+  const canEdit = isBooking && Boolean(onSave)
   const [editTitle, setEditTitle] = useState(event.title)
   const [editDate, setEditDate] = useState(format(start, 'yyyy-MM-dd'))
   const [editStartTime, setEditStartTime] = useState(format(start, 'HH:mm'))
@@ -113,7 +114,6 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
 
   // Reset les champs quand on change d'event sélectionné
   useEffect(() => {
-    setIsEditing(false)
     setEditTitle(event.title)
     setEditDate(format(start, 'yyyy-MM-dd'))
     setEditStartTime(format(start, 'HH:mm'))
@@ -129,30 +129,37 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
   }
   const editDuration = Math.max(15, timeToMin(editEndTime) - timeToMin(editStartTime))
 
-  async function handleSaveEdit() {
+  // Auto-save partiel : envoie uniquement les champs qui ont changé.
+  // Appelé sur blur (title/notes) ou onChange (date/time/color).
+  async function autoSave(patch: BookingPatch) {
     if (!onSave) return
-    const local = new Date(`${editDate}T${editStartTime}:00`)
-    const patch: BookingPatch = {
-      title: editTitle.trim() || event.title,
-      scheduled_at: local.toISOString(),
-      duration_minutes: editDuration,
-      notes: editNotes.trim() ? editNotes : null,
-      color: editColor,
-    }
+    if (Object.keys(patch).length === 0) return
     await onSave(event, patch)
-    setIsEditing(false)
   }
 
-  function handleCancelEdit() {
-    setEditTitle(event.title)
-    setEditDate(format(start, 'yyyy-MM-dd'))
-    setEditStartTime(format(start, 'HH:mm'))
-    setEditEndTime(format(end, 'HH:mm'))
-    setEditNotes(notes ?? '')
-    setIsEditing(false)
+  function saveTitle() {
+    const next = editTitle.trim() || event.title
+    if (next === event.title) return
+    autoSave({ title: next })
   }
 
-  const canEdit = isBooking && Boolean(onSave)
+  function saveDateTime(nextDate: string, nextStart: string, nextEnd: string) {
+    const local = new Date(`${nextDate}T${nextStart}:00`)
+    const dur = Math.max(15, timeToMin(nextEnd) - timeToMin(nextStart))
+    autoSave({ scheduled_at: local.toISOString(), duration_minutes: dur })
+  }
+
+  function saveNotes() {
+    const next = editNotes.trim() ? editNotes : null
+    const cur = isBooking ? event.booking.notes : null
+    if (next === cur) return
+    autoSave({ notes: next })
+  }
+
+  function saveColor(next: string | null) {
+    setEditColor(next)
+    autoSave({ color: next })
+  }
 
   // Popup centré flottant — sans backdrop full-screen. La grille derrière
   // reste cliquable, donc switcher d'événement se fait en un seul clic
@@ -207,11 +214,16 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
               style={{ width: 8, height: 8, borderRadius: 2, background: event.color, flexShrink: 0 }}
               aria-hidden
             />
-            {isEditing ? (
+            {canEdit ? (
               <input
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur() }
+                  if (e.key === 'Escape') { setEditTitle(event.title); (e.target as HTMLInputElement).blur() }
+                }}
                 placeholder="Titre"
                 style={{
                   background: 'transparent',
@@ -225,7 +237,6 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
                   minWidth: 0,
                   padding: 0,
                 }}
-                autoFocus
               />
             ) : (
               <span
@@ -296,14 +307,18 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
 
       {/* Body scrollable */}
       <div style={{ flex: 1, overflow: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>
-        {/* Date / heure — éditable inline */}
+        {/* Date / heure — éditables inline (save direct au change) */}
         <Section>
-          {isEditing ? (
+          {canEdit ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <input
                 type="date"
                 value={editDate}
-                onChange={(e) => setEditDate(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setEditDate(next)
+                  saveDateTime(next, editStartTime, editEndTime)
+                }}
                 style={{
                   background: 'var(--bg-input)',
                   border: '1px solid var(--border-secondary)',
@@ -328,7 +343,9 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
                     const totalEnd = timeToMin(newStart) + Math.max(15, dur)
                     const eh = Math.floor(totalEnd / 60) % 24
                     const em = totalEnd % 60
-                    setEditEndTime(`${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`)
+                    const newEnd = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`
+                    setEditEndTime(newEnd)
+                    saveDateTime(editDate, newStart, newEnd)
                   }}
                   style={timeSelectStyle}
                 >
@@ -337,7 +354,11 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>→</span>
                 <select
                   value={editEndTime}
-                  onChange={(e) => setEditEndTime(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setEditEndTime(next)
+                    saveDateTime(editDate, editStartTime, next)
+                  }}
                   style={timeSelectStyle}
                 >
                   {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -484,13 +505,13 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
           </Section>
         )}
 
-        {/* Couleur — éditable uniquement en mode édition (bookings only) */}
-        {isEditing && isBooking && (
+        {/* Couleur — palette toujours visible (save direct au clic) */}
+        {canEdit && (
           <Section title="Couleur">
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={() => setEditColor(null)}
+                onClick={() => saveColor(null)}
                 title="Couleur du calendrier (par défaut)"
                 style={{
                   width: 26, height: 26, borderRadius: 6,
@@ -507,7 +528,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
                 <button
                   key={opt.hex}
                   type="button"
-                  onClick={() => setEditColor(opt.hex)}
+                  onClick={() => saveColor(opt.hex)}
                   title={opt.label}
                   style={{
                     width: 26, height: 26, borderRadius: 6,
@@ -525,12 +546,13 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
           </Section>
         )}
 
-        {/* Notes — éditables inline */}
-        {isEditing ? (
+        {/* Notes — toujours éditables inline (save sur blur) */}
+        {canEdit ? (
           <Section title="Notes">
             <textarea
               value={editNotes}
               onChange={(e) => setEditNotes(e.target.value)}
+              onBlur={saveNotes}
               rows={4}
               placeholder="Notes…"
               style={{
@@ -776,108 +798,37 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
         </div>
       )}
 
-      {/* Actions footer — non-pending: edit + delete */}
-      {isBooking && status !== 'pending' && (onDelete || canEdit) && (
+      {/* Actions footer — uniquement supprimer (édition = inline directe) */}
+      {isBooking && status !== 'pending' && onDelete && (
         <div
           style={{
             display: 'flex',
+            justifyContent: 'flex-end',
             gap: 8,
             padding: 12,
             borderTop: '1px solid var(--agenda-grid-line)',
             flexShrink: 0,
           }}
         >
-          {isEditing ? (
-            <>
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border-secondary)',
-                  background: 'transparent',
-                  color: 'var(--text-secondary)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEdit}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: 'var(--color-primary)',
-                  color: '#000',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                <Check size={13} /> Enregistrer
-              </button>
-            </>
-          ) : (
-            <>
-              {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    border: 'none',
-                    background: 'var(--color-primary)',
-                    color: '#000',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Pencil size={13} /> Modifier
-                </button>
-              )}
-              {onDelete && (
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteScope(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border-secondary)',
-                    background: 'transparent',
-                    color: '#ef4444',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Trash2 size={13} /> Supprimer
-                </button>
-              )}
-            </>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowDeleteScope(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--border-secondary)',
+              background: 'transparent',
+              color: '#ef4444',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            <Trash2 size={13} /> Supprimer
+          </button>
         </div>
       )}
     </aside>
