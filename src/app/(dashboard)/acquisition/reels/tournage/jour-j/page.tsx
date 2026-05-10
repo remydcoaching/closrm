@@ -82,6 +82,16 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
       const filtered = reelIds ? allReels.filter(r => reelIds.includes(r.id)) : allReels
       setReels(filtered)
 
+      // Sync : si l'user a modifié son script, on re-split en reel_shots avant
+      // d'afficher. Sinon on continue d'afficher l'ancien texte.
+      await Promise.all(filtered.map(r =>
+        fetch('/api/reel-shots/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ social_post_id: r.id }),
+        }).catch(() => null)
+      ))
+
       let shotsUrl = '/api/reel-shots'
       if (filtered.length > 0) shotsUrl += `?social_post_ids=${filtered.map(r => r.id).join(',')}`
       const shotsRes = await fetch(shotsUrl)

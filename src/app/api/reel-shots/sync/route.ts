@@ -38,24 +38,34 @@ export async function POST(request: NextRequest) {
     // 2. Lit les shots existants (NON soft-deleted)
     const { data: existing, error: exErr } = await supabase
       .from('reel_shots')
-      .select('id, position, text')
+      .select('id, position, text, done, skipped')
       .eq('workspace_id', workspaceId)
       .eq('social_post_id', social_post_id)
       .is('deleted_at', null)
       .order('position', { ascending: true })
     if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 })
 
-    const existingByPos = new Map<number, { id: string; text: string }>()
-    for (const e of existing ?? []) existingByPos.set(e.position, { id: e.id, text: e.text })
+    const existingByPos = new Map<number, { id: string; text: string; done: boolean; skipped: boolean }>()
+    for (const e of existing ?? []) existingByPos.set(e.position, { id: e.id, text: e.text, done: !!e.done, skipped: !!e.skipped })
 
     // 3. Plan des opérations
-    const toUpsert: { id?: string; workspace_id: string; social_post_id: string; position: number; text: string }[] = []
+    type UpsertRow = { id?: string; workspace_id: string; social_post_id: string; position: number; text: string; done?: boolean; skipped?: boolean }
+    const toUpsert: UpsertRow[] = []
+    let resetCount = 0
     for (let i = 0; i < newPhrases.length; i++) {
       const found = existingByPos.get(i)
       if (found) {
         if (found.text !== newPhrases[i]) {
-          // Update text uniquement (location/done/skipped préservés)
-          toUpsert.push({ id: found.id, workspace_id: workspaceId, social_post_id, position: i, text: newPhrases[i] })
+          // Texte modifié : si la phrase était déjà tournée/reportée, on reset done/skipped
+          // pour que l'user sache qu'il doit re-filmer le nouveau texte.
+          // Location et shot_note préservés (peuvent rester utiles).
+          const row: UpsertRow = { id: found.id, workspace_id: workspaceId, social_post_id, position: i, text: newPhrases[i] }
+          if (found.done || found.skipped) {
+            row.done = false
+            row.skipped = false
+            resetCount++
+          }
+          toUpsert.push(row)
         }
       } else {
         toUpsert.push({ workspace_id: workspaceId, social_post_id, position: i, text: newPhrases[i] })
@@ -90,6 +100,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       upserted: toUpsert.length,
       deleted: toDeleteIds.length,
+      reset: resetCount,
       total: newPhrases.length,
     })
   } catch (e) {
