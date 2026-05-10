@@ -134,11 +134,13 @@ export function ThemeProvider({ children }: Props) {
     }
   }, [])
 
-  // key = theme + accent : force le remount de l'arbre enfant à chaque
-  // changement → tous les composants re-renderent et lisent le proxy `colors`
-  // mis à jour. Indispensable pour les inline-styles qui ne re-évaluent pas
-  // le proxy d'eux-mêmes.
-  const remountKey = `${theme}:${accent ?? 'default'}`
+  // key = theme uniquement. On ne remonte PAS sur changement d'accent (sinon
+  // l'app entière se recharge à chaque tap sur une couleur). L'accent est
+  // appliqué via le singleton `colors` proxy → les composants captent la
+  // nouvelle valeur au prochain rerender naturel (navigation, scroll, etc).
+  // Pour la BrandingScreen elle-même la preview se met à jour parce qu'elle
+  // utilise `accent` du contexte (React state).
+  const remountKey = theme
 
   return (
     <ThemeContext.Provider value={{ theme, mode, setMode, toggle, accent, setAccent }}>
