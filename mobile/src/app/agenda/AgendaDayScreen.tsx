@@ -8,8 +8,10 @@ import type { AgendaStackParamList } from '../../navigation/types'
 import { useAgenda } from '../../hooks/useAgenda'
 import { AgendaTimeline } from '../../components/agenda/AgendaTimeline'
 import { AgendaList } from '../../components/agenda/AgendaList'
+import { EventDetailSheet } from '../../components/agenda/EventDetailSheet'
 import { DayStrip } from '../../components/calls/DayStrip'
 import { NavLarge, Segmented } from '../../components/ui'
+import type { AgendaItem } from '../../types/agenda'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
 import { supabase } from '../../services/supabase'
@@ -40,6 +42,10 @@ export function AgendaDayScreen() {
   // Vue : liste par défaut (plus lisible mobile, surtout sur jours chargés).
   // Persiste le choix de l'utilisateur entre les jours.
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list')
+  // Sheet de détail event — affiche infos + CTA pour les events sans
+  // navigation directe (perso Google sync), ET sert de point d'entrée
+  // pour les events lead/call avec un récap visuel.
+  const [detailItem, setDetailItem] = useState<AgendaItem | null>(null)
 
   // Counts pour le DayStrip : somme bookings + calls par jour, sur la fenêtre.
   useEffect(() => {
@@ -243,27 +249,18 @@ export function AgendaDayScreen() {
           date={date}
           loading={loading}
           onRefresh={refetch}
-          onPressItem={(it) => {
-            if (it.source === 'call' && it.call_id) {
-              navigation.navigate('CallDetail', { callId: it.call_id })
-            } else if (it.source === 'booking' && it.lead_id) {
-              navigation.navigate('LeadDetail', { leadId: it.lead_id })
-            }
-          }}
+          onPressItem={setDetailItem}
         />
       ) : (
-        <AgendaTimeline
-          items={items}
-          date={date}
-          onPressItem={(it) => {
-            if (it.source === 'call' && it.call_id) {
-              navigation.navigate('CallDetail', { callId: it.call_id })
-            } else if (it.source === 'booking' && it.lead_id) {
-              navigation.navigate('LeadDetail', { leadId: it.lead_id })
-            }
-          }}
-        />
+        <AgendaTimeline items={items} date={date} onPressItem={setDetailItem} />
       )}
+
+      <EventDetailSheet
+        item={detailItem}
+        onClose={() => setDetailItem(null)}
+        onOpenLead={(leadId) => navigation.navigate('LeadDetail', { leadId })}
+        onOpenCall={(callId) => navigation.navigate('CallDetail', { callId })}
+      />
     </SafeAreaView>
   )
 }
