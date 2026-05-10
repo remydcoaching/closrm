@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { KanbanSquare, Calendar as CalIcon, Plus, CalendarRange } from 'lucide-react'
+import Link from 'next/link'
+import { KanbanSquare, Calendar as CalIcon, Plus, CalendarRange, Video } from 'lucide-react'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
 import BoardView from './BoardView'
 import PlanningCalendarView from './PlanningCalendarView'
@@ -166,6 +167,19 @@ export default function PlanningView() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Link
+            href="/acquisition/reels/tournage"
+            title="Voir mes sessions de tournage de reels"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', fontSize: 12, fontWeight: 600,
+              color: '#FF0000', background: 'rgba(255,0,0,0.08)',
+              border: '1px solid rgba(255,0,0,0.25)',
+              borderRadius: 8, cursor: 'pointer', textDecoration: 'none',
+            }}
+          >
+            <Video size={14} /> Tournages
+          </Link>
           <button
             onClick={() => createPost(undefined)}
             style={{
