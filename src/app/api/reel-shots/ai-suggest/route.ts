@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { callClaude } from '@/lib/ai/client'
+import { getApiKey } from '@/lib/ai/brief'
 
 /**
  * POST /api/reel-shots/ai-suggest
@@ -43,11 +44,11 @@ export async function POST(request: NextRequest) {
       .not('location', 'is', null)
     const knownLocations = [...new Set((locRows ?? []).map(r => r.location).filter(Boolean) as string[])]
 
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = await getApiKey(workspaceId)
     if (!apiKey) {
       return NextResponse.json({
-        error: 'ANTHROPIC_API_KEY non configuré côté serveur',
-      }, { status: 500 })
+        error: 'Configure ta clé API Anthropic dans le brief IA (Paramètres → Coach IA)',
+      }, { status: 400 })
     }
 
     // 3. Prompt Claude Haiku — JSON strict
