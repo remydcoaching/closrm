@@ -17,7 +17,11 @@ export async function PATCH(
     const update: Record<string, unknown> = {}
     if ('location' in body) update.location = body.location || null
     if ('shot_note' in body) update.shot_note = body.shot_note || null
-    if ('done' in body) update.done = !!body.done
+    if ('done' in body) {
+      update.done = !!body.done
+      // Trace done_at au passage true, conserve à la dernière valeur si on retoggle false→true
+      if (body.done) update.done_at = new Date().toISOString()
+    }
     if ('skipped' in body) update.skipped = !!body.skipped
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: 'Aucun champ à mettre à jour' }, { status: 400 })

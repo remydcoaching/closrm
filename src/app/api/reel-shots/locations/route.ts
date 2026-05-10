@@ -11,6 +11,7 @@ export async function GET() {
       .from('reel_shots')
       .select('location')
       .eq('workspace_id', workspaceId)
+      .is('deleted_at', null)
       .not('location', 'is', null)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     const distinct = [...new Set((data ?? []).map(r => r.location).filter(Boolean) as string[])].sort()

@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
       .select('id, text, social_post_id')
       .eq('workspace_id', workspaceId)
       .is('location', null)
+      .is('deleted_at', null)
       .eq('done', false)
     if (ids && ids.length > 0) q = q.in('social_post_id', ids)
 
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
       .from('reel_shots')
       .select('location')
       .eq('workspace_id', workspaceId)
+      .is('deleted_at', null)
       .not('location', 'is', null)
     const knownLocations = [...new Set((locRows ?? []).map(r => r.location).filter(Boolean) as string[])]
 
