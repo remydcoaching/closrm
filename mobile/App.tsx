@@ -8,21 +8,21 @@ import { ScheduleSheetProvider } from './src/components/schedule/ScheduleSheetPr
 import { CreateLeadSheetProvider } from './src/components/leads/CreateLeadSheet'
 import { useExpoPush } from './src/hooks/useExpoPush'
 import { useAgendaReminders } from './src/hooks/useAgendaReminders'
-import { useWorkspaceBranding } from './src/hooks/useWorkspaceBranding'
-import { useTheme } from './src/theme/ThemeProvider'
 import { ThemeProvider } from './src/theme/ThemeProvider'
 import { checkAndApplyUpdate } from './src/services/updates'
-import { darkColors, lightColors } from './src/theme/colors'
+import { darkColors, lightColors, getAccentColor } from './src/theme/colors'
 import './global.css'
 
 type NavMode = 'dark' | 'light'
 
 const buildNavTheme = (mode: NavMode) => {
   const c = mode === 'dark' ? darkColors : lightColors
+  const accent = getAccentColor()
+  const primary = (mode === 'dark' ? accent.dark : accent.light) ?? c.primary
   return {
     dark: mode === 'dark',
     colors: {
-      primary: c.primary,
+      primary,
       background: c.bgPrimary,
       card: c.bgSecondary,
       text: c.textPrimary,
@@ -43,14 +43,8 @@ function PushHandler({
 }: {
   navRef: React.RefObject<NavigationContainerRef<Record<string, object | undefined>> | null>
 }) {
-  const { setMode, mode } = useTheme()
   useExpoPush(navRef)
   useAgendaReminders()
-  // Charge l'accent color du workspace au boot + force un remount quand
-  // appliquée. Sans ça la couleur cachée ne se voit qu'après navigation.
-  useWorkspaceBranding(() => {
-    void setMode(mode)
-  })
   return null
 }
 
@@ -67,10 +61,14 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          {(theme: NavMode) => (
-            // key={theme} : force remount de tout l'arbre quand on toggle
-            // dark/light → composants relisent le proxy `colors`.
-            <NavigationContainer key={theme} ref={navRef} theme={buildNavTheme(theme)}>
+          {(theme: NavMode, remountKey: string) => (
+            // key inclut accent + theme : force le remount de tout l'arbre
+            // au moindre changement → composants relisent le proxy `colors`.
+            <NavigationContainer
+              key={remountKey}
+              ref={navRef}
+              theme={buildNavTheme(theme)}
+            >
               <ScheduleSheetProvider>
                 <CreateLeadSheetProvider>
                   <PushHandler navRef={navRef} />

@@ -6,10 +6,10 @@ import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
 
 const HOUR_HEIGHT = 56 // hauteur d'une heure en pt
-const START_HOUR = 6
-const END_HOUR = 23
+// Plage par défaut. On l'élargit dynamiquement si des events tombent en dehors.
+const DEFAULT_START_HOUR = 7
+const DEFAULT_END_HOUR = 22
 const GUTTER_WIDTH = 56
-const TOTAL_HEIGHT = (END_HOUR - START_HOUR + 1) * HOUR_HEIGHT
 // Au-delà de cette durée, on considère que c'est un événement "all-day"
 // (typiquement importé de Google) et on le sort du timeline pour ne pas
 // noyer la grille horaire.
@@ -61,7 +61,7 @@ function colorForItem(item: AgendaItem): string {
 // VISUEL final (top, top+height), pas la durée temporelle. C'est le seul
 // moyen d'éviter qu'un stack d'events de 15min séquentiels collés se
 // chevauchent visuellement tout en étant dans la même lane.
-function layoutItems(items: AgendaItem[]): PositionedItem[] {
+function layoutItems(items: AgendaItem[], startHour: number): PositionedItem[] {
   const VISUAL_MIN_HEIGHT = 22 // px : assez pour 1 ligne de texte (heure + titre)
 
   // Step 1 : pré-calcul (top, height) pour chaque item.
@@ -76,7 +76,7 @@ function layoutItems(items: AgendaItem[]): PositionedItem[] {
   const positioned: WithPos[] = items.map((item) => {
     const start = new Date(item.scheduled_at)
     const startMin = start.getHours() * 60 + start.getMinutes()
-    const top = (startMin / 60 - START_HOUR) * HOUR_HEIGHT
+    const top = (startMin / 60 - startHour) * HOUR_HEIGHT
     const naturalHeight = (item.duration_minutes / 60) * HOUR_HEIGHT - 2
     const height = Math.max(VISUAL_MIN_HEIGHT, naturalHeight)
     return { item, top, height, bottom: top + height, lane: 0, group: -1 }
@@ -161,7 +161,26 @@ export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props
     }
     return { longEvents: longs, timelineItems: shorts }
   }, [items])
-  const positioned = useMemo(() => layoutItems(timelineItems), [timelineItems])
+  // Plage horaire dynamique : étend la plage par défaut (7h-22h) pour
+  // englober tous les events du jour. Sans ça les events à 06h/23h sont
+  // écrasés au top/bottom du timeline.
+  const { startHour, endHour } = useMemo(() => {
+    let minH = DEFAULT_START_HOUR
+    let maxH = DEFAULT_END_HOUR
+    for (const it of timelineItems) {
+      const start = new Date(it.scheduled_at)
+      const startH = start.getHours() + start.getMinutes() / 60
+      const endH = startH + it.duration_minutes / 60
+      if (startH < minH) minH = Math.max(0, Math.floor(startH))
+      if (endH > maxH) maxH = Math.min(24, Math.ceil(endH))
+    }
+    return { startHour: minH, endHour: maxH }
+  }, [timelineItems])
+  const totalHeight = (endHour - startHour + 1) * HOUR_HEIGHT
+  const positioned = useMemo(
+    () => layoutItems(timelineItems, startHour),
+    [timelineItems, startHour]
+  )
   const isToday = sameDay(date, new Date())
 
   const [now, setNow] = useState(() => new Date())
@@ -174,30 +193,38 @@ export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props
   const nowTop = useMemo(() => {
     if (!isToday) return null
     const h = now.getHours() + now.getMinutes() / 60
-    if (h < START_HOUR || h > END_HOUR + 1) return null
-    return (h - START_HOUR) * HOUR_HEIGHT
-  }, [isToday, now])
+    if (h < startHour || h > endHour + 1) return null
+    return (h - startHour) * HOUR_HEIGHT
+  }, [isToday, now, startHour, endHour])
 
-  // Auto-scroll : sur today vers l'heure courante - 1, sinon vers 8h.
+  // Auto-scroll : sur today vers l'heure courante - 1, sinon vers le 1er event,
+  // fallback 8h.
   const scrollRef = useRef<ScrollView>(null)
   useEffect(() => {
-    const target = isToday
-      ? Math.max(START_HOUR, now.getHours() - 1)
-      : 8
-    const y = (target - START_HOUR) * HOUR_HEIGHT
-    // setTimeout pour laisser le scroll se monter
+    let target: number
+    if (isToday) {
+      target = Math.max(startHour, now.getHours() - 1)
+    } else if (timelineItems.length > 0) {
+      const firstHour = Math.min(
+        ...timelineItems.map((it) => new Date(it.scheduled_at).getHours())
+      )
+      target = Math.max(startHour, firstHour - 1)
+    } else {
+      target = Math.max(startHour, 8)
+    }
+    const y = (target - startHour) * HOUR_HEIGHT
     const id = setTimeout(() => {
       scrollRef.current?.scrollTo({ y, animated: false })
     }, 50)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date])
+  }, [date, startHour])
 
   const hours = useMemo(() => {
     const out: number[] = []
-    for (let h = START_HOUR; h <= END_HOUR; h++) out.push(h)
+    for (let h = startHour; h <= endHour; h++) out.push(h)
     return out
-  }, [])
+  }, [startHour, endHour])
 
   return (
     <ScrollView
@@ -267,7 +294,7 @@ export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props
           })}
         </View>
       ) : null}
-      <View style={{ height: TOTAL_HEIGHT, position: 'relative' }}>
+      <View style={{ height: totalHeight, position: 'relative' }}>
         {/* Hour grid */}
         {hours.map((h) => (
           <View
@@ -276,7 +303,7 @@ export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props
               position: 'absolute',
               left: 0,
               right: 0,
-              top: (h - START_HOUR) * HOUR_HEIGHT,
+              top: (h - startHour) * HOUR_HEIGHT,
               height: HOUR_HEIGHT,
               flexDirection: 'row',
             }}

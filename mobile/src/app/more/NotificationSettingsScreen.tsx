@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
+import * as Notifications from 'expo-notifications'
 import { api } from '../../services/api'
 import { NavLarge } from '../../components/ui'
 import { colors } from '../../theme/colors'
@@ -127,7 +128,64 @@ export function NotificationSettingsScreen() {
   const toggleAlarm = async (next: boolean) => {
     setAlarmOn(next)
     await setAlarmEnabled(next)
+    if (next) {
+      // Demande la permission notif si pas encore accordée — sinon le
+      // toggle est ON mais aucune alarme ne sortira jamais.
+      const { status } = await Notifications.getPermissionsAsync()
+      if (status !== 'granted') {
+        const req = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowSound: true,
+            allowBadge: true,
+          },
+        })
+        if (req.status !== 'granted') {
+          Alert.alert(
+            'Permission requise',
+            "Active les notifications dans Réglages iOS → ClosRM pour recevoir les alarmes."
+          )
+        }
+      }
+    }
     await reschedule()
+  }
+
+  // Test : schedule une notif dans 5s pour vérifier que l'alarme fonctionne
+  // sur le device. Indispensable parce que sinon il faut attendre un vrai
+  // event pour vérifier.
+  const triggerTestAlarm = async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync()
+      if (status !== 'granted') {
+        const req = await Notifications.requestPermissionsAsync({
+          ios: { allowAlert: true, allowSound: true, allowBadge: true },
+        })
+        if (req.status !== 'granted') {
+          Alert.alert('Permission refusée', 'Active les notifs dans Réglages iOS.')
+          return
+        }
+      }
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '⏰ Test alarme',
+          body: 'Si tu vois ça, ton iPhone est bien configuré.',
+          sound: 'default',
+          interruptionLevel: 'timeSensitive',
+          data: { _tag: 'test_alarm' },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 5,
+        },
+      })
+      Alert.alert(
+        'Test programmé',
+        "L'alarme arrive dans 5 secondes. Tu peux fermer l'app pour tester."
+      )
+    } catch (e) {
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec test alarme')
+    }
   }
 
   const fetchPrefs = useCallback(async () => {
@@ -282,45 +340,61 @@ export function NotificationSettingsScreen() {
             ) : null}
           </View>
 
-          {/* Alarme à l'heure de chaque event */}
+          {/* Alarme à l'heure de chaque event + bouton test */}
           <View
             style={{
-              backgroundColor: colors.bgSecondary,
+              backgroundColor: alarmOn ? '#ef444414' : colors.bgSecondary,
               borderRadius: radius.md,
               padding: spacing.md,
-              flexDirection: 'row',
               gap: spacing.md,
-              alignItems: 'center',
+              borderWidth: alarmOn ? 1 : 0,
+              borderColor: alarmOn ? '#ef444455' : 'transparent',
             }}
           >
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: '#ef444422',
+            <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: '#ef444422',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="alarm" size={20} color="#ef4444" />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>
+                  Alarme à chaque événement
+                </Text>
+                <Text style={{ ...t.caption1, color: colors.textSecondary, marginTop: 2 }}>
+                  Notif time-sensitive au moment précis de chaque RDV ou
+                  appel — bypass le mode Focus iOS.
+                </Text>
+              </View>
+              <Switch
+                value={alarmOn}
+                onValueChange={(v) => void toggleAlarm(v)}
+                trackColor={{ false: colors.border, true: '#ef444488' }}
+                thumbColor={alarmOn ? '#ef4444' : colors.textTertiary}
+                ios_backgroundColor={colors.bgElevated}
+              />
+            </View>
+            <Pressable
+              onPress={triggerTestAlarm}
+              style={({ pressed }) => ({
+                paddingVertical: 10,
+                borderRadius: radius.md,
                 alignItems: 'center',
-                justifyContent: 'center',
-              }}
+                backgroundColor: '#ef4444',
+                opacity: pressed ? 0.8 : 1,
+              })}
             >
-              <Ionicons name="alarm" size={20} color="#ef4444" />
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>
-                Alarme à chaque événement
+              <Text style={{ ...t.subheadline, color: '#fff', fontWeight: '700' }}>
+                Tester l&apos;alarme (dans 5s)
               </Text>
-              <Text style={{ ...t.caption1, color: colors.textSecondary, marginTop: 2 }}>
-                Notif time-sensitive au moment précis de chaque RDV /
-                appel — bypass le mode Focus.
-              </Text>
-            </View>
-            <Switch
-              value={alarmOn}
-              onValueChange={(v) => void toggleAlarm(v)}
-              trackColor={{ false: colors.border, true: '#ef444488' }}
-              thumbColor={alarmOn ? '#ef4444' : colors.textTertiary}
-              ios_backgroundColor={colors.bgElevated}
-            />
+            </Pressable>
           </View>
 
           <Text

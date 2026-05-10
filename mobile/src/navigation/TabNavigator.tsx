@@ -8,6 +8,7 @@ import MessagesStack from './stacks/MessagesStack'
 import MoreStack from './stacks/MoreStack'
 import { PulseScreen } from '../app/pulse/PulseScreen'
 import { useUnreadCounts } from '../hooks/useUnreadCounts'
+import { colors } from '../theme/colors'
 
 const Tab = createBottomTabNavigator<TabParamList>()
 
@@ -50,7 +51,7 @@ export default function TabNavigator() {
           borderTopColor: '#3a3a3c',
           borderTopWidth: 0.33,
         },
-        tabBarActiveTintColor: '#00C853',
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: '#8a8a8e',
         tabBarLabelStyle: {
           fontSize: 10,

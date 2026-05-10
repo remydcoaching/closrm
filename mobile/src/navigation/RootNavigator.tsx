@@ -5,6 +5,7 @@ import type { RootStackParamList } from './types'
 import { supabase } from '../services/supabase'
 import TabNavigator from './TabNavigator'
 import { LoginScreen } from '../app/auth/LoginScreen'
+import { colors } from '../theme/colors'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
@@ -30,7 +31,7 @@ export default function RootNavigator() {
   if (loading) {
     return (
       <View className="flex-1 bg-bg-primary items-center justify-center">
-        <ActivityIndicator color="#00C853" size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     )
   }
