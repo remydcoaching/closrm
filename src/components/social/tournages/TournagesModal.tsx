@@ -92,6 +92,17 @@ export default function TournagesModal({ open, onClose }: Props) {
     if (view.kind === 'index') return
     setView({ kind, sessionId: view.sessionId, reelIds: view.reelIds })
   }
+  // Reçoit les changements d'URL des sub-views (ex: picker confirm avec nouveaux reels)
+  // Parse l'URL pour extraire ?reel=X,Y et update view.reelIds sans naviguer.
+  function handleSubNavigate(url: string) {
+    if (view.kind === 'index') return
+    try {
+      const u = new URL(url, window.location.origin)
+      const reelQS = u.searchParams.get('reel')
+      const newReelIds = reelQS ? reelQS.split(',').map(s => s.trim()).filter(Boolean) : []
+      setView({ kind: view.kind, sessionId: view.sessionId, reelIds: newReelIds })
+    } catch { /* noop */ }
+  }
 
   // Sub-view: rend PrepView/JourJView/BriefView en plein écran de modale
   if (view.kind !== 'index') {
@@ -116,6 +127,7 @@ export default function TournagesModal({ open, onClose }: Props) {
                   reelParamProp={reelParam}
                   onClose={backToIndex}
                   onSwitchView={(v) => switchSubView(v)}
+                  onNavigate={handleSubNavigate}
                 />
               )}
               {view.kind === 'jour-j' && (
