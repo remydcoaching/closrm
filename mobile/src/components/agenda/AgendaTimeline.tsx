@@ -10,6 +10,13 @@ const START_HOUR = 6
 const END_HOUR = 23
 const GUTTER_WIDTH = 56
 const TOTAL_HEIGHT = (END_HOUR - START_HOUR + 1) * HOUR_HEIGHT
+// Au-delà de cette durée, on considère que c'est un événement "all-day"
+// (typiquement importé de Google) et on le sort du timeline pour ne pas
+// noyer la grille horaire.
+const LONG_EVENT_THRESHOLD_MIN = 4 * 60
+// Plafond pour le nombre de lanes. Au-delà on stack visuellement (pas de
+// stripes 3% de large illisibles).
+const MAX_LANES = 4
 
 interface Props {
   items: AgendaItem[]
@@ -105,16 +112,19 @@ function layoutItems(items: AgendaItem[]): PositionedItem[] {
       }
       s.lane = assigned
     }
-    const laneCount = lanes.length
+    const laneCount = Math.min(lanes.length, MAX_LANES)
     for (const s of sortedG) {
       const startHour = s.startMin / 60
       const top = (startHour - START_HOUR) * HOUR_HEIGHT
-      const height = Math.max(28, ((s.endMin - s.startMin) / 60) * HOUR_HEIGHT - 2)
+      const height = Math.max(32, ((s.endMin - s.startMin) / 60) * HOUR_HEIGHT - 2)
+      // Si ce slot a été assigné à une lane > MAX_LANES-1, on le clamp à la
+      // dernière lane visible (overlap accepté sur cette colonne).
+      const visibleLane = Math.min(s.lane, MAX_LANES - 1)
       result.push({
         item: s.item,
         top,
         height,
-        laneIndex: s.lane,
+        laneIndex: visibleLane,
         laneCount,
       })
     }
@@ -123,7 +133,18 @@ function layoutItems(items: AgendaItem[]): PositionedItem[] {
 }
 
 export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props) {
-  const positioned = useMemo(() => layoutItems(items), [items])
+  // Sépare les events "longs" (>= 4h) → bandeau compact en haut. Évite que
+  // des all-day Google noient la grille horaire.
+  const { longEvents, timelineItems } = useMemo(() => {
+    const longs: AgendaItem[] = []
+    const shorts: AgendaItem[] = []
+    for (const it of items) {
+      if (it.duration_minutes >= LONG_EVENT_THRESHOLD_MIN) longs.push(it)
+      else shorts.push(it)
+    }
+    return { longEvents: longs, timelineItems: shorts }
+  }, [items])
+  const positioned = useMemo(() => layoutItems(timelineItems), [timelineItems])
   const isToday = sameDay(date, new Date())
 
   const [now, setNow] = useState(() => new Date())
@@ -168,6 +189,67 @@ export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props
       contentContainerStyle={{ paddingBottom: 100 }}
       showsVerticalScrollIndicator={false}
     >
+      {longEvents.length > 0 ? (
+        <View
+          style={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.sm,
+            gap: 6,
+          }}
+        >
+          <Text
+            style={{
+              ...t.caption2,
+              color: colors.textTertiary,
+              textTransform: 'uppercase',
+              fontWeight: '700',
+              letterSpacing: 0.4,
+              marginBottom: 2,
+            }}
+          >
+            Toute la journée · {longEvents.length}
+          </Text>
+          {longEvents.map((it) => {
+            const color = colorForItem(it)
+            return (
+              <Pressable
+                key={it.id}
+                onPress={() => onPressItem(it)}
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              >
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 10,
+                    borderRadius: 8,
+                    backgroundColor: color + '26',
+                    borderLeftWidth: 3,
+                    borderLeftColor: color,
+                  }}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      flex: 1,
+                      color: colors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {it.title}
+                  </Text>
+                  <Text style={{ ...t.caption1, color, fontWeight: '700' }}>
+                    {labelForKind(it)}
+                  </Text>
+                </View>
+              </Pressable>
+            )
+          })}
+        </View>
+      ) : null}
       <View style={{ height: TOTAL_HEIGHT, position: 'relative' }}>
         {/* Hour grid */}
         {hours.map((h) => (
@@ -246,7 +328,9 @@ export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props
                 <View
                   style={{
                     flex: 1,
-                    backgroundColor: color + '22',
+                    backgroundColor: color + '33',
+                    borderWidth: 1,
+                    borderColor: color + '66',
                     borderLeftWidth: 3,
                     borderLeftColor: color,
                     borderRadius: 8,
