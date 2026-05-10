@@ -12,6 +12,7 @@ import type { SourceConfig, StatusConfig } from '@/types'
 // Le dashboard étant 100 % authentifié + interactif, force-dynamic n'a pas
 // d'impact perf significatif.
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
