@@ -7,6 +7,7 @@ import RootNavigator from './src/navigation/RootNavigator'
 import { ScheduleSheetProvider } from './src/components/schedule/ScheduleSheetProvider'
 import { CreateLeadSheetProvider } from './src/components/leads/CreateLeadSheet'
 import { useExpoPush } from './src/hooks/useExpoPush'
+import { useAgendaReminders } from './src/hooks/useAgendaReminders'
 import { ThemeProvider } from './src/theme/ThemeProvider'
 import { checkAndApplyUpdate } from './src/services/updates'
 import { darkColors, lightColors } from './src/theme/colors'
@@ -41,6 +42,7 @@ function PushHandler({
   navRef: React.RefObject<NavigationContainerRef<Record<string, object | undefined>> | null>
 }) {
   useExpoPush(navRef)
+  useAgendaReminders()
   return null
 }
 

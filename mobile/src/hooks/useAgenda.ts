@@ -23,6 +23,7 @@ interface BookingRow {
   call_id: string | null
   lead_id: string | null
   color: string | null
+  form_data: Record<string, string> | null
   location: { name: string } | null
   booking_calendar: { name: string; color: string } | null
   lead: { id: string; first_name: string | null; last_name: string | null } | null
@@ -57,7 +58,7 @@ export function useAgenda(date: Date) {
       supabase
         .from('bookings')
         .select(
-          'id, title, scheduled_at, duration_minutes, status, is_personal, call_id, lead_id, color, ' +
+          'id, title, scheduled_at, duration_minutes, status, is_personal, call_id, lead_id, color, form_data, ' +
             'location:booking_locations(name), ' +
             'booking_calendar:booking_calendars(name, color), ' +
             'lead:leads(id, first_name, last_name)'
@@ -89,24 +90,42 @@ export function useAgenda(date: Date) {
 
     // Skip les bookings qui ont un call_id (on les affichera via la ligne calls
     // pour éviter le doublon — c'est le call qui porte l'outcome).
+    // Couleur résolue : mêmes règles que web bookingToAgendaEvent —
+    //   booking.color (override explicite)
+    //   > form_data.color (template import)
+    //   > booking_calendar.color (calendrier source)
+    //   > #6b7280 (gris) si is_personal, sinon #3b82f6 (bleu).
     const bookingItems: AgendaItem[] = bookings
       .filter((b) => !b.call_id)
-      .map((b) => ({
-        id: `booking:${b.id}`,
-        source: 'booking',
-        kind: b.is_personal ? 'personal' : 'meeting',
-        title: b.title,
-        scheduled_at: b.scheduled_at,
-        duration_minutes: b.duration_minutes,
-        booking_id: b.id,
-        lead_id: b.lead_id,
-        lead_name: b.lead
-          ? `${b.lead.first_name ?? ''} ${b.lead.last_name ?? ''}`.trim() || null
-          : null,
-        status: b.status,
-        color: b.color ?? b.booking_calendar?.color ?? null,
-        location_name: b.location?.name ?? null,
-      }))
+      .map((b) => {
+        const formColor =
+          typeof b.form_data?.color === 'string' && b.form_data.color.length > 0
+            ? b.form_data.color
+            : null
+        const personalFallback = '#6b7280'
+        const meetingFallback = '#3b82f6'
+        const resolvedColor =
+          b.color ??
+          formColor ??
+          b.booking_calendar?.color ??
+          (b.is_personal ? personalFallback : meetingFallback)
+        return {
+          id: `booking:${b.id}`,
+          source: 'booking',
+          kind: b.is_personal ? 'personal' : 'meeting',
+          title: b.title,
+          scheduled_at: b.scheduled_at,
+          duration_minutes: b.duration_minutes,
+          booking_id: b.id,
+          lead_id: b.lead_id,
+          lead_name: b.lead
+            ? `${b.lead.first_name ?? ''} ${b.lead.last_name ?? ''}`.trim() || null
+            : null,
+          status: b.status,
+          color: resolvedColor,
+          location_name: b.location?.name ?? null,
+        }
+      })
 
     const callItems: AgendaItem[] = calls
       .filter((c) => c.outcome !== 'cancelled')
@@ -115,6 +134,8 @@ export function useAgenda(date: Date) {
         const leadName = lead
           ? `${lead.first_name ?? ''} ${lead.last_name ?? ''}`.trim() || null
           : null
+        // Couleurs alignées sur web src/types/agenda.ts CALL_COLORS.
+        const callColor = c.type === 'closing' ? '#a855f7' : '#3b82f6'
         return {
           id: `call:${c.id}`,
           source: 'call',
@@ -129,6 +150,7 @@ export function useAgenda(date: Date) {
           lead_name: leadName,
           amount: lead?.deal_amount ?? null,
           outcome: c.outcome,
+          color: callColor,
         }
       })
 
