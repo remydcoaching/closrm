@@ -36,6 +36,23 @@ function placeIcon(loc: string | null): string {
   return '📍'
 }
 
+function reelDisplayName(reel: { id: string; title: string | null; hook: string | null }, allShots: ReelShot[]): string {
+  const t = reel.title?.trim()
+  if (t) return t
+  const h = reel.hook?.trim()
+  if (h) return h
+  // Fallback : 1ère phrase du script (tronquée), pour que l'user voie toujours
+  // quelque chose de reconnaissable même si title et hook ne sont pas remplis.
+  const firstShot = allShots
+    .filter(s => s.social_post_id === reel.id)
+    .sort((a, b) => a.position - b.position)[0]
+  if (firstShot?.text?.trim()) {
+    const txt = firstShot.text.trim()
+    return txt.length > 40 ? txt.slice(0, 40) + '…' : txt
+  }
+  return '(sans titre)'
+}
+
 export default function PrepTournagePageWrapper() {
   return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><PrepView /></Suspense>
 }
@@ -359,7 +376,7 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ color: '#666', fontSize: 11 }}>{isCollapsed ? '▸' : '▾'}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{reel.title || reel.hook || '(sans titre)'}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{reelDisplayName(reel, reelShots)}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <span style={{ fontSize: 11, color: '#888' }}>{placedCount} / {total} placées</span>
