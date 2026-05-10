@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import { KanbanSquare, Calendar as CalIcon, Plus, CalendarRange, Video } from 'lucide-react'
+import TournagesModal from '@/components/social/tournages/TournagesModal'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
 import BoardView from './BoardView'
 import PlanningCalendarView from './PlanningCalendarView'
@@ -32,6 +32,7 @@ export default function PlanningView() {
   const [trameModalOpen, setTrameModalOpen] = useState(false)
   const [planModalOpen, setPlanModalOpen] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [tournagesOpen, setTournagesOpen] = useState(false)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
   const [cursor, setCursor] = useState(() => {
     const d = new Date()
@@ -167,19 +168,19 @@ export default function PlanningView() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Link
-            href="/acquisition/reels/tournage"
+          <button
+            onClick={() => setTournagesOpen(true)}
             title="Voir mes sessions de tournage de reels"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', fontSize: 12, fontWeight: 600,
               color: '#FF0000', background: 'rgba(255,0,0,0.08)',
               border: '1px solid rgba(255,0,0,0.25)',
-              borderRadius: 8, cursor: 'pointer', textDecoration: 'none',
+              borderRadius: 8, cursor: 'pointer',
             }}
           >
             <Video size={14} /> Tournages
-          </Link>
+          </button>
           <button
             onClick={() => createPost(undefined)}
             style={{
@@ -328,6 +329,11 @@ export default function PlanningView() {
           onChange={reloadSilent}
         />
       )}
+
+      <TournagesModal
+        open={tournagesOpen}
+        onClose={() => setTournagesOpen(false)}
+      />
     </div>
   )
 }
