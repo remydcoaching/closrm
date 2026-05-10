@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateLeadSchema } from '@/lib/validations/leads'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { getNextCloser } from '@/lib/team/round-robin'
 
 export async function GET(
@@ -120,8 +121,34 @@ export async function PATCH(
         new_status: parsed.data.status,
       }).catch(() => {})
 
+      // Push : closing assigné au closer désigné
+      if (parsed.data.status === 'closing_planifie' && data.assigned_to) {
+        const fullName = `${data.first_name} ${data.last_name}`.trim() || 'Nouveau lead'
+        void sendPushToWorkspace({
+          workspaceId,
+          type: 'closing_assigned',
+          title: 'Nouveau closing',
+          body: `${fullName} — closing à planifier`,
+          data: { entity_type: 'lead', entity_id: id },
+          userIds: [data.assigned_to],
+        })
+      }
+
       if (parsed.data.status === 'clos') {
         fireTriggersForEvent(workspaceId, 'deal_won', { lead_id: id }).catch(() => {})
+
+        // Push deal_won : tous les membres du workspace (sauf désactivé)
+        const fullName = `${data.first_name} ${data.last_name}`.trim() || 'Lead'
+        const amount = data.deal_amount
+          ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(data.deal_amount)
+          : null
+        void sendPushToWorkspace({
+          workspaceId,
+          type: 'deal_won',
+          title: '🎉 Deal closé',
+          body: amount ? `${fullName} · ${amount}` : `${fullName}`,
+          data: { entity_type: 'lead', entity_id: id },
+        })
 
         // AI self-learning: record winning conversation outcome (non-blocking)
         Promise.resolve(
