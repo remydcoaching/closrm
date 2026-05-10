@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -36,7 +36,11 @@ function placeIcon(loc: string | null): string {
   return '📍'
 }
 
-export default function PrepTournagePage() {
+export default function PrepTournagePageWrapper() {
+  return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><PrepTournagePage /></Suspense>
+}
+
+function PrepTournagePage() {
   const searchParams = useSearchParams()
   const reelParam = searchParams.get('reel')
 

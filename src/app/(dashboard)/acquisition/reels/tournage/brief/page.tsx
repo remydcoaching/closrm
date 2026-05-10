@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -33,7 +33,11 @@ function placeIcon(loc: string | null): string {
   return '📍'
 }
 
-export default function BriefMontagePage() {
+export default function BriefMontagePageWrapper() {
+  return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><BriefMontagePage /></Suspense>
+}
+
+function BriefMontagePage() {
   const searchParams = useSearchParams()
   const reelParam = searchParams.get('reel')
 

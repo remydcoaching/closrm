@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -35,7 +35,11 @@ function placeIcon(loc: string | null): string {
   return '📍'
 }
 
-export default function JourJPage() {
+export default function JourJPageWrapper() {
+  return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><JourJPage /></Suspense>
+}
+
+function JourJPage() {
   const searchParams = useSearchParams()
   const reelParam = searchParams.get('reel')
   const reelFilter = useMemo(() => {
