@@ -1,0 +1,262 @@
+'use client'
+
+import { useEffect, useState, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+
+interface ReelShot {
+  id: string
+  social_post_id: string
+  position: number
+  text: string
+  location: string | null
+  shot_note: string | null
+  done: boolean
+  skipped: boolean
+  updated_at: string
+}
+
+interface SocialPost {
+  id: string
+  title: string | null
+  hook: string | null
+}
+
+function placeIcon(loc: string | null): string {
+  if (!loc) return '📍'
+  const l = loc.toLowerCase()
+  if (l.includes('poulie') || l.includes('câble')) return '🏋️'
+  if (l.includes('banc')) return '🛏️'
+  if (l.includes('sol')) return '🟫'
+  if (l.includes('miroir')) return '🪞'
+  if (l.includes('plage') || l.includes('extér') || l.includes('dehors')) return '🌳'
+  return '📍'
+}
+
+export default function BriefMontagePage() {
+  const searchParams = useSearchParams()
+  const reelParam = searchParams.get('reel')
+
+  const [reels, setReels] = useState<SocialPost[]>([])
+  const [shots, setShots] = useState<ReelShot[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [matched, setMatched] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true)
+      try {
+        const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=100')
+        if (!reelsRes.ok) throw new Error(`Reels: ${reelsRes.status}`)
+        const reelsJson = await reelsRes.json()
+        const allReels: SocialPost[] = reelsJson.data ?? []
+        const reelIds = reelParam ? reelParam.split(',').map(s => s.trim()) : null
+        const filtered = reelIds ? allReels.filter(r => reelIds.includes(r.id)) : allReels
+        setReels(filtered)
+
+        let url = '/api/reel-shots'
+        if (filtered.length > 0) url += `?social_post_ids=${filtered.map(r => r.id).join(',')}`
+        const shotsRes = await fetch(url)
+        if (!shotsRes.ok) throw new Error(`Shots: ${shotsRes.status}`)
+        const shotsJson = await shotsRes.json()
+        setShots((shotsJson.data ?? []).filter((s: ReelShot) => s.done))
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Erreur')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [reelParam])
+
+  // Génère un code court par phrase : R1-P1, R1-P2, R2-P1, etc.
+  const codeMap = useMemo(() => {
+    const m: Record<string, string> = {}
+    reels.forEach((reel, ri) => {
+      const reelShots = shots.filter(s => s.social_post_id === reel.id).sort((a, b) => a.position - b.position)
+      reelShots.forEach((s) => {
+        m[s.id] = `R${ri + 1}-P${s.position + 1}`
+      })
+    })
+    return m
+  }, [reels, shots])
+
+  // Timeline chronologique (par updated_at, ordre où l'user a coché tournée)
+  const chrono = useMemo(() => {
+    return [...shots].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
+  }, [shots])
+
+  if (loading) return <div style={{ padding: 40, color: '#888' }}>Chargement…</div>
+  if (error) return <div style={{ padding: 40, color: '#E53E3E' }}>Erreur : {error}</div>
+  if (shots.length === 0) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
+        <div style={{ fontSize: 14, color: '#fff', marginBottom: 8 }}>Aucune phrase tournée</div>
+        <div style={{ fontSize: 12, marginBottom: 20 }}>
+          Le brief monteur s&apos;active quand au moins 1 phrase est marquée &quot;✓ Tournée&quot;.
+        </div>
+        <Link href={reelParam ? `/acquisition/reels/tournage/jour-j?reel=${reelParam}` : '/acquisition/reels/tournage/jour-j'}
+          style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 12 }}>
+          ← Retour au jour J
+        </Link>
+      </div>
+    )
+  }
+
+  function fmtTime(iso: string): string {
+    const d = new Date(iso)
+    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  function copyLink() {
+    const url = window.location.href
+    navigator.clipboard.writeText(url).then(() => alert('Lien copié — colle-le au monteur'))
+  }
+
+  return (
+    <div style={{ padding: '24px 32px', maxWidth: 1200, margin: '0 auto', color: '#e5e5e5' }}>
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; color: black !important; }
+          .brief-container { color: black !important; }
+        }
+      `}</style>
+
+      <div className="no-print" style={{
+        background: '#141414', border: '1px solid #262626', borderLeft: '3px solid #FF0000',
+        borderRadius: 10, padding: '14px 18px', marginBottom: 24,
+        display: 'flex', gap: 14, alignItems: 'center',
+      }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#FF0000' }}>📄</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, color: '#fff', fontWeight: 700, marginBottom: 2 }}>
+            Brief monteur
+          </div>
+          <div style={{ fontSize: 12, color: '#888' }}>
+            {reels.length} reel{reels.length > 1 ? 's' : ''} · {shots.length} phrase{shots.length > 1 ? 's' : ''} tournée{shots.length > 1 ? 's' : ''}
+          </div>
+        </div>
+        <button onClick={copyLink} style={{
+          padding: '8px 14px', fontSize: 12, fontWeight: 600,
+          color: '#fff', background: '#FF0000', border: 'none', borderRadius: 8, cursor: 'pointer',
+        }}>📋 Copier le lien</button>
+        <button onClick={() => window.print()} style={{
+          padding: '8px 14px', fontSize: 12, fontWeight: 600,
+          color: '#888', background: 'transparent', border: '1px solid #262626', borderRadius: 8, cursor: 'pointer',
+        }}>🖨️ Imprimer</button>
+      </div>
+
+      <div className="brief-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+        {/* COLONNE GAUCHE — Ordre chronologique des clips */}
+        <div>
+          <div style={{
+            fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em',
+            marginBottom: 12, fontWeight: 700,
+          }}>
+            ① Ordre des clips reçus (chronologique)
+          </div>
+          <div style={{ fontSize: 11, color: '#666', marginBottom: 14, lineHeight: 1.5 }}>
+            Pour chaque clip que tu écoutes, identifie la phrase ci-dessous et note le code (ex&nbsp;: <code style={{background: '#262626', padding: '1px 5px', borderRadius: 3, color: '#fff'}}>R1-P1</code>) sur le fichier.
+          </div>
+          {chrono.map(s => {
+            const code = codeMap[s.id]
+            const reel = reels.find(r => r.id === s.social_post_id)
+            return (
+              <div key={s.id} style={{
+                background: matched[s.id] ? '#0a1a0a' : '#141414',
+                border: `1px solid ${matched[s.id] ? '#1a3a1a' : '#262626'}`,
+                borderRadius: 8, padding: 12, marginBottom: 8,
+                opacity: matched[s.id] ? 0.6 : 1,
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+              }}>
+                <input type="checkbox" checked={!!matched[s.id]}
+                  onChange={() => setMatched(prev => ({ ...prev, [s.id]: !prev[s.id] }))}
+                  className="no-print"
+                  style={{ width: 16, height: 16, accentColor: '#38A169', marginTop: 4, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
+                    <span style={{ color: '#666', fontFamily: 'monospace' }}>{fmtTime(s.updated_at)}</span>
+                    <span style={{ color: '#fff' }}>{placeIcon(s.location)} {s.location ?? '—'}</span>
+                    <span style={{
+                      marginLeft: 'auto', fontFamily: 'monospace', fontWeight: 700,
+                      color: '#FF0000', background: 'rgba(255,0,0,0.1)',
+                      padding: '2px 8px', borderRadius: 4, fontSize: 11,
+                    }}>{code}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#fff', fontWeight: 500, lineHeight: 1.4 }}>
+                    « {s.text} »
+                  </div>
+                  <div style={{ fontSize: 10, color: '#888', marginTop: 4 }}>
+                    Reel : {reel?.title ?? '(sans titre)'}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* COLONNE DROITE — Ordre par reel (montage) */}
+        <div>
+          <div style={{
+            fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em',
+            marginBottom: 12, fontWeight: 700,
+          }}>
+            ② Ordre de montage par reel
+          </div>
+          <div style={{ fontSize: 11, color: '#666', marginBottom: 14, lineHeight: 1.5 }}>
+            Une fois tes clips renommés avec leurs codes, monte chaque reel en suivant l&apos;ordre ci-dessous.
+          </div>
+          {reels.map((reel, ri) => {
+            const reelShots = shots.filter(s => s.social_post_id === reel.id).sort((a, b) => a.position - b.position)
+            if (reelShots.length === 0) return null
+            return (
+              <div key={reel.id} style={{
+                background: '#141414', border: '1px solid #262626',
+                borderRadius: 10, padding: 14, marginBottom: 12,
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+                  🎬 Reel {ri + 1} — {reel.title ?? '(sans titre)'}
+                </div>
+                {reel.hook && (
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 12, fontStyle: 'italic' }}>
+                    🪝 {reel.hook}
+                  </div>
+                )}
+                {reelShots.map((s, i) => {
+                  const code = codeMap[s.id]
+                  return (
+                    <div key={s.id} style={{
+                      padding: '8px 0', borderTop: i > 0 ? '1px solid #1a1a1a' : 'none',
+                    }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
+                        <span style={{ color: '#666', fontFamily: 'monospace', fontSize: 10 }}>{i + 1}.</span>
+                        <span style={{
+                          fontFamily: 'monospace', fontWeight: 700,
+                          color: '#FF0000', background: 'rgba(255,0,0,0.1)',
+                          padding: '2px 8px', borderRadius: 4, fontSize: 11,
+                        }}>{code}</span>
+                        <span style={{ color: '#888', fontSize: 11 }}>{placeIcon(s.location)} {s.location ?? '—'}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#ddd', lineHeight: 1.4, paddingLeft: 24 }}>
+                        « {s.text} »
+                      </div>
+                      {s.shot_note && (
+                        <div style={{ fontSize: 10, color: '#d69e2e', paddingLeft: 24, marginTop: 4 }}>
+                          🎥 {s.shot_note}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
