@@ -2,6 +2,72 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { X, Trash2 } from 'lucide-react'
+
+const KIND_OPTIONS: { value: 'post' | 'story' | 'reel'; label: string; icon: string }[] = [
+  { value: 'post',  label: 'POST',  icon: '📝' },
+  { value: 'story', label: 'STORY', icon: '⏱' },
+  { value: 'reel',  label: 'REEL',  icon: '🎬' },
+]
+
+function ContentKindSwitch({
+  value, onChange,
+}: {
+  value: 'post' | 'story' | 'reel'
+  onChange: (v: 'post' | 'story' | 'reel') => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const t = setTimeout(() => document.addEventListener('click', onClick), 50)
+    return () => { clearTimeout(t); document.removeEventListener('click', onClick) }
+  }, [open])
+  const current = KIND_OPTIONS.find(o => o.value === value) ?? KIND_OPTIONS[0]
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4,
+          background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
+          border: '1px solid var(--border-primary)', cursor: 'pointer',
+          whiteSpace: 'nowrap', textTransform: 'uppercase',
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+        }}>
+        <span style={{ fontSize: 11 }}>{current.icon}</span>
+        <span>{current.label}</span>
+        <span style={{ fontSize: 8, opacity: 0.5 }}>▾</span>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0,
+          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+          borderRadius: 6, padding: 4,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          zIndex: 100, minWidth: 90,
+        }}>
+          {KIND_OPTIONS.map(o => (
+            <div
+              key={o.value}
+              onClick={() => { onChange(o.value); setOpen(false) }}
+              style={{
+                padding: '6px 10px', fontSize: 11, fontWeight: 600,
+                color: o.value === value ? 'var(--text-primary)' : 'var(--text-secondary)',
+                background: o.value === value ? 'var(--bg-secondary)' : 'transparent',
+                borderRadius: 4, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase',
+              }}>
+              <span>{o.icon}</span><span>{o.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 import type { SocialPostWithPublications, ContentPillar, SocialPlatform, SocialPostPublication } from '@/types'
 import { uploadToR2 } from '@/lib/storage/r2-upload-client'
 import StepperBar from './StepperBar'
@@ -843,7 +909,12 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
             {pillar.name}
           </span>
         )}
-        {slot.content_kind && (
+        {!readOnly ? (
+          <ContentKindSwitch
+            value={(slot.content_kind ?? 'post') as 'post' | 'story' | 'reel'}
+            onChange={(v) => updateSlot({ content_kind: v })}
+          />
+        ) : slot.content_kind && (
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4,
             background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
@@ -870,6 +941,20 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
               weekday: 'short', day: '2-digit', month: 'short',
             })}
           </span>
+        )}
+        {slot.content_kind === 'reel' && (
+          <a
+            href={`/acquisition/reels/tournage/prep?reel=${slot.id}`}
+            title="Préparer mon tournage"
+            style={{
+              padding: '5px 10px', fontSize: 11, fontWeight: 700,
+              color: '#fff', background: '#FF0000',
+              borderRadius: 6, textDecoration: 'none',
+              whiteSpace: 'nowrap', flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+            📋 Préparer
+          </a>
         )}
         {!readOnly && (
           <button
