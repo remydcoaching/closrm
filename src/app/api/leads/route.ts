@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createLeadSchema, leadFiltersSchema } from '@/lib/validations/leads'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 
 export async function GET(request: NextRequest) {
   try {
@@ -213,6 +214,15 @@ export async function POST(request: NextRequest) {
       lead_id: data.id,
       source: data.source,
     }).catch(() => {})
+
+    // Push notif mobile aux coachs du workspace (non-bloquant)
+    void sendPushToWorkspace({
+      workspaceId,
+      type: 'new_lead',
+      title: 'Nouveau prospect',
+      body: `${data.first_name} ${data.last_name}`.trim() || 'Nouveau lead',
+      data: { entity_type: 'lead', entity_id: data.id },
+    })
 
     // Fire additional trigger if IG handle provided
     if (instagramHandle) {
