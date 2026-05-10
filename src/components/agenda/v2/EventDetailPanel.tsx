@@ -170,6 +170,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
     <aside
       role="dialog"
       aria-label="Détail de l'événement"
+      data-version="v3-inline-edit"
       style={{
         position: 'fixed',
         top: '50%',
@@ -178,11 +179,11 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
         width: 'min(520px, calc(100vw - 32px))',
         maxHeight: '88vh',
         background: 'var(--bg-primary)',
-        border: '1px solid var(--border-primary)',
+        border: '2px solid #10b981',
         borderRadius: 16,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
+        boxShadow: '0 20px 80px rgba(0,0,0,0.6), 0 0 0 4px rgba(16,185,129,0.18)',
         overflow: 'hidden',
         zIndex: Z_AGENDA.detailPanel,
       }}
