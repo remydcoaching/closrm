@@ -176,19 +176,35 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
         <div style={{ fontSize: 48, marginBottom: 12, marginTop: 60 }}>🎉</div>
         <div style={{ fontSize: 14, color: '#fff', marginBottom: 8 }}>Tous les shots sont tournés !</div>
         <div style={{ fontSize: 12, marginBottom: 24 }}>(ou aucun lieu n&apos;est encore assigné)</div>
-        {embedded && onSwitchView ? (
-          <button onClick={() => onSwitchView('prep')} style={{
-            display: 'inline-block', padding: '10px 18px',
-            background: '#FF0000', color: '#fff', borderRadius: 8,
-            border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}>← Retour à la prep</button>
-        ) : (
-          <Link href={reelParam ? `/acquisition/reels/tournage/prep?reel=${reelParam}` : '/acquisition/reels/tournage/prep'} style={{
-            display: 'inline-block', padding: '10px 18px',
-            background: '#FF0000', color: '#fff', borderRadius: 8,
-            textDecoration: 'none', fontSize: 13, fontWeight: 600,
-          }}>← Retour à la prep</Link>
-        )}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {embedded && onSwitchView ? (
+            <>
+              <button onClick={() => onSwitchView('brief')} style={{
+                display: 'inline-block', padding: '10px 18px',
+                background: '#FF0000', color: '#fff', borderRadius: 8,
+                border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}>📄 Voir le brief monteur</button>
+              <button onClick={() => onSwitchView('prep')} style={{
+                display: 'inline-block', padding: '10px 18px',
+                background: 'transparent', color: '#888', borderRadius: 8,
+                border: '1px solid #262626', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}>← Retour à la prep</button>
+            </>
+          ) : (
+            <>
+              <Link href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'} style={{
+                display: 'inline-block', padding: '10px 18px',
+                background: '#FF0000', color: '#fff', borderRadius: 8,
+                textDecoration: 'none', fontSize: 13, fontWeight: 600,
+              }}>📄 Voir le brief monteur</Link>
+              <Link href={reelParam ? `/acquisition/reels/tournage/prep?reel=${reelParam}` : '/acquisition/reels/tournage/prep'} style={{
+                display: 'inline-block', padding: '10px 18px',
+                background: 'transparent', color: '#888', borderRadius: 8,
+                border: '1px solid #262626', textDecoration: 'none', fontSize: 13, fontWeight: 600,
+              }}>← Retour à la prep</Link>
+            </>
+          )}
+        </div>
       </div>
     )
   }
