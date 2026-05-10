@@ -44,12 +44,19 @@ function placeIcon(loc: string): string {
 }
 
 export default function JourJPageWrapper() {
-  return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><JourJPage /></Suspense>
+  return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><JourJView /></Suspense>
 }
 
-function JourJPage() {
+interface JourJViewProps {
+  embedded?: boolean
+  reelParamProp?: string | null
+  onClose?: () => void
+  onSwitchView?: (view: 'prep' | 'brief') => void
+}
+
+export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: JourJViewProps = {}) {
   const searchParams = useSearchParams()
-  const reelParam = searchParams.get('reel')
+  const reelParam = embedded ? (reelParamProp ?? null) : searchParams.get('reel')
 
   const [shots, setShots] = useState<ReelShot[]>([])
   const [reels, setReels] = useState<SocialPost[]>([])
@@ -169,11 +176,19 @@ function JourJPage() {
         <div style={{ fontSize: 48, marginBottom: 12, marginTop: 60 }}>🎉</div>
         <div style={{ fontSize: 14, color: '#fff', marginBottom: 8 }}>Tous les shots sont tournés !</div>
         <div style={{ fontSize: 12, marginBottom: 24 }}>(ou aucun lieu n&apos;est encore assigné)</div>
-        <Link href={reelParam ? `/acquisition/reels/tournage/prep?reel=${reelParam}` : '/acquisition/reels/tournage/prep'} style={{
-          display: 'inline-block', padding: '10px 18px',
-          background: '#FF0000', color: '#fff', borderRadius: 8,
-          textDecoration: 'none', fontSize: 13, fontWeight: 600,
-        }}>← Retour à la prep</Link>
+        {embedded && onSwitchView ? (
+          <button onClick={() => onSwitchView('prep')} style={{
+            display: 'inline-block', padding: '10px 18px',
+            background: '#FF0000', color: '#fff', borderRadius: 8,
+            border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          }}>← Retour à la prep</button>
+        ) : (
+          <Link href={reelParam ? `/acquisition/reels/tournage/prep?reel=${reelParam}` : '/acquisition/reels/tournage/prep'} style={{
+            display: 'inline-block', padding: '10px 18px',
+            background: '#FF0000', color: '#fff', borderRadius: 8,
+            textDecoration: 'none', fontSize: 13, fontWeight: 600,
+          }}>← Retour à la prep</Link>
+        )}
       </div>
     )
   }
@@ -202,12 +217,23 @@ function JourJPage() {
         borderRadius: 10, padding: '12px 16px', marginBottom: 20, width: '100%', maxWidth: 360,
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
-        <Link href={reelParam ? `/acquisition/reels/tournage/prep?reel=${reelParam}` : '/acquisition/reels/tournage/prep'} style={{ color: '#FF0000', textDecoration: 'none', fontSize: 12 }}>← Prep</Link>
+        {embedded && onSwitchView ? (
+          <button onClick={() => onSwitchView('prep')} style={{ color: '#FF0000', background: 'transparent', border: 'none', fontSize: 12, cursor: 'pointer', padding: 0 }}>← Prep</button>
+        ) : (
+          <Link href={reelParam ? `/acquisition/reels/tournage/prep?reel=${reelParam}` : '/acquisition/reels/tournage/prep'} style={{ color: '#FF0000', textDecoration: 'none', fontSize: 12 }}>← Prep</Link>
+        )}
         <div style={{ flex: 1, fontSize: 12, color: '#888', textAlign: 'center' }}>
           🎬 Jour J{reelIds ? ` · ${reelIds.length}` : ''}
         </div>
-        <Link href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'}
-          style={{ color: '#FF0000', textDecoration: 'none', fontSize: 12 }}>📄 Brief →</Link>
+        {embedded && onClose && (
+          <button onClick={onClose} style={{ color: '#666', background: 'transparent', border: 'none', fontSize: 12, cursor: 'pointer', padding: 0, marginRight: 8 }}>✕</button>
+        )}
+        {embedded && onSwitchView ? (
+          <button onClick={() => onSwitchView('brief')} style={{ color: '#FF0000', background: 'transparent', border: 'none', fontSize: 12, cursor: 'pointer', padding: 0 }}>📄 Brief →</button>
+        ) : (
+          <Link href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'}
+            style={{ color: '#FF0000', textDecoration: 'none', fontSize: 12 }}>📄 Brief →</Link>
+        )}
       </div>
 
       <div style={{
