@@ -66,7 +66,7 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [filter, setFilter] = useState<'all' | 'unplaced' | 'placed'>('all')
+  const [filter, setFilter] = useState<'all' | 'unplaced' | 'placed' | 'done' | 'todo'>('all')
   const [search, setSearch] = useState('')
   const [collapsedReels, setCollapsedReels] = useState<Record<string, boolean>>({})
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -308,8 +308,14 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 0', flexWrap: 'wrap', marginBottom: 8 }}>
-        {(['all', 'unplaced', 'placed'] as const).map(f => {
-          const labels = { all: 'Toutes', unplaced: '🔴 Non placées', placed: '✓ Placées' }
+        {(['all', 'unplaced', 'placed', 'todo', 'done'] as const).map(f => {
+          const labels = {
+            all: 'Toutes',
+            unplaced: '🔴 Sans lieu',
+            placed: '📍 Avec lieu',
+            todo: '🎬 À filmer',
+            done: '✓ Tournées',
+          }
           const isActive = filter === f
           return (
             <button key={f} onClick={() => setFilter(f)} style={{
@@ -335,6 +341,8 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
         let visible = reelShots
         if (filter === 'unplaced') visible = visible.filter(s => !s.location)
         if (filter === 'placed') visible = visible.filter(s => s.location)
+        if (filter === 'todo') visible = visible.filter(s => !s.done && !s.skipped)
+        if (filter === 'done') visible = visible.filter(s => s.done)
         if (search) {
           const q = search.toLowerCase()
           visible = visible.filter(s => s.text.toLowerCase().includes(q))

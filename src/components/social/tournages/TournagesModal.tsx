@@ -49,6 +49,8 @@ export default function TournagesModal({ open, onClose }: Props) {
   const [creating, setCreating] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [view, setView] = useState<View>({ kind: 'index' })
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | SessionRow['status']>('all')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -82,7 +84,11 @@ export default function TournagesModal({ open, onClose }: Props) {
 
   if (!open) return null
 
-  const visible = showArchived ? sessions : sessions.filter(s => s.status !== 'archived')
+  const filtered = showArchived ? sessions : sessions.filter(s => s.status !== 'archived')
+  const filteredByStatus = statusFilter === 'all' ? filtered : filtered.filter(s => s.status === statusFilter)
+  const visible = search.trim()
+    ? filteredByStatus.filter(s => (s.name ?? '').toLowerCase().includes(search.toLowerCase()))
+    : filteredByStatus
 
   function openSubView(kind: 'prep' | 'jour-j' | 'brief', sessionId: string, reelIds: string[]) {
     setView({ kind, sessionId, reelIds })
@@ -196,13 +202,43 @@ export default function TournagesModal({ open, onClose }: Props) {
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 11, color: '#666', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
+            <input type="text" placeholder="🔎 Rechercher une session…"
+              value={search} onChange={e => setSearch(e.target.value)}
+              style={{
+                flex: 1, minWidth: 200, maxWidth: 320,
+                padding: '7px 12px', background: '#141414', border: '1px solid #262626',
+                borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none',
+              }} />
+            {(['all', 'draft', 'ready', 'in_progress', 'completed'] as const).map(f => {
+              const labels: Record<string, string> = {
+                all: 'Tout', draft: 'Brouillon', ready: 'Prête',
+                in_progress: 'En cours', completed: 'Terminée',
+              }
+              const isActive = statusFilter === f
+              return (
+                <button key={f} onClick={() => setStatusFilter(f)} style={{
+                  padding: '5px 10px', background: isActive ? '#FF0000' : '#141414',
+                  border: `1px solid ${isActive ? '#FF0000' : '#262626'}`,
+                  borderRadius: 99, fontSize: 10,
+                  color: isActive ? '#fff' : '#888', cursor: 'pointer', whiteSpace: 'nowrap',
+                }}>{labels[f]}</button>
+              )
+            })}
+            <label style={{ marginLeft: 'auto', fontSize: 10, color: '#666', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)}
                 style={{ accentColor: '#888' }} />
-              Afficher les sessions archivées
+              + archivées
             </label>
           </div>
+          {sessions.length > 0 && visible.length === 0 && (
+            <div style={{
+              padding: 30, textAlign: 'center', color: '#666', fontSize: 12,
+              background: '#141414', border: '1px dashed #262626', borderRadius: 8,
+            }}>
+              Aucune session ne correspond à ton filtre.
+            </div>
+          )}
 
           {loading ? (
             <div style={{ padding: 40, color: '#888', textAlign: 'center' }}>Chargement…</div>
