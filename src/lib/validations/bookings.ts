@@ -8,6 +8,12 @@ export const recurrenceSchema = z.object({
   count: z.number().int().min(2).max(52),
 })
 
+// Couleur hex `#RRGGBB` ou `#RGB` — valide aussi `null` pour reset à la
+// couleur du calendrier.
+const hexColorSchema = z
+  .string()
+  .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Couleur invalide')
+
 export const createBookingSchema = z.object({
   calendar_id: z.string().uuid('ID calendrier invalide.').optional().nullable(),
   lead_id: z.string().uuid('ID lead invalide.').optional().nullable(),
@@ -18,6 +24,7 @@ export const createBookingSchema = z.object({
   notes: z.string().max(5000).optional().nullable(),
   is_personal: z.boolean().default(false),
   recurrence: recurrenceSchema.optional().nullable(),
+  color: hexColorSchema.optional().nullable(),
 })
 
 export const updateBookingSchema = z.object({
@@ -27,6 +34,7 @@ export const updateBookingSchema = z.object({
   status: z.enum(['pending', 'confirmed', 'cancelled', 'no_show', 'completed']).optional(),
   notes: z.string().max(5000).optional().nullable(),
   notify_lead: z.boolean().optional(),
+  color: hexColorSchema.optional().nullable(),
 })
 
 export const bookingFiltersSchema = z.object({

@@ -16,12 +16,13 @@
 import { useEffect, useState } from 'react'
 import { addMinutes, format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Check, Clock, ExternalLink, Mail, MapPin, Pencil, Phone, Repeat, Trash2, Video, X, XCircle, UserX } from 'lucide-react'
+import { Check, Clock, ExternalLink, Mail, MapPin, Palette, Pencil, Phone, Repeat, Trash2, Video, X, XCircle, UserX } from 'lucide-react'
 import Link from 'next/link'
 import type { AgendaEvent } from '@/types/agenda'
 import type { BookingStatus } from '@/types'
 import { eventStatus } from '@/types/agenda'
 import { Z_AGENDA } from '@/lib/agenda/z-index'
+import { BOOKING_COLOR_PALETTE } from '@/lib/agenda/color-palette'
 
 type DeleteScope = 'this' | 'future' | 'all'
 
@@ -30,6 +31,7 @@ export interface BookingPatch {
   scheduled_at?: string
   duration_minutes?: number
   notes?: string | null
+  color?: string | null
 }
 
 interface EventDetailPanelProps {
@@ -105,6 +107,9 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
   const [editStartTime, setEditStartTime] = useState(format(start, 'HH:mm'))
   const [editEndTime, setEditEndTime] = useState(format(end, 'HH:mm'))
   const [editNotes, setEditNotes] = useState(notes ?? '')
+  const [editColor, setEditColor] = useState<string | null>(
+    isBooking ? event.booking.color ?? null : null,
+  )
 
   // Reset les champs quand on change d'event sélectionné
   useEffect(() => {
@@ -114,6 +119,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
     setEditStartTime(format(start, 'HH:mm'))
     setEditEndTime(format(end, 'HH:mm'))
     setEditNotes(notes ?? '')
+    setEditColor(isBooking ? event.booking.color ?? null : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.id])
 
@@ -131,6 +137,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
       scheduled_at: local.toISOString(),
       duration_minutes: editDuration,
       notes: editNotes.trim() ? editNotes : null,
+      color: editColor,
     }
     await onSave(event, patch)
     setIsEditing(false)
@@ -147,32 +154,29 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
 
   const canEdit = isBooking && Boolean(onSave)
 
+  // Side panel droit (pas un overlay) — la grille reste cliquable pendant
+  // qu'un événement est ouvert. Avant : overlay full-screen + backdrop blur
+  // qui interceptait le 1er clic sur un autre événement (= bug "il faut
+  // double-cliquer pour changer de sélection").
   return (
-    <div
-      onClick={onClose}
+    <aside
       role="dialog"
-      aria-modal="true"
       aria-label="Détail de l'événement"
       style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20, zIndex: Z_AGENDA.detailPanel,
-      }}
-    >
-    <aside
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        width: 'min(520px, 100%)', maxHeight: '88vh',
+        position: 'fixed',
+        top: 16,
+        right: 16,
+        bottom: 16,
+        width: 'min(480px, calc(100vw - 32px))',
         background: 'var(--bg-primary)',
         border: '1px solid var(--border-primary)',
         borderRadius: 16,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
+        boxShadow: '0 20px 80px rgba(0,0,0,0.55)',
         overflow: 'hidden',
+        zIndex: Z_AGENDA.detailPanel,
       }}
-      aria-label="Détail de l'événement"
     >
       {/* Header */}
       <div
@@ -475,6 +479,47 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
             >
               Voir la fiche complète <ExternalLink size={11} />
             </Link>
+          </Section>
+        )}
+
+        {/* Couleur — éditable uniquement en mode édition (bookings only) */}
+        {isEditing && isBooking && (
+          <Section title="Couleur">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setEditColor(null)}
+                title="Couleur du calendrier (par défaut)"
+                style={{
+                  width: 26, height: 26, borderRadius: 6,
+                  border: editColor === null
+                    ? '2px solid var(--text-primary)'
+                    : '1px solid var(--border-secondary)',
+                  background: 'repeating-linear-gradient(45deg, var(--bg-hover) 0 4px, transparent 4px 8px)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  flexShrink: 0,
+                }}
+              />
+              {BOOKING_COLOR_PALETTE.map((opt) => (
+                <button
+                  key={opt.hex}
+                  type="button"
+                  onClick={() => setEditColor(opt.hex)}
+                  title={opt.label}
+                  style={{
+                    width: 26, height: 26, borderRadius: 6,
+                    border: editColor === opt.hex
+                      ? '2px solid var(--text-primary)'
+                      : '1px solid var(--border-secondary)',
+                    background: opt.hex,
+                    cursor: 'pointer',
+                    padding: 0,
+                    flexShrink: 0,
+                  }}
+                />
+              ))}
+            </div>
           </Section>
         )}
 
@@ -834,7 +879,6 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
         </div>
       )}
     </aside>
-    </div>
   )
 }
 

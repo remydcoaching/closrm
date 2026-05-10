@@ -299,9 +299,18 @@ export default function AgendaV2Page() {
    *  Pas d'ouverture de modal. */
   async function handleSaveEdit(
     ev: AgendaEvent,
-    patch: { title?: string; scheduled_at?: string; duration_minutes?: number; notes?: string | null },
+    patch: { title?: string; scheduled_at?: string; duration_minutes?: number; notes?: string | null; color?: string | null },
   ) {
     if (ev.kind !== 'booking') return
+
+    // Resolve la nouvelle couleur d'affichage : si color est explicitement
+    // passé (même null), c'est l'override ; sinon on garde l'ancienne.
+    const fallbackColor = ev.booking.is_personal
+      ? '#6b7280'
+      : ev.booking.booking_calendar?.color ?? '#3b82f6'
+    const newDisplayColor = patch.color !== undefined
+      ? (patch.color ?? fallbackColor)
+      : ev.color
 
     // Optimistic : applique le patch sur l'event courant
     patchEvent(ev.id, (e) => {
@@ -310,17 +319,20 @@ export default function AgendaV2Page() {
       const newDuration = patch.duration_minutes ?? e.durationMinutes
       const newTitle = patch.title ?? e.title
       const newNotes = patch.notes !== undefined ? patch.notes : e.booking.notes
+      const newColor = patch.color !== undefined ? patch.color : e.booking.color
       return {
         ...e,
         title: newTitle,
         start: newStart,
         durationMinutes: newDuration,
+        color: newDisplayColor,
         booking: {
           ...e.booking,
           title: newTitle,
           scheduled_at: newStart,
           duration_minutes: newDuration,
           notes: newNotes,
+          color: newColor,
         },
       }
     })
@@ -331,17 +343,20 @@ export default function AgendaV2Page() {
       const newDuration = patch.duration_minutes ?? cur.durationMinutes
       const newTitle = patch.title ?? cur.title
       const newNotes = patch.notes !== undefined ? patch.notes : cur.booking.notes
+      const newColor = patch.color !== undefined ? patch.color : cur.booking.color
       return {
         ...cur,
         title: newTitle,
         start: newStart,
         durationMinutes: newDuration,
+        color: newDisplayColor,
         booking: {
           ...cur.booking,
           title: newTitle,
           scheduled_at: newStart,
           duration_minutes: newDuration,
           notes: newNotes,
+          color: newColor,
         },
       }
     })
