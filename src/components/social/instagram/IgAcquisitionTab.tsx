@@ -31,25 +31,34 @@ export default function IgAcquisitionTab({ onSeeAllInbox, onOpenPlanning }: Prop
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
+
+    // Vague 1 (critique) : conversations + snapshots → débloquent les KPI hero
+    // et l'inbox au-dessus de la fold. On lève le `loading` dès qu'ils répondent.
+    const criticalPromise = Promise.all([
+      fetch('/api/instagram/conversations?per_page=30').then(r => r.json()).catch(() => ({ data: [] })),
+      fetch('/api/instagram/snapshots').then(r => r.json()).catch(() => ({ data: [] })),
+    ])
+
+    // Vague 2 (secondaire, parallèle) : comments / reels / pillars → ces sections
+    // sont plus bas dans la page et tolèrent un skeleton individuel.
+    const secondaryPromise = Promise.all([
+      fetch('/api/instagram/comments').then(r => r.json()).catch(() => ({ data: [] })),
+      fetch('/api/instagram/reels?per_page=50').then(r => r.json()).catch(() => ({ data: [] })),
+      fetch('/api/instagram/pillars').then(r => r.json()).catch(() => ({ data: [] })),
+    ])
+
     try {
-      const [convRes, comRes, reelsRes, snapRes, pillarsRes] = await Promise.all([
-        fetch('/api/instagram/conversations?per_page=30'),
-        fetch('/api/instagram/comments'),
-        fetch('/api/instagram/reels?per_page=50'),
-        fetch('/api/instagram/snapshots'),
-        fetch('/api/instagram/pillars'),
-      ])
-      const [convJson, comJson, reelsJson, snapJson, pillarsJson] = await Promise.all([
-        convRes.json(), comRes.json(), reelsRes.json(), snapRes.json(), pillarsRes.json(),
-      ])
+      const [convJson, snapJson] = await criticalPromise
       setConversations(convJson.data ?? [])
+      setSnapshots(snapJson.data ?? [])
+      setLoading(false)
+
+      const [comJson, reelsJson, pillarsJson] = await secondaryPromise
       setComments(comJson.data ?? [])
       setReels(reelsJson.data ?? [])
-      setSnapshots(snapJson.data ?? [])
       setPillars(pillarsJson.data ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de chargement')
-    } finally {
       setLoading(false)
     }
   }, [])

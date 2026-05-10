@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Info, Ban, Calendar, Clock, User, MapPin, FileText, ChevronDown, Repeat } from 'lucide-react'
+import { X, Info, Ban, Calendar, Clock, User, MapPin, FileText, ChevronDown, Repeat, Palette } from 'lucide-react'
+import { BOOKING_COLOR_PALETTE } from '@/lib/agenda/color-palette'
 import { BookingCalendar, BookingWithCalendar, Lead, BookingLocation } from '@/types'
 
 /** Sentinel utilisé comme valeur dans le <select> calendrier pour signifier
@@ -135,6 +136,8 @@ export default function NewBookingModal({
     editingBooking?.duration_minutes ?? prefillDuration ?? calendars[0]?.duration_minutes ?? 60
   )
   const [notes, setNotes] = useState(editingBooking?.notes ?? '')
+  // Override couleur du booking. `null` = hérite du calendrier (ou bleu perso).
+  const [color, setColor] = useState<string | null>(editingBooking?.color ?? null)
 
   // Récurrence : `null` = pas récurrent. Sinon { frequency, count }.
   // Édition d'une série : on désactive le contrôle (V1 = pas de propagation).
@@ -308,6 +311,7 @@ export default function NewBookingModal({
             scheduled_at: scheduledAt,
             duration_minutes: duration,
             notes: notes || null,
+            color,
             ...(recurrencePayload ? { recurrence: recurrencePayload } : {}),
           }
         : {
@@ -322,6 +326,7 @@ export default function NewBookingModal({
             scheduled_at: scheduledAt,
             duration_minutes: duration,
             notes: notes || null,
+            color,
             ...(recurrencePayload ? { recurrence: recurrencePayload } : {}),
           }
 
@@ -785,6 +790,49 @@ export default function NewBookingModal({
                   onFocus={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                   onBlur={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                 />
+              </Row>
+
+              {/* Couleur — override la couleur héritée du calendrier */}
+              <Row icon={<Palette size={15} />} ariaLabel="Couleur">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '4px 8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setColor(null)}
+                    title="Couleur du calendrier (par défaut)"
+                    style={{
+                      width: 22, height: 22, borderRadius: 6,
+                      border: color === null
+                        ? '2px solid var(--text-primary)'
+                        : '1px solid var(--border-primary)',
+                      background:
+                        'repeating-linear-gradient(45deg, var(--bg-hover) 0 4px, transparent 4px 8px)',
+                      cursor: 'pointer',
+                      padding: 0,
+                      flexShrink: 0,
+                    }}
+                  />
+                  {BOOKING_COLOR_PALETTE.map((opt) => (
+                    <button
+                      key={opt.hex}
+                      type="button"
+                      onClick={() => setColor(opt.hex)}
+                      title={opt.label}
+                      style={{
+                        width: 22, height: 22, borderRadius: 6,
+                        border: color === opt.hex
+                          ? '2px solid var(--text-primary)'
+                          : '1px solid var(--border-primary)',
+                        background: opt.hex,
+                        cursor: 'pointer',
+                        padding: 0,
+                        flexShrink: 0,
+                      }}
+                    />
+                  ))}
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 4 }}>
+                    {color ? BOOKING_COLOR_PALETTE.find(c => c.hex === color)?.label ?? 'Custom' : 'Auto'}
+                  </span>
+                </div>
               </Row>
             </div>
 

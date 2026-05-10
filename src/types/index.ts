@@ -481,6 +481,9 @@ export interface Booking {
   /** Si non-null, ce booking fait partie d'une série récurrente. Toutes les
    *  occurrences d'une même série partagent ce group_id. */
   recurrence_group_id: string | null
+  /** Override de couleur côté UI. Si null, on retombe sur la couleur du
+   *  calendrier (ou bleu pour `is_personal`). Format hex `#RRGGBB`. */
+  color: string | null
   created_at: string
 }
 

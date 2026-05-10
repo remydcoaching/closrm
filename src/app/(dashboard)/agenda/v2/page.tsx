@@ -262,23 +262,36 @@ export default function AgendaV2Page() {
 
   async function handleStatusChange(ev: AgendaEvent, status: string) {
     if (ev.kind !== 'booking') return
-    // Use dedicated confirm endpoint when confirming a pending booking
+    // Optimistic d'abord : patch local instantané pour éviter un refetch des
+    // 100 bookings (qui causait un freeze visible à chaque clic statut).
+    patchEvent(ev.id, (e) => {
+      if (e.kind !== 'booking') return e
+      return {
+        ...e,
+        booking: { ...e.booking, status: status as typeof e.booking.status },
+      }
+    })
+    setSelectedEvent({
+      ...ev,
+      booking: { ...ev.booking, status: status as typeof ev.booking.status },
+    })
+
     const isPendingConfirm = ev.booking.status === 'pending' && status === 'confirmed'
-    const res = isPendingConfirm
-      ? await fetch(`/api/bookings/${ev.booking.id}/confirm`, { method: 'POST' })
-      : await fetch(`/api/bookings/${ev.booking.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status }),
-        })
-    if (res.ok) {
-      setSelectedEvent({
-        ...ev,
-        booking: { ...ev.booking, status: status as typeof ev.booking.status },
-      })
+    try {
+      const res = isPendingConfirm
+        ? await fetch(`/api/bookings/${ev.booking.id}/confirm`, { method: 'POST' })
+        : await fetch(`/api/bookings/${ev.booking.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+          })
+      if (!res.ok) {
+        alert('Changement de statut échoué')
+        refetch()
+      }
+    } catch {
+      alert('Changement de statut échoué (réseau)')
       refetch()
-    } else {
-      alert('Changement de statut échoué')
     }
   }
 
@@ -286,9 +299,18 @@ export default function AgendaV2Page() {
    *  Pas d'ouverture de modal. */
   async function handleSaveEdit(
     ev: AgendaEvent,
-    patch: { title?: string; scheduled_at?: string; duration_minutes?: number; notes?: string | null },
+    patch: { title?: string; scheduled_at?: string; duration_minutes?: number; notes?: string | null; color?: string | null },
   ) {
     if (ev.kind !== 'booking') return
+
+    // Resolve la nouvelle couleur d'affichage : si color est explicitement
+    // passé (même null), c'est l'override ; sinon on garde l'ancienne.
+    const fallbackColor = ev.booking.is_personal
+      ? '#6b7280'
+      : ev.booking.booking_calendar?.color ?? '#3b82f6'
+    const newDisplayColor = patch.color !== undefined
+      ? (patch.color ?? fallbackColor)
+      : ev.color
 
     // Optimistic : applique le patch sur l'event courant
     patchEvent(ev.id, (e) => {
@@ -297,17 +319,20 @@ export default function AgendaV2Page() {
       const newDuration = patch.duration_minutes ?? e.durationMinutes
       const newTitle = patch.title ?? e.title
       const newNotes = patch.notes !== undefined ? patch.notes : e.booking.notes
+      const newColor = patch.color !== undefined ? patch.color : e.booking.color
       return {
         ...e,
         title: newTitle,
         start: newStart,
         durationMinutes: newDuration,
+        color: newDisplayColor,
         booking: {
           ...e.booking,
           title: newTitle,
           scheduled_at: newStart,
           duration_minutes: newDuration,
           notes: newNotes,
+          color: newColor,
         },
       }
     })
@@ -318,17 +343,20 @@ export default function AgendaV2Page() {
       const newDuration = patch.duration_minutes ?? cur.durationMinutes
       const newTitle = patch.title ?? cur.title
       const newNotes = patch.notes !== undefined ? patch.notes : cur.booking.notes
+      const newColor = patch.color !== undefined ? patch.color : cur.booking.color
       return {
         ...cur,
         title: newTitle,
         start: newStart,
         durationMinutes: newDuration,
+        color: newDisplayColor,
         booking: {
           ...cur.booking,
           title: newTitle,
           scheduled_at: newStart,
           duration_minutes: newDuration,
           notes: newNotes,
+          color: newColor,
         },
       }
     })

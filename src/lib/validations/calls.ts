@@ -35,7 +35,7 @@ export const callFiltersSchema = z.object({
   lead_id: z.string().optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
-  per_page: z.coerce.number().int().min(1).max(100).default(25),
+  per_page: z.coerce.number().int().min(1).max(250).default(25),
   sort: z.enum(['scheduled_at', 'created_at']).default('scheduled_at'),
   order: z.enum(['asc', 'desc']).default('asc'),
 })

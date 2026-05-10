@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('workflows')
-      .select('*', { count: 'exact' })
+      .select('*', { count: 'planned' })
       .eq('workspace_id', workspaceId)
 
     if (filters.status) query = query.eq('status', filters.status)

@@ -20,9 +20,12 @@ export async function GET(request: NextRequest) {
 
     const filters = bookingFiltersSchema.parse(Object.fromEntries(request.nextUrl.searchParams))
 
+    // count: 'planned' utilise les stats Postgres (~ instantané) au lieu de
+    // count: 'exact' qui force un scan complet à chaque GET. Précision ±10%
+    // suffit pour la pagination UI.
     let query = supabase
       .from('bookings')
-      .select(BOOKING_SELECT, { count: 'exact' })
+      .select(BOOKING_SELECT, { count: 'planned' })
       .eq('workspace_id', workspaceId)
 
     // Filtrage par rôle : setter/closer ne voient que leurs bookings
@@ -96,6 +99,7 @@ export async function POST(request: NextRequest) {
           location_id: parsed.data.location_id ?? null,
           source: 'manual' as const,
           recurrence_group_id: groupId,
+          color: parsed.data.color ?? null,
         }
       })
 
@@ -121,6 +125,7 @@ export async function POST(request: NextRequest) {
         notes: parsed.data.notes ?? null,
         is_personal: parsed.data.is_personal,
         location_id: parsed.data.location_id ?? null,
+        color: parsed.data.color ?? null,
         source: 'manual',
         status: 'confirmed',
       })
