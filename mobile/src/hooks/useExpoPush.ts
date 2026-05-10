@@ -73,7 +73,7 @@ export function useExpoPush(
           break
         case 'call':
           ref.navigate('Main', {
-            screen: 'CallsTab',
+            screen: 'AgendaTab',
             params: { screen: 'CallDetail', params: { callId: data.entity_id } },
           })
           break
