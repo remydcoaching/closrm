@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { Alert } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import { useAuth } from './useAuth'
 import { registerForPushNotifications, savePushToken } from '../services/push'
@@ -31,24 +30,21 @@ export function useExpoPush(
     void (async () => {
       const { token, error } = await registerForPushNotifications()
       if (cancelled) return
+      // Silent en prod : les erreurs Expo (503 transient, permission denied,
+      // simulateur, etc) ne doivent pas spammer un Alert chez l'utilisateur.
+      // Logué uniquement en dev pour debug.
       if (error) {
-        // TEMP DEBUG : visible Alert pour traquer pourquoi certains tokens
-        // ne s'enregistrent pas. À retirer une fois le bug compris.
-        Alert.alert('Push register error', error)
+        if (__DEV__) console.warn('[push] register error:', error)
         return
       }
       if (!token) {
-        Alert.alert('Push register error', 'Token Expo null sans erreur')
+        if (__DEV__) console.warn('[push] no token returned (permission ?)')
         return
       }
       try {
         await savePushToken(token)
-        Alert.alert('Push OK', `Token enregistré : ${token.slice(0, 30)}…`)
       } catch (e) {
-        Alert.alert(
-          'savePushToken error',
-          e instanceof Error ? e.message : String(e),
-        )
+        if (__DEV__) console.warn('[push] savePushToken error:', e)
       }
     })()
     return () => {
