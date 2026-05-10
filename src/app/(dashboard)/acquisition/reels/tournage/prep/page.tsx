@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, useCallback, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 interface ReelShot {
@@ -42,9 +42,12 @@ export default function PrepTournagePageWrapper() {
 
 function PrepTournagePage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const reelParam = searchParams.get('reel')
 
   const [reels, setReels] = useState<SocialPost[]>([])
+  const [allReels, setAllReels] = useState<SocialPost[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [shots, setShots] = useState<ReelShot[]>([])
   const [knownLocations, setKnownLocations] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -74,8 +77,9 @@ function PrepTournagePage() {
       const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=100')
       if (!reelsRes.ok) throw new Error(`Reels fetch failed: ${reelsRes.status}`)
       const reelsJson = await reelsRes.json()
-      const allReels: SocialPost[] = reelsJson.data ?? []
-      const filtered = reelIds ? allReels.filter(r => reelIds.includes(r.id)) : allReels
+      const allFetched: SocialPost[] = reelsJson.data ?? []
+      setAllReels(allFetched)
+      const filtered = reelIds ? allFetched.filter(r => reelIds.includes(r.id)) : allFetched
       setReels(filtered)
 
       // 2. Sync les shots des reels visibles (split script → reel_shots)
@@ -215,10 +219,22 @@ function PrepTournagePage() {
             {reelIds ? `Préparer ${reels.length} reel${reels.length > 1 ? 's' : ''}` : 'Préparer mon tournage'}
           </div>
           <div style={{ fontSize: 12, color: '#888' }}>
-            Assigne un lieu à chaque phrase. {reelIds && (
-              <Link href="/acquisition/reels/tournage/prep" style={{ color: '#FF0000', textDecoration: 'underline' }}>
-                Voir tous les reels →
-              </Link>
+            Assigne un lieu à chaque phrase.{' '}
+            <button
+              onClick={() => setPickerOpen(true)}
+              style={{
+                color: '#FF0000', background: 'transparent', border: 'none',
+                textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 12,
+              }}>
+              {reelIds ? `+ Ajouter d'autres reels` : 'Filtrer sur certains reels'}
+            </button>
+            {reelIds && (
+              <>
+                {' · '}
+                <Link href="/acquisition/reels/tournage/prep" style={{ color: '#888', textDecoration: 'underline' }}>
+                  Tous les reels
+                </Link>
+              </>
             )}
           </div>
         </div>
@@ -424,6 +440,22 @@ function PrepTournagePage() {
         </div>
       )}
 
+      {pickerOpen && (
+        <ReelPicker
+          allReels={allReels}
+          currentIds={reelIds ?? reels.map(r => r.id)}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={(ids) => {
+            setPickerOpen(false)
+            if (ids.length === allReels.length) {
+              router.push('/acquisition/reels/tournage/prep')
+            } else {
+              router.push(`/acquisition/reels/tournage/prep?reel=${ids.join(',')}`)
+            }
+          }}
+        />
+      )}
+
       {addingLocation && (
         <div onClick={() => setAddingLocation(false)} style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
@@ -473,6 +505,106 @@ function PrepTournagePage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ReelPicker({
+  allReels, currentIds, onClose, onConfirm,
+}: {
+  allReels: SocialPost[]
+  currentIds: string[]
+  onClose: () => void
+  onConfirm: (ids: string[]) => void
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set(currentIds))
+  function toggle(id: string) {
+    setSelected(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id); else n.add(id)
+      return n
+    })
+  }
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: 480, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 80px)',
+        background: '#141414', border: '1px solid #262626',
+        borderRadius: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #262626' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+            Sélectionner les reels à préparer
+          </div>
+          <div style={{ fontSize: 11, color: '#888' }}>
+            {selected.size} sur {allReels.length} sélectionné{selected.size > 1 ? 's' : ''}
+          </div>
+        </div>
+        <div style={{ padding: 12, overflowY: 'auto', flex: 1 }}>
+          <button
+            onClick={() => setSelected(s => s.size === allReels.length ? new Set() : new Set(allReels.map(r => r.id)))}
+            style={{
+              width: '100%', padding: '8px 12px', marginBottom: 8,
+              background: 'transparent', color: '#888',
+              border: '1px dashed #262626', borderRadius: 7, cursor: 'pointer',
+              fontSize: 12,
+            }}>
+            {selected.size === allReels.length ? '☑️ Tout désélectionner' : '☐ Tout sélectionner'}
+          </button>
+          {allReels.map(r => {
+            const isSelected = selected.has(r.id)
+            return (
+              <div key={r.id} onClick={() => toggle(r.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', marginBottom: 4,
+                background: isSelected ? 'rgba(255,0,0,0.06)' : 'transparent',
+                border: `1px solid ${isSelected ? '#FF0000' : '#262626'}`,
+                borderRadius: 7, cursor: 'pointer',
+              }}>
+                <div style={{
+                  width: 18, height: 18, flexShrink: 0,
+                  border: `2px solid ${isSelected ? '#FF0000' : '#444'}`,
+                  background: isSelected ? '#FF0000' : 'transparent',
+                  borderRadius: 4, display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontSize: 11, fontWeight: 700,
+                }}>{isSelected && '✓'}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.title || '(sans titre)'}
+                  </div>
+                  {r.hook && (
+                    <div style={{ fontSize: 10, color: '#888', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      🪝 {r.hook}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ padding: '12px 20px', borderTop: '1px solid #262626', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{
+            padding: '8px 14px', background: 'transparent', color: '#888',
+            border: '1px solid #262626', borderRadius: 7, fontSize: 12, cursor: 'pointer',
+          }}>Annuler</button>
+          <button
+            onClick={() => onConfirm(Array.from(selected))}
+            disabled={selected.size === 0}
+            style={{
+              padding: '8px 16px',
+              background: selected.size === 0 ? '#3a1a1a' : '#FF0000',
+              color: '#fff', border: 'none', borderRadius: 7,
+              fontSize: 12, fontWeight: 700,
+              cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
+            }}>
+            📋 Préparer {selected.size > 0 ? `(${selected.size})` : ''}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
