@@ -21,6 +21,9 @@ export type MoreStackParamList = {
   SocialPosts: undefined
   SocialPostDetail: { postId: string }
   SocialPostForm: { initialDate?: string }
+  ReelsPrep: { reelIds: string[] | null }
+  ReelsJourJ: { reelIds: string[] | null }
+  ReelsBrief: { reelIds: string[] | null }
 }
 
 export type TabParamList = {

@@ -136,6 +136,21 @@ export function SocialPostsScreen() {
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={28} color={colors.primary} />
         </Pressable>
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={() => navigation.navigate('ReelsJourJ', { reelIds: null })}
+          hitSlop={8}
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: colors.primary + '22',
+          }}
+        >
+          <Text style={{ ...t.caption1, color: colors.primary, fontWeight: '700' }}>
+            🎬 Jour J
+          </Text>
+        </Pressable>
       </View>
 
       <NavLarge title="Réseaux sociaux" subtitle="Calendrier de publication" />

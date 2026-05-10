@@ -335,6 +335,50 @@ export function SocialPostDetailScreen() {
             </View>
           ) : null}
 
+          {/* Plan tournage — uniquement pour les reels */}
+          {post.content_kind === 'reel' ? (
+            <View
+              style={{
+                backgroundColor: colors.bgSecondary,
+                borderRadius: radius.lg,
+                padding: spacing.md,
+                gap: spacing.sm,
+                borderLeftWidth: 3,
+                borderLeftColor: colors.primary,
+              }}
+            >
+              <Text style={{ ...t.caption2, color: colors.textSecondary, fontWeight: '700', letterSpacing: 0.4 }}>
+                PLAN DE TOURNAGE
+              </Text>
+              <Text style={{ ...t.body, color: colors.textPrimary }}>
+                Assigne un lieu à chaque phrase, puis filme avec la vue "Jour J".
+              </Text>
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label="📋 Préparer"
+                    fullWidth
+                    size="md"
+                    variant="outline"
+                    onPress={() =>
+                      navigation.navigate('ReelsPrep', { reelIds: [post.id] })
+                    }
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Button
+                    label="🎬 Jour J"
+                    fullWidth
+                    size="md"
+                    onPress={() =>
+                      navigation.navigate('ReelsJourJ', { reelIds: [post.id] })
+                    }
+                  />
+                </View>
+              </View>
+            </View>
+          ) : null}
+
           {/* Actions */}
           <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
             {post.status === 'failed' || post.status === 'partial' ? (
