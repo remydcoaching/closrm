@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
           location_id: parsed.data.location_id ?? null,
           source: 'manual' as const,
           recurrence_group_id: groupId,
+          color: parsed.data.color ?? null,
         }
       })
 
@@ -124,6 +125,7 @@ export async function POST(request: NextRequest) {
         notes: parsed.data.notes ?? null,
         is_personal: parsed.data.is_personal,
         location_id: parsed.data.location_id ?? null,
+        color: parsed.data.color ?? null,
         source: 'manual',
         status: 'confirmed',
       })
