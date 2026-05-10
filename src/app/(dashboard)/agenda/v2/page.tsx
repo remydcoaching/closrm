@@ -180,10 +180,18 @@ export default function AgendaV2Page() {
   const [copiedEvent, setCopiedEvent] = useState<AgendaEvent | null>(null)
   const hoverPosRef = useRef<{ date: Date; hour: number } | null>(null)
 
+  // Sélection en 2 temps (style Notion/Linear) :
+  //   1er clic sur un event → highlight (ring autour de la card, panel fermé)
+  //   2e clic sur le MÊME event → ouvre le panel détail
+  //   Clic sur un AUTRE event → highlight le nouveau, panel ferme
   const handleEventClick = useCallback((ev: AgendaEvent) => {
+    if (highlightedEventId === ev.id && !selectedEvent) {
+      setSelectedEvent(ev)
+      return
+    }
     setHighlightedEventId(ev.id)
-    setSelectedEvent(ev)
-  }, [])
+    setSelectedEvent(null)
+  }, [highlightedEventId, selectedEvent])
 
   const handleHoverChange = useCallback((date: Date | null, hour: number | null) => {
     hoverPosRef.current = date && hour !== null ? { date, hour } : null
