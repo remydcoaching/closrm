@@ -64,7 +64,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/unsubscribe') ||
     pathname.startsWith('/book/') ||
     pathname.startsWith('/booking/') ||
-    pathname.startsWith('/f/')
+    pathname.startsWith('/f/') ||
+    pathname.startsWith('/proto')
 
   if (
     user &&

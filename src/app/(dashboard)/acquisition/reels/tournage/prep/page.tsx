@@ -223,6 +223,11 @@ export default function PrepTournagePage() {
           color: '#FF0000', background: 'rgba(255,0,0,0.08)',
           border: '1px solid rgba(255,0,0,0.25)', borderRadius: 8, textDecoration: 'none',
         }}>🎬 Jour J →</Link>
+        <Link href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'} style={{
+          padding: '8px 14px', fontSize: 12, fontWeight: 600,
+          color: '#888', background: 'transparent',
+          border: '1px solid #262626', borderRadius: 8, textDecoration: 'none',
+        }}>📄 Brief</Link>
       </div>
 
       <div style={{

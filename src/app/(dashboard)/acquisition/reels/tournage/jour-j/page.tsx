@@ -179,9 +179,11 @@ export default function JourJPage() {
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
         <Link href={reelParam ? `/acquisition/reels/tournage/prep?reel=${reelParam}` : '/acquisition/reels/tournage/prep'} style={{ color: '#FF0000', textDecoration: 'none', fontSize: 12 }}>← Prep</Link>
-        <div style={{ flex: 1, fontSize: 12, color: '#888', textAlign: 'right' }}>
-          🎬 Jour J{reelIds ? ` · ${reelIds.length} reel${reelIds.length > 1 ? 's' : ''}` : ''}
+        <div style={{ flex: 1, fontSize: 12, color: '#888', textAlign: 'center' }}>
+          🎬 Jour J{reelIds ? ` · ${reelIds.length}` : ''}
         </div>
+        <Link href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'}
+          style={{ color: '#FF0000', textDecoration: 'none', fontSize: 12 }}>📄 Brief →</Link>
       </div>
 
       <div style={{
