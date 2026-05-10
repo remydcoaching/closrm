@@ -6,15 +6,15 @@ import React, {
   useRef,
   useState,
 } from 'react'
-import { View, Text, TextInput, Pressable, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, TextInput, Pressable, Alert } from 'react-native'
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet'
 import { Ionicons } from '@expo/vector-icons'
 import type { LeadSource } from '@shared/types'
-import { Button, Segmented } from '../ui'
-import { colors } from '../../theme/colors'
+import { Avatar } from '../ui'
+import { colors, getAvatarColor } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
 import { api } from '../../services/api'
 
@@ -33,43 +33,65 @@ export function useCreateLeadSheet(): CreateLeadSheetContextValue {
   return ctx
 }
 
-const SOURCES: { key: LeadSource; label: string }[] = [
-  { key: 'manuel', label: 'Manuel' },
-  { key: 'instagram_ads', label: 'Insta' },
-  { key: 'facebook_ads', label: 'FB' },
-  { key: 'formulaire', label: 'Form' },
+interface SourceMeta {
+  key: LeadSource
+  label: string
+  icon: keyof typeof Ionicons.glyphMap
+  tint: string
+}
+
+const SOURCES: SourceMeta[] = [
+  { key: 'manuel', label: 'Manuel', icon: 'create-outline', tint: '#8e8e93' },
+  { key: 'instagram_ads', label: 'Instagram', icon: 'logo-instagram', tint: '#ec4899' },
+  { key: 'facebook_ads', label: 'Facebook', icon: 'logo-facebook', tint: '#3b82f6' },
+  { key: 'formulaire', label: 'Formulaire', icon: 'document-text-outline', tint: '#06b6d4' },
 ]
 
-function Field({
-  label,
+/** Row d'input dans une grouped list iOS Settings. Hairline en bas
+ *  géré par la grouped View parent (gap 0 + hairlines). */
+function InputRow({
+  icon,
+  iconTint,
+  placeholder,
   value,
   onChangeText,
-  placeholder,
   keyboardType,
   autoCapitalize = 'sentences',
-  multiline,
+  separator = true,
 }: {
-  label: string
+  icon: keyof typeof Ionicons.glyphMap
+  iconTint: string
+  placeholder: string
   value: string
   onChangeText: (s: string) => void
-  placeholder?: string
   keyboardType?: 'default' | 'email-address' | 'phone-pad'
   autoCapitalize?: 'none' | 'sentences' | 'words'
-  multiline?: boolean
+  separator?: boolean
 }) {
   return (
-    <View style={{ gap: 6 }}>
-      <Text
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        gap: 12,
+        borderBottomWidth: separator ? 0.33 : 0,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <View
         style={{
-          color: colors.textSecondary,
-          fontSize: 13,
-          fontWeight: '600',
-          textTransform: 'uppercase',
-          letterSpacing: 0.4,
+          width: 28,
+          height: 28,
+          borderRadius: 7,
+          backgroundColor: iconTint,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        {label}
-      </Text>
+        <Ionicons name={icon} size={16} color="#fff" />
+      </View>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -78,16 +100,11 @@ function Field({
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
-        multiline={multiline}
         style={{
+          flex: 1,
           ...t.body,
           color: colors.textPrimary,
-          backgroundColor: '#2c2c2e',
-          borderRadius: radius.lg,
-          paddingHorizontal: 14,
-          paddingVertical: 12,
-          minHeight: multiline ? 80 : 0,
-          textAlignVertical: multiline ? 'top' : 'center',
+          paddingVertical: 4,
         }}
       />
     </View>
@@ -100,7 +117,6 @@ interface ProviderProps {
 
 export function CreateLeadSheetProvider({ children }: ProviderProps) {
   const sheetRef = useRef<BottomSheet>(null)
-  const [open, setOpen] = useState(false)
   const onCreatedRef = useRef<(() => void) | undefined>(undefined)
 
   const [firstName, setFirstName] = useState('')
@@ -124,7 +140,6 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
   const openSheet = useCallback((onCreated?: () => void) => {
     onCreatedRef.current = onCreated
     reset()
-    setOpen(true)
     sheetRef.current?.snapToIndex(0)
   }, [])
 
@@ -169,125 +184,304 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
 
   const value = useMemo<CreateLeadSheetContextValue>(() => ({ open: openSheet }), [openSheet])
 
+  // Avatar live preview du nom en cours de saisie (style Contacts)
+  const previewName = `${firstName} ${lastName}`.trim() || 'Nouveau lead'
+  const previewHue = getAvatarColor(previewName)
+
   return (
     <CreateLeadSheetContext.Provider value={value}>
       {children}
       <BottomSheet
         ref={sheetRef}
-        snapPoints={['90%']}
+        snapPoints={['85%']}
         index={-1}
         enablePanDownToClose
         enableDynamicSizing={false}
-        backgroundStyle={{ backgroundColor: '#1c1c1e' }}
+        backgroundStyle={{ backgroundColor: colors.sheet }}
         handleIndicatorStyle={{ backgroundColor: colors.border }}
         backdropComponent={renderBackdrop}
         onChange={(idx) => {
-          if (idx === -1) {
-            setOpen(false)
-            reset()
-          }
+          if (idx === -1) reset()
         }}
       >
         <BottomSheetScrollView
-          contentContainerStyle={{ padding: spacing.lg, paddingBottom: 60, gap: spacing.lg }}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.sm,
+            paddingBottom: 80,
+            gap: spacing.lg,
+          }}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text
-              style={{
-                color: colors.textPrimary,
-                fontSize: 22,
-                fontWeight: '700',
-                letterSpacing: -0.4,
-              }}
-            >
-              Nouveau lead
-            </Text>
-            <Pressable onPress={close} hitSlop={8}>
-              <Ionicons name="close-circle" size={28} color={colors.textTertiary} />
+          {/* Header avec preview avatar live */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.md,
+            }}
+          >
+            <Avatar name={previewName} size={56} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={{
+                  color: colors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: '700',
+                  letterSpacing: -0.4,
+                }}
+                numberOfLines={1}
+              >
+                {previewName}
+              </Text>
+              <Text style={{ ...t.subheadline, color: colors.textSecondary, marginTop: 2 }}>
+                Nouveau lead
+              </Text>
+            </View>
+            <Pressable onPress={close} hitSlop={8} style={{ padding: 4 }}>
+              <Ionicons name="close-circle" size={26} color={colors.textTertiary} />
             </Pressable>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <View style={{ flex: 1 }}>
-              <Field
-                label="Prénom"
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="Pierre"
-                autoCapitalize="words"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field
-                label="Nom"
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="Rebmann"
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
-
-          <Field
-            label="Téléphone"
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="06 33 60 49 59"
-            keyboardType="phone-pad"
-          />
-
-          <Field
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="pierre@email.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <View style={{ gap: 6 }}>
+          {/* Section IDENTITÉ — grouped list iOS Settings */}
+          <View>
             <Text
               style={{
+                ...t.footnote,
                 color: colors.textSecondary,
-                fontSize: 13,
-                fontWeight: '600',
                 textTransform: 'uppercase',
-                letterSpacing: 0.4,
+                letterSpacing: 0.5,
+                marginLeft: 8,
+                marginBottom: 6,
+                fontSize: 12,
+                fontWeight: '600',
               }}
             >
-              Source
+              Identité
             </Text>
-            <Segmented
-              items={SOURCES.map((s) => ({ label: s.label }))}
-              activeIndex={sourceIdx}
-              onChange={setSourceIdx}
-            />
-          </View>
-
-          <Field
-            label="Notes"
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Contexte initial du lead…"
-            multiline
-          />
-
-          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.md }}>
-            <View style={{ flex: 1 }}>
-              <Button label="Annuler" variant="outline" fullWidth size="md" onPress={close} />
-            </View>
-            <View style={{ flex: 2 }}>
-              <Button
-                label={submitting ? 'Création…' : 'Créer le lead'}
-                fullWidth
-                size="md"
-                loading={submitting}
-                disabled={submitting}
-                onPress={submit}
+            <View
+              style={{
+                backgroundColor: colors.bgSecondary,
+                borderRadius: radius.lg,
+                overflow: 'hidden',
+              }}
+            >
+              <InputRow
+                icon="person-outline"
+                iconTint="#8e8e93"
+                placeholder="Prénom"
+                value={firstName}
+                onChangeText={setFirstName}
+                autoCapitalize="words"
+              />
+              <InputRow
+                icon="person-outline"
+                iconTint="#8e8e93"
+                placeholder="Nom"
+                value={lastName}
+                onChangeText={setLastName}
+                autoCapitalize="words"
+                separator={false}
               />
             </View>
           </View>
-          {submitting ? <ActivityIndicator color={colors.primary} /> : null}
+
+          {/* Section CONTACT */}
+          <View>
+            <Text
+              style={{
+                ...t.footnote,
+                color: colors.textSecondary,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                marginLeft: 8,
+                marginBottom: 6,
+                fontSize: 12,
+                fontWeight: '600',
+              }}
+            >
+              Contact
+            </Text>
+            <View
+              style={{
+                backgroundColor: colors.bgSecondary,
+                borderRadius: radius.lg,
+                overflow: 'hidden',
+              }}
+            >
+              <InputRow
+                icon="call"
+                iconTint="#22c55e"
+                placeholder="Téléphone"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+              <InputRow
+                icon="mail"
+                iconTint="#a855f7"
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                separator={false}
+              />
+            </View>
+          </View>
+
+          {/* Source — pills 2×2 avec icônes */}
+          <View>
+            <Text
+              style={{
+                ...t.footnote,
+                color: colors.textSecondary,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                marginLeft: 8,
+                marginBottom: 6,
+                fontSize: 12,
+                fontWeight: '600',
+              }}
+            >
+              Source du lead
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {SOURCES.map((s, i) => {
+                const active = sourceIdx === i
+                return (
+                  <Pressable
+                    key={s.key}
+                    onPress={() => setSourceIdx(i)}
+                    style={{ width: '48%' }}
+                  >
+                    {({ pressed }) => (
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 10,
+                          paddingHorizontal: 14,
+                          paddingVertical: 12,
+                          borderRadius: radius.md,
+                          backgroundColor: active ? s.tint + '22' : colors.bgSecondary,
+                          borderWidth: 1,
+                          borderColor: active ? s.tint + '88' : 'transparent',
+                          opacity: pressed ? 0.7 : 1,
+                        }}
+                      >
+                        <Ionicons
+                          name={s.icon}
+                          size={18}
+                          color={active ? s.tint : colors.textSecondary}
+                        />
+                        <Text
+                          style={{
+                            ...t.subheadline,
+                            color: active ? s.tint : colors.textPrimary,
+                            fontWeight: active ? '700' : '500',
+                          }}
+                        >
+                          {s.label}
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
+
+          {/* Notes — textarea séparé */}
+          <View>
+            <Text
+              style={{
+                ...t.footnote,
+                color: colors.textSecondary,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                marginLeft: 8,
+                marginBottom: 6,
+                fontSize: 12,
+                fontWeight: '600',
+              }}
+            >
+              Notes (optionnel)
+            </Text>
+            <View
+              style={{
+                backgroundColor: colors.bgSecondary,
+                borderRadius: radius.lg,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                minHeight: 80,
+              }}
+            >
+              <TextInput
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Contexte initial, source précise, etc."
+                placeholderTextColor={colors.textTertiary}
+                multiline
+                textAlignVertical="top"
+                style={{
+                  ...t.body,
+                  color: colors.textPrimary,
+                  minHeight: 60,
+                }}
+              />
+            </View>
+          </View>
+
+          {/* CTA principal — gros bouton primary */}
+          <Pressable onPress={submit} disabled={submitting} style={{ marginTop: spacing.sm }}>
+            {({ pressed }) => (
+              <View
+                style={{
+                  paddingVertical: 16,
+                  borderRadius: radius.lg,
+                  backgroundColor: colors.primary,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: 8,
+                  opacity: pressed || submitting ? 0.85 : 1,
+                  shadowColor: colors.primary,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 12,
+                }}
+              >
+                {!submitting ? (
+                  <Ionicons name="add-circle" size={20} color="#000" />
+                ) : null}
+                <Text
+                  style={{
+                    color: '#000',
+                    fontSize: 17,
+                    fontWeight: '700',
+                    letterSpacing: -0.2,
+                  }}
+                >
+                  {submitting ? 'Création…' : 'Créer le lead'}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+          <Pressable onPress={close} disabled={submitting}>
+            {({ pressed }) => (
+              <View
+                style={{
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  opacity: pressed ? 0.5 : 1,
+                }}
+              >
+                <Text style={{ ...t.body, color: colors.textSecondary }}>
+                  Annuler
+                </Text>
+              </View>
+            )}
+          </Pressable>
         </BottomSheetScrollView>
       </BottomSheet>
     </CreateLeadSheetContext.Provider>
