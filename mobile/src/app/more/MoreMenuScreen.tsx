@@ -152,8 +152,15 @@ export function MoreMenuScreen() {
         <ListSection>
           <ListRow
             leading={<DotIcon name="notifications" tint={colors.primary} />}
-            title="Notifications"
+            title="Activité"
+            subtitle="Historique des notifications"
             onPress={() => navigation.navigate('Notifications')}
+          />
+          <ListRow
+            leading={<DotIcon name="notifications-circle" tint={colors.warning} />}
+            title="Notifications push"
+            subtitle="Choisir quoi recevoir"
+            onPress={() => navigation.navigate('NotificationSettings')}
           />
           <ListRow
             leading={<DotIcon name="calendar" tint={colors.pink} />}
