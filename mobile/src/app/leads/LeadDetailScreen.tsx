@@ -20,7 +20,7 @@ import type { LeadsStackParamList } from '../../navigation/types'
 import { useLead } from '../../hooks/useLead'
 import { Avatar, Button } from '../../components/ui'
 import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
-import { supabase } from '../../services/supabase'
+import { api } from '../../services/api'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
 import { statusConfig, sourceConfig } from '../../theme/status'
@@ -250,28 +250,29 @@ export function LeadDetailScreen() {
       return
     }
     setSavingStatus(true)
-    const { error } = await supabase
-      .from('leads')
-      .update({ status: newStatus })
-      .eq('id', lead.id)
-    setSavingStatus(false)
-    setStatusModalOpen(false)
-    if (error) Alert.alert('Erreur', error.message)
+    try {
+      // Passe par /api/leads/:id PATCH (et pas supabase direct) pour
+      // bypasser les RLS et déclencher les workflow triggers
+      // (lead_status_changed → auto-assign closer, etc).
+      await api.patch(`/api/leads/${lead.id}`, { status: newStatus })
+      setStatusModalOpen(false)
+    } catch (e) {
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec mise à jour')
+    } finally {
+      setSavingStatus(false)
+    }
     // Realtime subscription du useLead hook va re-fetch automatiquement.
   }
 
   const updateNotes = async (newNotes: string) => {
     if (!lead) return
     const trimmed = newNotes.trim()
-    const { error } = await supabase
-      .from('leads')
-      .update({ notes: trimmed || null })
-      .eq('id', lead.id)
-    if (error) {
-      Alert.alert('Erreur', error.message)
-      return
+    try {
+      await api.patch(`/api/leads/${lead.id}`, { notes: trimmed || null })
+      setNotesModalOpen(false)
+    } catch (e) {
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec mise à jour')
     }
-    setNotesModalOpen(false)
   }
 
   if (loading) {
