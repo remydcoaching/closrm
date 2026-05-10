@@ -57,80 +57,90 @@ function colorForItem(item: AgendaItem): string {
   }
 }
 
-// Layout overlap : groupe les items qui se chevauchent et leur attribue
-// une "lane" (colonne dans la zone visible). Algorithme simple en O(n²) suffisant
-// pour une journée (typiquement < 30 items).
+// Layout style Apple Calendar — détection d'overlap basée sur le rectangle
+// VISUEL final (top, top+height), pas la durée temporelle. C'est le seul
+// moyen d'éviter qu'un stack d'events de 15min séquentiels collés se
+// chevauchent visuellement tout en étant dans la même lane.
 function layoutItems(items: AgendaItem[]): PositionedItem[] {
-  const sorted = [...items].sort(
-    (a, b) =>
-      new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
-  )
-  type Slot = {
+  const VISUAL_MIN_HEIGHT = 22 // px : assez pour 1 ligne de texte (heure + titre)
+
+  // Step 1 : pré-calcul (top, height) pour chaque item.
+  type WithPos = {
     item: AgendaItem
-    startMin: number
-    endMin: number
+    top: number
+    height: number
+    bottom: number
     lane: number
+    group: number
   }
-  // Padded minimum = la durée minimum nécessaire pour que le block atteigne
-  // sa hauteur visuelle min (32px). Sans ce padding, des events séquentiels
-  // de 15min se chevauchent VISUELLEMENT (chaque card forcée à 32px chevauche
-  // la suivante) mais le layout les met tous en lane 0 → empilement illisible.
-  // On utilise donc cette durée padded pour la détection d'overlap.
-  const VISUAL_MIN = 32
-  const PADDED_MIN = Math.ceil((VISUAL_MIN / HOUR_HEIGHT) * 60) + 4 // ~38min
-  const slots: Slot[] = sorted.map((item) => {
+  const positioned: WithPos[] = items.map((item) => {
     const start = new Date(item.scheduled_at)
     const startMin = start.getHours() * 60 + start.getMinutes()
-    const endMin = startMin + Math.max(PADDED_MIN, item.duration_minutes)
-    return { item, startMin, endMin, lane: 0 }
+    const top = (startMin / 60 - START_HOUR) * HOUR_HEIGHT
+    const naturalHeight = (item.duration_minutes / 60) * HOUR_HEIGHT - 2
+    const height = Math.max(VISUAL_MIN_HEIGHT, naturalHeight)
+    return { item, top, height, bottom: top + height, lane: 0, group: -1 }
   })
 
-  // Group items qui se chevauchent (graph connecté).
-  const groups: Slot[][] = []
-  for (const s of slots) {
-    let placed = false
-    for (const g of groups) {
-      if (g.some((x) => s.startMin < x.endMin && s.endMin > x.startMin)) {
-        g.push(s)
-        placed = true
-        break
+  // Step 2 : tri par top (puis par durée desc pour stabilité visuelle).
+  positioned.sort((a, b) => {
+    if (a.top !== b.top) return a.top - b.top
+    return b.height - a.height
+  })
+
+  // Step 3 : groupes connectés par chevauchement VISUEL.
+  let groupId = 0
+  for (let i = 0; i < positioned.length; i++) {
+    if (positioned[i].group >= 0) continue
+    positioned[i].group = groupId
+    // BFS sur les items qui se chevauchent visuellement avec ceux du groupe.
+    let changed = true
+    while (changed) {
+      changed = false
+      for (let j = 0; j < positioned.length; j++) {
+        if (positioned[j].group !== groupId) continue
+        for (let k = 0; k < positioned.length; k++) {
+          if (positioned[k].group >= 0) continue
+          if (
+            positioned[j].top < positioned[k].bottom &&
+            positioned[j].bottom > positioned[k].top
+          ) {
+            positioned[k].group = groupId
+            changed = true
+          }
+        }
       }
     }
-    if (!placed) groups.push([s])
+    groupId++
   }
 
-  // Pour chaque groupe : assigner les lanes greedy (plus petite lane libre).
+  // Step 4 : pour chaque groupe, assignation greedy des lanes.
   const result: PositionedItem[] = []
-  for (const g of groups) {
-    const sortedG = [...g].sort((a, b) => a.startMin - b.startMin)
-    const lanes: number[] = [] // endMin de chaque lane
-    for (const s of sortedG) {
+  for (let g = 0; g < groupId; g++) {
+    const group = positioned.filter((p) => p.group === g).sort((a, b) => a.top - b.top)
+    const lanes: number[] = [] // bottom du dernier item de chaque lane
+    for (const p of group) {
       let assigned = -1
       for (let i = 0; i < lanes.length; i++) {
-        if (lanes[i] <= s.startMin) {
+        if (lanes[i] <= p.top) {
           assigned = i
-          lanes[i] = s.endMin
+          lanes[i] = p.bottom
           break
         }
       }
       if (assigned === -1) {
-        assigned = lanes.length
-        lanes.push(s.endMin)
+        lanes.push(p.bottom)
+        assigned = lanes.length - 1
       }
-      s.lane = assigned
+      p.lane = assigned
     }
     const laneCount = Math.min(lanes.length, MAX_LANES)
-    for (const s of sortedG) {
-      const startHour = s.startMin / 60
-      const top = (startHour - START_HOUR) * HOUR_HEIGHT
-      const height = Math.max(32, ((s.endMin - s.startMin) / 60) * HOUR_HEIGHT - 2)
-      // Si ce slot a été assigné à une lane > MAX_LANES-1, on le clamp à la
-      // dernière lane visible (overlap accepté sur cette colonne).
-      const visibleLane = Math.min(s.lane, MAX_LANES - 1)
+    for (const p of group) {
+      const visibleLane = Math.min(p.lane, MAX_LANES - 1)
       result.push({
-        item: s.item,
-        top,
-        height,
+        item: p.item,
+        top: p.top,
+        height: p.height,
         laneIndex: visibleLane,
         laneCount,
       })
@@ -318,6 +328,11 @@ export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props
             const isNoShow = item.outcome === 'no_show'
             const widthPct = 100 / laneCount
             const leftPct = laneIndex * widthPct
+            // Adapte le padding et le contenu en fonction de la hauteur du
+            // block pour rester lisible sur des events de 15min sans déborder.
+            const compact = height < 30
+            const showLabel = height >= 38
+            const showLocation = height >= 56 && Boolean(item.location_name)
             return (
               <Pressable
                 key={item.id}
@@ -328,33 +343,40 @@ export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props
                   left: `${leftPct}%`,
                   width: `${widthPct}%`,
                   height,
-                  paddingRight: laneIndex < laneCount - 1 ? 4 : 0,
-                  opacity: isDone ? 0.5 : pressed ? 0.7 : 1,
+                  paddingRight: laneIndex < laneCount - 1 ? 3 : 0,
+                  opacity: isDone ? 0.55 : pressed ? 0.7 : 1,
                 })}
               >
                 <View
                   style={{
                     flex: 1,
                     backgroundColor: color + '33',
-                    borderWidth: 1,
+                    borderWidth: 0.5,
                     borderColor: color + '66',
                     borderLeftWidth: 3,
                     borderLeftColor: color,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    paddingVertical: 6,
+                    borderRadius: 6,
+                    paddingHorizontal: compact ? 6 : 8,
+                    paddingVertical: compact ? 1 : 4,
                     overflow: 'hidden',
+                    justifyContent: compact ? 'center' : 'flex-start',
                   }}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
                     {isNoShow ? (
-                      <Ionicons name="alert-circle" size={12} color={colors.warning} />
+                      <Ionicons name="alert-circle" size={11} color={colors.warning} />
                     ) : null}
                     <Text
                       numberOfLines={1}
                       style={{
                         color: colors.textPrimary,
-                        fontSize: 13,
+                        fontSize: compact ? 11 : 12.5,
                         fontWeight: '700',
                         letterSpacing: -0.2,
                         flex: 1,
@@ -363,26 +385,27 @@ export function AgendaTimeline({ items, date, onPressItem, onPressEmpty }: Props
                       {formatTime(item.scheduled_at)} · {item.title}
                     </Text>
                   </View>
-                  {height > 38 ? (
+                  {showLabel ? (
                     <Text
                       numberOfLines={1}
                       style={{
-                        ...t.caption1,
+                        fontSize: 10,
                         color,
-                        fontWeight: '600',
-                        marginTop: 2,
+                        fontWeight: '700',
+                        marginTop: 1,
+                        letterSpacing: 0.2,
                       }}
                     >
-                      {labelForKind(item)}
+                      {labelForKind(item).toUpperCase()}
                     </Text>
                   ) : null}
-                  {height > 60 && item.location_name ? (
+                  {showLocation ? (
                     <Text
                       numberOfLines={1}
                       style={{
                         ...t.caption1,
                         color: colors.textSecondary,
-                        marginTop: 2,
+                        marginTop: 1,
                       }}
                     >
                       {item.location_name}
