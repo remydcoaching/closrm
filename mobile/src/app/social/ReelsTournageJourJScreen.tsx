@@ -49,9 +49,11 @@ export function ReelsTournageJourJScreen() {
       .filter((s) => s.social_post_id === previewReelId)
       .sort((a, b) => a.position - b.position)
   }, [shots, previewReelId])
-  const previewReelTitle = previewReelId
-    ? reels.find((r) => r.id === previewReelId)?.title ?? '(sans titre)'
-    : ''
+  const previewReelTitle = (() => {
+    if (!previewReelId) return ''
+    const r = reels.find((r) => r.id === previewReelId)
+    return r?.title || r?.hook || '(sans titre)'
+  })()
 
   const safeIdx = placeIdx >= places.length ? 0 : placeIdx
   const currentPlace = places[safeIdx] ?? null

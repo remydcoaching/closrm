@@ -5,7 +5,7 @@ import type { SocialPost } from '../types/social'
 
 interface UseReelShotsResult {
   shots: ReelShot[]
-  reels: Pick<SocialPost, 'id' | 'title'>[]
+  reels: Pick<SocialPost, 'id' | 'title' | 'hook'>[]
   byPlace: Record<string, ShotInfo[]>
   places: string[]
   loading: boolean
@@ -16,7 +16,7 @@ interface UseReelShotsResult {
 
 export function useReelShots(reelIds?: string[] | null): UseReelShotsResult {
   const [shots, setShots] = useState<ReelShot[]>([])
-  const [reels, setReels] = useState<Pick<SocialPost, 'id' | 'title'>[]>([])
+  const [reels, setReels] = useState<Pick<SocialPost, 'id' | 'title' | 'hook'>[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,7 +27,7 @@ export function useReelShots(reelIds?: string[] | null): UseReelShotsResult {
     setError(null)
     try {
       // 1. Liste des reels (pour titre + filtrage)
-      const reelsRes = await api.get<{ data: Pick<SocialPost, 'id' | 'title'>[] }>(
+      const reelsRes = await api.get<{ data: Pick<SocialPost, 'id' | 'title' | 'hook'>[] }>(
         '/api/social/posts?content_kind=reel&slim=true&per_page=100',
       )
       const allReels = reelsRes.data ?? []
@@ -84,7 +84,8 @@ export function useReelShots(reelIds?: string[] | null): UseReelShotsResult {
       if (!s.text || s.done || !s.location) return
       const arr = byReel.get(s.social_post_id) ?? []
       const idx = arr.findIndex((x) => x.id === s.id)
-      const reelTitle = reels.find((re) => re.id === s.social_post_id)?.title ?? '(sans titre)'
+      const reel = reels.find((re) => re.id === s.social_post_id)
+      const reelTitle = reel?.title || reel?.hook || '(sans titre)'
       if (!r[s.location]) r[s.location] = []
       r[s.location].push({
         id: s.id,

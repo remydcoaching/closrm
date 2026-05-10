@@ -168,7 +168,7 @@ export function ReelsTournagePrepScreen() {
                   }}
                 >
                   <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>
-                    {reel.title || '(sans titre)'}
+                    {reel.title || reel.hook || '(sans titre)'}
                   </Text>
                   <Text style={{ ...t.caption1, color: colors.textTertiary, marginTop: 4 }}>
                     {reelShots.length} phrase{reelShots.length > 1 ? 's' : ''}

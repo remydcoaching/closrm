@@ -203,7 +203,10 @@ export function ReelsTournageBriefScreen() {
                     key={s.id}
                     code={codeMap[s.id] ?? '—'}
                     shot={s}
-                    reelTitle={reels.find((r) => r.id === s.social_post_id)?.title ?? '—'}
+                    reelTitle={(() => {
+                      const r = reels.find((r) => r.id === s.social_post_id)
+                      return r?.title || r?.hook || '—'
+                    })()}
                   />
                 ))
               : reels.map((reel, ri) => {
@@ -221,7 +224,7 @@ export function ReelsTournageBriefScreen() {
                         }}
                       >
                         <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>
-                          R{ri + 1} · {reel.title || '(sans titre)'}
+                          R{ri + 1} · {reel.title || reel.hook || '(sans titre)'}
                         </Text>
                         {reel.hook ? (
                           <Text style={{ ...t.subheadline, color: colors.textSecondary, marginTop: 4 }}>
