@@ -6,6 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Modal,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
@@ -17,6 +18,7 @@ import { useReelShots } from '../../hooks/useReelShots'
 import { NavLarge } from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
+import type { ReelShot } from '../../types/reel-shots'
 
 type Nav = NativeStackNavigationProp<MoreStackParamList, 'ReelsJourJ'>
 type Rt = RouteProp<MoreStackParamList, 'ReelsJourJ'>
@@ -36,8 +38,20 @@ export function ReelsTournageJourJScreen() {
   const route = useRoute<Rt>()
   const reelIds = route.params?.reelIds ?? null
 
-  const { reels, byPlace, places, loading, error, refetch, patchShot } = useReelShots(reelIds)
+  const { shots, reels, byPlace, places, loading, error, refetch, patchShot } = useReelShots(reelIds)
   const [placeIdx, setPlaceIdx] = useState(0)
+  const [previewReelId, setPreviewReelId] = useState<string | null>(null)
+  const [previewShotId, setPreviewShotId] = useState<string | null>(null)
+
+  const previewShots = useMemo(() => {
+    if (!previewReelId) return []
+    return shots
+      .filter((s) => s.social_post_id === previewReelId)
+      .sort((a, b) => a.position - b.position)
+  }, [shots, previewReelId])
+  const previewReelTitle = previewReelId
+    ? reels.find((r) => r.id === previewReelId)?.title ?? '(sans titre)'
+    : ''
 
   const safeIdx = placeIdx >= places.length ? 0 : placeIdx
   const currentPlace = places[safeIdx] ?? null
@@ -190,6 +204,10 @@ export function ReelsTournageJourJScreen() {
                     shot={s}
                     onDone={() => void patchShot(s.id, { done: true, skipped: false })}
                     onSkip={() => void patchShot(s.id, { skipped: true })}
+                    onPreview={() => {
+                      setPreviewReelId(s.reelId)
+                      setPreviewShotId(s.id)
+                    }}
                   />
                 ))}
               </View>
@@ -332,6 +350,17 @@ export function ReelsTournageJourJScreen() {
           </View>
         </>
       )}
+
+      <ReelPreviewModal
+        visible={!!previewReelId}
+        reelTitle={previewReelTitle}
+        shots={previewShots}
+        highlightShotId={previewShotId}
+        onClose={() => {
+          setPreviewReelId(null)
+          setPreviewShotId(null)
+        }}
+      />
     </SafeAreaView>
   )
 }
@@ -340,10 +369,12 @@ function ShotCard({
   shot,
   onDone,
   onSkip,
+  onPreview,
 }: {
   shot: import('../../types/reel-shots').ShotInfo
   onDone: () => void
   onSkip: () => void
+  onPreview: () => void
 }) {
   return (
     <View
@@ -366,19 +397,32 @@ function ShotCard({
         Phrase {shot.position}/{shot.total}
       </Text>
       {shot.prevText ? (
-        <Text
-          numberOfLines={1}
+        <View
           style={{
-            ...t.caption1,
-            color: colors.textTertiary,
-            fontStyle: 'italic',
             paddingLeft: 10,
             borderLeftWidth: 2,
             borderLeftColor: colors.border,
           }}
         >
-          ↑ {shot.prevText}
-        </Text>
+          <Text
+            style={{
+              fontSize: 9,
+              color: '#666',
+              fontWeight: '700',
+              textTransform: 'uppercase',
+              letterSpacing: 0.6,
+              marginBottom: 2,
+            }}
+          >
+            ↑ Phrase précédente
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={{ fontSize: 11, color: '#888', fontStyle: 'italic' }}
+          >
+            {shot.prevText}
+          </Text>
+        </View>
       ) : null}
       <Text
         style={{
@@ -404,20 +448,53 @@ function ShotCard({
         </View>
       ) : null}
       {shot.nextText ? (
-        <Text
-          numberOfLines={1}
+        <View
           style={{
-            ...t.caption1,
-            color: colors.textTertiary,
-            fontStyle: 'italic',
             paddingLeft: 10,
             borderLeftWidth: 2,
             borderLeftColor: colors.border,
           }}
         >
-          ↓ {shot.nextText}
-        </Text>
+          <Text
+            style={{
+              fontSize: 9,
+              color: '#666',
+              fontWeight: '700',
+              textTransform: 'uppercase',
+              letterSpacing: 0.6,
+              marginBottom: 2,
+            }}
+          >
+            ↓ Phrase suivante
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={{ fontSize: 11, color: '#888', fontStyle: 'italic' }}
+          >
+            {shot.nextText}
+          </Text>
+        </View>
       ) : null}
+
+      {/* Bouton "Voir le reel entier" — contexte des phrases avant/après */}
+      <Pressable onPress={onPreview} style={{ alignSelf: 'flex-start', marginTop: 4 }}>
+        {({ pressed }) => (
+          <View
+            style={{
+              paddingHorizontal: 11,
+              paddingVertical: 6,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: 6,
+              opacity: pressed ? 0.6 : 1,
+            }}
+          >
+            <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '600' }}>
+              👁 Voir le reel entier
+            </Text>
+          </View>
+        )}
+      </Pressable>
       <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: 4 }}>
         <Pressable onPress={onDone} style={{ flex: 1 }}>
           {({ pressed }) => (
@@ -453,5 +530,187 @@ function ShotCard({
         </Pressable>
       </View>
     </View>
+  )
+}
+
+function ReelPreviewModal({
+  visible,
+  reelTitle,
+  shots,
+  highlightShotId,
+  onClose,
+}: {
+  visible: boolean
+  reelTitle: string
+  shots: ReelShot[]
+  highlightShotId: string | null
+  onClose: () => void
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable
+        onPress={onClose}
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: spacing.lg,
+        }}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            width: '100%',
+            maxWidth: 480,
+            maxHeight: '85%',
+            backgroundColor: '#0a0a0a',
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: radius.lg,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Header */}
+          <View
+            style={{
+              paddingHorizontal: spacing.lg,
+              paddingVertical: spacing.md,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 9,
+                  color: '#666',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.6,
+                }}
+              >
+                Reel entier
+              </Text>
+              <Text
+                style={{ ...t.bodyEmphasis, color: colors.textPrimary, marginTop: 2 }}
+                numberOfLines={2}
+              >
+                {reelTitle}
+              </Text>
+              <Text style={{ ...t.caption1, color: colors.textTertiary, marginTop: 2 }}>
+                {shots.length} phrase{shots.length > 1 ? 's' : ''}
+              </Text>
+            </View>
+            <Pressable onPress={onClose} hitSlop={12} style={{ padding: 4 }}>
+              <Text style={{ fontSize: 20, color: colors.textSecondary }}>✕</Text>
+            </Pressable>
+          </View>
+
+          {/* Liste */}
+          <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 8 }}>
+            {shots.length === 0 ? (
+              <Text
+                style={{
+                  ...t.subheadline,
+                  color: colors.textTertiary,
+                  textAlign: 'center',
+                  paddingVertical: 20,
+                }}
+              >
+                Aucune phrase
+              </Text>
+            ) : (
+              shots.map((s) => {
+                const isCurrent = s.id === highlightShotId
+                return (
+                  <View
+                    key={s.id}
+                    style={{
+                      backgroundColor: isCurrent ? 'rgba(255,0,0,0.08)' : '#141414',
+                      borderWidth: 1,
+                      borderColor: isCurrent ? '#FF0000' : colors.border,
+                      borderRadius: 8,
+                      padding: spacing.md,
+                      gap: 4,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: 8,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          color: isCurrent ? '#FF0000' : '#888',
+                          fontWeight: '700',
+                        }}
+                      >
+                        {s.position + 1}/{shots.length}
+                      </Text>
+                      {s.done ? (
+                        <Text style={{ fontSize: 10, color: '#22c55e', fontWeight: '700' }}>
+                          ✓ tournée
+                        </Text>
+                      ) : null}
+                      {s.skipped && !s.done ? (
+                        <Text style={{ fontSize: 10, color: colors.warning, fontWeight: '700' }}>
+                          ⏭ reportée
+                        </Text>
+                      ) : null}
+                      {s.location ? (
+                        <Text style={{ fontSize: 10, color: colors.textSecondary }}>
+                          📍 {s.location}
+                        </Text>
+                      ) : null}
+                      {isCurrent ? (
+                        <Text style={{ fontSize: 10, color: '#FF0000', fontWeight: '700' }}>
+                          ← ici
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        lineHeight: 18,
+                        color: s.done ? '#666' : colors.textPrimary,
+                        textDecorationLine: s.done ? 'line-through' : 'none',
+                        fontWeight: isCurrent ? '700' : '400',
+                      }}
+                    >
+                      {s.text}
+                    </Text>
+                    {s.shot_note ? (
+                      <View
+                        style={{
+                          marginTop: 6,
+                          backgroundColor: colors.warning + '15',
+                          borderWidth: 1,
+                          borderColor: colors.warning + '40',
+                          borderRadius: 6,
+                          padding: 8,
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, color: colors.warning }}>
+                          🎥 {s.shot_note}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )
+              })
+            )}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
   )
 }
