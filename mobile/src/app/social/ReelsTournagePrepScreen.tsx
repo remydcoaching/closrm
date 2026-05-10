@@ -225,59 +225,62 @@ export function ReelsTournagePrepScreen() {
 function PhraseRow({ shot, onPickLocation }: { shot: ReelShot; onPickLocation: () => void }) {
   const hasLoc = !!shot.location
   return (
-    <Pressable
-      onPress={onPickLocation}
-      style={({ pressed }) => ({
-        backgroundColor: colors.bgSecondary,
-        borderRadius: radius.md,
-        padding: spacing.md,
-        opacity: pressed ? 0.7 : 1,
-        gap: 8,
-      })}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text
+    <Pressable onPress={onPickLocation}>
+      {({ pressed }) => (
+        <View
           style={{
-            ...t.caption2,
-            color: colors.textTertiary,
-            fontWeight: '700',
-            letterSpacing: 0.4,
+            backgroundColor: colors.bgSecondary,
+            borderRadius: radius.md,
+            padding: spacing.md,
+            opacity: pressed ? 0.7 : 1,
+            gap: 8,
           }}
         >
-          {(shot.position + 1).toString().padStart(2, '0')}
-        </Text>
-        <Text
-          style={{ flex: 1, ...t.body, color: colors.textPrimary }}
-          numberOfLines={3}
-        >
-          {shot.text}
-        </Text>
-      </View>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 6,
-          marginLeft: 24,
-          paddingHorizontal: 10,
-          paddingVertical: 6,
-          borderRadius: 999,
-          backgroundColor: hasLoc ? colors.primary + '22' : 'transparent',
-          borderWidth: hasLoc ? 0 : 1,
-          borderColor: colors.border,
-          alignSelf: 'flex-start',
-        }}
-      >
-        <Text
-          style={{
-            ...t.caption1,
-            color: hasLoc ? colors.primary : colors.textSecondary,
-            fontWeight: '600',
-          }}
-        >
-          {placeIcon(shot.location)} {shot.location ?? 'Choisir un lieu…'}
-        </Text>
-      </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text
+              style={{
+                ...t.caption2,
+                color: colors.textTertiary,
+                fontWeight: '700',
+                letterSpacing: 0.4,
+              }}
+            >
+              {(shot.position + 1).toString().padStart(2, '0')}
+            </Text>
+            <Text
+              style={{ flex: 1, ...t.body, color: colors.textPrimary }}
+              numberOfLines={3}
+            >
+              {shot.text}
+            </Text>
+          </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              marginLeft: 24,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: hasLoc ? colors.primary + '22' : 'transparent',
+              borderWidth: hasLoc ? 0 : 1,
+              borderColor: colors.border,
+              alignSelf: 'flex-start',
+            }}
+          >
+            <Text
+              style={{
+                ...t.caption1,
+                color: hasLoc ? colors.primary : colors.textSecondary,
+                fontWeight: '600',
+              }}
+            >
+              {placeIcon(shot.location)} {shot.location ?? 'Choisir un lieu…'}
+            </Text>
+          </View>
+        </View>
+      )}
     </Pressable>
   )
 }
@@ -332,23 +335,26 @@ function LocationPickerModal({
           />
           <Text style={{ ...t.title3, color: colors.textPrimary }}>Choisir un lieu</Text>
           {currentLocation ? (
-            <Pressable
-              onPress={() => onPick(null)}
-              style={({ pressed }) => ({
-                paddingVertical: 12,
-                paddingHorizontal: spacing.md,
-                borderRadius: radius.md,
-                backgroundColor: colors.danger + '15',
-                opacity: pressed ? 0.7 : 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-              })}
-            >
-              <Ionicons name="close-circle" size={18} color={colors.danger} />
-              <Text style={{ ...t.body, color: colors.danger, fontWeight: '600' }}>
-                Retirer le lieu
-              </Text>
+            <Pressable onPress={() => onPick(null)}>
+              {({ pressed }) => (
+                <View
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: radius.md,
+                    backgroundColor: colors.danger + '15',
+                    opacity: pressed ? 0.7 : 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <Ionicons name="close-circle" size={18} color={colors.danger} />
+                  <Text style={{ ...t.body, color: colors.danger, fontWeight: '600' }}>
+                    Retirer le lieu
+                  </Text>
+                </View>
+              )}
             </Pressable>
           ) : null}
 
@@ -360,23 +366,25 @@ function LocationPickerModal({
             {knownLocations.map((loc) => {
               const selected = loc === currentLocation
               return (
-                <Pressable
-                  key={loc}
-                  onPress={() => onPick(loc)}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: 12,
-                    borderRadius: radius.md,
-                    backgroundColor: selected ? colors.primary : colors.bgSecondary,
-                    opacity: pressed ? 0.7 : 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                  })}
-                >
-                  <Text style={{ ...t.body, color: selected ? '#000' : colors.textPrimary, fontWeight: selected ? '700' : '500' }}>
-                    {placeIcon(loc)} {loc}
-                  </Text>
+                <Pressable key={loc} onPress={() => onPick(loc)}>
+                  {({ pressed }) => (
+                    <View
+                      style={{
+                        paddingHorizontal: spacing.md,
+                        paddingVertical: 12,
+                        borderRadius: radius.md,
+                        backgroundColor: selected ? colors.primary : colors.bgSecondary,
+                        opacity: pressed ? 0.7 : 1,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <Text style={{ ...t.body, color: selected ? '#000' : colors.textPrimary, fontWeight: selected ? '700' : '500' }}>
+                        {placeIcon(loc)} {loc}
+                      </Text>
+                    </View>
+                  )}
                 </Pressable>
               )
             })}
@@ -422,17 +430,22 @@ function LocationPickerModal({
                   }
                   onPick(v)
                 }}
-                style={({ pressed }) => ({
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: 12,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.primary,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.85 : 1,
-                })}
               >
-                <Text style={{ ...t.body, color: '#000', fontWeight: '700' }}>Ajouter</Text>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: 12,
+                      borderRadius: radius.md,
+                      backgroundColor: colors.primary,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: pressed ? 0.85 : 1,
+                    }}
+                  >
+                    <Text style={{ ...t.body, color: '#000', fontWeight: '700' }}>Ajouter</Text>
+                  </View>
+                )}
               </Pressable>
             </View>
           </View>

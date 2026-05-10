@@ -246,19 +246,22 @@ export function ReelsTournageJourJScreen() {
                     </Text>
                     <Pressable
                       onPress={() => void patchShot(s.id, { skipped: false })}
-                      style={{
-                        alignSelf: 'flex-start',
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        borderWidth: 1,
-                        borderColor: colors.primary,
-                        borderRadius: 6,
-                        marginTop: 4,
-                      }}
+                      style={{ alignSelf: 'flex-start' }}
                     >
-                      <Text style={{ ...t.caption1, color: colors.primary, fontWeight: '600' }}>
-                        ↻ Remettre
-                      </Text>
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderWidth: 1,
+                          borderColor: colors.primary,
+                          borderRadius: 6,
+                          marginTop: 4,
+                        }}
+                      >
+                        <Text style={{ ...t.caption1, color: colors.primary, fontWeight: '600' }}>
+                          ↻ Remettre
+                        </Text>
+                      </View>
                     </Pressable>
                   </View>
                 ))}
@@ -286,35 +289,45 @@ export function ReelsTournageJourJScreen() {
           >
             <Pressable
               onPress={() => setPlaceIdx((safeIdx - 1 + places.length) % places.length)}
-              style={({ pressed }) => ({
-                flex: 1,
-                paddingVertical: 12,
-                backgroundColor: colors.bgSecondary,
-                borderRadius: radius.md,
-                alignItems: 'center',
-                opacity: pressed ? 0.7 : 1,
-              })}
+              style={{ flex: 1 }}
             >
-              <Text style={{ ...t.subheadline, color: colors.textPrimary, fontWeight: '600' }}>
-                ← Précédent
-              </Text>
+              {({ pressed }) => (
+                <View
+                  style={{
+                    paddingVertical: 12,
+                    backgroundColor: colors.bgSecondary,
+                    borderRadius: radius.md,
+                    alignItems: 'center',
+                    opacity: pressed ? 0.7 : 1,
+                  }}
+                >
+                  <Text style={{ ...t.subheadline, color: colors.textPrimary, fontWeight: '600' }}>
+                    ← Précédent
+                  </Text>
+                </View>
+              )}
             </Pressable>
             <Pressable
               onPress={() => setPlaceIdx((safeIdx + 1) % places.length)}
-              style={({ pressed }) => ({
-                flex: 1.5,
-                paddingVertical: 12,
-                backgroundColor: colors.primary,
-                borderRadius: radius.md,
-                alignItems: 'center',
-                opacity: pressed ? 0.85 : 1,
-              })}
+              style={{ flex: 1.5 }}
             >
-              <Text style={{ ...t.subheadline, color: '#000', fontWeight: '700' }} numberOfLines={1}>
-                {places[(safeIdx + 1) % places.length]
-                  ? `${placeIcon(places[(safeIdx + 1) % places.length])} ${places[(safeIdx + 1) % places.length]} →`
-                  : 'Suivant →'}
-              </Text>
+              {({ pressed }) => (
+                <View
+                  style={{
+                    paddingVertical: 12,
+                    backgroundColor: colors.primary,
+                    borderRadius: radius.md,
+                    alignItems: 'center',
+                    opacity: pressed ? 0.85 : 1,
+                  }}
+                >
+                  <Text style={{ ...t.subheadline, color: '#000', fontWeight: '700' }} numberOfLines={1}>
+                    {places[(safeIdx + 1) % places.length]
+                      ? `${placeIcon(places[(safeIdx + 1) % places.length])} ${places[(safeIdx + 1) % places.length]} →`
+                      : 'Suivant →'}
+                  </Text>
+                </View>
+              )}
             </Pressable>
           </View>
         </>
@@ -406,32 +419,37 @@ function ShotCard({
         </Text>
       ) : null}
       <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: 4 }}>
-        <Pressable
-          onPress={onDone}
-          style={({ pressed }) => ({
-            flex: 1,
-            paddingVertical: 12,
-            backgroundColor: '#22c55e',
-            borderRadius: radius.md,
-            alignItems: 'center',
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text style={{ ...t.bodyEmphasis, color: '#fff' }}>✓ Tournée</Text>
+        <Pressable onPress={onDone} style={{ flex: 1 }}>
+          {({ pressed }) => (
+            <View
+              style={{
+                paddingVertical: 12,
+                backgroundColor: '#22c55e',
+                borderRadius: radius.md,
+                alignItems: 'center',
+                opacity: pressed ? 0.85 : 1,
+              }}
+            >
+              <Text style={{ ...t.bodyEmphasis, color: '#fff' }}>✓ Tournée</Text>
+            </View>
+          )}
         </Pressable>
-        <Pressable
-          onPress={onSkip}
-          style={({ pressed }) => ({
-            paddingHorizontal: spacing.lg,
-            paddingVertical: 12,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: radius.md,
-            alignItems: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Text style={{ ...t.subheadline, color: colors.textSecondary }}>Reporter</Text>
+        <Pressable onPress={onSkip}>
+          {({ pressed }) => (
+            <View
+              style={{
+                paddingHorizontal: spacing.lg,
+                paddingVertical: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: radius.md,
+                alignItems: 'center',
+                opacity: pressed ? 0.6 : 1,
+              }}
+            >
+              <Text style={{ ...t.subheadline, color: colors.textSecondary }}>Reporter</Text>
+            </View>
+          )}
         </Pressable>
       </View>
     </View>
