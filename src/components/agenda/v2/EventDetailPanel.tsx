@@ -154,26 +154,28 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
 
   const canEdit = isBooking && Boolean(onSave)
 
-  // Side panel droit (pas un overlay) — la grille reste cliquable pendant
-  // qu'un événement est ouvert. Avant : overlay full-screen + backdrop blur
-  // qui interceptait le 1er clic sur un autre événement (= bug "il faut
-  // double-cliquer pour changer de sélection").
+  // Popup centré flottant — sans backdrop full-screen. La grille derrière
+  // reste cliquable, donc switcher d'événement se fait en un seul clic
+  // (avant : overlay + backdrop interceptait le 1er clic, on devait double-
+  // cliquer pour changer de sélection). Fermeture via le bouton X dans le
+  // header — pas de clic-outside.
   return (
     <aside
       role="dialog"
       aria-label="Détail de l'événement"
       style={{
         position: 'fixed',
-        top: 16,
-        right: 16,
-        bottom: 16,
-        width: 'min(480px, calc(100vw - 32px))',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: 'min(520px, calc(100vw - 32px))',
+        maxHeight: '88vh',
         background: 'var(--bg-primary)',
         border: '1px solid var(--border-primary)',
         borderRadius: 16,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 20px 80px rgba(0,0,0,0.55)',
+        boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
         overflow: 'hidden',
         zIndex: Z_AGENDA.detailPanel,
       }}
