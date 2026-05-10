@@ -47,5 +47,12 @@ export function useLead(leadId: string | null) {
     }
   }, [leadId, fetch])
 
-  return { lead, loading, error, refetch: fetch }
+  // mutate : update optimistic. Permet de patcher le lead en local
+  // immédiatement (avant que l'API ait répondu) pour une UX snappy.
+  // Si l'API échoue, le caller fait un refetch() pour revert.
+  const mutate = useCallback((patch: Partial<Lead>) => {
+    setLead((prev) => (prev ? { ...prev, ...patch } : prev))
+  }, [])
+
+  return { lead, loading, error, refetch: fetch, mutate }
 }

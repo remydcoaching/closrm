@@ -238,40 +238,40 @@ function InfoChip({
 export function LeadDetailScreen() {
   const route = useRoute<R>()
   const navigation = useNavigation()
-  const { lead, loading } = useLead(route.params.leadId)
+  const { lead, loading, refetch, mutate } = useLead(route.params.leadId)
   const scheduleSheet = useScheduleSheet()
   const [statusModalOpen, setStatusModalOpen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
-  const [savingStatus, setSavingStatus] = useState(false)
 
   const updateStatus = async (newStatus: LeadStatus) => {
     if (!lead || newStatus === lead.status) {
       setStatusModalOpen(false)
       return
     }
-    setSavingStatus(true)
+    // Optimistic : ferme la modal + update local instantanément. L'API
+    // confirme en arrière-plan (~1-2s), realtime fait un refetch propre
+    // au passage. Si erreur, on revert via refetch().
+    setStatusModalOpen(false)
+    mutate({ status: newStatus })
     try {
-      // Passe par /api/leads/:id PATCH (et pas supabase direct) pour
-      // bypasser les RLS et déclencher les workflow triggers
-      // (lead_status_changed → auto-assign closer, etc).
       await api.patch(`/api/leads/${lead.id}`, { status: newStatus })
-      setStatusModalOpen(false)
     } catch (e) {
       Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec mise à jour')
-    } finally {
-      setSavingStatus(false)
+      void refetch()
     }
-    // Realtime subscription du useLead hook va re-fetch automatiquement.
   }
 
   const updateNotes = async (newNotes: string) => {
     if (!lead) return
     const trimmed = newNotes.trim()
+    const nextNotes = trimmed || null
+    setNotesModalOpen(false)
+    mutate({ notes: nextNotes })
     try {
-      await api.patch(`/api/leads/${lead.id}`, { notes: trimmed || null })
-      setNotesModalOpen(false)
+      await api.patch(`/api/leads/${lead.id}`, { notes: nextNotes })
     } catch (e) {
       Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec mise à jour')
+      void refetch()
     }
   }
 
@@ -716,7 +716,6 @@ export function LeadDetailScreen() {
       <StatusEditorModal
         visible={statusModalOpen}
         currentStatus={lead.status}
-        saving={savingStatus}
         onPick={(s) => void updateStatus(s)}
         onClose={() => setStatusModalOpen(false)}
       />
@@ -733,13 +732,11 @@ export function LeadDetailScreen() {
 function StatusEditorModal({
   visible,
   currentStatus,
-  saving,
   onPick,
   onClose,
 }: {
   visible: boolean
   currentStatus: LeadStatus
-  saving: boolean
   onPick: (s: LeadStatus) => void
   onClose: () => void
 }) {
@@ -778,7 +775,7 @@ function StatusEditorModal({
             const cfg = statusConfig[s]
             const selected = s === currentStatus
             return (
-              <Pressable key={s} onPress={() => onPick(s)} disabled={saving}>
+              <Pressable key={s} onPress={() => onPick(s)}>
                 {({ pressed }) => (
                   <View
                     style={{
@@ -791,7 +788,7 @@ function StatusEditorModal({
                       backgroundColor: selected ? cfg.color + '22' : colors.bgSecondary,
                       borderWidth: 1,
                       borderColor: selected ? cfg.color : 'transparent',
-                      opacity: pressed || saving ? 0.6 : 1,
+                      opacity: pressed ? 0.6 : 1,
                     }}
                   >
                     <View
