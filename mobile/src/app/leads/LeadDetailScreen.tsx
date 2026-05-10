@@ -484,7 +484,81 @@ export function LeadDetailScreen() {
           ) : null}
         </View>
 
-        {/* Section PIPELINE — chips inline */}
+        {/* Section STATUT — gros bloc cliquable, focus principal */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
+          <Text
+            style={{
+              ...t.footnote,
+              color: colors.textSecondary,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              marginLeft: 8,
+              marginBottom: 8,
+            }}
+          >
+            Statut
+          </Text>
+          <Pressable onPress={() => setStatusModalOpen(true)}>
+            {({ pressed }) => (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  borderRadius: 18,
+                  backgroundColor: statusColor + '14',
+                  borderWidth: 1,
+                  borderColor: statusColor + '40',
+                  opacity: pressed ? 0.7 : 1,
+                }}
+              >
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: statusColor + '33',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: statusColor,
+                    }}
+                  />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    style={{
+                      color: colors.textSecondary,
+                      fontSize: 11,
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.4,
+                    }}
+                  >
+                    Étape pipeline
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: statusColor, fontSize: 17, fontWeight: '700', marginTop: 1 }}
+                  >
+                    {statusLabel}
+                  </Text>
+                </View>
+                <Ionicons name="swap-vertical" size={18} color={statusColor} />
+              </View>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Section ACTIVITÉ — tentatives + joint, secondaires */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl, gap: 10 }}>
           <Text
             style={{
@@ -496,17 +570,9 @@ export function LeadDetailScreen() {
               marginBottom: 4,
             }}
           >
-            Pipeline
+            Activité
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {/* Le statut est éditable — tap ouvre la modal */}
-            <Chip
-              label={statusLabel}
-              color={statusColor}
-              onPress={() => setStatusModalOpen(true)}
-              icon="swap-vertical"
-            />
-            <Chip label={sourceLabel} color={sourceColor} />
             <Chip
               label={`${lead.call_attempts} tentative${lead.call_attempts > 1 ? 's' : ''}`}
               color={colors.cyan}
@@ -514,7 +580,9 @@ export function LeadDetailScreen() {
             />
             {lead.reached ? (
               <Chip label="Joint" color={colors.primary} icon="checkmark-circle" />
-            ) : null}
+            ) : (
+              <Chip label="Pas encore joint" color={colors.textSecondary} icon="ellipse-outline" />
+            )}
           </View>
         </View>
 
