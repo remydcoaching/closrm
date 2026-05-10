@@ -71,10 +71,17 @@ function layoutItems(items: AgendaItem[]): PositionedItem[] {
     endMin: number
     lane: number
   }
+  // Padded minimum = la durée minimum nécessaire pour que le block atteigne
+  // sa hauteur visuelle min (32px). Sans ce padding, des events séquentiels
+  // de 15min se chevauchent VISUELLEMENT (chaque card forcée à 32px chevauche
+  // la suivante) mais le layout les met tous en lane 0 → empilement illisible.
+  // On utilise donc cette durée padded pour la détection d'overlap.
+  const VISUAL_MIN = 32
+  const PADDED_MIN = Math.ceil((VISUAL_MIN / HOUR_HEIGHT) * 60) + 4 // ~38min
   const slots: Slot[] = sorted.map((item) => {
     const start = new Date(item.scheduled_at)
     const startMin = start.getHours() * 60 + start.getMinutes()
-    const endMin = startMin + Math.max(15, item.duration_minutes)
+    const endMin = startMin + Math.max(PADDED_MIN, item.duration_minutes)
     return { item, startMin, endMin, lane: 0 }
   })
 

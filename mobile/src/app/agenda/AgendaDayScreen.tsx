@@ -7,8 +7,9 @@ import { Ionicons } from '@expo/vector-icons'
 import type { AgendaStackParamList } from '../../navigation/types'
 import { useAgenda } from '../../hooks/useAgenda'
 import { AgendaTimeline } from '../../components/agenda/AgendaTimeline'
+import { AgendaList } from '../../components/agenda/AgendaList'
 import { DayStrip } from '../../components/calls/DayStrip'
-import { NavLarge } from '../../components/ui'
+import { NavLarge, Segmented } from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
 import { supabase } from '../../services/supabase'
@@ -36,6 +37,9 @@ export function AgendaDayScreen() {
   const [date, setDate] = useState<Date>(() => new Date())
   const { items, loading, refetch } = useAgenda(date)
   const [countsByDate, setCountsByDate] = useState<Record<string, number>>({})
+  // Vue : liste par défaut (plus lisible mobile, surtout sur jours chargés).
+  // Persiste le choix de l'utilisateur entre les jours.
+  const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list')
 
   // Counts pour le DayStrip : somme bookings + calls par jour, sur la fenêtre.
   useEffect(() => {
@@ -181,6 +185,20 @@ export function AgendaDayScreen() {
         />
       </View>
 
+      {/* Toggle Liste / Timeline */}
+      {items.length > 0 ? (
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
+          <Segmented
+            items={[
+              { label: 'Liste', count: items.length },
+              { label: 'Timeline' },
+            ]}
+            activeIndex={viewMode === 'list' ? 0 : 1}
+            onChange={(i) => setViewMode(i === 0 ? 'list' : 'timeline')}
+          />
+        </View>
+      ) : null}
+
       {loading && items.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={colors.primary} />
@@ -219,6 +237,20 @@ export function AgendaDayScreen() {
             {isToday ? 'Profite de ta journée libre.' : 'Pas de RDV ce jour-là.'}
           </Text>
         </ScrollView>
+      ) : viewMode === 'list' ? (
+        <AgendaList
+          items={items}
+          date={date}
+          loading={loading}
+          onRefresh={refetch}
+          onPressItem={(it) => {
+            if (it.source === 'call' && it.call_id) {
+              navigation.navigate('CallDetail', { callId: it.call_id })
+            } else if (it.source === 'booking' && it.lead_id) {
+              navigation.navigate('LeadDetail', { leadId: it.lead_id })
+            }
+          }}
+        />
       ) : (
         <AgendaTimeline
           items={items}
