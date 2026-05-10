@@ -140,37 +140,21 @@ export async function scheduleAgendaReminders(
       }
     }
     // ── Alarme à l'heure exacte de l'event ────────────────────────────────
-    // Pour ressembler à un vrai réveil, on schedule N notifications espacées
-    // de 30s (jusqu'à 5min) toutes avec le son "default" et interruptionLevel
-    // timeSensitive. iOS limite chaque notif à un son <=30s donc on ne peut
-    // pas faire un son qui dure 5min — mais des bips répétés toutes les 30s
-    // imitent un réveil. Quand l'user tap une de ces notifs, l'app ouvre et
-    // toutes les autres alarmes du même event sont cancellées.
+    // Vrai réveil de 30s grâce au son alarm.wav bundlé dans l'app (limite
+    // iOS = 30s par notif, on en exploite tout le quota). interruptionLevel
+    // timeSensitive bypasse le mode Focus.
     if (alarmEnabled) {
-      const baseMs = ev.scheduledAt.getTime()
-      // 10 sonneries espacées de 30s = 5 minutes de "réveil".
-      for (let i = 0; i < 10; i++) {
-        const triggerMs = baseMs + i * 30_000
-        if (triggerMs <= now + 5_000) {
-          skipped++
-          continue
-        }
+      const triggerMs = ev.scheduledAt.getTime()
+      if (triggerMs <= now + 5_000) {
+        skipped++
+      } else {
         try {
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: i === 0 ? `⏰ ${ev.title}` : `⏰ ${ev.title} (rappel)`,
-              body:
-                i === 0
-                  ? `C'est maintenant · ${ev.body}`
-                  : `Toujours pas vu ? · ${ev.body}`,
-              data: {
-                ...(ev.data ?? {}),
-                _tag: ALARM_TAG,
-                event_id: ev.id,
-                alarm: true,
-                ring_index: i,
-              },
-              sound: 'default',
+              title: `⏰ ${ev.title}`,
+              body: `C'est maintenant · ${ev.body}`,
+              data: { ...(ev.data ?? {}), _tag: ALARM_TAG, event_id: ev.id, alarm: true },
+              sound: 'alarm.wav',
               interruptionLevel: 'timeSensitive',
               badge: 1,
             },

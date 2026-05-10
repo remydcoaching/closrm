@@ -166,29 +166,22 @@ export function NotificationSettingsScreen() {
           return
         }
       }
-      // Schedule 5 sonneries espacées de 30s (= 2.5min de "réveil") pour
-      // que le test reproduise bien le comportement de l'alarme réelle.
-      for (let i = 0; i < 5; i++) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: i === 0 ? '⏰ Test alarme' : '⏰ Test alarme (rappel)',
-            body:
-              i === 0
-                ? 'Si tu vois ça, ton iPhone est bien configuré.'
-                : 'Toujours pas vu ?',
-            sound: 'default',
-            interruptionLevel: 'timeSensitive',
-            data: { _tag: 'agenda_local_alarm', event_id: 'test_alarm', ring_index: i },
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-            seconds: 5 + i * 30,
-          },
-        })
-      }
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '⏰ Test alarme',
+          body: 'Si ton iPhone est bien configuré, tu entends une alarme de 30s.',
+          sound: 'alarm.wav',
+          interruptionLevel: 'timeSensitive',
+          data: { _tag: 'agenda_local_alarm', event_id: 'test_alarm' },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 5,
+        },
+      })
       Alert.alert(
         'Test programmé',
-        "L'alarme commence dans 5 secondes et sonne 5 fois toutes les 30s. Ferme l'app pour tester. Tap dessus pour stopper."
+        "L'alarme arrive dans 5 secondes et sonne 30s. Ferme l'app pour tester."
       )
     } catch (e) {
       Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec test alarme')
