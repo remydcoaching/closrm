@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('follow_ups')
-      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status, assigned_to)', { count: 'exact' })
+      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status, assigned_to)', { count: 'planned' })
       .eq('workspace_id', workspaceId)
 
     // Filtrage par rôle : setter/closer ne voient que les follow-ups de leurs leads

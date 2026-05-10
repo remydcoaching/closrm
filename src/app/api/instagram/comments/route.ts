@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('ig_comments')
-      .select('id, ig_comment_id, ig_media_id, text, username, timestamp, parent_id, ig_parent_id', { count: 'exact' })
+      .select('id, ig_comment_id, ig_media_id, text, username, timestamp, parent_id, ig_parent_id', { count: 'planned' })
       .eq('workspace_id', workspaceId)
       .order('timestamp', { ascending: false })
 
