@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import Link from 'next/link'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { X } from 'lucide-react'
+import { PrepView } from '@/app/(dashboard)/acquisition/reels/tournage/prep/page'
+import { JourJView } from '@/app/(dashboard)/acquisition/reels/tournage/jour-j/page'
+import { BriefView } from '@/app/(dashboard)/acquisition/reels/tournage/brief/page'
 
 interface SessionRow {
   id: string
@@ -15,6 +17,7 @@ interface SessionRow {
   created_at: string
   reels_count: number
   stats: { total: number; done: number; skipped: number }
+  reels?: Array<{ social_post_id: string; position: number }>
 }
 
 interface SocialPost {
@@ -37,12 +40,15 @@ interface Props {
   onClose: () => void
 }
 
+type View = { kind: 'index' } | { kind: 'prep' | 'jour-j' | 'brief'; reelIds: string[]; sessionId: string }
+
 export default function TournagesModal({ open, onClose }: Props) {
   const [sessions, setSessions] = useState<SessionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
+  const [view, setView] = useState<View>({ kind: 'index' })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,6 +83,63 @@ export default function TournagesModal({ open, onClose }: Props) {
   if (!open) return null
 
   const visible = showArchived ? sessions : sessions.filter(s => s.status !== 'archived')
+
+  function openSubView(kind: 'prep' | 'jour-j' | 'brief', sessionId: string, reelIds: string[]) {
+    setView({ kind, sessionId, reelIds })
+  }
+  function backToIndex() { setView({ kind: 'index' }); load() }
+  function switchSubView(kind: 'prep' | 'jour-j' | 'brief') {
+    if (view.kind === 'index') return
+    setView({ kind, sessionId: view.sessionId, reelIds: view.reelIds })
+  }
+
+  // Sub-view: rend PrepView/JourJView/BriefView en plein écran de modale
+  if (view.kind !== 'index') {
+    const reelParam = view.reelIds.length > 0 ? view.reelIds.join(',') : null
+    return (
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90,
+      }}>
+        <div onClick={e => e.stopPropagation()} style={{
+          width: '95vw', maxWidth: 1200,
+          height: '95vh', maxHeight: 900,
+          background: '#0a0a0a', border: '1px solid #262626', borderRadius: 14,
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
+        }}>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}>
+              {view.kind === 'prep' && (
+                <PrepView
+                  embedded
+                  reelParamProp={reelParam}
+                  onClose={backToIndex}
+                  onSwitchView={(v) => switchSubView(v)}
+                />
+              )}
+              {view.kind === 'jour-j' && (
+                <JourJView
+                  embedded
+                  reelParamProp={reelParam}
+                  onClose={backToIndex}
+                  onSwitchView={(v) => switchSubView(v)}
+                />
+              )}
+              {view.kind === 'brief' && (
+                <BriefView
+                  embedded
+                  reelParamProp={reelParam}
+                  onClose={backToIndex}
+                  onSwitchView={(v) => switchSubView(v)}
+                />
+              )}
+            </Suspense>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div onClick={onClose} style={{
@@ -153,7 +216,7 @@ export default function TournagesModal({ open, onClose }: Props) {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {visible.map(s => <SessionCard key={s.id} session={s} onChange={load} onClose={onClose} />)}
+              {visible.map(s => <SessionCard key={s.id} session={s} onChange={load} onOpenSubView={openSubView} />)}
             </div>
           )}
         </div>
@@ -169,7 +232,15 @@ export default function TournagesModal({ open, onClose }: Props) {
   )
 }
 
-function SessionCard({ session, onChange, onClose }: { session: SessionRow; onChange: () => void; onClose: () => void }) {
+function SessionCard({ session, onChange, onOpenSubView }: {
+  session: SessionRow
+  onChange: () => void
+  onOpenSubView: (kind: 'prep' | 'jour-j' | 'brief', sessionId: string, reelIds: string[]) => void
+}) {
+  const reelIds = (session.reels ?? [])
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .map(r => r.social_post_id)
   const meta = STATUS_META[session.status]
   const total = session.stats.total
   const done = session.stats.done
@@ -223,27 +294,27 @@ function SessionCard({ session, onChange, onClose }: { session: SessionRow; onCh
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <Link onClick={onClose}
-            href={`/acquisition/reels/tournage/${session.id}/prep`}
+          <button
+            onClick={() => onOpenSubView('prep', session.id, reelIds)}
             style={{
               padding: '6px 11px', fontSize: 11, fontWeight: 600,
               color: '#fff', background: '#FF0000',
-              borderRadius: 6, textDecoration: 'none',
-            }}>📋 Prep</Link>
-          <Link onClick={onClose}
-            href={`/acquisition/reels/tournage/${session.id}/jour-j`}
+              border: 'none', borderRadius: 6, cursor: 'pointer',
+            }}>📋 Prep</button>
+          <button
+            onClick={() => onOpenSubView('jour-j', session.id, reelIds)}
             style={{
               padding: '6px 11px', fontSize: 11, fontWeight: 600,
               color: '#FF0000', background: 'rgba(255,0,0,0.1)',
-              border: '1px solid rgba(255,0,0,0.25)', borderRadius: 6, textDecoration: 'none',
-            }}>🎬 Jour J</Link>
-          <Link onClick={onClose}
-            href={`/acquisition/reels/tournage/${session.id}/brief`}
+              border: '1px solid rgba(255,0,0,0.25)', borderRadius: 6, cursor: 'pointer',
+            }}>🎬 Jour J</button>
+          <button
+            onClick={() => onOpenSubView('brief', session.id, reelIds)}
             style={{
               padding: '6px 11px', fontSize: 11, fontWeight: 600,
               color: '#888', background: 'transparent',
-              border: '1px solid #262626', borderRadius: 6, textDecoration: 'none',
-            }}>📄 Brief</Link>
+              border: '1px solid #262626', borderRadius: 6, cursor: 'pointer',
+            }}>📄 Brief</button>
         </div>
       </div>
 

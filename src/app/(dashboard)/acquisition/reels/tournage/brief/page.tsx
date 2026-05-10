@@ -35,12 +35,19 @@ function placeIcon(loc: string | null): string {
 }
 
 export default function BriefMontagePageWrapper() {
-  return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><BriefMontagePage /></Suspense>
+  return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><BriefView /></Suspense>
 }
 
-function BriefMontagePage() {
+interface BriefViewProps {
+  embedded?: boolean
+  reelParamProp?: string | null
+  onClose?: () => void
+  onSwitchView?: (view: 'prep' | 'jour-j') => void
+}
+
+export function BriefView({ embedded, reelParamProp, onClose, onSwitchView }: BriefViewProps = {}) {
   const searchParams = useSearchParams()
-  const reelParam = searchParams.get('reel')
+  const reelParam = embedded ? (reelParamProp ?? null) : searchParams.get('reel')
 
   const [reels, setReels] = useState<SocialPost[]>([])
   const [shots, setShots] = useState<ReelShot[]>([])
@@ -110,10 +117,14 @@ function BriefMontagePage() {
         <div style={{ fontSize: 12, marginBottom: 20 }}>
           Le brief monteur s&apos;active quand au moins 1 phrase est marquée &quot;✓ Tournée&quot;.
         </div>
-        <Link href={reelParam ? `/acquisition/reels/tournage/jour-j?reel=${reelParam}` : '/acquisition/reels/tournage/jour-j'}
-          style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 12 }}>
-          ← Retour au jour J
-        </Link>
+        {embedded && onSwitchView ? (
+          <button onClick={() => onSwitchView('jour-j')} style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, border: 'none', fontSize: 12, cursor: 'pointer' }}>← Retour au jour J</button>
+        ) : (
+          <Link href={reelParam ? `/acquisition/reels/tournage/jour-j?reel=${reelParam}` : '/acquisition/reels/tournage/jour-j'}
+            style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 12 }}>
+            ← Retour au jour J
+          </Link>
+        )}
       </div>
     )
   }
@@ -162,6 +173,12 @@ function BriefMontagePage() {
             )}
           </div>
         </div>
+        {embedded && onSwitchView && (
+          <button onClick={() => onSwitchView('jour-j')} style={{
+            padding: '8px 14px', fontSize: 12, fontWeight: 600,
+            color: '#888', background: 'transparent', border: '1px solid #262626', borderRadius: 8, cursor: 'pointer',
+          }}>← Jour J</button>
+        )}
         <button onClick={copyLink} style={{
           padding: '8px 14px', fontSize: 12, fontWeight: 600,
           color: '#fff', background: '#FF0000', border: 'none', borderRadius: 8, cursor: 'pointer',
@@ -170,6 +187,12 @@ function BriefMontagePage() {
           padding: '8px 14px', fontSize: 12, fontWeight: 600,
           color: '#888', background: 'transparent', border: '1px solid #262626', borderRadius: 8, cursor: 'pointer',
         }}>🖨️ Imprimer</button>
+        {embedded && onClose && (
+          <button onClick={onClose} style={{
+            padding: '8px 12px', fontSize: 12, fontWeight: 600,
+            color: '#666', background: 'transparent', border: '1px solid #262626', borderRadius: 8, cursor: 'pointer',
+          }}>✕</button>
+        )}
       </div>
 
       <div className="brief-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>

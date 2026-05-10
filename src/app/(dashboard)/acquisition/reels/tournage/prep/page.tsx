@@ -37,13 +37,26 @@ function placeIcon(loc: string | null): string {
 }
 
 export default function PrepTournagePageWrapper() {
-  return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><PrepTournagePage /></Suspense>
+  return <Suspense fallback={<div style={{ padding: 40, color: '#888' }}>Chargement…</div>}><PrepView /></Suspense>
 }
 
-function PrepTournagePage() {
+interface PrepViewProps {
+  embedded?: boolean
+  reelParamProp?: string | null
+  onClose?: () => void
+  onNavigate?: (url: string) => void
+  onSwitchView?: (view: 'jour-j' | 'brief') => void
+}
+
+export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitchView }: PrepViewProps = {}) {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const reelParam = searchParams.get('reel')
+  const reelParam = embedded ? (reelParamProp ?? null) : searchParams.get('reel')
+
+  const navigate = useCallback((url: string) => {
+    if (embedded && onNavigate) onNavigate(url)
+    else router.push(url)
+  }, [embedded, onNavigate, router])
 
   const [reels, setReels] = useState<SocialPost[]>([])
   const [allReels, setAllReels] = useState<SocialPost[]>([])
@@ -231,23 +244,47 @@ function PrepTournagePage() {
             {reelIds && (
               <>
                 {' · '}
-                <Link href="/acquisition/reels/tournage/prep" style={{ color: '#888', textDecoration: 'underline' }}>
+                <button
+                  onClick={() => navigate('/acquisition/reels/tournage/prep')}
+                  style={{
+                    color: '#888', background: 'transparent', border: 'none',
+                    textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: 12,
+                  }}>
                   Tous les reels
-                </Link>
+                </button>
               </>
             )}
           </div>
         </div>
-        <Link href={reelParam ? `/acquisition/reels/tournage/jour-j?reel=${reelParam}` : '/acquisition/reels/tournage/jour-j'} style={{
-          padding: '8px 14px', fontSize: 12, fontWeight: 600,
-          color: '#FF0000', background: 'rgba(255,0,0,0.08)',
-          border: '1px solid rgba(255,0,0,0.25)', borderRadius: 8, textDecoration: 'none',
-        }}>🎬 Jour J →</Link>
-        <Link href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'} style={{
-          padding: '8px 14px', fontSize: 12, fontWeight: 600,
-          color: '#888', background: 'transparent',
-          border: '1px solid #262626', borderRadius: 8, textDecoration: 'none',
-        }}>📄 Brief</Link>
+        {embedded && onClose && (
+          <button onClick={onClose} style={{
+            padding: '8px 12px', fontSize: 12, fontWeight: 600,
+            color: '#888', background: 'transparent',
+            border: '1px solid #262626', borderRadius: 8, cursor: 'pointer',
+          }}>← Sessions</button>
+        )}
+        <NavBtn
+          embedded={embedded}
+          onSwitchView={onSwitchView}
+          target="jour-j"
+          href={reelParam ? `/acquisition/reels/tournage/jour-j?reel=${reelParam}` : '/acquisition/reels/tournage/jour-j'}
+          style={{
+            padding: '8px 14px', fontSize: 12, fontWeight: 600,
+            color: '#FF0000', background: 'rgba(255,0,0,0.08)',
+            border: '1px solid rgba(255,0,0,0.25)', borderRadius: 8, textDecoration: 'none', cursor: 'pointer',
+          }}
+        >🎬 Jour J →</NavBtn>
+        <NavBtn
+          embedded={embedded}
+          onSwitchView={onSwitchView}
+          target="brief"
+          href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'}
+          style={{
+            padding: '8px 14px', fontSize: 12, fontWeight: 600,
+            color: '#888', background: 'transparent',
+            border: '1px solid #262626', borderRadius: 8, textDecoration: 'none', cursor: 'pointer',
+          }}
+        >📄 Brief</NavBtn>
       </div>
 
       <div style={{
@@ -448,9 +485,9 @@ function PrepTournagePage() {
           onConfirm={(ids) => {
             setPickerOpen(false)
             if (ids.length === allReels.length) {
-              router.push('/acquisition/reels/tournage/prep')
+              navigate('/acquisition/reels/tournage/prep')
             } else {
-              router.push(`/acquisition/reels/tournage/prep?reel=${ids.join(',')}`)
+              navigate(`/acquisition/reels/tournage/prep?reel=${ids.join(',')}`)
             }
           }}
         />
@@ -607,6 +644,22 @@ function ReelPicker({
       </div>
     </div>
   )
+}
+
+function NavBtn({
+  embedded, onSwitchView, target, href, style, children,
+}: {
+  embedded?: boolean
+  onSwitchView?: (view: 'jour-j' | 'brief') => void
+  target: 'jour-j' | 'brief'
+  href: string
+  style: React.CSSProperties
+  children: React.ReactNode
+}) {
+  if (embedded && onSwitchView) {
+    return <button onClick={() => onSwitchView(target)} style={{ ...style, border: style.border, cursor: 'pointer' }}>{children}</button>
+  }
+  return <Link href={href} style={style}>{children}</Link>
 }
 
 function PlaceDropdown({ current, locations, onPick, onClose }: {
