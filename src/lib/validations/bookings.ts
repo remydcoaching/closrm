@@ -35,7 +35,7 @@ export const bookingFiltersSchema = z.object({
   calendar_id: z.string().uuid().optional(),
   status: z.enum(['pending', 'confirmed', 'cancelled', 'no_show', 'completed']).optional(),
   page: z.coerce.number().int().min(1).default(1),
-  per_page: z.coerce.number().int().min(1).max(100).default(50),
+  per_page: z.coerce.number().int().min(1).max(250).default(50),
 })
 
 export const publicBookingSchema = z.object({

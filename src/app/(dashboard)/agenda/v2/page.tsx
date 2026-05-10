@@ -262,23 +262,36 @@ export default function AgendaV2Page() {
 
   async function handleStatusChange(ev: AgendaEvent, status: string) {
     if (ev.kind !== 'booking') return
-    // Use dedicated confirm endpoint when confirming a pending booking
+    // Optimistic d'abord : patch local instantané pour éviter un refetch des
+    // 100 bookings (qui causait un freeze visible à chaque clic statut).
+    patchEvent(ev.id, (e) => {
+      if (e.kind !== 'booking') return e
+      return {
+        ...e,
+        booking: { ...e.booking, status: status as typeof e.booking.status },
+      }
+    })
+    setSelectedEvent({
+      ...ev,
+      booking: { ...ev.booking, status: status as typeof ev.booking.status },
+    })
+
     const isPendingConfirm = ev.booking.status === 'pending' && status === 'confirmed'
-    const res = isPendingConfirm
-      ? await fetch(`/api/bookings/${ev.booking.id}/confirm`, { method: 'POST' })
-      : await fetch(`/api/bookings/${ev.booking.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status }),
-        })
-    if (res.ok) {
-      setSelectedEvent({
-        ...ev,
-        booking: { ...ev.booking, status: status as typeof ev.booking.status },
-      })
+    try {
+      const res = isPendingConfirm
+        ? await fetch(`/api/bookings/${ev.booking.id}/confirm`, { method: 'POST' })
+        : await fetch(`/api/bookings/${ev.booking.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+          })
+      if (!res.ok) {
+        alert('Changement de statut échoué')
+        refetch()
+      }
+    } catch {
+      alert('Changement de statut échoué (réseau)')
       refetch()
-    } else {
-      alert('Changement de statut échoué')
     }
   }
 
