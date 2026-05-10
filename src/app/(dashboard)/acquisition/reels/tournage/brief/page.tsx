@@ -14,6 +14,7 @@ interface ReelShot {
   done: boolean
   skipped: boolean
   updated_at: string
+  done_at: string | null
 }
 
 interface SocialPost {
@@ -57,6 +58,8 @@ function BriefMontagePage() {
         const allReels: SocialPost[] = reelsJson.data ?? []
         const reelIds = reelParam ? reelParam.split(',').map(s => s.trim()) : null
         const filtered = reelIds ? allReels.filter(r => reelIds.includes(r.id)) : allReels
+        // Tri stable par id pour codes R1, R2... reproductibles
+        filtered.sort((a, b) => a.id.localeCompare(b.id))
         setReels(filtered)
 
         let url = '/api/reel-shots'
@@ -64,7 +67,8 @@ function BriefMontagePage() {
         const shotsRes = await fetch(url)
         if (!shotsRes.ok) throw new Error(`Shots: ${shotsRes.status}`)
         const shotsJson = await shotsRes.json()
-        setShots((shotsJson.data ?? []).filter((s: ReelShot) => s.done))
+        // On garde TOUS les shots done OR skipped (le brief montre les 2 sections)
+        setShots((shotsJson.data ?? []).filter((s: ReelShot) => s.done || s.skipped))
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erreur')
       } finally {
@@ -74,6 +78,7 @@ function BriefMontagePage() {
   }, [reelParam])
 
   // Génère un code court par phrase : R1-P1, R1-P2, R2-P1, etc.
+  // Stable car reels triés par id et position est invariant.
   const codeMap = useMemo(() => {
     const m: Record<string, string> = {}
     reels.forEach((reel, ri) => {
@@ -85,9 +90,14 @@ function BriefMontagePage() {
     return m
   }, [reels, shots])
 
-  // Timeline chronologique (par updated_at, ordre où l'user a coché tournée)
+  // Timeline chronologique : utilise done_at en priorité, fallback updated_at
   const chrono = useMemo(() => {
-    return [...shots].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
+    const doneShots = shots.filter(s => s.done)
+    return [...doneShots].sort((a, b) => {
+      const ta = new Date(a.done_at ?? a.updated_at).getTime()
+      const tb = new Date(b.done_at ?? b.updated_at).getTime()
+      return ta - tb
+    })
   }, [shots])
 
   if (loading) return <div style={{ padding: 40, color: '#888' }}>Chargement…</div>
@@ -108,9 +118,15 @@ function BriefMontagePage() {
     )
   }
 
+  const skippedShots = shots.filter(s => s.skipped)
+
   function fmtTime(iso: string): string {
     const d = new Date(iso)
     return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  function reelTitle(r: SocialPost): string {
+    return r.title?.trim() || 'Sans titre'
   }
 
   function copyLink() {
@@ -140,7 +156,10 @@ function BriefMontagePage() {
             Brief monteur
           </div>
           <div style={{ fontSize: 12, color: '#888' }}>
-            {reels.length} reel{reels.length > 1 ? 's' : ''} · {shots.length} phrase{shots.length > 1 ? 's' : ''} tournée{shots.length > 1 ? 's' : ''}
+            {reels.length} reel{reels.length > 1 ? 's' : ''} · {chrono.length} phrase{chrono.length > 1 ? 's' : ''} tournée{chrono.length > 1 ? 's' : ''}
+            {skippedShots.length > 0 && (
+              <span style={{ color: '#d69e2e' }}> · {skippedShots.length} reportée{skippedShots.length > 1 ? 's' : ''}</span>
+            )}
           </div>
         </div>
         <button onClick={copyLink} style={{
@@ -183,7 +202,7 @@ function BriefMontagePage() {
                   style={{ width: 16, height: 16, accentColor: '#38A169', marginTop: 4, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
-                    <span style={{ color: '#666', fontFamily: 'monospace' }}>{fmtTime(s.updated_at)}</span>
+                    <span style={{ color: '#666', fontFamily: 'monospace' }}>{fmtTime(s.done_at ?? s.updated_at)}</span>
                     <span style={{ color: '#fff' }}>{placeIcon(s.location)} {s.location ?? '—'}</span>
                     <span style={{
                       marginLeft: 'auto', fontFamily: 'monospace', fontWeight: 700,
@@ -195,8 +214,13 @@ function BriefMontagePage() {
                     « {s.text} »
                   </div>
                   <div style={{ fontSize: 10, color: '#888', marginTop: 4 }}>
-                    Reel : {reel?.title ?? '(sans titre)'}
+                    Reel : {reel ? reelTitle(reel) : 'Sans titre'}
                   </div>
+                  {s.shot_note && (
+                    <div style={{ fontSize: 10, color: '#d69e2e', marginTop: 3 }}>
+                      🎥 {s.shot_note}
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -215,7 +239,7 @@ function BriefMontagePage() {
             Une fois tes clips renommés avec leurs codes, monte chaque reel en suivant l&apos;ordre ci-dessous.
           </div>
           {reels.map((reel, ri) => {
-            const reelShots = shots.filter(s => s.social_post_id === reel.id).sort((a, b) => a.position - b.position)
+            const reelShots = shots.filter(s => s.social_post_id === reel.id && s.done).sort((a, b) => a.position - b.position)
             if (reelShots.length === 0) return null
             return (
               <div key={reel.id} style={{
@@ -223,7 +247,7 @@ function BriefMontagePage() {
                 borderRadius: 10, padding: 14, marginBottom: 12,
               }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
-                  🎬 Reel {ri + 1} — {reel.title ?? '(sans titre)'}
+                  🎬 Reel {ri + 1} — {reelTitle(reel)}
                 </div>
                 {reel.hook && (
                   <div style={{ fontSize: 11, color: '#888', marginBottom: 12, fontStyle: 'italic' }}>
@@ -261,6 +285,47 @@ function BriefMontagePage() {
           })}
         </div>
       </div>
+
+      {skippedShots.length > 0 && (
+        <div style={{
+          marginTop: 24, background: '#141414',
+          border: '1px solid #262626', borderLeft: '3px solid #d69e2e',
+          borderRadius: 10, padding: 16,
+        }}>
+          <div style={{
+            fontSize: 11, color: '#d69e2e', textTransform: 'uppercase',
+            letterSpacing: '0.1em', marginBottom: 8, fontWeight: 700,
+          }}>
+            ⏭️ Phrases reportées ({skippedShots.length})
+          </div>
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 12, lineHeight: 1.5 }}>
+            Ces phrases ne sont pas tournées. Le coach les filmera plus tard. Elles ne sont PAS dans le ZIP des rushes — ne les attends pas.
+          </div>
+          {skippedShots.map(s => {
+            const reel = reels.find(r => r.id === s.social_post_id)
+            const code = codeMap[s.id]
+            return (
+              <div key={s.id} style={{
+                padding: '8px 12px', marginBottom: 6,
+                background: '#0f0f0f', border: '1px solid #1f1f1f',
+                borderRadius: 8, fontSize: 12, color: '#aaa',
+              }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{
+                    fontFamily: 'monospace', fontWeight: 700,
+                    color: '#d69e2e', fontSize: 10,
+                  }}>{code}</span>
+                  <span style={{ color: '#666', fontSize: 10 }}>{reel ? reelTitle(reel) : 'Sans titre'}</span>
+                  <span style={{ color: '#666', fontSize: 10, marginLeft: 'auto' }}>
+                    {placeIcon(s.location)} {s.location ?? '—'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: '#ccc', lineHeight: 1.3 }}>« {s.text} »</div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
