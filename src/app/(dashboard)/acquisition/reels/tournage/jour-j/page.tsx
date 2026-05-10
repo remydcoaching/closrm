@@ -63,6 +63,8 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
   const [placeIdx, setPlaceIdx] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [previewReelId, setPreviewReelId] = useState<string | null>(null)
+  const [previewHighlightShotId, setPreviewHighlightShotId] = useState<string | null>(null)
 
   const reelIds = useMemo(() => {
     if (!reelParam) return null
@@ -287,10 +289,16 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
                   </div>
                   {s.prevText && (
                     <div style={{
-                      fontSize: 11, color: '#555', marginBottom: 8, fontStyle: 'italic',
-                      paddingLeft: 10, borderLeft: '2px solid #262626',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>↑ {s.prevText}</div>
+                      marginBottom: 8, paddingLeft: 10, borderLeft: '2px solid #262626',
+                    }}>
+                      <div style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
+                        ↑ Phrase précédente
+                      </div>
+                      <div style={{
+                        fontSize: 11, color: '#555', fontStyle: 'italic',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{s.prevText}</div>
+                    </div>
                   )}
                   <div style={{ fontSize: 17, lineHeight: 1.4, color: '#fff', fontWeight: 700, marginBottom: 10 }}>
                     « {s.text} »
@@ -304,11 +312,24 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
                   )}
                   {s.nextText && (
                     <div style={{
-                      fontSize: 11, color: '#555', marginBottom: 12, fontStyle: 'italic',
-                      paddingLeft: 10, borderLeft: '2px solid #262626',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>↓ {s.nextText}</div>
+                      marginBottom: 12, paddingLeft: 10, borderLeft: '2px solid #262626',
+                    }}>
+                      <div style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
+                        ↓ Phrase suivante
+                      </div>
+                      <div style={{
+                        fontSize: 11, color: '#555', fontStyle: 'italic',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{s.nextText}</div>
+                    </div>
                   )}
+                  <button
+                    onClick={() => { setPreviewReelId(s.reelId); setPreviewHighlightShotId(s.id) }}
+                    style={{
+                      marginBottom: 12, padding: '6px 11px', fontSize: 11, fontWeight: 600,
+                      color: '#888', background: 'transparent',
+                      border: '1px solid #262626', borderRadius: 6, cursor: 'pointer',
+                    }}>👁 Voir le reel entier</button>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => patchShot(s.id, { done: true, skipped: false })} style={{
                       flex: 1, padding: 11, fontSize: 13, fontWeight: 700,
@@ -367,6 +388,91 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
           <button onClick={() => setPlaceIdx(nextIdx)} style={{
             background: 'transparent', border: 'none', color: '#FF0000', fontWeight: 700, cursor: 'pointer', fontSize: 12,
           }}>{nextLabel} →</button>
+        </div>
+      </div>
+
+      {previewReelId && (
+        <ReelPreviewModal
+          reelId={previewReelId}
+          reelTitle={reels.find(r => r.id === previewReelId)?.title ?? '(sans titre)'}
+          shots={shots.filter(x => x.social_post_id === previewReelId).slice().sort((a, b) => a.position - b.position)}
+          highlightShotId={previewHighlightShotId}
+          onClose={() => { setPreviewReelId(null); setPreviewHighlightShotId(null) }}
+        />
+      )}
+    </div>
+  )
+}
+
+function ReelPreviewModal({ reelId: _reelId, reelTitle, shots, highlightShotId, onClose }: {
+  reelId: string
+  reelTitle: string
+  shots: ReelShot[]
+  highlightShotId: string | null
+  onClose: () => void
+}) {
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, padding: 16,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: '#0a0a0a', border: '1px solid #262626', borderRadius: 14,
+        width: '100%', maxWidth: 480, maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid #262626',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Reel entier</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginTop: 2 }}>{reelTitle}</div>
+            <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{shots.length} phrase{shots.length > 1 ? 's' : ''}</div>
+          </div>
+          <button onClick={onClose} style={{
+            color: '#888', background: 'transparent', border: 'none',
+            fontSize: 18, cursor: 'pointer', padding: '4px 8px',
+          }}>✕</button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+          {shots.length === 0 ? (
+            <div style={{ color: '#666', fontSize: 12, textAlign: 'center', padding: 20 }}>Aucune phrase</div>
+          ) : (
+            shots.map(s => {
+              const isCurrent = s.id === highlightShotId
+              return (
+                <div key={s.id} style={{
+                  background: isCurrent ? 'rgba(255,0,0,0.08)' : '#141414',
+                  border: `1px solid ${isCurrent ? '#FF0000' : '#262626'}`,
+                  borderRadius: 8, padding: '10px 12px', marginBottom: 8,
+                }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, color: isCurrent ? '#FF0000' : '#666', fontWeight: 700 }}>
+                      {s.position + 1}/{shots.length}
+                    </span>
+                    {s.done && <span style={{ fontSize: 10, color: '#38A169', fontWeight: 700 }}>✓ tournée</span>}
+                    {s.skipped && !s.done && <span style={{ fontSize: 10, color: '#d69e2e', fontWeight: 700 }}>⏭ reportée</span>}
+                    {s.location && <span style={{ fontSize: 10, color: '#888' }}>📍 {s.location}</span>}
+                    {isCurrent && <span style={{ fontSize: 10, color: '#FF0000', fontWeight: 700 }}>← ici</span>}
+                  </div>
+                  <div style={{
+                    fontSize: 13, lineHeight: 1.4,
+                    color: s.done ? '#666' : '#fff',
+                    textDecoration: s.done ? 'line-through' : 'none',
+                    fontWeight: isCurrent ? 700 : 400,
+                  }}>{s.text}</div>
+                  {s.shot_note && (
+                    <div style={{
+                      marginTop: 6, fontSize: 11, color: '#d69e2e',
+                      padding: '6px 8px', background: 'rgba(214, 158, 46, 0.08)',
+                      border: '1px solid rgba(214, 158, 46, 0.2)', borderRadius: 6,
+                    }}>🎥 {s.shot_note}</div>
+                  )}
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
     </div>
