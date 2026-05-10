@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import * as Notifications from 'expo-notifications'
 import { useAuth } from './useAuth'
 import { registerForPushNotifications, savePushToken } from '../services/push'
+import { cancelAlarmsForEvent } from '../services/agenda-reminders'
 import type { NavigationContainerRef } from '@react-navigation/native'
 
 interface PushPayload {
@@ -9,6 +10,9 @@ interface PushPayload {
    *  d'ouvrir le bon écran sur tap. */
   entity_type?: 'lead' | 'call' | 'conversation' | 'deal'
   entity_id?: string
+  /** Tags des notifs locales d'agenda (cf services/agenda-reminders.ts). */
+  _tag?: string
+  event_id?: string
 }
 
 /** Hook à monter UNE fois au root (ex: dans App.tsx).
@@ -61,6 +65,11 @@ export function useExpoPush(
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener((resp) => {
       const data = (resp.notification.request.content.data ?? {}) as PushPayload
+      // Si c'est une alarme d'event : cancel les sonneries restantes pour
+      // éviter que ça continue à sonner pendant 5min.
+      if (data._tag === 'agenda_local_alarm' && data.event_id) {
+        void cancelAlarmsForEvent(data.event_id)
+      }
       if (!data.entity_type || !data.entity_id) return
       const ref = navRef.current
       if (!ref) return

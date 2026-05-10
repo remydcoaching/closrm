@@ -57,6 +57,22 @@ interface ScheduleableEvent {
 }
 
 /**
+ * Annule toutes les alarmes répétées d'un event (le user a tapé sur une
+ * notif → on stoppe les sonneries suivantes pour éviter le harcèlement).
+ */
+export async function cancelAlarmsForEvent(eventId: string): Promise<number> {
+  const all = await Notifications.getAllScheduledNotificationsAsync()
+  const toCancel = all.filter((n) => {
+    const data = n.content.data as { _tag?: string; event_id?: string } | null
+    return data?._tag === ALARM_TAG && data?.event_id === eventId
+  })
+  await Promise.all(
+    toCancel.map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
+  )
+  return toCancel.length
+}
+
+/**
  * Annule tous les rappels locaux d'agenda précédemment schedulés (rappels
  * lead-time + alarmes). Utiliser avant de re-schedule pour rester idempotent
  * (sinon doublons à chaque fetch).
@@ -124,24 +140,38 @@ export async function scheduleAgendaReminders(
       }
     }
     // ── Alarme à l'heure exacte de l'event ────────────────────────────────
+    // Pour ressembler à un vrai réveil, on schedule N notifications espacées
+    // de 30s (jusqu'à 5min) toutes avec le son "default" et interruptionLevel
+    // timeSensitive. iOS limite chaque notif à un son <=30s donc on ne peut
+    // pas faire un son qui dure 5min — mais des bips répétés toutes les 30s
+    // imitent un réveil. Quand l'user tap une de ces notifs, l'app ouvre et
+    // toutes les autres alarmes du même event sont cancellées.
     if (alarmEnabled) {
-      const triggerMs = ev.scheduledAt.getTime()
-      if (triggerMs <= now + 5_000) {
-        skipped++
-      } else {
+      const baseMs = ev.scheduledAt.getTime()
+      // 10 sonneries espacées de 30s = 5 minutes de "réveil".
+      for (let i = 0; i < 10; i++) {
+        const triggerMs = baseMs + i * 30_000
+        if (triggerMs <= now + 5_000) {
+          skipped++
+          continue
+        }
         try {
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: `⏰ ${ev.title}`,
-              body: `C'est maintenant · ${ev.body}`,
-              data: { ...(ev.data ?? {}), _tag: ALARM_TAG, event_id: ev.id, alarm: true },
+              title: i === 0 ? `⏰ ${ev.title}` : `⏰ ${ev.title} (rappel)`,
+              body:
+                i === 0
+                  ? `C'est maintenant · ${ev.body}`
+                  : `Toujours pas vu ? · ${ev.body}`,
+              data: {
+                ...(ev.data ?? {}),
+                _tag: ALARM_TAG,
+                event_id: ev.id,
+                alarm: true,
+                ring_index: i,
+              },
               sound: 'default',
-              // critical bypasse silent + DND mais nécessite entitlement
-              // Apple. timeSensitive est le niveau le plus haut sans
-              // entitlement spécial — bypasse Focus mode automatiquement.
               interruptionLevel: 'timeSensitive',
-              // Badge le push pour signaler "événement maintenant" jusqu'à
-              // ce que l'utilisateur swipe.
               badge: 1,
             },
             trigger: {
