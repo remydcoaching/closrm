@@ -85,19 +85,24 @@ function layoutItems(items: AgendaItem[], startHour: number): Positioned[] {
     lane: number
     group: number
   }
-  const slots: Slot[] = items.map((item) => {
-    const start = new Date(item.scheduled_at)
-    const startMin = start.getHours() * 60 + start.getMinutes()
-    const top = (startMin / 60 - startHour) * HOUR_HEIGHT
-    // Defensive : durée null/undefined/0 → fallback 30min sinon le calcul
-    // donne NaN et React Native fallback à content-height (= 8pt).
-    const durMin = Number.isFinite(item.duration_minutes) && item.duration_minutes > 0
-      ? item.duration_minutes
-      : 30
-    const naturalH = (durMin / 60) * HOUR_HEIGHT - 2
-    const height = Math.max(MIN_CARD_HEIGHT, naturalH)
-    return { item, top, height, bottom: top + height, lane: 0, group: -1 }
-  })
+  const slots: Slot[] = items
+    .map((item) => {
+      const start = new Date(item.scheduled_at)
+      // Defensive : invalid date → skip cet item plutôt que de l'afficher à NaN.
+      if (Number.isNaN(start.getTime())) {
+        return null
+      }
+      const startMin = start.getHours() * 60 + start.getMinutes()
+      const top = (startMin / 60 - startHour) * HOUR_HEIGHT
+      const durMin =
+        Number.isFinite(item.duration_minutes) && item.duration_minutes > 0
+          ? item.duration_minutes
+          : 30
+      const naturalH = (durMin / 60) * HOUR_HEIGHT - 2
+      const height = Math.max(MIN_CARD_HEIGHT, naturalH)
+      return { item, top, height, bottom: top + height, lane: 0, group: -1 }
+    })
+    .filter((s): s is Slot => s !== null)
   slots.sort((a, b) => (a.top !== b.top ? a.top - b.top : b.height - a.height))
 
   // Groupes par overlap visuel (rectangle).
