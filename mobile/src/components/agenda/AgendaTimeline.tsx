@@ -6,21 +6,21 @@ import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
 
-// 1 heure = 80 pt. Donne :
-//   15min → 18pt  (compact, heure + titre inline)
-//   30min → 38pt  (+ chip type)
-//   45min → 58pt  (+ chip + avatar)
-//   1h    → 78pt  (+ lieu si dispo)
-//   3h    → 238pt
-// HOUR_HEIGHT 80 pour que 15min = 18pt = MIN_CARD_HEIGHT pile-poil. Comme ça
-// des events séquentiels de 15min (06:00, 06:15, 06:30…) ne se chevauchent
-// pas visuellement → chacun dans son groupe, full width, propre.
-const HOUR_HEIGHT = 80
+// 1 heure = 120 pt. Donne :
+//   15min → 28pt  (heure + titre + chip inline)
+//   30min → 58pt  (stack heure + titre + chip)
+//   45min → 88pt  (+ avatar/lieu)
+//   1h    → 118pt
+//   3h    → 358pt
+// Avec HOUR_HEIGHT 120, un 15min fait 28pt = lisible même très court.
+// Les events séquentiels (06:00, 06:15…) ont une vraie respiration entre eux
+// (gap 2pt à la base + 28pt de hauteur = chacun bien distinct).
+const HOUR_HEIGHT = 120
 const HOUR_LABEL_WIDTH = 56
 const DEFAULT_START_HOUR = 6
 const DEFAULT_END_HOUR = 23
 const MAX_LANES = 2
-const MIN_CARD_HEIGHT = 18
+const MIN_CARD_HEIGHT = 26
 
 interface Props {
   items: AgendaItem[]
