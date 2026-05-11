@@ -89,7 +89,12 @@ function layoutItems(items: AgendaItem[], startHour: number): Positioned[] {
     const start = new Date(item.scheduled_at)
     const startMin = start.getHours() * 60 + start.getMinutes()
     const top = (startMin / 60 - startHour) * HOUR_HEIGHT
-    const naturalH = (item.duration_minutes / 60) * HOUR_HEIGHT - 2
+    // Defensive : durée null/undefined/0 → fallback 30min sinon le calcul
+    // donne NaN et React Native fallback à content-height (= 8pt).
+    const durMin = Number.isFinite(item.duration_minutes) && item.duration_minutes > 0
+      ? item.duration_minutes
+      : 30
+    const naturalH = (durMin / 60) * HOUR_HEIGHT - 2
     const height = Math.max(MIN_CARD_HEIGHT, naturalH)
     return { item, top, height, bottom: top + height, lane: 0, group: -1 }
   })
