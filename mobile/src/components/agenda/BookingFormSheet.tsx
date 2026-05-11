@@ -39,6 +39,15 @@ interface InitialBooking {
   color?: string | null
   notes?: string | null
   is_personal?: boolean
+  calendar_id?: string | null
+}
+
+interface CalendarRow {
+  id: string
+  name: string
+  color: string
+  duration_minutes: number
+  purpose: string | null
 }
 
 interface Props {
@@ -64,6 +73,26 @@ export function BookingFormSheet({ mode, initial, defaultDate, onClose, onSaved 
   const [color, setColor] = useState<string>('#6b7280')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  // Sélection calendrier — perso par défaut, ou un des booking_calendars du workspace.
+  const [calendars, setCalendars] = useState<CalendarRow[]>([])
+  const [calendarId, setCalendarId] = useState<string | null>(null)
+
+  // Fetch des calendriers à l'ouverture (1 fois).
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await api.get<{ data: CalendarRow[] }>('/api/booking-calendars')
+        if (!cancelled) setCalendars(res.data ?? [])
+      } catch {
+        if (!cancelled) setCalendars([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   // Init depuis `initial` quand on ouvre.
   useEffect(() => {
@@ -73,6 +102,7 @@ export function BookingFormSheet({ mode, initial, defaultDate, onClose, onSaved 
     setDuration(initial.duration_minutes ?? 30)
     setColor(initial.color ?? '#6b7280')
     setNotes(initial.notes ?? '')
+    setCalendarId(initial.calendar_id ?? null)
   }, [initial, defaultDate])
 
   useEffect(() => {
@@ -116,7 +146,12 @@ export function BookingFormSheet({ mode, initial, defaultDate, onClose, onSaved 
         notes: notes.trim() || null,
       }
       if (mode === 'create') {
-        await api.post('/api/bookings', { ...payload, is_personal: true })
+        const isPerso = !calendarId
+        await api.post('/api/bookings', {
+          ...payload,
+          is_personal: isPerso,
+          calendar_id: calendarId,
+        })
       } else if (initial?.id) {
         await api.patch(`/api/bookings/${initial.id}`, payload)
       }
@@ -186,6 +221,38 @@ export function BookingFormSheet({ mode, initial, defaultDate, onClose, onSaved 
             }}
             keyboardShouldPersistTaps="handled"
           >
+            {/* Calendrier — perso ou un des booking_calendars (mode create) */}
+            {mode === 'create' && calendars.length > 0 ? (
+              <View style={{ gap: 6 }}>
+                <SectionLabel>Calendrier</SectionLabel>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <CalendarChip
+                    active={calendarId === null}
+                    color="#6b7280"
+                    label="Perso"
+                    onPress={() => {
+                      setCalendarId(null)
+                    }}
+                  />
+                  {calendars.map((c) => (
+                    <CalendarChip
+                      key={c.id}
+                      active={calendarId === c.id}
+                      color={c.color}
+                      label={c.name}
+                      onPress={() => {
+                        setCalendarId(c.id)
+                        // Auto-applique la couleur du calendrier sélectionné.
+                        setColor(c.color)
+                        // Duration suggérée du calendrier.
+                        setDuration(c.duration_minutes)
+                      }}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
             {/* Titre */}
             <View style={{ gap: 6 }}>
               <SectionLabel>Titre</SectionLabel>
@@ -365,6 +432,47 @@ function SectionLabel({ children }: { children: string }) {
     >
       {children}
     </Text>
+  )
+}
+
+function CalendarChip({
+  active,
+  color,
+  label,
+  onPress,
+}: {
+  active: boolean
+  color: string
+  label: string
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: radius.pill,
+        backgroundColor: active ? color + '22' : 'transparent',
+        borderWidth: 1,
+        borderColor: active ? color : colors.border,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
+      <Text
+        style={{
+          ...t.subheadline,
+          color: active ? colors.textPrimary : colors.textSecondary,
+          fontWeight: active ? '700' : '600',
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
   )
 }
 

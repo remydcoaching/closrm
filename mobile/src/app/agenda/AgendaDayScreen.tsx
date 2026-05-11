@@ -349,7 +349,7 @@ export function AgendaDayScreen() {
         }}
       />
 
-      <FAB icon="add" onPress={() => setBookingFormState({ mode: 'create' })} />
+      <FAB icon="add" bottom={28} onPress={() => setBookingFormState({ mode: 'create' })} />
     </SafeAreaView>
   )
 }

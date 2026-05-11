@@ -145,14 +145,20 @@ function Content({
 
   return (
     <View style={{ gap: spacing.md }}>
-      {/* Header : type chip + titre */}
-      <View style={{ gap: 6 }}>
+      {/* Header : chip + actions (modifier/supprimer en haut-droite) + titre */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 8,
+        }}
+      >
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             gap: 6,
-            alignSelf: 'flex-start',
             paddingHorizontal: 10,
             paddingVertical: 4,
             borderRadius: radius.pill,
@@ -166,16 +172,53 @@ function Content({
             {labelForKind(item)}
           </Text>
         </View>
-        <Text
-          style={{
-            ...t.title2,
-            color: colors.textPrimary,
-            marginTop: 2,
-          }}
-        >
-          {item.title}
-        </Text>
+        {onEdit || onDelete ? (
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {onEdit ? (
+              <Pressable
+                onPress={() => void onEdit()}
+                hitSlop={6}
+                style={({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: colors.bgElevated,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Ionicons name="pencil" size={16} color={colors.textPrimary} />
+              </Pressable>
+            ) : null}
+            {onDelete ? (
+              <Pressable
+                onPress={() => void onDelete()}
+                hitSlop={6}
+                style={({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: colors.danger + '22',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Ionicons name="trash" size={16} color={colors.danger} />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
       </View>
+      <Text
+        style={{
+          ...t.title2,
+          color: colors.textPrimary,
+        }}
+      >
+        {item.title}
+      </Text>
 
       {/* Date + heure + durée */}
       <View
@@ -292,57 +335,6 @@ function Content({
           >
             {isNoShow ? 'Absent' : 'Effectué'}
           </Text>
-        </View>
-      ) : null}
-
-      {/* Actions booking : Modifier + Supprimer (uniquement bookings) */}
-      {onEdit || onDelete ? (
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {onEdit ? (
-            <Pressable
-              onPress={() => void onEdit()}
-              style={({ pressed }) => ({
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                paddingVertical: 12,
-                borderRadius: 10,
-                borderWidth: 1,
-                borderColor: colors.border,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Ionicons name="pencil" size={14} color={colors.textPrimary} />
-              <Text style={{ ...t.subheadline, color: colors.textPrimary, fontWeight: '600' }}>
-                Modifier
-              </Text>
-            </Pressable>
-          ) : null}
-          {onDelete ? (
-            <Pressable
-              onPress={() => void onDelete()}
-              style={({ pressed }) => ({
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                paddingVertical: 12,
-                borderRadius: 10,
-                borderWidth: 1,
-                borderColor: colors.danger + '55',
-                backgroundColor: colors.danger + '14',
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Ionicons name="trash-outline" size={14} color={colors.danger} />
-              <Text style={{ ...t.subheadline, color: colors.danger, fontWeight: '600' }}>
-                Supprimer
-              </Text>
-            </Pressable>
-          ) : null}
         </View>
       ) : null}
 

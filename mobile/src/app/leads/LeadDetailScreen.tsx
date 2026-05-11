@@ -21,6 +21,7 @@ import { useLead } from '../../hooks/useLead'
 import { useLeadNotes, type LeadNote } from '../../hooks/useLeadNotes'
 import { Avatar, Button } from '../../components/ui'
 import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
+import { LeadEditSheet } from '../../components/leads/LeadEditSheet'
 import { api } from '../../services/api'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
@@ -245,6 +246,7 @@ export function LeadDetailScreen() {
   const [statusModalOpen, setStatusModalOpen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<LeadNote | null>(null)
+  const [editSheetOpen, setEditSheetOpen] = useState(false)
 
   const updateStatus = async (newStatus: LeadStatus) => {
     if (!lead || newStatus === lead.status) {
@@ -339,6 +341,7 @@ export function LeadDetailScreen() {
 
   const openActionsMenu = () => {
     Alert.alert(lead?.first_name ? `${lead.first_name} ${lead.last_name ?? ''}` : 'Lead', undefined, [
+      { text: 'Modifier le lead', onPress: () => setEditSheetOpen(true) },
       { text: 'Archiver (passer en Dead)', onPress: handleArchive },
       { text: 'Supprimer', style: 'destructive', onPress: handleDelete },
       { text: 'Annuler', style: 'cancel' },
@@ -922,6 +925,22 @@ export function LeadDetailScreen() {
           setNotesModalOpen(false)
           setEditingNote(null)
         }}
+      />
+      <LeadEditSheet
+        initial={
+          editSheetOpen && lead
+            ? {
+                id: lead.id,
+                first_name: lead.first_name,
+                last_name: lead.last_name,
+                phone: lead.phone,
+                email: lead.email,
+                tags: lead.tags ?? null,
+              }
+            : null
+        }
+        onClose={() => setEditSheetOpen(false)}
+        onSaved={() => void refetch()}
       />
     </View>
   )
