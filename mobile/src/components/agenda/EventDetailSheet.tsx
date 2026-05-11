@@ -16,6 +16,10 @@ interface Props {
   onClose: () => void
   onOpenLead?: (leadId: string) => void
   onOpenCall?: (callId: string) => void
+  /** Édition du booking (uniquement pour les events booking). */
+  onEdit?: () => void | Promise<void>
+  /** Suppression du booking (uniquement pour les events booking). */
+  onDelete?: () => void | Promise<void>
 }
 
 function colorForItem(item: AgendaItem): string {
@@ -69,7 +73,7 @@ function formatAmount(n: number): string {
   }).format(n)
 }
 
-export function EventDetailSheet({ item, onClose, onOpenLead, onOpenCall }: Props) {
+export function EventDetailSheet({ item, onClose, onOpenLead, onOpenCall, onEdit, onDelete }: Props) {
   const sheetRef = useRef<BottomSheet>(null)
   const open = item != null
 
@@ -110,6 +114,8 @@ export function EventDetailSheet({ item, onClose, onOpenLead, onOpenCall }: Prop
             item={item}
             onOpenLead={onOpenLead}
             onOpenCall={onOpenCall}
+            onEdit={onEdit}
+            onDelete={onDelete}
             onClose={onClose}
           />
         ) : null}
@@ -122,11 +128,15 @@ function Content({
   item,
   onOpenLead,
   onOpenCall,
+  onEdit,
+  onDelete,
   onClose,
 }: {
   item: AgendaItem
   onOpenLead?: (leadId: string) => void
   onOpenCall?: (callId: string) => void
+  onEdit?: () => void | Promise<void>
+  onDelete?: () => void | Promise<void>
   onClose: () => void
 }) {
   const color = colorForItem(item)
@@ -282,6 +292,57 @@ function Content({
           >
             {isNoShow ? 'Absent' : 'Effectué'}
           </Text>
+        </View>
+      ) : null}
+
+      {/* Actions booking : Modifier + Supprimer (uniquement bookings) */}
+      {onEdit || onDelete ? (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {onEdit ? (
+            <Pressable
+              onPress={() => void onEdit()}
+              style={({ pressed }) => ({
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingVertical: 12,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: colors.border,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Ionicons name="pencil" size={14} color={colors.textPrimary} />
+              <Text style={{ ...t.subheadline, color: colors.textPrimary, fontWeight: '600' }}>
+                Modifier
+              </Text>
+            </Pressable>
+          ) : null}
+          {onDelete ? (
+            <Pressable
+              onPress={() => void onDelete()}
+              style={({ pressed }) => ({
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingVertical: 12,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: colors.danger + '55',
+                backgroundColor: colors.danger + '14',
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Ionicons name="trash-outline" size={14} color={colors.danger} />
+              <Text style={{ ...t.subheadline, color: colors.danger, fontWeight: '600' }}>
+                Supprimer
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 

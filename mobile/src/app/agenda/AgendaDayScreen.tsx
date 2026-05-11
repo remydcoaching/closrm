@@ -9,9 +9,11 @@ import { useAgenda } from '../../hooks/useAgenda'
 import { AgendaTimeline } from '../../components/agenda/AgendaTimeline'
 import { AgendaList } from '../../components/agenda/AgendaList'
 import { EventDetailSheet } from '../../components/agenda/EventDetailSheet'
+import { BookingFormSheet } from '../../components/agenda/BookingFormSheet'
 import { DayStrip } from '../../components/calls/DayStrip'
-import { NavLarge, Segmented } from '../../components/ui'
+import { NavLarge, Segmented, FAB } from '../../components/ui'
 import type { AgendaItem } from '../../types/agenda'
+import { api } from '../../services/api'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
 import { supabase } from '../../services/supabase'
@@ -46,6 +48,12 @@ export function AgendaDayScreen() {
   // navigation directe (perso Google sync), ET sert de point d'entrée
   // pour les events lead/call avec un récap visuel.
   const [detailItem, setDetailItem] = useState<AgendaItem | null>(null)
+  // Sheet création/édition booking.
+  const [bookingFormState, setBookingFormState] = useState<
+    | null
+    | { mode: 'create' }
+    | { mode: 'edit'; bookingId: string; initial: { title: string; scheduled_at: string; duration_minutes: number; color: string | null; notes: string | null } }
+  >(null)
 
   // Counts pour le DayStrip : somme bookings + calls par jour, sur la fenêtre.
   useEffect(() => {
@@ -260,7 +268,88 @@ export function AgendaDayScreen() {
         onClose={() => setDetailItem(null)}
         onOpenLead={(leadId) => navigation.navigate('LeadDetail', { leadId })}
         onOpenCall={(callId) => navigation.navigate('CallDetail', { callId })}
+        onEdit={
+          detailItem?.source === 'booking' && detailItem?.booking_id
+            ? async () => {
+                if (!detailItem.booking_id) return
+                try {
+                  type B = {
+                    title: string
+                    scheduled_at: string
+                    duration_minutes: number
+                    color: string | null
+                    notes: string | null
+                  }
+                  const res = await api.get<{ data: B }>(
+                    `/api/bookings/${detailItem.booking_id}`
+                  )
+                  setDetailItem(null)
+                  setBookingFormState({
+                    mode: 'edit',
+                    bookingId: detailItem.booking_id,
+                    initial: res.data,
+                  })
+                } catch {
+                  // Fallback : minimal info de l'item courant
+                  setDetailItem(null)
+                  setBookingFormState({
+                    mode: 'edit',
+                    bookingId: detailItem.booking_id,
+                    initial: {
+                      title: detailItem.title,
+                      scheduled_at: detailItem.scheduled_at,
+                      duration_minutes: detailItem.duration_minutes,
+                      color: detailItem.color ?? null,
+                      notes: null,
+                    },
+                  })
+                }
+              }
+            : undefined
+        }
+        onDelete={
+          detailItem?.source === 'booking' && detailItem?.booking_id
+            ? async () => {
+                if (!detailItem.booking_id) return
+                try {
+                  await api.delete(`/api/bookings/${detailItem.booking_id}`)
+                  setDetailItem(null)
+                  refetch()
+                } catch {
+                  /* swallow */
+                }
+              }
+            : undefined
+        }
       />
+
+      <BookingFormSheet
+        mode={bookingFormState?.mode === 'edit' ? 'edit' : 'create'}
+        initial={
+          bookingFormState?.mode === 'edit'
+            ? { id: bookingFormState.bookingId, ...bookingFormState.initial }
+            : bookingFormState?.mode === 'create'
+              ? {}
+              : null
+        }
+        defaultDate={(() => {
+          // Crée par défaut un slot dans 1h sur la date sélectionnée.
+          const d = new Date(date)
+          const now = new Date()
+          if (date.toDateString() === now.toDateString()) {
+            d.setHours(now.getHours() + 1, 0, 0, 0)
+          } else {
+            d.setHours(9, 0, 0, 0)
+          }
+          return d
+        })()}
+        onClose={() => setBookingFormState(null)}
+        onSaved={() => {
+          refetch()
+        }}
+      />
+
+      <FAB icon="add" onPress={() => setBookingFormState({ mode: 'create' })} />
     </SafeAreaView>
   )
 }

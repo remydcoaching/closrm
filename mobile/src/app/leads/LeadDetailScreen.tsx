@@ -275,6 +275,76 @@ export function LeadDetailScreen() {
     }
   }
 
+  // Patch helpers — optimistic via mutate, rollback via refetch.
+  const patchLead = async (fields: Partial<{ call_attempts: number; reached: boolean; status: LeadStatus }>) => {
+    if (!lead) return
+    mutate(fields)
+    try {
+      await api.patch(`/api/leads/${lead.id}`, fields)
+    } catch (e) {
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec mise à jour')
+      void refetch()
+    }
+  }
+
+  const incrementAttempts = (delta: number) => {
+    if (!lead) return
+    const next = Math.max(0, lead.call_attempts + delta)
+    void patchLead({ call_attempts: next })
+  }
+
+  const toggleReached = () => {
+    if (!lead) return
+    void patchLead({ reached: !lead.reached })
+  }
+
+  const handleArchive = () => {
+    if (!lead) return
+    Alert.alert(
+      'Archiver ce lead ?',
+      'Le lead passera en statut "Dead". Tu pourras le réactiver plus tard.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Archiver',
+          style: 'destructive',
+          onPress: () => void patchLead({ status: 'dead' }),
+        },
+      ]
+    )
+  }
+
+  const handleDelete = () => {
+    if (!lead) return
+    Alert.alert(
+      'Supprimer ce lead ?',
+      'Action irréversible. Tous les appels, follow-ups et notes liés seront supprimés.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/leads/${lead.id}`)
+              navigation.goBack()
+            } catch (e) {
+              Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec suppression')
+            }
+          },
+        },
+      ]
+    )
+  }
+
+  const openActionsMenu = () => {
+    Alert.alert(lead?.first_name ? `${lead.first_name} ${lead.last_name ?? ''}` : 'Lead', undefined, [
+      { text: 'Archiver (passer en Dead)', onPress: handleArchive },
+      { text: 'Supprimer', style: 'destructive', onPress: handleDelete },
+      { text: 'Annuler', style: 'cancel' },
+    ])
+  }
+
   const handleDeleteNote = (note: LeadNote) => {
     Alert.alert('Supprimer cette note ?', 'Action irréversible.', [
       { text: 'Annuler', style: 'cancel' },
@@ -585,16 +655,100 @@ export function LeadDetailScreen() {
             Activité
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Chip
-              label={`${lead.call_attempts} tentative${lead.call_attempts > 1 ? 's' : ''}`}
-              color={colors.cyan}
-              icon="call-outline"
-            />
-            {lead.reached ? (
-              <Chip label="Joint" color={colors.primary} icon="checkmark-circle" />
-            ) : (
-              <Chip label="Pas encore joint" color={colors.textSecondary} icon="ellipse-outline" />
-            )}
+            {/* Tentatives — chip avec +/- intégrés */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.cyan + '14',
+                borderWidth: 1,
+                borderColor: colors.cyan + '30',
+                borderRadius: 999,
+                paddingLeft: 12,
+                gap: 8,
+              }}
+            >
+              <Ionicons name="call-outline" size={13} color={colors.cyan} />
+              <Text style={{ ...t.subheadline, color: colors.cyan, fontWeight: '600' }}>
+                {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
+              </Text>
+              <Pressable
+                onPress={() => incrementAttempts(-1)}
+                disabled={lead.call_attempts === 0}
+                hitSlop={6}
+                style={({ pressed }) => ({
+                  width: 30,
+                  height: 30,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: lead.call_attempts === 0 ? 0.3 : pressed ? 0.5 : 1,
+                })}
+              >
+                <Ionicons name="remove" size={16} color={colors.cyan} />
+              </Pressable>
+              <Pressable
+                onPress={() => incrementAttempts(1)}
+                hitSlop={6}
+                style={({ pressed }) => ({
+                  width: 30,
+                  height: 30,
+                  borderTopRightRadius: 999,
+                  borderBottomRightRadius: 999,
+                  backgroundColor: colors.cyan + '22',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Ionicons name="add" size={18} color={colors.cyan} />
+              </Pressable>
+            </View>
+            {/* Joint — toggle tappable */}
+            <Pressable onPress={toggleReached}>
+              {({ pressed }) =>
+                lead.reached ? (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      backgroundColor: colors.primary + '14',
+                      borderWidth: 1,
+                      borderColor: colors.primary + '40',
+                      borderRadius: 999,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      opacity: pressed ? 0.6 : 1,
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+                    <Text style={{ ...t.subheadline, color: colors.primary, fontWeight: '600' }}>
+                      Joint
+                    </Text>
+                  </View>
+                ) : (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      backgroundColor: 'transparent',
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: 999,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      opacity: pressed ? 0.6 : 1,
+                    }}
+                  >
+                    <Ionicons name="ellipse-outline" size={14} color={colors.textSecondary} />
+                    <Text style={{ ...t.subheadline, color: colors.textSecondary, fontWeight: '600' }}>
+                      Marquer comme joint
+                    </Text>
+                  </View>
+                )
+              }
+            </Pressable>
           </View>
         </View>
 
@@ -747,8 +901,8 @@ export function LeadDetailScreen() {
           <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ padding: 4 }}>
             <Ionicons name="chevron-back" size={28} color={colors.primary} />
           </Pressable>
-          <Pressable hitSlop={12} style={{ padding: 4 }}>
-            <Text style={{ ...t.body, color: colors.primary }}>Modifier</Text>
+          <Pressable onPress={openActionsMenu} hitSlop={12} style={{ padding: 4 }}>
+            <Ionicons name="ellipsis-horizontal" size={24} color={colors.primary} />
           </Pressable>
         </View>
       </SafeAreaView>
