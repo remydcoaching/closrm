@@ -308,6 +308,36 @@ function Content({
         </View>
       ) : null}
 
+      {/* Notes */}
+      {item.notes ? (
+        <View
+          style={{
+            padding: spacing.md,
+            backgroundColor: colors.bgSecondary,
+            borderRadius: radius.lg,
+            gap: 6,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="document-text-outline" size={14} color={colors.textTertiary} />
+            <Text
+              style={{
+                ...t.caption2,
+                color: colors.textTertiary,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                fontWeight: '700',
+              }}
+            >
+              Notes
+            </Text>
+          </View>
+          <Text style={{ ...t.body, color: colors.textPrimary, lineHeight: 21 }}>
+            {item.notes}
+          </Text>
+        </View>
+      ) : null}
+
       {/* Statut outcome */}
       {isDone || isNoShow ? (
         <View

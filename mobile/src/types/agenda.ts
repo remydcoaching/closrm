@@ -21,4 +21,5 @@ export interface AgendaItem {
   status?: string | null
   color?: string | null
   location_name?: string | null
+  notes?: string | null
 }

@@ -23,6 +23,7 @@ interface BookingRow {
   call_id: string | null
   lead_id: string | null
   color: string | null
+  notes: string | null
   form_data: Record<string, string> | null
   location: { name: string } | null
   booking_calendar: { name: string; color: string } | null
@@ -35,6 +36,7 @@ interface CallRow {
   duration_seconds: number | null
   type: 'setting' | 'closing'
   outcome: 'pending' | 'done' | 'no_show' | 'cancelled'
+  notes: string | null
   lead: {
     id: string
     first_name: string | null
@@ -58,7 +60,7 @@ export function useAgenda(date: Date) {
       supabase
         .from('bookings')
         .select(
-          'id, title, scheduled_at, duration_minutes, status, is_personal, call_id, lead_id, color, form_data, ' +
+          'id, title, scheduled_at, duration_minutes, status, is_personal, call_id, lead_id, color, notes, form_data, ' +
             'location:booking_locations(name), ' +
             'booking_calendar:booking_calendars(name, color), ' +
             'lead:leads(id, first_name, last_name)'
@@ -70,7 +72,7 @@ export function useAgenda(date: Date) {
       supabase
         .from('calls')
         .select(
-          'id, scheduled_at, duration_seconds, type, outcome, ' +
+          'id, scheduled_at, duration_seconds, type, outcome, notes, ' +
             'lead:leads(id, first_name, last_name, deal_amount)'
         )
         .gte('scheduled_at', from)
@@ -124,6 +126,7 @@ export function useAgenda(date: Date) {
           status: b.status,
           color: resolvedColor,
           location_name: b.location?.name ?? null,
+          notes: b.notes ?? null,
         }
       })
 
@@ -151,6 +154,7 @@ export function useAgenda(date: Date) {
           amount: lead?.deal_amount ?? null,
           outcome: c.outcome,
           color: callColor,
+          notes: c.notes ?? null,
         }
       })
 
