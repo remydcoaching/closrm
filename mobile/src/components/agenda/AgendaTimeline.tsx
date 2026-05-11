@@ -1,21 +1,37 @@
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, ScrollView, Pressable } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import type { AgendaItem } from '../../types/agenda'
 import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
-import { type as t, spacing, radius } from '../../theme/tokens'
+import { type as t, spacing } from '../../theme/tokens'
 
+// 1 heure = 64 pt. Donne :
+//   15min → 16pt  (juste l'heure)
+//   30min → 32pt  (heure + 1 ligne titre)
+//   45min → 48pt  (heure + titre + chip)
+//   1h    → 64pt  (heure + titre + chip + lieu)
+//   3h    → 192pt
+const HOUR_HEIGHT = 64
 const HOUR_LABEL_WIDTH = 56
-const HOUR_ROW_HEIGHT = 64 // hauteur de l'espace par heure dans la grille (pour le rendu visuel)
-// Heures affichées dans la grille — minimum 6h, étendu si events en dehors.
 const DEFAULT_START_HOUR = 6
 const DEFAULT_END_HOUR = 23
+const MAX_LANES = 3
+// Hauteur minimum d'une card pour rester cliquable et lisible (= juste l'heure).
+const MIN_CARD_HEIGHT = 18
 
 interface Props {
   items: AgendaItem[]
   date: Date
   onPressItem: (item: AgendaItem) => void
+}
+
+interface Positioned {
+  item: AgendaItem
+  top: number
+  height: number
+  laneIndex: number
+  laneCount: number
 }
 
 const sameDay = (a: Date, b: Date) =>
@@ -56,55 +72,127 @@ function formatDuration(min: number): string {
 }
 
 /**
- * Timeline agenda en mode "grille horaire avec events groupés par heure".
- *
- * Choix de design : on abandonne le positionnement absolu pixel-perfect
- * (qui marchait pas avec des données denses ou bizarres) au profit d'une
- * liste groupée par heure. Chaque heure = 1 ligne avec son label à gauche
- * et les events qui démarrent dans cette heure stackés à droite. Plus
- * jamais de bug de chevauchement visuel ou de stack à 06h.
+ * Layout par chevauchement VISUEL : on calcule (top, height) au pixel près
+ * (proportionnel à la durée), puis on assigne les lanes pour les events qui
+ * se chevauchent visuellement.
  */
+function layoutItems(items: AgendaItem[], startHour: number): Positioned[] {
+  type Slot = {
+    item: AgendaItem
+    top: number
+    height: number
+    bottom: number
+    lane: number
+    group: number
+  }
+  const slots: Slot[] = items.map((item) => {
+    const start = new Date(item.scheduled_at)
+    const startMin = start.getHours() * 60 + start.getMinutes()
+    const top = (startMin / 60 - startHour) * HOUR_HEIGHT
+    const naturalHeight = (item.duration_minutes / 60) * HOUR_HEIGHT - 2
+    const height = Math.max(MIN_CARD_HEIGHT, naturalHeight)
+    return { item, top, height, bottom: top + height, lane: 0, group: -1 }
+  })
+
+  // Tri par top puis durée desc (les events plus longs ont priorité de lane).
+  slots.sort((a, b) => {
+    if (a.top !== b.top) return a.top - b.top
+    return b.height - a.height
+  })
+
+  // Détection de groupes visuellement connectés.
+  let nextGroupId = 0
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i].group >= 0) continue
+    slots[i].group = nextGroupId
+    let grew = true
+    while (grew) {
+      grew = false
+      for (let j = 0; j < slots.length; j++) {
+        if (slots[j].group !== nextGroupId) continue
+        for (let k = 0; k < slots.length; k++) {
+          if (slots[k].group >= 0) continue
+          if (slots[j].top < slots[k].bottom && slots[j].bottom > slots[k].top) {
+            slots[k].group = nextGroupId
+            grew = true
+          }
+        }
+      }
+    }
+    nextGroupId++
+  }
+
+  const result: Positioned[] = []
+  for (let g = 0; g < nextGroupId; g++) {
+    const group = slots.filter((s) => s.group === g).sort((a, b) => a.top - b.top)
+    const lanes: number[] = [] // bottom du dernier item de chaque lane
+    for (const s of group) {
+      let assigned = -1
+      for (let i = 0; i < lanes.length; i++) {
+        if (lanes[i] <= s.top) {
+          assigned = i
+          lanes[i] = s.bottom
+          break
+        }
+      }
+      if (assigned === -1) {
+        lanes.push(s.bottom)
+        assigned = lanes.length - 1
+      }
+      s.lane = assigned
+    }
+    const laneCount = Math.min(lanes.length, MAX_LANES)
+    for (const s of group) {
+      result.push({
+        item: s.item,
+        top: s.top,
+        height: s.height,
+        laneIndex: Math.min(s.lane, MAX_LANES - 1),
+        laneCount,
+      })
+    }
+  }
+  return result
+}
+
 export function AgendaTimeline({ items, date, onPressItem }: Props) {
-  // Plage horaire dynamique : 6h-23h par défaut, étendue si events en dehors.
+  // Plage horaire dynamique.
   const { startHour, endHour } = useMemo(() => {
     let minH = DEFAULT_START_HOUR
     let maxH = DEFAULT_END_HOUR
     for (const it of items) {
       const start = new Date(it.scheduled_at)
       const startH = start.getHours()
+      const endH = Math.ceil((startH + it.duration_minutes / 60))
       if (startH < minH) minH = Math.max(0, startH)
-      if (startH > maxH) maxH = Math.min(23, startH)
+      if (endH > maxH) maxH = Math.min(24, endH)
     }
     return { startHour: minH, endHour: maxH }
   }, [items])
+  const totalHeight = (endHour - startHour + 1) * HOUR_HEIGHT
 
-  // Group events par heure de début. Plusieurs events à la même heure → ils
-  // stackent verticalement dans le bloc de l'heure.
-  const eventsByHour = useMemo(() => {
-    const map = new Map<number, AgendaItem[]>()
-    const sorted = [...items].sort(
-      (a, b) =>
-        new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
-    )
-    for (const it of sorted) {
-      const h = new Date(it.scheduled_at).getHours()
-      const arr = map.get(h) ?? []
-      arr.push(it)
-      map.set(h, arr)
-    }
-    return map
-  }, [items])
-
-  const hours = useMemo(() => {
-    const out: number[] = []
-    for (let h = startHour; h <= endHour; h++) out.push(h)
-    return out
-  }, [startHour, endHour])
+  const positioned = useMemo(
+    () => layoutItems(items, startHour),
+    [items, startHour]
+  )
 
   const isToday = sameDay(date, new Date())
-  const nowHour = isToday ? new Date().getHours() + new Date().getMinutes() / 60 : null
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    if (!isToday) return
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [isToday])
 
-  // Auto-scroll : aujourd'hui vers l'heure courante, sinon vers le 1er event.
+  // Position de la ligne "now" en px depuis le top du timeline.
+  const nowTop = useMemo(() => {
+    if (!isToday) return null
+    const h = now.getHours() + now.getMinutes() / 60
+    if (h < startHour || h > endHour + 1) return null
+    return (h - startHour) * HOUR_HEIGHT
+  }, [isToday, now, startHour, endHour])
+
+  // Auto-scroll : today → heure courante - 1, sinon premier event ou 8h.
   const scrollRef = useRef<ScrollView>(null)
   useEffect(() => {
     let targetHour: number
@@ -116,13 +204,19 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
     } else {
       targetHour = Math.max(startHour, 8)
     }
-    const y = (targetHour - startHour) * HOUR_ROW_HEIGHT
+    const y = (targetHour - startHour) * HOUR_HEIGHT
     const id = setTimeout(() => {
       scrollRef.current?.scrollTo({ y, animated: false })
     }, 50)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, startHour])
+
+  const hours = useMemo(() => {
+    const out: number[] = []
+    for (let h = startHour; h <= endHour; h++) out.push(h)
+    return out
+  }, [startHour, endHour])
 
   return (
     <ScrollView
@@ -131,207 +225,306 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
       contentContainerStyle={{ paddingBottom: 100 }}
       showsVerticalScrollIndicator={false}
     >
-      {hours.map((h, idx) => {
-        const events = eventsByHour.get(h) ?? []
-        const isCurrentHour = nowHour != null && Math.floor(nowHour) === h
-        return (
+      <View
+        style={{
+          height: totalHeight,
+          position: 'relative',
+          paddingRight: spacing.lg,
+        }}
+      >
+        {/* Hour gridlines + labels */}
+        {hours.map((h) => (
           <View
             key={h}
             style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: (h - startHour) * HOUR_HEIGHT,
+              height: HOUR_HEIGHT,
               flexDirection: 'row',
-              minHeight: HOUR_ROW_HEIGHT,
-              borderTopWidth: idx === 0 ? 0 : 0.33,
-              borderTopColor: colors.border,
-              paddingVertical: 6,
-              paddingRight: spacing.lg,
             }}
           >
-            {/* Hour label */}
             <View
               style={{
                 width: HOUR_LABEL_WIDTH,
-                paddingTop: 2,
-                paddingRight: spacing.sm,
                 alignItems: 'flex-end',
+                paddingRight: spacing.sm,
               }}
             >
               <Text
                 style={{
-                  fontSize: 11,
-                  fontWeight: isCurrentHour ? '700' : '500',
-                  color: isCurrentHour ? colors.danger : colors.textTertiary,
-                  letterSpacing: 0.4,
+                  ...t.caption2,
+                  color: colors.textTertiary,
+                  fontWeight: '500',
+                  marginTop: -6,
                 }}
               >
                 {String(h).padStart(2, '0')}:00
               </Text>
-              {isCurrentHour ? (
-                <View
+            </View>
+            <View
+              style={{
+                flex: 1,
+                borderTopWidth: 0.33,
+                borderTopColor: colors.border,
+              }}
+            />
+          </View>
+        ))}
+
+        {/* Events layer */}
+        <View
+          style={{
+            position: 'absolute',
+            left: HOUR_LABEL_WIDTH,
+            right: spacing.lg,
+            top: 0,
+            bottom: 0,
+          }}
+          pointerEvents="box-none"
+        >
+          {positioned.map(({ item, top, height, laneIndex, laneCount }) => (
+            <EventBlock
+              key={item.id}
+              item={item}
+              top={top}
+              height={height}
+              laneIndex={laneIndex}
+              laneCount={laneCount}
+              onPress={() => onPressItem(item)}
+            />
+          ))}
+        </View>
+
+        {/* Now line — traverse toute la largeur */}
+        {nowTop != null ? (
+          <View
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: spacing.lg,
+              top: nowTop - 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              zIndex: 100,
+            }}
+            pointerEvents="none"
+          >
+            <View
+              style={{
+                width: HOUR_LABEL_WIDTH - 8,
+                alignItems: 'flex-end',
+                paddingRight: 4,
+              }}
+            >
+              <View
+                style={{
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  backgroundColor: colors.danger,
+                  borderRadius: 4,
+                }}
+              >
+                <Text
                   style={{
-                    marginTop: 4,
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                    backgroundColor: colors.danger,
-                    borderRadius: 6,
+                    fontSize: 9,
+                    fontWeight: '800',
+                    color: '#fff',
+                    letterSpacing: 0.3,
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 9,
-                      fontWeight: '700',
-                      color: '#fff',
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    NOW
-                  </Text>
-                </View>
-              ) : null}
+                  {now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
             </View>
-
-            {/* Events column */}
-            <View style={{ flex: 1, gap: 6 }}>
-              {events.length === 0 ? (
-                <View style={{ height: HOUR_ROW_HEIGHT - 12 }} />
-              ) : (
-                events.map((item) => (
-                  <EventCard key={item.id} item={item} onPress={() => onPressItem(item)} />
-                ))
-              )}
-            </View>
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: colors.danger,
+                marginLeft: -4,
+              }}
+            />
+            <View style={{ flex: 1, height: 2, backgroundColor: colors.danger }} />
           </View>
-        )
-      })}
+        ) : null}
+      </View>
     </ScrollView>
   )
 }
 
-function EventCard({ item, onPress }: { item: AgendaItem; onPress: () => void }) {
+function EventBlock({
+  item,
+  top,
+  height,
+  laneIndex,
+  laneCount,
+  onPress,
+}: {
+  item: AgendaItem
+  top: number
+  height: number
+  laneIndex: number
+  laneCount: number
+  onPress: () => void
+}) {
   const color = colorForItem(item)
   const isDone = item.outcome === 'done'
   const isNoShow = item.outcome === 'no_show'
-  const lead = item.lead_name
+  const widthPct = 100 / laneCount
+  const leftPct = laneIndex * widthPct
+  // Adapte le contenu selon la hauteur dispo.
+  const compact = height < 28
+  const medium = height >= 28 && height < 50
+  const showTitle = height >= 22
+  const showChip = height >= 38
+  const showLocation = height >= 56 && Boolean(item.location_name)
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
+        position: 'absolute',
+        top,
+        left: `${leftPct}%`,
+        width: `${widthPct}%`,
+        height,
+        paddingRight: laneIndex < laneCount - 1 ? 3 : 0,
         opacity: isDone ? 0.55 : pressed ? 0.7 : 1,
       })}
     >
       <View
         style={{
+          flex: 1,
           backgroundColor: color + '22',
-          borderWidth: 1,
+          borderWidth: 0.5,
           borderColor: color + '44',
-          borderLeftWidth: 4,
+          borderLeftWidth: 3,
           borderLeftColor: color,
-          borderRadius: 10,
-          padding: 10,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.sm,
+          borderRadius: 8,
+          paddingHorizontal: compact ? 6 : 8,
+          paddingVertical: compact ? 1 : 4,
+          overflow: 'hidden',
+          flexDirection: compact ? 'row' : 'column',
+          alignItems: compact ? 'center' : 'flex-start',
+          gap: compact ? 6 : 2,
         }}
       >
-        {/* Time */}
-        <View style={{ minWidth: 50 }}>
+        {/* Ligne titre principale */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            width: compact ? undefined : '100%',
+            flex: compact ? 1 : undefined,
+          }}
+        >
           <Text
+            numberOfLines={1}
             style={{
-              color: colors.textPrimary,
-              fontSize: 14,
+              fontSize: compact ? 11 : medium ? 12 : 13,
               fontWeight: '700',
+              color: colors.textPrimary,
               letterSpacing: -0.2,
+              flex: compact ? undefined : 1,
             }}
           >
             {formatTime(item.scheduled_at)}
           </Text>
-          <Text style={{ ...t.caption2, color: colors.textTertiary, fontWeight: '500' }}>
-            {formatDuration(item.duration_minutes)}
-          </Text>
+          {!compact ? (
+            <Text
+              numberOfLines={1}
+              style={{
+                ...t.caption2,
+                color: colors.textTertiary,
+                fontWeight: '500',
+              }}
+            >
+              · {formatDuration(item.duration_minutes)}
+            </Text>
+          ) : null}
+          {compact && showTitle ? (
+            <Text
+              numberOfLines={1}
+              style={{
+                flex: 1,
+                fontSize: 11,
+                fontWeight: '600',
+                color: colors.textPrimary,
+              }}
+            >
+              {item.title}
+            </Text>
+          ) : null}
+          {isNoShow ? (
+            <Ionicons name="alert-circle" size={11} color={colors.warning} />
+          ) : isDone ? (
+            <Ionicons name="checkmark-circle" size={11} color={colors.primary} />
+          ) : null}
         </View>
 
-        {/* Avatar (lead) ou icône (perso) */}
-        {lead ? (
-          <Avatar name={lead} size={30} />
-        ) : (
-          <View
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 15,
-              backgroundColor: color + '33',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons
-              name={
-                item.kind === 'personal'
-                  ? 'person-outline'
-                  : item.source === 'call'
-                    ? 'call'
-                    : 'calendar-outline'
-              }
-              size={14}
-              color={color}
-            />
-          </View>
-        )}
-
-        {/* Title + label */}
-        <View style={{ flex: 1, minWidth: 0 }}>
+        {/* Titre (mode non-compact) */}
+        {!compact && showTitle ? (
           <Text
             numberOfLines={1}
             style={{
-              color: colors.textPrimary,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: '600',
+              color: colors.textPrimary,
               letterSpacing: -0.2,
             }}
           >
             {item.title}
           </Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 5,
-              marginTop: 2,
-            }}
-          >
+        ) : null}
+
+        {/* Chip type (medium+) */}
+        {showChip ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: color }} />
             <Text
-              numberOfLines={1}
               style={{
-                fontSize: 11,
-                color,
+                fontSize: 10,
                 fontWeight: '700',
-                letterSpacing: 0.2,
+                color,
+                letterSpacing: 0.3,
+                textTransform: 'uppercase',
               }}
             >
               {labelForKind(item)}
             </Text>
-            {item.location_name ? (
-              <Text
-                numberOfLines={1}
-                style={{
-                  ...t.caption2,
-                  color: colors.textSecondary,
-                  flex: 1,
-                }}
-              >
-                · {item.location_name}
-              </Text>
-            ) : null}
           </View>
-        </View>
+        ) : null}
 
-        {/* Statuts visuels */}
-        {isNoShow ? (
-          <Ionicons name="alert-circle" size={14} color={colors.warning} />
-        ) : isDone ? (
-          <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+        {/* Lieu (large) */}
+        {showLocation ? (
+          <Text
+            numberOfLines={1}
+            style={{
+              ...t.caption1,
+              color: colors.textSecondary,
+            }}
+          >
+            {item.location_name}
+          </Text>
         ) : null}
       </View>
+      {/* Avatar discret en bas droite si lead, mode non-compact */}
+      {item.lead_name && height >= 50 ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            opacity: 0.85,
+          }}
+          pointerEvents="none"
+        >
+          <Avatar name={item.lead_name} size={20} />
+        </View>
+      ) : null}
     </Pressable>
   )
 }
