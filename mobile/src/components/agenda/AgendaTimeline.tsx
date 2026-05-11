@@ -6,18 +6,20 @@ import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
 
-// 1 heure = 64 pt. Donne :
-//   15min → 16pt  (juste l'heure)
-//   30min → 32pt  (heure + 1 ligne titre)
-//   45min → 48pt  (heure + titre + chip)
-//   1h    → 64pt  (heure + titre + chip + lieu)
-//   3h    → 192pt
-const HOUR_HEIGHT = 64
+// 1 heure = 80 pt. Donne :
+//   15min → 18pt  (compact, heure + titre inline)
+//   30min → 38pt  (+ chip type)
+//   45min → 58pt  (+ chip + avatar)
+//   1h    → 78pt  (+ lieu si dispo)
+//   3h    → 238pt
+// HOUR_HEIGHT 80 pour que 15min = 18pt = MIN_CARD_HEIGHT pile-poil. Comme ça
+// des events séquentiels de 15min (06:00, 06:15, 06:30…) ne se chevauchent
+// pas visuellement → chacun dans son groupe, full width, propre.
+const HOUR_HEIGHT = 80
 const HOUR_LABEL_WIDTH = 56
 const DEFAULT_START_HOUR = 6
 const DEFAULT_END_HOUR = 23
-const MAX_LANES = 3
-// Hauteur minimum d'une card pour rester cliquable et lisible (= juste l'heure).
+const MAX_LANES = 2
 const MIN_CARD_HEIGHT = 18
 
 interface Props {
@@ -376,11 +378,11 @@ function EventBlock({
   const widthPct = 100 / laneCount
   const leftPct = laneIndex * widthPct
   // Adapte le contenu selon la hauteur dispo.
-  const compact = height < 28
-  const medium = height >= 28 && height < 50
-  const showTitle = height >= 22
-  const showChip = height >= 38
-  const showLocation = height >= 56 && Boolean(item.location_name)
+  const compact = height < 32
+  const medium = height >= 32 && height < 56
+  const showTitle = true
+  const showChip = height >= 42
+  const showLocation = height >= 64 && Boolean(item.location_name)
   return (
     <Pressable
       onPress={onPress}
