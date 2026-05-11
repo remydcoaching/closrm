@@ -6,19 +6,19 @@ import { Avatar } from '../ui/Avatar'
 import { colors } from '../../theme/colors'
 import { type as t, spacing } from '../../theme/tokens'
 
-// Grille horaire FIXE : 1 heure = 64 pt. Toujours.
+// Grille horaire FIXE : 1 heure = 100 pt. Toujours.
 // Les events sont positionnés en absolu PAR-DESSUS la grille, avec :
-//   top = (startMin / 60 - startHour) * 64
-//   height = (durationMin / 60) * 64 - 2  (proportionnel à la durée)
-// → un 2h fait vraiment 128pt, un 1h fait 62pt, etc. Plus de compression.
-const HOUR_HEIGHT = 64
+//   top = (startMin / 60 - startHour) * 100
+//   height = (durationMin / 60) * 100 - 2  (proportionnel à la durée)
+// → un 2h fait vraiment 198pt, un 1h fait 98pt, etc. Plus de compression.
+const HOUR_HEIGHT = 100
 const HOUR_LABEL_WIDTH = 56
 const DEFAULT_START_HOUR = 6
 const DEFAULT_END_HOUR = 23
-// Min visuel pour qu'une card reste cliquable / lisible (= ~15min @ HOUR_HEIGHT 64).
-const MIN_CARD_HEIGHT = 16
-// Plafond de lanes en cas d'overlap (events qui se chevauchent visuellement).
-const MAX_LANES = 3
+const MIN_CARD_HEIGHT = 24
+// Plafond de lanes — 2 pour garder les cards lisibles à 50% width quand
+// plusieurs events se chevauchent.
+const MAX_LANES = 2
 
 interface Props {
   items: AgendaItem[]
@@ -372,13 +372,15 @@ function EventBlock({
         left: `${leftPct}%`,
         width: `${widthPct}%`,
         height,
+        minHeight: height,
+        maxHeight: height,
         paddingRight: lane < laneCount - 1 ? 3 : 0,
         opacity: isDone ? 0.55 : pressed ? 0.7 : 1,
       })}
     >
       <View
         style={{
-          flex: 1,
+          height: '100%',
           backgroundColor: color + '22',
           borderWidth: 0.5,
           borderColor: color + '44',
