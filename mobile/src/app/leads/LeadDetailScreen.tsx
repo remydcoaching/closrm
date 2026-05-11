@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import {
   View,
   Text,
@@ -11,7 +11,10 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Alert,
+  Animated,
+  ActionSheetIOS,
 } from 'react-native'
+import * as Clipboard from 'expo-clipboard'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
@@ -143,12 +146,14 @@ function ContactAction({
   icon,
   label,
   onPress,
+  onLongPress,
   disabled,
   tint = colors.primary,
 }: {
   icon: keyof typeof Ionicons.glyphMap
   label: string
   onPress?: () => void
+  onLongPress?: () => void
   disabled?: boolean
   tint?: string
 }) {
@@ -156,6 +161,7 @@ function ContactAction({
     <View style={{ alignItems: 'center', gap: 6, flex: 1 }}>
       <Pressable
         onPress={disabled ? undefined : onPress}
+        onLongPress={disabled ? undefined : onLongPress}
         style={({ pressed }) => ({
           width: 56,
           height: 56,
@@ -182,15 +188,17 @@ function InfoChip({
   value,
   tint,
   onPress,
+  onLongPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap
   label: string
   value: string
   tint: string
   onPress?: () => void
+  onLongPress?: () => void
 }) {
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={onPress} onLongPress={onLongPress}>
       {({ pressed }) => (
         <View
           style={{
@@ -245,6 +253,96 @@ export function LeadDetailScreen() {
   const [statusModalOpen, setStatusModalOpen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<LeadNote | null>(null)
+  const [attemptsPickerOpen, setAttemptsPickerOpen] = useState(false)
+  const [nameModalOpen, setNameModalOpen] = useState(false)
+
+  const toastOpacity = useRef(new Animated.Value(0)).current
+  const [toastMessage, setToastMessage] = useState('')
+  const showCopyToast = (msg: string = 'Copié') => {
+    setToastMessage(msg)
+    toastOpacity.setValue(1)
+    Animated.timing(toastOpacity, {
+      toValue: 0,
+      duration: 400,
+      delay: 1800,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const updateName = async (firstName: string, lastName: string) => {
+    if (!lead) return
+    setNameModalOpen(false)
+    mutate({ first_name: firstName, last_name: lastName })
+    try {
+      await api.patch(`/api/leads/${lead.id}`, { first_name: firstName, last_name: lastName })
+    } catch (e) {
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec mise à jour')
+      void refetch()
+    }
+  }
+
+  const updateCallAttempts = async (count: number) => {
+    if (!lead) return
+    setAttemptsPickerOpen(false)
+    mutate({ call_attempts: count })
+    try {
+      await api.patch(`/api/leads/${lead.id}`, { call_attempts: count })
+    } catch (e) {
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec mise à jour')
+      void refetch()
+    }
+  }
+
+  const toggleReached = async () => {
+    if (!lead) return
+    const newVal = !lead.reached
+    mutate({ reached: newVal })
+    try {
+      await api.patch(`/api/leads/${lead.id}`, { reached: newVal })
+    } catch (e) {
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec mise à jour')
+      void refetch()
+    }
+  }
+
+  const archiveLead = () => {
+    Alert.alert('Archiver ce lead ?', 'Le lead sera marqué comme dead.', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Archiver',
+        style: 'destructive',
+        onPress: async () => {
+          if (!lead) return
+          mutate({ status: 'dead' as LeadStatus })
+          try {
+            await api.patch(`/api/leads/${lead.id}`, { status: 'dead' })
+          } catch (e) {
+            Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec')
+            void refetch()
+          }
+        },
+      },
+    ])
+  }
+
+  const deleteLead = () => {
+    Alert.alert('Supprimer ce lead ?', 'Cette action est irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: async () => {
+          if (!lead) return
+          try {
+            await api.delete(`/api/leads/${lead.id}`)
+            navigation.goBack()
+          } catch (e) {
+            Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec suppression')
+          }
+        },
+      },
+    ])
+  }
 
   const updateStatus = async (newStatus: LeadStatus) => {
     if (!lead || newStatus === lead.status) {
@@ -338,7 +436,7 @@ export function LeadDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 60 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 60 }} bounces={false} overScrollMode="never" showsVerticalScrollIndicator={false}>
         {/* Hero gradient FULL — remonte jusqu'au status bar iOS pour
             l'effet wash de couleur status (style Apple Music album view).
             Top bar absolute par-dessus pour rester accessible. */}
@@ -352,18 +450,20 @@ export function LeadDetailScreen() {
           }}
         >
           <Avatar name={fullName} size={104} />
-          <Text
-            style={{
-              ...t.title1,
-              color: colors.textPrimary,
-              textAlign: 'center',
-              letterSpacing: -0.5,
-            }}
-          >
-            {fullName}
-          </Text>
+          <Pressable onLongPress={() => setNameModalOpen(true)}>
+            <Text
+              style={{
+                ...t.title1,
+                color: colors.textPrimary,
+                textAlign: 'center',
+                letterSpacing: -0.5,
+              }}
+            >
+              {fullName}
+            </Text>
+          </Pressable>
           <View style={{ flexDirection: 'row', gap: spacing.sm, justifyContent: 'center' }}>
-            <Chip label={statusLabel} color={statusColor} />
+            <Chip label={statusLabel} color={statusColor} onPress={() => setStatusModalOpen(true)} icon="swap-vertical" />
             <Chip label={sourceLabel} color={sourceColor} />
           </View>
         </LinearGradient>
@@ -378,6 +478,46 @@ export function LeadDetailScreen() {
           }}
         >
           <ContactAction icon="call" label="Appeler" onPress={callPhone} disabled={!lead.phone} />
+          <ContactAction
+            icon="chatbubble"
+            label="Message"
+            onPress={() => {
+              if (!lead.phone) return
+              if (Platform.OS === 'ios') {
+                ActionSheetIOS.showActionSheetWithOptions(
+                  {
+                    options: ['SMS', 'WhatsApp', 'Annuler'],
+                    cancelButtonIndex: 2,
+                  },
+                  (idx) => {
+                    if (idx === 0) Linking.openURL(`sms:${lead.phone}`)
+                    if (idx === 1) {
+                      const cleaned = lead.phone!.replace(/[^0-9]/g, '')
+                      Linking.openURL(`whatsapp://send?phone=${cleaned}`).catch(() =>
+                        Alert.alert('WhatsApp non installé')
+                      )
+                    }
+                  },
+                )
+              } else {
+                Alert.alert('Envoyer un message', '', [
+                  { text: 'SMS', onPress: () => Linking.openURL(`sms:${lead.phone}`) },
+                  {
+                    text: 'WhatsApp',
+                    onPress: () => {
+                      const cleaned = lead.phone!.replace(/[^0-9]/g, '')
+                      Linking.openURL(`whatsapp://send?phone=${cleaned}`).catch(() =>
+                        Alert.alert('WhatsApp non installé')
+                      )
+                    },
+                  },
+                  { text: 'Annuler', style: 'cancel' },
+                ])
+              }
+            }}
+            disabled={!lead.phone}
+            tint={colors.cyan}
+          />
           <ContactAction
             icon="logo-instagram"
             label="DM"
@@ -474,6 +614,12 @@ export function LeadDetailScreen() {
               value={lead.phone}
               tint={colors.primary}
               onPress={callPhone}
+              onLongPress={() => {
+                if (lead.phone) {
+                  void Clipboard.setStringAsync(lead.phone)
+                  showCopyToast('Numéro copié')
+                }
+              }}
             />
           ) : null}
           {lead.email ? (
@@ -483,6 +629,12 @@ export function LeadDetailScreen() {
               value={lead.email}
               tint={colors.purple}
               onPress={sendEmail}
+              onLongPress={() => {
+                if (lead.email) {
+                  void Clipboard.setStringAsync(lead.email)
+                  showCopyToast('Email copié')
+                }
+              }}
             />
           ) : null}
           {lead.instagram_handle ? (
@@ -496,81 +648,7 @@ export function LeadDetailScreen() {
           ) : null}
         </View>
 
-        {/* Section STATUT — gros bloc cliquable, focus principal */}
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
-          <Text
-            style={{
-              ...t.footnote,
-              color: colors.textSecondary,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginLeft: 8,
-              marginBottom: 8,
-            }}
-          >
-            Statut
-          </Text>
-          <Pressable onPress={() => setStatusModalOpen(true)}>
-            {({ pressed }) => (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  borderRadius: 18,
-                  backgroundColor: statusColor + '14',
-                  borderWidth: 1,
-                  borderColor: statusColor + '40',
-                  opacity: pressed ? 0.7 : 1,
-                }}
-              >
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: statusColor + '33',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 5,
-                      backgroundColor: statusColor,
-                    }}
-                  />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text
-                    style={{
-                      color: colors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: '600',
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.4,
-                    }}
-                  >
-                    Étape pipeline
-                  </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={{ color: statusColor, fontSize: 17, fontWeight: '700', marginTop: 1 }}
-                  >
-                    {statusLabel}
-                  </Text>
-                </View>
-                <Ionicons name="swap-vertical" size={18} color={statusColor} />
-              </View>
-            )}
-          </Pressable>
-        </View>
-
-        {/* Section ACTIVITÉ — tentatives + joint, secondaires */}
+        {/* Section ACTIVITÉ — tentatives + joint, cliquables */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl, gap: 10 }}>
           <Text
             style={{
@@ -589,11 +667,12 @@ export function LeadDetailScreen() {
               label={`${lead.call_attempts} tentative${lead.call_attempts > 1 ? 's' : ''}`}
               color={colors.cyan}
               icon="call-outline"
+              onPress={() => setAttemptsPickerOpen(true)}
             />
             {lead.reached ? (
-              <Chip label="Joint" color={colors.primary} icon="checkmark-circle" />
+              <Chip label="Joint" color={colors.primary} icon="checkmark-circle" filled onPress={toggleReached} />
             ) : (
-              <Chip label="Pas encore joint" color={colors.textSecondary} icon="ellipse-outline" />
+              <Chip label="Non joint" color={colors.danger} icon="close-circle" onPress={toggleReached} />
             )}
           </View>
         </View>
@@ -722,7 +801,66 @@ export function LeadDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Archiver / Supprimer — discrets en bas */}
+        <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg, marginBottom: spacing.xl, gap: 12 }}>
+          <Pressable onPress={archiveLead}>
+            {({ pressed }) => (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  paddingVertical: 12,
+                  opacity: pressed ? 0.5 : 1,
+                }}
+              >
+                <Ionicons name="archive-outline" size={16} color={colors.textTertiary} />
+                <Text style={{ ...t.footnote, color: colors.textTertiary }}>Archiver ce lead</Text>
+              </View>
+            )}
+          </Pressable>
+          <Pressable onPress={deleteLead}>
+            {({ pressed }) => (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  paddingVertical: 12,
+                  opacity: pressed ? 0.5 : 1,
+                }}
+              >
+                <Ionicons name="trash-outline" size={16} color={colors.danger + '80'} />
+                <Text style={{ ...t.footnote, color: colors.danger + '80' }}>Supprimer définitivement</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
       </ScrollView>
+
+      {/* Toast "Copié" */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          bottom: 100,
+          alignSelf: 'center',
+          backgroundColor: colors.bgSecondary,
+          borderRadius: 999,
+          paddingHorizontal: 20,
+          paddingVertical: 10,
+          borderWidth: 1,
+          borderColor: colors.border,
+          opacity: toastOpacity,
+        }}
+      >
+        <Text style={{ ...t.footnote, color: colors.textPrimary, fontWeight: '600' }}>
+          {toastMessage}
+        </Text>
+      </Animated.View>
 
       {/* Top bar absolute par-dessus le gradient — accessibles toujours. */}
       <SafeAreaView
@@ -747,9 +885,7 @@ export function LeadDetailScreen() {
           <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={{ padding: 4 }}>
             <Ionicons name="chevron-back" size={28} color={colors.primary} />
           </Pressable>
-          <Pressable hitSlop={12} style={{ padding: 4 }}>
-            <Text style={{ ...t.body, color: colors.primary }}>Modifier</Text>
-          </Pressable>
+          <View style={{ width: 28 }} />
         </View>
       </SafeAreaView>
 
@@ -768,6 +904,19 @@ export function LeadDetailScreen() {
           setNotesModalOpen(false)
           setEditingNote(null)
         }}
+      />
+      <AttemptsPickerModal
+        visible={attemptsPickerOpen}
+        current={lead.call_attempts}
+        onPick={(n) => void updateCallAttempts(n)}
+        onClose={() => setAttemptsPickerOpen(false)}
+      />
+      <NameEditorModal
+        visible={nameModalOpen}
+        firstName={lead.first_name}
+        lastName={lead.last_name}
+        onSave={(f, l) => void updateName(f, l)}
+        onClose={() => setNameModalOpen(false)}
       />
     </View>
   )
@@ -863,6 +1012,204 @@ function StatusEditorModal({
           })}
         </Pressable>
       </Pressable>
+    </Modal>
+  )
+}
+
+function AttemptsPickerModal({
+  visible,
+  current,
+  onPick,
+  onClose,
+}: {
+  visible: boolean
+  current: number
+  onPick: (n: number) => void
+  onClose: () => void
+}) {
+  const options = [0, 1, 2, 3, 4, 5]
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable
+        onPress={onClose}
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: colors.sheet,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.lg,
+            paddingBottom: spacing.xxxl,
+            gap: spacing.sm,
+          }}
+        >
+          <View
+            style={{
+              alignSelf: 'center',
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: colors.border,
+              marginBottom: 4,
+            }}
+          />
+          <Text style={{ ...t.title3, color: colors.textPrimary, marginBottom: 4 }}>
+            Tentatives d'appel
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'space-between' }}>
+            {options.map((n) => {
+              const selected = n === current
+              return (
+                <Pressable key={n} onPress={() => onPick(n)} style={{ flex: 1 }}>
+                  {({ pressed }) => (
+                    <View
+                      style={{
+                        height: 52,
+                        borderRadius: 16,
+                        backgroundColor: selected ? colors.cyan : colors.bgSecondary,
+                        borderWidth: 1,
+                        borderColor: selected ? colors.cyan : colors.border,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: pressed ? 0.6 : 1,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 20,
+                          fontWeight: '700',
+                          color: selected ? '#000' : colors.textPrimary,
+                        }}
+                      >
+                        {n}
+                      </Text>
+                    </View>
+                  )}
+                </Pressable>
+              )
+            })}
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
+function NameEditorModal({
+  visible,
+  firstName,
+  lastName,
+  onSave,
+  onClose,
+}: {
+  visible: boolean
+  firstName: string
+  lastName: string
+  onSave: (first: string, last: string) => void
+  onClose: () => void
+}) {
+  const [first, setFirst] = useState(firstName)
+  const [last, setLast] = useState(lastName)
+
+  React.useEffect(() => {
+    if (visible) {
+      setFirst(firstName)
+      setLast(lastName)
+    }
+  }, [visible, firstName, lastName])
+
+  const dirty = first !== firstName || last !== lastName
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}
+      >
+        <Pressable onPress={onClose} style={{ flex: 1 }} />
+        <View
+          style={{
+            backgroundColor: colors.sheet,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.lg,
+            paddingBottom: spacing.xxxl,
+            gap: spacing.md,
+          }}
+        >
+          <View
+            style={{
+              alignSelf: 'center',
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: colors.border,
+            }}
+          />
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Pressable onPress={onClose}>
+              <Text style={{ ...t.body, color: colors.textSecondary }}>Annuler</Text>
+            </Pressable>
+            <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>Modifier le nom</Text>
+            <Pressable onPress={() => onSave(first.trim(), last.trim())} disabled={!dirty}>
+              <Text
+                style={{
+                  ...t.body,
+                  color: dirty ? colors.primary : colors.textTertiary,
+                  fontWeight: '700',
+                }}
+              >
+                Enregistrer
+              </Text>
+            </Pressable>
+          </View>
+          <View style={{ gap: 16 }}>
+            <View style={{ gap: 6 }}>
+              <Text style={{ ...t.caption1, color: colors.textSecondary, fontWeight: '600', marginLeft: 4 }}>Prénom</Text>
+              <TextInput
+                value={first}
+                onChangeText={setFirst}
+                placeholder="Prénom"
+                placeholderTextColor={colors.textTertiary}
+                autoFocus
+                style={{
+                  backgroundColor: colors.bgSecondary,
+                  borderRadius: radius.md,
+                  padding: spacing.md,
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                }}
+              />
+            </View>
+            <View style={{ gap: 6 }}>
+              <Text style={{ ...t.caption1, color: colors.textSecondary, fontWeight: '600', marginLeft: 4 }}>Nom</Text>
+              <TextInput
+                value={last}
+                onChangeText={setLast}
+                placeholder="Nom"
+                placeholderTextColor={colors.textTertiary}
+                style={{
+                  backgroundColor: colors.bgSecondary,
+                  borderRadius: radius.md,
+                  padding: spacing.md,
+                  color: colors.textPrimary,
+                  fontSize: 16,
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -1006,48 +1353,49 @@ function NoteRow({
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <View
-      style={{
-        paddingHorizontal: spacing.md,
-        paddingVertical: 14,
-        borderBottomWidth: separator ? 1 : 0,
-        // Séparateur teinté warning pour rester dans le ton "post-it"
-        borderBottomColor: colors.warning + '25',
-        gap: 8,
-      }}
-    >
-      <Text
-        style={{
-          ...t.body,
-          color: colors.textPrimary,
-          lineHeight: 21,
-        }}
-        numberOfLines={tooLong && !expanded ? NOTE_COLLAPSE_LINES : undefined}
-      >
-        {cleaned}
-      </Text>
-
-      {tooLong ? (
-        <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={6}>
-          <Text style={{ ...t.caption1, color: colors.warning, fontWeight: '700' }}>
-            {expanded ? 'Voir moins' : 'Voir plus'}
+    <Pressable onPress={onEdit}>
+      {({ pressed }) => (
+        <View
+          style={{
+            paddingHorizontal: spacing.md,
+            paddingVertical: 14,
+            borderBottomWidth: separator ? 1 : 0,
+            borderBottomColor: colors.warning + '25',
+            gap: 8,
+            opacity: pressed ? 0.7 : 1,
+          }}
+        >
+          <Text
+            style={{
+              ...t.body,
+              color: colors.textPrimary,
+              lineHeight: 21,
+            }}
+            numberOfLines={tooLong && !expanded ? NOTE_COLLAPSE_LINES : undefined}
+          >
+            {cleaned}
           </Text>
-        </Pressable>
-      ) : null}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 }}>
-        <Text style={{ ...t.caption2, color: colors.warning, fontWeight: '600' }}>
-          {formatNoteDate(note.created_at)}
-          {edited ? ' · modifiée' : ''}
-        </Text>
-        <View style={{ flex: 1 }} />
-        <Pressable onPress={onEdit} hitSlop={8} style={{ padding: 4 }}>
-          <Ionicons name="pencil" size={14} color={colors.warning} />
-        </Pressable>
-        <Pressable onPress={onDelete} hitSlop={8} style={{ padding: 4 }}>
-          <Ionicons name="trash-outline" size={14} color={colors.danger} />
-        </Pressable>
-      </View>
-    </View>
+          {tooLong ? (
+            <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={6}>
+              <Text style={{ ...t.caption1, color: colors.warning, fontWeight: '700' }}>
+                {expanded ? 'Voir moins' : 'Voir plus'}
+              </Text>
+            </Pressable>
+          ) : null}
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 2 }}>
+            <Text style={{ ...t.caption2, color: colors.warning, fontWeight: '600' }}>
+              {formatNoteDate(note.created_at)}
+              {edited ? ' · modifiée' : ''}
+            </Text>
+            <View style={{ flex: 1 }} />
+            <Pressable onPress={onDelete} hitSlop={8} style={{ padding: 4 }}>
+              <Ionicons name="trash-outline" size={14} color={colors.danger} />
+            </Pressable>
+          </View>
+        </View>
+      )}
+    </Pressable>
   )
 }
