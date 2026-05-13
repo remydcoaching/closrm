@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { z } from 'zod'
 
 const submitSchema = z.object({
@@ -154,6 +155,16 @@ export async function POST(req: NextRequest) {
     fireTriggersForEvent(workspace_id, 'new_lead', {
       lead_id: newLead.id,
       source: 'funnel',
+    }).catch(() => {})
+
+    // Push notification (non-blocking)
+    const leadName = `${firstName || 'Inconnu'} ${lastName ?? ''}`.trim()
+    sendPushToWorkspace({
+      workspaceId: workspace_id,
+      type: 'new_lead',
+      title: 'Nouveau lead',
+      body: `${leadName} vient d'arriver via un formulaire funnel.`,
+      data: { entity_type: 'lead', entity_id: newLead.id },
     }).catch(() => {})
   }
 
