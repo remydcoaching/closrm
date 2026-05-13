@@ -164,8 +164,7 @@ export async function POST(req: NextRequest) {
       type: 'new_lead',
       title: 'Nouveau lead',
       body: `${leadName} vient d'arriver via un formulaire funnel.`,
-      entityType: 'lead',
-      entityId: newLead.id,
+      data: { entity_type: 'lead', entity_id: newLead.id },
     }).catch(() => {})
   }
 

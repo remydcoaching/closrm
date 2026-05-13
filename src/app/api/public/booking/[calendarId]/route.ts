@@ -313,8 +313,7 @@ export async function POST(
       type: 'new_lead',
       title: 'Nouveau lead',
       body: `${leadName} vient d'arriver via un booking.`,
-      entityType: 'lead',
-      entityId: newLead.id,
+      data: { entity_type: 'lead', entity_id: newLead.id },
     }).catch(() => {})
   }
 

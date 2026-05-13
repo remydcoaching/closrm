@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     // SELECT leads with call count aggregate (avoids fetching all call rows)
     let query = supabase
       .from('leads')
-      .select('id, workspace_id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, created_at, updated_at, calls(count)', { count: 'exact' })
+      .select('id, workspace_id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, created_at, updated_at, calls(count)', { count: 'planned' })
       .eq('workspace_id', workspaceId)
 
     // Filtre statut

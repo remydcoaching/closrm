@@ -13,9 +13,13 @@ export async function GET(request: NextRequest) {
     const searchParams = Object.fromEntries(request.nextUrl.searchParams.entries())
     const filters = leadFiltersSchema.parse(searchParams)
 
+    // count: 'planned' utilise les stats Postgres (~ instantané) au lieu de
+    // count: 'exact' qui force un scan complet de la table à chaque requête.
+    // Précision ±10% suffisante pour la pagination UI ; gros gain de latence
+    // dès que la table dépasse quelques milliers de rows.
     let query = supabase
       .from('leads')
-      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, assigned_to, instagram_handle, meta_campaign_id, meta_adset_id, meta_ad_id, created_at, updated_at', { count: 'exact' })
+      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, assigned_to, instagram_handle, meta_campaign_id, meta_adset_id, meta_ad_id, created_at, updated_at', { count: 'planned' })
       .eq('workspace_id', workspaceId)
       .order(filters.sort, { ascending: filters.order === 'asc' })
 
@@ -215,6 +219,15 @@ export async function POST(request: NextRequest) {
       source: data.source,
     }).catch(() => {})
 
+    // Push notif mobile aux coachs du workspace (non-bloquant)
+    void sendPushToWorkspace({
+      workspaceId,
+      type: 'new_lead',
+      title: 'Nouveau prospect',
+      body: `${data.first_name} ${data.last_name}`.trim() || 'Nouveau lead',
+      data: { entity_type: 'lead', entity_id: data.id },
+    })
+
     // Fire additional trigger if IG handle provided
     if (instagramHandle) {
       fireTriggersForEvent(workspaceId, 'lead_with_ig_handle', {
@@ -222,17 +235,6 @@ export async function POST(request: NextRequest) {
         instagram_handle: instagramHandle,
       }).catch(() => {})
     }
-
-    // Push notification (non-blocking)
-    const leadName = `${data.first_name} ${data.last_name ?? ''}`.trim()
-    sendPushToWorkspace({
-      workspaceId,
-      type: 'new_lead',
-      title: 'Nouveau lead',
-      body: `${leadName} vient d'arriver via ${data.source ?? 'ajout manuel'}.`,
-      entityType: 'lead',
-      entityId: data.id,
-    }).catch(() => {})
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {

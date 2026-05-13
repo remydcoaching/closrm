@@ -1,65 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
+import { PUSH_TYPES, type PushType } from '@/lib/push/send-to-workspace'
 
+// GET — toutes les préférences du user courant.
+// Defaults : si pas de row pour un type, considéré enabled=true côté
+// client (le UI montre tous les types avec un toggle).
 export async function GET() {
   try {
-    const { workspaceId, userId } = await getWorkspaceId()
+    const { userId } = await getWorkspaceId()
     const supabase = await createClient()
-
     const { data, error } = await supabase
       .from('notification_preferences')
       .select('type, enabled')
-      .eq('workspace_id', workspaceId)
       .eq('user_id', userId)
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
+    if (error) throw error
     return NextResponse.json({ data: data ?? [] })
-  } catch (err) {
-    if (err instanceof Error && err.message === 'Not authenticated') {
+  } catch (e) {
+    if (e instanceof Error && e.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }
 }
 
+const patchSchema = z.object({
+  type: z.string().min(1).max(64),
+  enabled: z.boolean(),
+})
+
+// PATCH — toggle un type. Upsert sur (user_id, type).
 export async function PATCH(request: NextRequest) {
   try {
-    const { workspaceId, userId } = await getWorkspaceId()
-    const supabase = await createClient()
-
+    const { userId, workspaceId } = await getWorkspaceId()
     const body = await request.json()
-    const { type, enabled } = body as { type: string; enabled: boolean }
-
-    if (!type || typeof enabled !== 'boolean') {
-      return NextResponse.json({ error: 'type et enabled requis' }, { status: 400 })
+    const parsed = patchSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    }
+    // Sanity check : type doit être dans la liste connue
+    const known = PUSH_TYPES.map((p) => p.type as string)
+    if (!known.includes(parsed.data.type)) {
+      return NextResponse.json({ error: 'Type inconnu' }, { status: 400 })
     }
 
+    const supabase = await createClient()
     const { error } = await supabase
       .from('notification_preferences')
       .upsert(
         {
-          workspace_id: workspaceId,
           user_id: userId,
-          type,
-          enabled,
-          updated_at: new Date().toISOString(),
+          workspace_id: workspaceId,
+          type: parsed.data.type as PushType,
+          enabled: parsed.data.enabled,
         },
-        { onConflict: 'workspace_id,user_id,type' },
+        { onConflict: 'user_id,type' },
       )
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
+    if (error) throw error
     return NextResponse.json({ ok: true })
-  } catch (err) {
-    if (err instanceof Error && err.message === 'Not authenticated') {
+  } catch (e) {
+    if (e instanceof Error && e.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }
 }

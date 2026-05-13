@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 const messageSchema = z.object({
   body: z.string().trim().min(1).max(4000),
+  video_timestamp_seconds: z.number().min(0).max(86400).nullable().optional(),
 })
 
 // GET /api/social/posts/[id]/messages
@@ -21,7 +22,7 @@ export async function GET(
 
     const { data: messages, error } = await supabase
       .from('social_post_messages')
-      .select('id, author_id, body, created_at')
+      .select('id, author_id, body, created_at, video_timestamp_seconds, resolved_at, resolved_by')
       .eq('social_post_id', slotId)
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: true })
@@ -77,8 +78,9 @@ export async function POST(
         social_post_id: slotId,
         author_id: userId,
         body: parsed.data.body,
+        video_timestamp_seconds: parsed.data.video_timestamp_seconds ?? null,
       })
-      .select('id, author_id, body, created_at')
+      .select('id, author_id, body, created_at, video_timestamp_seconds, resolved_at, resolved_by')
       .single()
     if (error) throw error
 

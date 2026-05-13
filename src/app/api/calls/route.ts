@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('calls')
-      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status)', { count: 'exact' })
+      .select('*, lead:leads!inner(id, first_name, last_name, phone, email, status)', { count: 'planned' })
       .eq('workspace_id', workspaceId)
 
     // Role-based filtering

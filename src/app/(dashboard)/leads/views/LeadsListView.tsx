@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Plus, ChevronLeft, ChevronRight, Archive, Phone, ChevronDown, X, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -54,7 +54,7 @@ export interface LeadsListViewProps {
   onRequestClose: (lead: Lead) => void
 }
 
-export default function LeadsListView(props: LeadsListViewProps) {
+function LeadsListViewInner(props: LeadsListViewProps) {
   const {
     leads, loading, members, page, totalPages, total,
     onPageChange, onLeadClick, onPatch, onCall, onTreat, onArchive, onRequestClose,
@@ -428,3 +428,8 @@ export default function LeadsListView(props: LeadsListViewProps) {
     </>
   )
 }
+
+// React.memo : évite de re-rendre les 25 lignes quand le parent re-render
+// pour une raison externe (ex: modale ouverte, dropdown header). Les callbacks
+// sont passés par leads-client.tsx via useCallback pour rester stables.
+export default memo(LeadsListViewInner)

@@ -114,7 +114,7 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
         </div>
         {item.description && (
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 3, lineHeight: 1.4 }}>
-            {item.description}
+            {typeof item.description === 'string' ? item.description : JSON.stringify(item.description)}
           </div>
         )}
       </div>

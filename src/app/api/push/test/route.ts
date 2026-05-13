@@ -11,8 +11,7 @@ export async function POST() {
       type: 'new_lead',
       title: 'Nouveau lead',
       body: 'Jean Dupont vient d\'arriver via Facebook Ads.',
-      entityType: 'lead',
-      entityId: '00000000-0000-0000-0000-000000000000',
+      data: { entity_type: 'lead', entity_id: '00000000-0000-0000-0000-000000000000' },
     })
 
     return NextResponse.json({ ok: true, message: 'Push envoyé' })
