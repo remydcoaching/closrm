@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createLeadSchema, leadFiltersSchema } from '@/lib/validations/leads'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 
 export async function GET(request: NextRequest) {
   try {
@@ -221,6 +222,17 @@ export async function POST(request: NextRequest) {
         instagram_handle: instagramHandle,
       }).catch(() => {})
     }
+
+    // Push notification (non-blocking)
+    const leadName = `${data.first_name} ${data.last_name ?? ''}`.trim()
+    sendPushToWorkspace({
+      workspaceId,
+      type: 'new_lead',
+      title: 'Nouveau lead',
+      body: `${leadName} vient d'arriver via ${data.source ?? 'ajout manuel'}.`,
+      entityType: 'lead',
+      entityId: data.id,
+    }).catch(() => {})
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {

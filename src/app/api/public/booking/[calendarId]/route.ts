@@ -18,6 +18,7 @@ import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
 import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { createBookingReminders } from '@/lib/bookings/reminders'
+import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import type { CalendarReminder } from '@/types'
 import { startOfMonth, endOfMonth, parseISO, addMinutes } from 'date-fns'
@@ -303,6 +304,17 @@ export async function POST(
     fireTriggersForEvent(calendar.workspace_id, 'new_lead', {
       lead_id: newLead.id,
       source: 'funnel',
+    }).catch(() => {})
+
+    // Push notification (non-blocking)
+    const leadName = `${firstName} ${lastName}`.trim() || 'Inconnu'
+    sendPushToWorkspace({
+      workspaceId: calendar.workspace_id,
+      type: 'new_lead',
+      title: 'Nouveau lead',
+      body: `${leadName} vient d'arriver via un booking.`,
+      entityType: 'lead',
+      entityId: newLead.id,
     }).catch(() => {})
   }
 
