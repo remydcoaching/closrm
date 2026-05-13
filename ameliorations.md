@@ -846,4 +846,15 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-*Mis a jour le 2026-05-04 par Claude Code — ClosRM*
+## Améliorations mobile — Fiche lead (session 2026-05-13)
+
+### A-MOB-01 · Follow-ups depuis la fiche lead mobile
+- **Contexte :** Demandé par Rémy — sur le web on peut créer des follow-ups, mais pas depuis l'app mobile.
+- **Description :** Ajouter un bouton "Créer un follow-up" dans la fiche lead mobile. Ouvre une sheet avec : raison, date/heure planifiée, canal (WhatsApp/Email/Manuel). Utilise la même API `/api/follow-ups` que le web.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation — réflexion en cours
+
+---
+
+*Mis à jour le 2026-05-13 par Claude Code — ClosRM*
