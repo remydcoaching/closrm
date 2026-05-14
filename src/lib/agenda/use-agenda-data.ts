@@ -34,6 +34,7 @@ import type {
   BookingLocation,
   BookingWithCalendar,
   Call,
+  GoogleCalendarAccount,
   Lead,
 } from '@/types'
 import {
@@ -57,6 +58,8 @@ interface UseAgendaDataResult {
   /** Liste séparée pour la sidebar (toggle visibility) */
   calendars: BookingCalendar[]
   locations: BookingLocation[]
+  /** Comptes Google Calendar connectés (multi-comptes). */
+  googleAccounts: GoogleCalendarAccount[]
   loading: boolean
   /** True une fois `fetchCalendars` terminé — utile pour distinguer
    *  "loading initial" d'un "vraiment 0 calendrier". */
@@ -99,15 +102,17 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
   const [events, setEvents] = useState<AgendaEvent[]>([])
   const [calendars, setCalendars] = useState<BookingCalendar[]>([])
   const [locations, setLocations] = useState<BookingLocation[]>([])
+  const [googleAccounts, setGoogleAccounts] = useState<GoogleCalendarAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [calendarsLoaded, setCalendarsLoaded] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncDone, setSyncDone] = useState(false)
 
   const fetchCalendars = useCallback(async () => {
-    const [calRes, locRes] = await Promise.all([
+    const [calRes, locRes, gcaRes] = await Promise.all([
       fetch('/api/booking-calendars'),
       fetch('/api/booking-locations'),
+      fetch('/api/google-calendar-accounts'),
     ])
     if (calRes.ok) {
       const json = await calRes.json()
@@ -116,6 +121,10 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
     if (locRes.ok) {
       const json = await locRes.json()
       setLocations(json.data ?? [])
+    }
+    if (gcaRes.ok) {
+      const json = await gcaRes.json()
+      setGoogleAccounts(json.data ?? [])
     }
     setCalendarsLoaded(true)
   }, [])
@@ -260,6 +269,7 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
     events,
     calendars,
     locations,
+    googleAccounts,
     loading,
     calendarsLoaded,
     syncError,
