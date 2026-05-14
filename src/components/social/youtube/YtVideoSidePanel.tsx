@@ -9,17 +9,37 @@ interface Props {
   onClose: () => void
 }
 
+// Cache module-scope : une vidéo déjà ouverte ne re-fetch pas. Évite le
+// spinner systématique quand on switch entre 2 vidéos. TTL 60s pour
+// rafraîchir naturellement les stats si l'utilisateur revient plus tard.
+const videoCache = new Map<string, { data: YtVideoWithStats; ts: number }>()
+const CACHE_TTL_MS = 60_000
+
 export default function YtVideoSidePanel({ videoId, onClose }: Props) {
   const [video, setVideo] = useState<YtVideoWithStats | null>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!videoId) return
+
+    const cached = videoCache.get(videoId)
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+      setVideo(cached.data)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
+    let cancelled = false
     fetch(`/api/youtube/videos/${videoId}`)
       .then((r) => r.json())
-      .then((j) => setVideo(j.data))
-      .finally(() => setLoading(false))
+      .then((j) => {
+        if (cancelled) return
+        if (j.data) videoCache.set(videoId, { data: j.data, ts: Date.now() })
+        setVideo(j.data)
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [videoId])
 
   useEffect(() => {

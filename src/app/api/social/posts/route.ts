@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const slim = searchParams.get('slim') === 'true'
     // Mode slim : on saute la jointure publications + script/caption/notes
     // (gain ~80% sur le payload). Format strict sans espaces pour le parser TS Supabase.
-    const slimFields = 'id,workspace_id,title,hook,status,scheduled_at,published_at,pillar_id,content_kind,production_status,plan_date,slot_index,media_urls,monteur_id,rush_url,final_url,monteur_notified_at,coach_notified_at,pricing_tier_id,paid_at,created_at,updated_at'
+    const slimFields = 'id,workspace_id,title,hook,status,scheduled_at,published_at,pillar_id,content_kind,production_status,plan_date,slot_index,media_urls,monteur_id,rush_url,final_url,final_versions,montage_deadline,monteur_notified_at,coach_notified_at,pricing_tier_id,paid_at,created_at,updated_at'
 
     const supabase = await createClient()
     // Cast en string générique car la string ternaire fait planter le parser TS de Supabase

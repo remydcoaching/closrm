@@ -255,6 +255,7 @@ export function LeadDetailScreen() {
   const [editingNote, setEditingNote] = useState<LeadNote | null>(null)
   const [attemptsPickerOpen, setAttemptsPickerOpen] = useState(false)
   const [nameModalOpen, setNameModalOpen] = useState(false)
+  const [callTrackingOpen, setCallTrackingOpen] = useState(false)
 
   const toastOpacity = useRef(new Animated.Value(0)).current
   const [toastMessage, setToastMessage] = useState('')
@@ -417,7 +418,10 @@ export function LeadDetailScreen() {
   const sourceLabel = sourceConfig[lead.source].label
 
   const callPhone = () => {
-    if (lead.phone) Linking.openURL(`tel:${lead.phone}`)
+    if (!lead.phone) return
+    Linking.openURL(`tel:${lead.phone}`).then(() => {
+      setTimeout(() => setCallTrackingOpen(true), 1500)
+    })
   }
   const sendEmail = () => {
     if (lead.email) Linking.openURL(`mailto:${lead.email}`)
@@ -436,15 +440,22 @@ export function LeadDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 60 }} bounces={false} overScrollMode="never" showsVerticalScrollIndicator={false}>
-        {/* Hero gradient FULL — remonte jusqu'au status bar iOS pour
-            l'effet wash de couleur status (style Apple Music album view).
-            Top bar absolute par-dessus pour rester accessible. */}
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
+        bounces={true}
+        alwaysBounceVertical={true}
+        overScrollMode="always"
+        showsVerticalScrollIndicator={false}
+        decelerationRate="normal"
+      >
+        {/* Bande colorée invisible au-dessus du hero : quand le user
+            over-scroll vers le haut, il voit cette couleur au lieu du noir. */}
+        <View style={{ backgroundColor: statusColor + '40', marginTop: -500, paddingTop: 500 }} />
         <LinearGradient
           colors={[statusColor + '40', statusColor + '15', 'transparent']}
           style={{
             alignItems: 'center',
-            paddingTop: 110, // status bar 50pt + top bar 60pt
+            paddingTop: 110,
             paddingBottom: spacing.xl,
             gap: spacing.md,
           }}
@@ -918,6 +929,30 @@ export function LeadDetailScreen() {
         onSave={(f, l) => void updateName(f, l)}
         onClose={() => setNameModalOpen(false)}
       />
+      <CallTrackingModal
+        visible={callTrackingOpen}
+        leadName={fullName}
+        currentAttempts={lead.call_attempts}
+        currentReached={lead.reached}
+        onConfirm={async (reached) => {
+          setCallTrackingOpen(false)
+          const newAttempts = lead.call_attempts + 1
+          mutate({ call_attempts: newAttempts, reached })
+          try {
+            await api.patch(`/api/leads/${lead.id}`, {
+              call_attempts: newAttempts,
+              reached,
+            })
+            await leadNotes.addNote(
+              `📞 Appel le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} — ${reached ? 'Joint' : 'Non joint'}`,
+            )
+          } catch (e) {
+            Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec')
+            void refetch()
+          }
+        }}
+        onDismiss={() => setCallTrackingOpen(false)}
+      />
     </View>
   )
 }
@@ -1309,6 +1344,169 @@ function NotesEditorModal({
           </Text>
         </View>
       </KeyboardAvoidingView>
+    </Modal>
+  )
+}
+
+function CallTrackingModal({
+  visible,
+  leadName,
+  currentAttempts,
+  currentReached,
+  onConfirm,
+  onDismiss,
+}: {
+  visible: boolean
+  leadName: string
+  currentAttempts: number
+  currentReached: boolean
+  onConfirm: (reached: boolean) => void
+  onDismiss: () => void
+}) {
+  const [step, setStep] = useState<'ask' | 'reached'>('ask')
+
+  React.useEffect(() => {
+    if (visible) setStep('ask')
+  }, [visible])
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.65)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingHorizontal: spacing.xl,
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: colors.sheet,
+            borderRadius: 24,
+            padding: spacing.xl,
+            width: '100%',
+            maxWidth: 340,
+            gap: spacing.lg,
+          }}
+        >
+          <View style={{ alignItems: 'center', gap: spacing.sm }}>
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: colors.primary + '22',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="call" size={26} color={colors.primary} />
+            </View>
+            <Text style={{ ...t.title3, color: colors.textPrimary, textAlign: 'center' }}>
+              {step === 'ask' ? 'Enregistrer l\'appel ?' : 'As-tu joint le lead ?'}
+            </Text>
+            <Text style={{ ...t.subheadline, color: colors.textSecondary, textAlign: 'center' }}>
+              {step === 'ask'
+                ? `Appel vers ${leadName} — tentative n°${currentAttempts + 1}`
+                : `Cet appel sera logué dans l'activité de ${leadName}.`}
+            </Text>
+          </View>
+
+          {step === 'ask' ? (
+            <View style={{ gap: 10 }}>
+              <Pressable onPress={() => setStep('reached')}>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      backgroundColor: colors.primary,
+                      borderRadius: radius.md,
+                      paddingVertical: 14,
+                      alignItems: 'center',
+                      opacity: pressed ? 0.8 : 1,
+                    }}
+                  >
+                    <Text style={{ ...t.bodyEmphasis, color: '#fff' }}>Oui, enregistrer</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable onPress={onDismiss}>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      backgroundColor: colors.bgSecondary,
+                      borderRadius: radius.md,
+                      paddingVertical: 14,
+                      alignItems: 'center',
+                      opacity: pressed ? 0.6 : 1,
+                    }}
+                  >
+                    <Text style={{ ...t.body, color: colors.textSecondary }}>Non, annuler</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              <Pressable onPress={() => onConfirm(true)}>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      backgroundColor: colors.primary + '22',
+                      borderWidth: 1,
+                      borderColor: colors.primary,
+                      borderRadius: radius.md,
+                      paddingVertical: 14,
+                      opacity: pressed ? 0.7 : 1,
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                    <Text style={{ ...t.bodyEmphasis, color: colors.primary }}>Joint</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable onPress={() => onConfirm(false)}>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      backgroundColor: colors.danger + '14',
+                      borderWidth: 1,
+                      borderColor: colors.danger + '40',
+                      borderRadius: radius.md,
+                      paddingVertical: 14,
+                      opacity: pressed ? 0.7 : 1,
+                    }}
+                  >
+                    <Ionicons name="close-circle" size={20} color={colors.danger} />
+                    <Text style={{ ...t.bodyEmphasis, color: colors.danger }}>Non joint</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable onPress={onDismiss}>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      paddingVertical: 10,
+                      alignItems: 'center',
+                      opacity: pressed ? 0.5 : 1,
+                    }}
+                  >
+                    <Text style={{ ...t.footnote, color: colors.textTertiary }}>Annuler</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
     </Modal>
   )
 }

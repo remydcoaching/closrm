@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/auth/callback', '/api/webhooks', '/c', '/unsubscribe', '/booking', '/book', '/f']
+const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/auth/callback', '/api/webhooks', '/c', '/unsubscribe', '/booking', '/book', '/f', '/proto']
 
 function isPublicRoute(pathname: string): boolean {
   if (pathname === '/') return true
@@ -64,7 +64,8 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/unsubscribe') ||
     pathname.startsWith('/book/') ||
     pathname.startsWith('/booking/') ||
-    pathname.startsWith('/f/')
+    pathname.startsWith('/f/') ||
+    pathname.startsWith('/proto')
 
   if (
     user &&

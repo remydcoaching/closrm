@@ -25,6 +25,29 @@ Chaque amélioration suit ce format :
 
 ## Améliorations en attente de validation
 
+### A-044-1 — Virtualisation table Leads (react-window)
+- **Contexte :** Identifiée pendant T-044 (audit perf). Avec 25 rows par page actuellement c'est OK, mais si on bumped à 50-100 rows/page la table devient lourde (11 colonnes × N).
+- **Description :** Ajouter react-window ou @tanstack/react-virtual pour ne rendre que les rows visibles. Permet aussi d'envisager un scroll infini en remplacement de la pagination.
+- **Priorité estimée :** Basse (fonctionnel à 25 rows)
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### A-044-2 — Endpoint `/api/bookings?light=true` pour la grille agenda
+- **Contexte :** Identifiée pendant T-044. Le `BOOKING_SELECT` rapatrie 4 relations (calendar, lead, location) à chaque GET. Utile pour le panel détail mais pas pour la grille.
+- **Description :** Ajouter un mode `light` qui retourne uniquement `id, title, scheduled_at, duration_minutes, color, calendar_id, status` pour le rendu grille. Le panel détail garde le SELECT complet via `/api/bookings/[id]`.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-044-3 — Lazy-load recharts dans le module social
+- **Contexte :** Identifiée pendant T-044 (audit social). Recharts (~180KB) chargé même quand l'utilisateur n'ouvre pas l'onglet stats.
+- **Description :** Convertir IgPillarPieChart et autres composants recharts en `next/dynamic` avec `ssr: false`.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+---
+
 ### A-001 — Trigger SQL `handle_new_user` sans error handling
 - **Contexte :** Identifié pendant T-002 (audit auth)
 - **Description :** Si l'insert dans `users` échoue après la création du workspace, l'utilisateur se retrouve orphelin (auth.user existe mais pas de profil). Ajouter un BEGIN/EXCEPTION dans le trigger.
@@ -846,4 +869,15 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-*Mis a jour le 2026-05-04 par Claude Code — ClosRM*
+## Améliorations mobile — Fiche lead (session 2026-05-13)
+
+### A-MOB-01 · Follow-ups depuis la fiche lead mobile
+- **Contexte :** Demandé par Rémy — sur le web on peut créer des follow-ups, mais pas depuis l'app mobile.
+- **Description :** Ajouter un bouton "Créer un follow-up" dans la fiche lead mobile. Ouvre une sheet avec : raison, date/heure planifiée, canal (WhatsApp/Email/Manuel). Utilise la même API `/api/follow-ups` que le web.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation — réflexion en cours
+
+---
+
+*Mis à jour le 2026-05-13 par Claude Code — ClosRM*

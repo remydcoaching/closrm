@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { encrypt } from '@/lib/crypto'
 import { syncYoutubeAccount } from '@/lib/youtube/sync'
 
+export const maxDuration = 60
+
 export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const redirectBase = `${appUrl}/parametres/integrations`
@@ -76,13 +78,12 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Premier sync immédiat pour provisionner yt_accounts + vidéos
-    try {
-      await syncYoutubeAccount(state, access_token)
-    } catch (e) {
+    // Premier sync en fire-and-forget : 200+ vidéos × 2 calls Analytics ferait
+    // timeout le callback (Vercel max 60s). On ne bloque pas le redirect — le
+    // sync tourne en background et le cron quotidien rattrape le reste.
+    void syncYoutubeAccount(state, access_token).catch((e) => {
       console.error('[YouTube OAuth] first sync failed:', e)
-      // on continue — l'utilisateur pourra relancer manuellement
-    }
+    })
 
     return NextResponse.redirect(`${redirectBase}?success=${encodeURIComponent('YouTube connecté')}`)
   } catch (err) {

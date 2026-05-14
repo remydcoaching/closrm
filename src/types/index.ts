@@ -481,6 +481,9 @@ export interface Booking {
   /** Si non-null, ce booking fait partie d'une série récurrente. Toutes les
    *  occurrences d'une même série partagent ce group_id. */
   recurrence_group_id: string | null
+  /** Override de couleur côté UI. Si null, on retombe sur la couleur du
+   *  calendrier (ou bleu pour `is_personal`). Format hex `#RRGGBB`. */
+  color: string | null
   created_at: string
 }
 
@@ -1416,6 +1419,17 @@ export interface SocialPost {
   coach_notified_at: string | null
   pricing_tier_id: string | null
   paid_at: string | null
+  /** Historique des versions du montage final. La derniere = final_url. */
+  final_versions?: FinalVersion[]
+  /** Deadline souhaitee par le coach pour le montage. */
+  montage_deadline?: string | null
+}
+
+export interface FinalVersion {
+  version: number
+  url: string
+  uploaded_at: string
+  uploaded_by: string | null
 }
 
 export interface MonteurPricingTier {

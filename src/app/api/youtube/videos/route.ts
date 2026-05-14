@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     let q = supabase
       .from('yt_videos')
-      .select('*', { count: 'exact' })
+      .select('*', { count: 'planned' })
       .eq('workspace_id', workspaceId)
       .order('published_at', { ascending: false })
       .range((page - 1) * perPage, page * perPage - 1)

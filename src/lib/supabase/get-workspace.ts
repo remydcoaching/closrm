@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { headers as nextHeaders } from 'next/headers'
 import type { WorkspaceRole } from '@/types'
 
 interface WorkspaceContext {
@@ -9,9 +10,29 @@ interface WorkspaceContext {
 
 export async function getWorkspaceId(): Promise<WorkspaceContext> {
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  let { data: { user } } = await supabase.auth.getUser()
 
-  if (authError || !user) {
+  // Fallback Bearer (mobile) — si pas de session cookies, on tente de
+  // valider le JWT en clair via auth.getUser(token). Le client Supabase
+  // a déjà l'Authorization en global.headers (cf createClient), donc
+  // les requêtes RLS suivantes sont aussi authentifiées correctement.
+  if (!user) {
+    try {
+      const h = await nextHeaders()
+      const authHeader = h.get('authorization') ?? h.get('Authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.slice('Bearer '.length).trim()
+        if (token) {
+          const { data, error } = await supabase.auth.getUser(token)
+          if (!error && data.user) user = data.user
+        }
+      }
+    } catch {
+      // headers() pas dispo — flow cookies a déjà échoué.
+    }
+  }
+
+  if (!user) {
     throw new Error('Not authenticated')
   }
 

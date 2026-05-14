@@ -1,7 +1,27 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-05-04
+> Derniere mise a jour : 2026-05-10
+
+---
+
+## Session 2026-05-10 — Audit & optimisation perf (T-044)
+
+L'utilisateur signale agenda, leads, et réseaux sociaux comme « ULTRA LENTS ». Audit complet via 3 sous-agents parallèles, vérification critique des claims, fixes ciblés.
+
+**Le vrai goulot trouvé** : `count: 'exact'` côté Supabase force un scan complet de chaque table à chaque requête paginée. Remplacé par `count: 'planned'` (stats du planner, ~ instantané) sur 8 routes API principales — gain probable 200-500ms par requête sur grosses tables.
+
+**Autres fixes** :
+- Agenda : `handleStatusChange` optimiste (plus de refetch des 100 bookings au clic), `per_page` adaptatif day/week/month
+- Leads : 8 modales en `next/dynamic`, `LeadsListView` `React.memo` + callbacks parents stabilisés
+- IG Acquisition : `Promise.all` bloquant scindé en 2 vagues (critique vs secondaire)
+- IG Reels : `<video preload="none">` + `<img loading="lazy">`
+- YT Videos : debounce 300ms search, cache module-scope TTL 60s sur le panel détail
+- Migration 078 : index trigram (pg_trgm + GIN) sur `leads.first_name/last_name/email/phone/instagram_handle` et `yt_videos.title`
+
+**À appliquer en prod** : `supabase db push` pour la migration 078.
+
+Détail dans `taches/tache-044-perf-audit-agenda-leads-social.md`.
 
 ---
 

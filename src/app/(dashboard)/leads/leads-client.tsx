@@ -1,21 +1,27 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Settings2, Search, Upload, Download, Clock } from 'lucide-react'
-import LeadSidePanel from '@/components/shared/LeadSidePanel'
 import { Lead, LeadStatus, LeadSource, WorkspaceMemberWithUser } from '@/types'
 import LeadFilters from '@/components/leads/LeadFilters'
-import LeadForm from '@/components/leads/LeadForm'
-import ClosingModal from '@/components/leads/ClosingModal'
-import ConfirmModal from '@/components/shared/ConfirmModal'
-import CallScheduleModal from '@/components/leads/CallScheduleModal'
-import LeadActionModal, { type LeadAction } from '@/components/leads/LeadActionModal'
 import DateRangePicker from '@/components/leads/DateRangePicker'
 import ViewToggle from '@/components/leads/ViewToggle'
 import LeadsListView from './views/LeadsListView'
-import LeadsKanbanView from './views/LeadsKanbanView'
-import KanbanColumnsConfigModal from './views/KanbanColumnsConfigModal'
+
+// Modales et vues lourdes : lazy-load pour réduire le bundle initial.
+// Chacune ne charge son code qu'au moment où elle s'affiche.
+const LeadSidePanel = dynamic(() => import('@/components/shared/LeadSidePanel'), { ssr: false })
+const LeadForm = dynamic(() => import('@/components/leads/LeadForm'), { ssr: false })
+const ClosingModal = dynamic(() => import('@/components/leads/ClosingModal'), { ssr: false })
+const ConfirmModal = dynamic(() => import('@/components/shared/ConfirmModal'), { ssr: false })
+const CallScheduleModal = dynamic(() => import('@/components/leads/CallScheduleModal'), { ssr: false })
+const LeadActionModal = dynamic(() => import('@/components/leads/LeadActionModal'), { ssr: false })
+const LeadsKanbanView = dynamic(() => import('./views/LeadsKanbanView'), { ssr: false })
+const KanbanColumnsConfigModal = dynamic(() => import('./views/KanbanColumnsConfigModal'), { ssr: false })
+
+import type { LeadAction } from '@/components/leads/LeadActionModal'
 import {
   loadView, saveView, loadDateFilter, saveDateFilter,
   type LeadsView, type DateFilterPref,
@@ -155,22 +161,27 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
 
   useEffect(() => { setPage(1) }, [debouncedSearch, statuses, sources, assignedTo, dateFilter, metaFilter])
 
-  function patchLead(id: string, patch: Partial<Lead>) {
+  // Refs pour permettre des callbacks stables (useCallback sans dep) qui
+  // accèdent à la dernière valeur de view sans casser le memo de LeadsListView.
+  const viewRef = useRef(view)
+  useEffect(() => { viewRef.current = view }, [view])
+
+  const patchLead = useCallback((id: string, patch: Partial<Lead>) => {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
     fetch(`/api/leads/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
     }).then(r => {
-      if (!r.ok && view === 'kanban') setRefreshKey(k => k + 1)
+      if (!r.ok && viewRef.current === 'kanban') setRefreshKey(k => k + 1)
     })
-  }
+  }, [])
 
-  function onKanbanStatusChange(lead: Lead, newStatus: LeadStatus) {
+  const onKanbanStatusChange = useCallback((lead: Lead, newStatus: LeadStatus) => {
     patchLead(lead.id, { status: newStatus })
-  }
+  }, [patchLead])
 
-  function callLead(lead: Lead) {
+  const callLead = useCallback((lead: Lead) => {
     setConfirm({
       title: 'Enregistrer un appel',
       message: `Confirmer une tentative d'appel pour ${lead.first_name} ${lead.last_name} ? Le compteur passera à ${lead.call_attempts + 1}.`,
@@ -179,9 +190,9 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         patchLead(lead.id, { call_attempts: lead.call_attempts + 1 })
       },
     })
-  }
+  }, [patchLead])
 
-  function archiveLead(lead: Lead) {
+  const archiveLead = useCallback((lead: Lead) => {
     setConfirm({
       title: 'Archiver ce lead',
       message: `${lead.first_name} ${lead.last_name} sera archivé (statut Dead). Cette action est réversible depuis la fiche lead.`,
@@ -191,10 +202,14 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         await fetch(`/api/leads/${lead.id}`, { method: 'DELETE' })
         setLeads(prev => prev.filter(l => l.id !== lead.id))
         setMeta(prev => ({ ...prev, total: prev.total - 1 }))
-        if (view === 'kanban') setRefreshKey(k => k + 1)
+        if (viewRef.current === 'kanban') setRefreshKey(k => k + 1)
       },
     })
-  }
+  }, [])
+
+  const onLeadClick = useCallback((id: string) => setSidePanelLeadId(id), [])
+  const onTreat = useCallback((lead: Lead) => setTreatTarget(lead), [])
+  const onRequestClose = useCallback((lead: Lead) => setClosingTarget(lead), [])
 
   async function handleLeadAction(lead: Lead, action: LeadAction) {
     if (action.type === 'schedule_call') {
@@ -342,12 +357,12 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
           totalPages={meta.total_pages}
           total={meta.total}
           onPageChange={setPage}
-          onLeadClick={(id) => setSidePanelLeadId(id)}
-          onPatch={(id, patch) => patchLead(id, patch)}
+          onLeadClick={onLeadClick}
+          onPatch={patchLead}
           onCall={callLead}
-          onTreat={setTreatTarget}
+          onTreat={onTreat}
           onArchive={archiveLead}
-          onRequestClose={setClosingTarget}
+          onRequestClose={onRequestClose}
         />
       ) : (
         <LeadsKanbanView

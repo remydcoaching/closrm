@@ -9,7 +9,7 @@ const productionStatuses = ['idea', 'to_film', 'filmed', 'edited', 'ready'] as c
 export const publicationInputSchema = z.object({
   platform: z.enum(platforms),
   config: z.record(z.string(), z.unknown()).optional().default({}),
-  scheduled_at: z.string().datetime().optional().nullable(),
+  scheduled_at: z.string().datetime({ offset: true }).optional().nullable(),
 })
 
 export const createSocialPostSchema = z.object({
@@ -20,7 +20,7 @@ export const createSocialPostSchema = z.object({
   media_type: z.enum(mediaTypes).optional().nullable(),
   thumbnail_url: z.string().url().optional().nullable(),
   status: z.enum(statuses).optional().default('draft'),
-  scheduled_at: z.string().datetime().optional().nullable(),
+  scheduled_at: z.string().datetime({ offset: true }).optional().nullable(),
   pillar_id: z.string().uuid().optional().nullable(),
   publications: z.array(publicationInputSchema).default([]),
   content_kind: z.enum(contentKinds).optional().nullable(),
@@ -36,16 +36,18 @@ export const updateSocialPostSchema = z.object({
   title: z.string().max(300).optional().nullable(),
   caption: z.string().max(10000).optional().nullable(),
   hashtags: z.array(z.string().max(100)).max(60).optional(),
-  media_urls: z.array(z.string().url()).max(10).optional(),
+  // Accepte URLs externes OU paths R2 (workspaces/.../*) — comme final_url
+  media_urls: z.array(z.string().min(1).max(2000)).max(10).optional(),
   media_type: z.enum(mediaTypes).optional().nullable(),
   thumbnail_url: z.string().url().optional().nullable(),
   status: z.enum(statuses).optional(),
-  scheduled_at: z.string().datetime().optional().nullable(),
+  scheduled_at: z.string().datetime({ offset: true }).optional().nullable(),
   pillar_id: z.string().uuid().optional().nullable(),
   publications: z.array(publicationInputSchema.extend({ id: z.string().uuid().optional() })).optional(),
   content_kind: z.enum(contentKinds).optional().nullable(),
   production_status: z.enum(productionStatuses).optional().nullable(),
   plan_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD attendu').optional().nullable(),
+  slot_index: z.number().int().nullable().optional(),
   hook: z.string().max(500).optional().nullable(),
   script: z.string().max(20000).optional().nullable(),
   references_urls: z.array(z.string().url()).max(20).optional(),
@@ -58,7 +60,13 @@ export const updateSocialPostSchema = z.object({
   final_url: z.string().max(2000).optional().nullable().transform(v => v?.trim() || null),
   editor_notes: z.string().max(5000).optional().nullable(),
   pricing_tier_id: z.string().uuid().optional().nullable(),
-  paid_at: z.string().datetime().optional().nullable(),
+  paid_at: z.string().datetime({ offset: true }).optional().nullable(),
+  // Champ transient (non stocke en DB). Utilise pour passer un feedback au
+  // monteur lors d'une transition edited|ready -> filmed (= retouches demandees).
+  // Le serveur l'utilise pour le contenu de l'email + ne l'ecrit pas en DB.
+  revision_feedback: z.string().max(2000).optional().nullable(),
+  // Deadline montage (coach uniquement). ISO 8601.
+  montage_deadline: z.string().datetime({ offset: true }).optional().nullable(),
 })
 
 export const socialPostFiltersSchema = z.object({

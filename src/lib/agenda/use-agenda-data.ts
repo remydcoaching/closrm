@@ -173,10 +173,15 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
   const fetchEvents = useCallback(async () => {
     setLoading(true)
     const { start, end } = getDateRange(viewMode, currentDate)
+    // per_page adaptatif : day-view ~10-15 events réel, week ~50, month ~150.
+    // Avant : 100 hardcodé → soit on tronquait silencieusement en month chargé,
+    // soit on rapatriait du vide en day. Ce fix réduit le payload et évite
+    // la troncature.
+    const perPage = viewMode === 'day' ? 30 : viewMode === 'week' ? 100 : 200
     const params = new URLSearchParams({
       date_start: start.toISOString(),
       date_end: end.toISOString(),
-      per_page: '100',
+      per_page: String(perPage),
     })
 
     const requests: Promise<Response>[] = [
@@ -185,7 +190,7 @@ export function useAgendaData(opts: UseAgendaDataOptions): UseAgendaDataResult {
     if (includeCalls) {
       requests.push(
         fetch(
-          `/api/calls?scheduled_after=${start.toISOString()}&scheduled_before=${end.toISOString()}&per_page=100`,
+          `/api/calls?scheduled_after=${start.toISOString()}&scheduled_before=${end.toISOString()}&per_page=${perPage}`,
         ),
       )
     }

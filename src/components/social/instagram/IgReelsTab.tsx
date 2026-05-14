@@ -398,16 +398,22 @@ export default function IgReelsTab() {
                 aspectRatio: '9 / 16',
               }}>
                 {reel.video_url ? (
+                  // preload="none" : ne télécharge la vidéo qu'au premier play
+                  // utilisateur. Sans cette directive, Safari/Chrome chargent
+                  // les premiers MB à l'ouverture du panel (gros lag réseau).
                   <video
                     src={reel.video_url}
                     poster={reel.thumbnail_url ?? undefined}
                     controls
+                    preload="none"
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : reel.thumbnail_url ? (
                   <img
                     src={reel.thumbnail_url}
                     alt={reel.caption?.slice(0, 60) ?? 'Reel'}
+                    loading="lazy"
+                    decoding="async"
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : (

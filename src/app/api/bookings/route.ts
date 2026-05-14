@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createBookingSchema, bookingFiltersSchema } from '@/lib/validations/bookings'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { createGoogleCalendarEvent } from '@/lib/google/calendar'
 import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-confirmation'
 import { buildCalendarUrls } from '@/lib/email/calendar-links'
@@ -19,9 +20,12 @@ export async function GET(request: NextRequest) {
 
     const filters = bookingFiltersSchema.parse(Object.fromEntries(request.nextUrl.searchParams))
 
+    // count: 'planned' utilise les stats Postgres (~ instantané) au lieu de
+    // count: 'exact' qui force un scan complet à chaque GET. Précision ±10%
+    // suffit pour la pagination UI.
     let query = supabase
       .from('bookings')
-      .select(BOOKING_SELECT, { count: 'exact' })
+      .select(BOOKING_SELECT, { count: 'planned' })
       .eq('workspace_id', workspaceId)
 
     // Filtrage par rôle : setter/closer ne voient que leurs bookings
@@ -95,6 +99,7 @@ export async function POST(request: NextRequest) {
           location_id: parsed.data.location_id ?? null,
           source: 'manual' as const,
           recurrence_group_id: groupId,
+          color: parsed.data.color ?? null,
         }
       })
 
@@ -120,6 +125,7 @@ export async function POST(request: NextRequest) {
         notes: parsed.data.notes ?? null,
         is_personal: parsed.data.is_personal,
         location_id: parsed.data.location_id ?? null,
+        color: parsed.data.color ?? null,
         source: 'manual',
         status: 'confirmed',
       })
@@ -217,6 +223,28 @@ export async function POST(request: NextRequest) {
         calendar_name: (data.booking_calendar as { name?: string } | null)?.name,
         scheduled_at: data.scheduled_at,
       }).catch(() => {})
+    }
+
+    // Push mobile : un lead vient de réserver
+    {
+      const calName =
+        (data.booking_calendar as { name?: string } | null)?.name ?? 'créneau'
+      const when = data.scheduled_at
+        ? new Date(data.scheduled_at).toLocaleString('fr-FR', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : null
+      void sendPushToWorkspace({
+        workspaceId,
+        type: 'booking_created',
+        title: '📅 Nouveau booking',
+        body: when ? `${calName} · ${when}` : calName,
+        data: { entity_type: 'lead', entity_id: data.lead_id ?? '' },
+      })
     }
 
     // Create Google Calendar event (non-blocking)

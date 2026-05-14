@@ -18,6 +18,12 @@ import ThemeToggle from '@/components/theme/ThemeToggle'
 // component on each page renders the tab bar to switch between sub-views.
 const NAV = [
   {
+    title: 'MONTAGE',
+    items: [
+      { label: 'Mes montages', href: '/montage', icon: Scissors, matchPaths: ['/montage'] },
+    ],
+  },
+  {
     title: 'PRINCIPAL',
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, matchPaths: ['/dashboard'] },
@@ -33,7 +39,6 @@ const NAV = [
       { label: 'Funnels', href: '/acquisition/funnels', icon: Layers, matchPaths: ['/acquisition/funnels'] },
       { label: 'Lead Magnets', href: '/acquisition/lead-magnets', icon: Link2, matchPaths: ['/acquisition/lead-magnets'] },
       { label: 'Réseaux sociaux', href: '/acquisition/reseaux-sociaux', icon: Share2, matchPaths: ['/acquisition/reseaux-sociaux'] },
-      { label: 'Montage', href: '/montage', icon: Scissors, matchPaths: ['/montage'] },
     ],
   },
   {

@@ -10,19 +10,28 @@ export default function YtVideosTab() {
   const [loading, setLoading] = useState(true)
   const [format, setFormat] = useState<'all' | 'short' | 'long'>('all')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // Debounce 300ms : sans ça, taper "marketing" déclenche 9 fetches.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
 
   useEffect(() => {
     setLoading(true)
     const params = new URLSearchParams()
     if (format !== 'all') params.set('format', format)
-    if (search) params.set('search', search)
+    if (debouncedSearch) params.set('search', debouncedSearch)
     params.set('per_page', '100')
+    let cancelled = false
     fetch(`/api/youtube/videos?${params.toString()}`)
       .then((r) => r.json())
-      .then((j) => setVideos(j.data ?? []))
-      .finally(() => setLoading(false))
-  }, [format, search])
+      .then((j) => { if (!cancelled) setVideos(j.data ?? []) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [format, debouncedSearch])
 
   return (
     <div>
