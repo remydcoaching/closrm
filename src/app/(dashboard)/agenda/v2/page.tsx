@@ -82,6 +82,7 @@ export default function AgendaV2Page() {
   // Filtres sidebar. Pattern : `'all'` = tout visible (état initial / "reset"),
   // sinon une Set explicite. Évite un useEffect d'initialisation.
   const [calendarVisibility, setCalendarVisibility] = useState<Set<string> | 'all'>('all')
+  const [googleAccountVisibility, setGoogleAccountVisibility] = useState<Set<string> | 'all'>('all')
   const [showPersonal, setShowPersonal] = useState(true)
   const [showCalls, setShowCalls] = useState(true)
 
@@ -89,6 +90,7 @@ export default function AgendaV2Page() {
     events,
     calendars,
     locations,
+    googleAccounts,
     calendarsLoaded,
     syncError,
     dismissSyncError,
@@ -132,23 +134,45 @@ export default function AgendaV2Page() {
     return calendarVisibility
   }, [calendarVisibility, calendars])
 
+  const visibleGoogleAccountIds = useMemo<Set<string>>(() => {
+    if (googleAccountVisibility === 'all') return new Set(googleAccounts.map((a) => a.id))
+    return googleAccountVisibility
+  }, [googleAccountVisibility, googleAccounts])
+
   const filteredEvents = useMemo(() => {
     return events.filter((ev) => {
       if (ev.kind === 'call') return showCalls
       const b = ev.booking
+      // Google-synced bookings: filter by google_account_id
+      if (b.source === 'google_sync' && b.google_account_id) {
+        if (googleAccountVisibility !== 'all' && !visibleGoogleAccountIds.has(b.google_account_id)) return false
+        if (b.is_personal) return showPersonal
+        return true
+      }
       if (b.is_personal) return showPersonal
       if (calendarVisibility === 'all') return true
       if (b.calendar_id) return visibleCalendarIds.has(b.calendar_id)
       return true
     })
-  }, [events, visibleCalendarIds, calendarVisibility, showPersonal, showCalls])
+  }, [events, visibleCalendarIds, calendarVisibility, visibleGoogleAccountIds, googleAccountVisibility, showPersonal, showCalls])
 
   function toggleCalendar(id: string) {
     setCalendarVisibility((prev) => {
-      // Première interaction : on matérialise la Set complète puis on toggle
       const base =
         prev === 'all'
           ? new Set(calendars.map((c) => c.id))
+          : new Set(prev)
+      if (base.has(id)) base.delete(id)
+      else base.add(id)
+      return base
+    })
+  }
+
+  function toggleGoogleAccount(id: string) {
+    setGoogleAccountVisibility((prev) => {
+      const base =
+        prev === 'all'
+          ? new Set(googleAccounts.map((a) => a.id))
           : new Set(prev)
       if (base.has(id)) base.delete(id)
       else base.add(id)
@@ -620,6 +644,9 @@ export default function AgendaV2Page() {
               onTogglePersonal={() => setShowPersonal((v) => !v)}
               showCalls={showCalls}
               onToggleCalls={() => setShowCalls((v) => !v)}
+              googleAccounts={googleAccounts}
+              visibleGoogleAccountIds={visibleGoogleAccountIds}
+              onToggleGoogleAccount={toggleGoogleAccount}
             />
           )}
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>

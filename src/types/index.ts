@@ -456,6 +456,19 @@ export interface BookingLocation {
   created_at: string
 }
 
+// ── Google Calendar Accounts ────────────────────────────────────────────────
+
+export interface GoogleCalendarAccount {
+  id: string
+  workspace_id: string
+  email: string
+  label: string | null
+  color: string
+  is_active: boolean
+  connected_at: string
+  created_at: string
+}
+
 // ── Booking ──────────────────────────────────────────────────────────────────
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'completed'
@@ -484,6 +497,7 @@ export interface Booking {
   /** Override de couleur côté UI. Si null, on retombe sur la couleur du
    *  calendrier (ou bleu pour `is_personal`). Format hex `#RRGGBB`. */
   color: string | null
+  google_account_id: string | null
   created_at: string
 }
 
