@@ -203,32 +203,55 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
 
   const positioned = useMemo(() => layoutItems(items, startHour), [items, startHour])
 
-  // [TIMELINE DIAG 2026-05-15] capture data pour comprendre pourquoi le rendu
-  // dévie (bug récurrent où des cards apparaissent hors-bornes). À retirer
-  // après diagnostic.
-  // eslint-disable-next-line no-console
-  console.log('[timeline-diag]', {
-    itemsCount: items.length,
-    itemsRaw: items.map((it) => ({
-      id: it.id,
-      scheduled_at: it.scheduled_at,
-      duration_minutes: it.duration_minutes,
-      kind: it.kind,
-      title: it.title,
-    })),
-    startHour,
-    endHour,
-    totalHeight,
-    positionedCount: positioned.length,
-    positioned: positioned.map((p) => ({
-      id: p.item.id,
-      top: p.top,
-      height: p.height,
-      bottom: p.top + p.height,
-      lane: p.lane,
-      laneCount: p.laneCount,
-    })),
-  })
+  // [TIMELINE DIAG 2026-05-15] log seulement quand les données changent
+  // (pas à chaque render) + détection d'anomalie (event hors-bornes).
+  useEffect(() => {
+    const diag = {
+      itemsCount: items.length,
+      itemsRaw: items.map((it) => ({
+        id: it.id,
+        scheduled_at: it.scheduled_at,
+        duration_minutes: it.duration_minutes,
+        kind: it.kind,
+        title: it.title,
+      })),
+      startHour,
+      endHour,
+      totalHeight,
+      positionedCount: positioned.length,
+      positioned: positioned.map((p) => ({
+        id: p.item.id,
+        title: p.item.title,
+        top: p.top,
+        height: p.height,
+        bottom: p.top + p.height,
+      })),
+    }
+    // eslint-disable-next-line no-console
+    console.log('[timeline-diag]', JSON.stringify(diag))
+    // Détection d'anomalie : event positionné hors-bornes du container.
+    const outOfBounds = positioned.filter(
+      (p) => p.top < 0 || p.top + p.height > totalHeight
+    )
+    if (outOfBounds.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[timeline-diag] OUT OF BOUNDS events',
+        JSON.stringify({
+          totalHeight,
+          startHour,
+          endHour,
+          offenders: outOfBounds.map((p) => ({
+            id: p.item.id,
+            title: p.item.title,
+            scheduled_at: p.item.scheduled_at,
+            top: p.top,
+            height: p.height,
+          })),
+        })
+      )
+    }
+  }, [items, startHour, endHour, totalHeight, positioned])
 
   const isToday = sameDay(date, new Date())
   const [now, setNow] = useState(() => new Date())
@@ -244,20 +267,37 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
     return (h - startHour) * HOUR_HEIGHT
   }, [isToday, now, startHour, endHour])
 
-  // Auto-scroll
+  // Auto-scroll — on calcule la cible mais on attend que ScrollView ait
+  // mesuré son content (onContentSizeChange) avant de scroller. Évite le
+  // bug du setTimeout qui peut firer avant que la layout soit prête →
+  // scrollTo clampé à 0 silencieusement.
   const scrollRef = useRef<ScrollView>(null)
-  useEffect(() => {
+  const hasAutoScrolledRef = useRef(false)
+  const autoScrollTargetY = useMemo(() => {
     let target: number
     if (isToday) target = Math.max(startHour, new Date().getHours() - 1)
     else if (items.length > 0) {
-      const first = Math.min(...items.map((it) => new Date(it.scheduled_at).getHours()))
-      target = Math.max(startHour, first - 1)
+      const first = Math.min(
+        ...items
+          .map((it) => new Date(it.scheduled_at).getHours())
+          .filter((h) => !Number.isNaN(h))
+      )
+      target = Number.isFinite(first) ? Math.max(startHour, first - 1) : Math.max(startHour, 8)
     } else target = Math.max(startHour, 8)
-    const y = (target - startHour) * HOUR_HEIGHT
-    const id = setTimeout(() => scrollRef.current?.scrollTo({ y, animated: false }), 50)
-    return () => clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return (target - startHour) * HOUR_HEIGHT
+  }, [isToday, items, startHour])
+
+  // Reset le flag d'auto-scroll quand la date ou la plage change.
+  useEffect(() => {
+    hasAutoScrolledRef.current = false
   }, [date, startHour])
+
+  const handleContentSizeChange = (_w: number, h: number) => {
+    if (hasAutoScrolledRef.current) return
+    if (h < autoScrollTargetY) return // pas encore prêt
+    hasAutoScrolledRef.current = true
+    scrollRef.current?.scrollTo({ y: autoScrollTargetY, animated: false })
+  }
 
   const hours = useMemo(() => {
     const out: number[] = []
@@ -271,6 +311,7 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
       style={{ flex: 1 }}
       contentContainerStyle={{ paddingBottom: 100 }}
       showsVerticalScrollIndicator={false}
+      onContentSizeChange={handleContentSizeChange}
     >
       <View
         style={{
