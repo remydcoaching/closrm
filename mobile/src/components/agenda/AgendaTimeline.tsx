@@ -167,13 +167,13 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
   // Si c'est aujourd'hui, on inclut l'heure actuelle dans la plage pour que
   // la NOW line s'affiche correctement.
   const { startHour, endHour } = useMemo(() => {
+    // Filtre: uniquement scheduled_at valide. La durée invalide a un
+    // fallback (30min) pour rester cohérent avec layoutItems — sinon un
+    // event à 14h avec duration_minutes=0 serait positionné par
+    // layoutItems mais ignoré du calcul de plage → invisible (clippé).
     const valid = items.filter((it) => {
       const d = new Date(it.scheduled_at)
-      return (
-        !Number.isNaN(d.getTime()) &&
-        Number.isFinite(it.duration_minutes) &&
-        it.duration_minutes > 0
-      )
+      return !Number.isNaN(d.getTime())
     })
     const isTodayCheck = sameDay(date, new Date())
     if (valid.length === 0) {
@@ -184,7 +184,11 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
     for (const it of valid) {
       const start = new Date(it.scheduled_at)
       const startH = start.getHours() + start.getMinutes() / 60
-      const endH = startH + it.duration_minutes / 60
+      const dur =
+        Number.isFinite(it.duration_minutes) && it.duration_minutes > 0
+          ? it.duration_minutes
+          : 30
+      const endH = startH + dur / 60
       if (startH < minH) minH = startH
       if (endH > maxH) maxH = endH
     }
