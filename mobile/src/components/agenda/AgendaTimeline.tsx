@@ -162,19 +162,43 @@ function layoutItems(items: AgendaItem[], startHour: number): Positioned[] {
 }
 
 export function AgendaTimeline({ items, date, onPressItem }: Props) {
-  // Plage horaire dynamique.
+  // Plage horaire DATA-DRIVEN. On filtre les items invalides AVANT pour ne
+  // pas polluer le calcul. Si aucun event valide → fallback defaults.
+  // Si c'est aujourd'hui, on inclut l'heure actuelle dans la plage pour que
+  // la NOW line s'affiche correctement.
   const { startHour, endHour } = useMemo(() => {
-    let minH = DEFAULT_START_HOUR
-    let maxH = DEFAULT_END_HOUR
-    for (const it of items) {
-      const start = new Date(it.scheduled_at)
-      const startH = start.getHours()
-      const endH = Math.ceil(startH + it.duration_minutes / 60)
-      if (startH < minH) minH = Math.max(0, startH)
-      if (endH > maxH) maxH = Math.min(24, endH)
+    const valid = items.filter((it) => {
+      const d = new Date(it.scheduled_at)
+      return (
+        !Number.isNaN(d.getTime()) &&
+        Number.isFinite(it.duration_minutes) &&
+        it.duration_minutes > 0
+      )
+    })
+    const isTodayCheck = sameDay(date, new Date())
+    if (valid.length === 0) {
+      return { startHour: DEFAULT_START_HOUR, endHour: DEFAULT_END_HOUR }
     }
-    return { startHour: minH, endHour: maxH }
-  }, [items])
+    let minH = 24
+    let maxH = 0
+    for (const it of valid) {
+      const start = new Date(it.scheduled_at)
+      const startH = start.getHours() + start.getMinutes() / 60
+      const endH = startH + it.duration_minutes / 60
+      if (startH < minH) minH = startH
+      if (endH > maxH) maxH = endH
+    }
+    // Si aujourd'hui, force la plage à englober l'heure courante (pour la NOW line).
+    if (isTodayCheck) {
+      const nowH = new Date().getHours() + new Date().getMinutes() / 60
+      if (nowH < minH) minH = nowH
+      if (nowH > maxH) maxH = nowH
+    }
+    return {
+      startHour: Math.max(0, Math.floor(minH) - 1),
+      endHour: Math.min(23, Math.ceil(maxH) + 1),
+    }
+  }, [items, date])
   const totalHeight = (endHour - startHour + 1) * HOUR_HEIGHT
 
   const positioned = useMemo(() => layoutItems(items, startHour), [items, startHour])
