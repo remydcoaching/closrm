@@ -179,6 +179,33 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
 
   const positioned = useMemo(() => layoutItems(items, startHour), [items, startHour])
 
+  // [TIMELINE DIAG 2026-05-15] capture data pour comprendre pourquoi le rendu
+  // dévie (bug récurrent où des cards apparaissent hors-bornes). À retirer
+  // après diagnostic.
+  // eslint-disable-next-line no-console
+  console.log('[timeline-diag]', {
+    itemsCount: items.length,
+    itemsRaw: items.map((it) => ({
+      id: it.id,
+      scheduled_at: it.scheduled_at,
+      duration_minutes: it.duration_minutes,
+      kind: it.kind,
+      title: it.title,
+    })),
+    startHour,
+    endHour,
+    totalHeight,
+    positionedCount: positioned.length,
+    positioned: positioned.map((p) => ({
+      id: p.item.id,
+      top: p.top,
+      height: p.height,
+      bottom: p.top + p.height,
+      lane: p.lane,
+      laneCount: p.laneCount,
+    })),
+  })
+
   const isToday = sameDay(date, new Date())
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -226,6 +253,7 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
           height: totalHeight,
           position: 'relative',
           paddingRight: spacing.lg,
+          overflow: 'hidden',
         }}
       >
         {/* Grille horaire fixe : 1 row par heure à HOUR_HEIGHT exactement */}
@@ -269,14 +297,17 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
           </View>
         ))}
 
-        {/* Events absolument positionnés au-dessus de la grille */}
+        {/* Events absolument positionnés au-dessus de la grille.
+            height explicite (au lieu de top:0/bottom:0) pour éviter les
+            quirks de layout RN qui peuvent positionner les events hors
+            de la grille en cas de scroll/parent layout étrange. */}
         <View
           style={{
             position: 'absolute',
             left: HOUR_LABEL_WIDTH,
             right: spacing.lg,
             top: 0,
-            bottom: 0,
+            height: totalHeight,
           }}
           pointerEvents="box-none"
         >
