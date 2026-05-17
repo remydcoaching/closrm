@@ -43,7 +43,7 @@ interface BriefViewProps {
   reelParamProp?: string | null
   targetSessionId?: string | null
   onClose?: () => void
-  onSwitchView?: (view: 'prep' | 'jour-j') => void
+  onSwitchView?: (view: 'prep') => void
 }
 
 export function BriefView({ embedded, reelParamProp, targetSessionId, onClose, onSwitchView }: BriefViewProps = {}) {
@@ -135,11 +135,11 @@ export function BriefView({ embedded, reelParamProp, targetSessionId, onClose, o
           Le brief monteur s&apos;active quand au moins 1 phrase est marquée &quot;✓ Tournée&quot;.
         </div>
         {embedded && onSwitchView ? (
-          <button onClick={() => onSwitchView('jour-j')} style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, border: 'none', fontSize: 12, cursor: 'pointer' }}>← Retour au jour J</button>
+          <button onClick={() => onSwitchView('prep')} style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, border: 'none', fontSize: 12, cursor: 'pointer' }}>← Retour à la prep</button>
         ) : (
-          <Link href={reelParam ? `/acquisition/reels/tournage/jour-j?reel=${reelParam}` : '/acquisition/reels/tournage/jour-j'}
+          <Link href={reelParam ? `/acquisition/reels/tournage/prep?reel=${reelParam}` : '/acquisition/reels/tournage/prep'}
             style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 12 }}>
-            ← Retour au jour J
+            ← Retour à la prep
           </Link>
         )}
       </div>
@@ -191,10 +191,10 @@ export function BriefView({ embedded, reelParamProp, targetSessionId, onClose, o
           </div>
         </div>
         {embedded && onSwitchView && (
-          <button onClick={() => onSwitchView('jour-j')} style={{
+          <button onClick={() => onSwitchView('prep')} style={{
             padding: '8px 14px', fontSize: 12, fontWeight: 600,
             color: '#888', background: 'transparent', border: '1px solid #262626', borderRadius: 8, cursor: 'pointer',
-          }}>← Jour J</button>
+          }}>← Prep</button>
         )}
         <button onClick={copyLink} style={{
           padding: '8px 14px', fontSize: 12, fontWeight: 600,

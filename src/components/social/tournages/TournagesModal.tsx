@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, Suspense } from 'react'
 import { X } from 'lucide-react'
 import { PrepView } from '@/app/(dashboard)/acquisition/reels/tournage/prep/page'
-import { JourJView } from '@/app/(dashboard)/acquisition/reels/tournage/jour-j/page'
 import { BriefView } from '@/app/(dashboard)/acquisition/reels/tournage/brief/page'
 
 interface SessionRow {
@@ -40,7 +39,7 @@ interface Props {
   onClose: () => void
 }
 
-type View = { kind: 'index' } | { kind: 'prep' | 'jour-j' | 'brief'; reelIds: string[]; sessionId: string }
+type View = { kind: 'index' } | { kind: 'prep' | 'brief'; reelIds: string[]; sessionId: string }
 
 export default function TournagesModal({ open, onClose }: Props) {
   const [sessions, setSessions] = useState<SessionRow[]>([])
@@ -90,11 +89,11 @@ export default function TournagesModal({ open, onClose }: Props) {
     ? filteredByStatus.filter(s => (s.name ?? '').toLowerCase().includes(search.toLowerCase()))
     : filteredByStatus
 
-  function openSubView(kind: 'prep' | 'jour-j' | 'brief', sessionId: string, reelIds: string[]) {
+  function openSubView(kind: 'prep' | 'brief', sessionId: string, reelIds: string[]) {
     setView({ kind, sessionId, reelIds })
   }
   function backToIndex() { setView({ kind: 'index' }); load() }
-  function switchSubView(kind: 'prep' | 'jour-j' | 'brief') {
+  function switchSubView(kind: 'prep' | 'brief') {
     if (view.kind === 'index') return
     setView({ kind, sessionId: view.sessionId, reelIds: view.reelIds })
   }
@@ -110,7 +109,7 @@ export default function TournagesModal({ open, onClose }: Props) {
     } catch { /* noop */ }
   }
 
-  // Sub-view: rend PrepView/JourJView/BriefView en plein écran de modale
+  // Sub-view: rend PrepView/BriefView en plein écran de modale
   if (view.kind !== 'index') {
     const reelParam = view.reelIds.length > 0 ? view.reelIds.join(',') : null
     return (
@@ -135,15 +134,6 @@ export default function TournagesModal({ open, onClose }: Props) {
                   onClose={backToIndex}
                   onSwitchView={(v) => switchSubView(v)}
                   onNavigate={handleSubNavigate}
-                />
-              )}
-              {view.kind === 'jour-j' && (
-                <JourJView
-                  embedded
-                  reelParamProp={reelParam}
-                  targetSessionId={view.sessionId}
-                  onClose={backToIndex}
-                  onSwitchView={(v) => switchSubView(v)}
                 />
               )}
               {view.kind === 'brief' && (
@@ -286,7 +276,7 @@ export default function TournagesModal({ open, onClose }: Props) {
 function SessionCard({ session, onChange, onOpenSubView }: {
   session: SessionRow
   onChange: () => void
-  onOpenSubView: (kind: 'prep' | 'jour-j' | 'brief', sessionId: string, reelIds: string[]) => void
+  onOpenSubView: (kind: 'prep' | 'brief', sessionId: string, reelIds: string[]) => void
 }) {
   const reelIds = (session.reels ?? [])
     .slice()
