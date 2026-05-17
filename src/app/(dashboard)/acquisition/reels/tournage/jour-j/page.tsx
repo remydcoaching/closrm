@@ -213,12 +213,13 @@ export function JourJView({ embedded, reelParamProp, targetSessionId, onClose, o
     return r
   }, [shots, reels])
 
-  // Tri par nombre de phrases restantes à tourner (skip + done exclus).
-  // Une fois tout tourné, l'ordre reste stable (toutes valeurs à 0).
+  // Tri par nombre TOTAL de shots — stable pendant la session (ne change pas
+  // quand on marque des phrases done, sinon le lieu courant se ferait shifter
+  // de position en plein tournage).
   const places = useMemo(() => Object.keys(byPlace).sort((a, b) => {
-    const aTodo = byPlace[a].filter(s => !s.skipped && !s.done).length
-    const bTodo = byPlace[b].filter(s => !s.skipped && !s.done).length
-    return bTodo - aTodo
+    const diff = byPlace[b].length - byPlace[a].length
+    if (diff !== 0) return diff
+    return a.localeCompare(b)
   }), [byPlace])
 
   if (loading) return <div style={{ padding: 40, color: '#888' }}>Chargement…</div>
