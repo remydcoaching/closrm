@@ -67,15 +67,14 @@ export function TournageSessionsScreen() {
     void load()
   }, [load])
 
-  function openSession(s: SessionRow, view: 'prep' | 'jour-j' | 'brief') {
+  function openSession(s: SessionRow, view: 'prep' | 'jour-j') {
     const reelIds = (s.reels ?? [])
       .slice()
       .sort((a, b) => a.position - b.position)
       .map((r) => r.social_post_id)
     const params = { reelIds: reelIds.length > 0 ? reelIds : null, sessionId: s.id }
     if (view === 'prep') navigation.navigate('ReelsPrep', params)
-    else if (view === 'jour-j') navigation.navigate('ReelsJourJ', params)
-    else navigation.navigate('ReelsBrief', params)
+    else navigation.navigate('ReelsJourJ', params)
   }
 
   const visible = showArchived ? sessions : sessions.filter((s) => s.status !== 'archived')
@@ -174,7 +173,7 @@ function SessionCard({
   onOpen,
 }: {
   session: SessionRow
-  onOpen: (view: 'prep' | 'jour-j' | 'brief') => void
+  onOpen: (view: 'prep' | 'jour-j') => void
 }) {
   const total = session.stats.total
   const done = session.stats.done

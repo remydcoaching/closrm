@@ -25,7 +25,6 @@ export type MoreStackParamList = {
   TournageSessions: undefined
   ReelsPrep: { reelIds: string[] | null; sessionId?: string | null }
   ReelsJourJ: { reelIds: string[] | null; sessionId?: string | null }
-  ReelsBrief: { reelIds: string[] | null; sessionId?: string | null }
 }
 
 export type TabParamList = {

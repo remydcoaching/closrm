@@ -68,7 +68,7 @@ interface PrepViewProps {
   targetSessionId?: string | null
   onClose?: () => void
   onNavigate?: (url: string) => void
-  onSwitchView?: (view: 'jour-j' | 'brief') => void
+  onSwitchView?: (view: 'brief') => void
 }
 
 export function PrepView({ embedded, reelParamProp, targetSessionId, onClose, onNavigate, onSwitchView }: PrepViewProps = {}) {
@@ -377,14 +377,14 @@ export function PrepView({ embedded, reelParamProp, targetSessionId, onClose, on
         <NavBtn
           embedded={embedded}
           onSwitchView={onSwitchView}
-          target="jour-j"
-          href={reelParam ? `/acquisition/reels/tournage/jour-j?reel=${reelParam}` : '/acquisition/reels/tournage/jour-j'}
+          target="brief"
+          href={reelParam ? `/acquisition/reels/tournage/brief?reel=${reelParam}` : '/acquisition/reels/tournage/brief'}
           style={{
             padding: '8px 14px', fontSize: 12, fontWeight: 600,
             color: '#FF0000', background: 'rgba(255,0,0,0.08)',
             border: '1px solid rgba(255,0,0,0.25)', borderRadius: 8, textDecoration: 'none', cursor: 'pointer',
           }}
-        >🎬 Jour J →</NavBtn>
+        >📄 Brief →</NavBtn>
       </div>
 
       <div style={{
@@ -820,8 +820,8 @@ function NavBtn({
   embedded, onSwitchView, target, href, style, children,
 }: {
   embedded?: boolean
-  onSwitchView?: (view: 'jour-j' | 'brief') => void
-  target: 'jour-j' | 'brief'
+  onSwitchView?: (view: 'brief') => void
+  target: 'brief'
   href: string
   style: React.CSSProperties
   children: React.ReactNode
