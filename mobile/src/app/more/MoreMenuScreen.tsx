@@ -264,6 +264,12 @@ export function MoreMenuScreen() {
         <View style={{ marginBottom: spacing.xxl }}>
           <ListSection>
             <ListRow
+              leading={<DotIcon name="color-palette" tint="#8b5cf6" />}
+              title="Apparence"
+              subtitle="Couleur d'accent du workspace"
+              onPress={() => navigation.navigate('Branding')}
+            />
+            <ListRow
               leading={<DotIcon name="settings-sharp" tint="#8e8e93" />}
               title="Réglages"
               subtitle="Depuis le web pour l'instant"

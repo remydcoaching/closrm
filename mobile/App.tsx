@@ -7,19 +7,22 @@ import RootNavigator from './src/navigation/RootNavigator'
 import { ScheduleSheetProvider } from './src/components/schedule/ScheduleSheetProvider'
 import { CreateLeadSheetProvider } from './src/components/leads/CreateLeadSheet'
 import { useExpoPush } from './src/hooks/useExpoPush'
+import { useAgendaReminders } from './src/hooks/useAgendaReminders'
 import { ThemeProvider } from './src/theme/ThemeProvider'
 import { checkAndApplyUpdate } from './src/services/updates'
-import { darkColors, lightColors } from './src/theme/colors'
+import { darkColors, lightColors, getAccentColor } from './src/theme/colors'
 import './global.css'
 
 type NavMode = 'dark' | 'light'
 
 const buildNavTheme = (mode: NavMode) => {
   const c = mode === 'dark' ? darkColors : lightColors
+  const accent = getAccentColor()
+  const primary = (mode === 'dark' ? accent.dark : accent.light) ?? c.primary
   return {
     dark: mode === 'dark',
     colors: {
-      primary: c.primary,
+      primary,
       background: c.bgPrimary,
       card: c.bgSecondary,
       text: c.textPrimary,
@@ -41,6 +44,7 @@ function PushHandler({
   navRef: React.RefObject<NavigationContainerRef<Record<string, object | undefined>> | null>
 }) {
   useExpoPush(navRef)
+  useAgendaReminders()
   return null
 }
 
@@ -57,10 +61,14 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          {(theme: NavMode) => (
-            // key={theme} : force remount de tout l'arbre quand on toggle
-            // dark/light → composants relisent le proxy `colors`.
-            <NavigationContainer key={theme} ref={navRef} theme={buildNavTheme(theme)}>
+          {(theme: NavMode, remountKey: string) => (
+            // key inclut accent + theme : force le remount de tout l'arbre
+            // au moindre changement → composants relisent le proxy `colors`.
+            <NavigationContainer
+              key={remountKey}
+              ref={navRef}
+              theme={buildNavTheme(theme)}
+            >
               <ScheduleSheetProvider>
                 <CreateLeadSheetProvider>
                   <PushHandler navRef={navRef} />

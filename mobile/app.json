@@ -2,7 +2,7 @@
   "expo": {
     "name": "ClosRM",
     "slug": "closrm-mobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -40,7 +40,8 @@
       [
         "expo-notifications",
         {
-          "color": "#00C853"
+          "color": "#00C853",
+          "sounds": ["./assets/sounds/alarm.wav"]
         }
       ],
       "expo-video"

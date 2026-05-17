@@ -10,6 +10,7 @@ import { View, Text, TextInput, Pressable, Alert } from 'react-native'
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetScrollView,
+  BottomSheetTextInput,
 } from '@gorhom/bottom-sheet'
 import { Ionicons } from '@expo/vector-icons'
 import type { LeadSource } from '@shared/types'
@@ -92,7 +93,7 @@ function InputRow({
       >
         <Ionicons name={icon} size={16} color="#fff" />
       </View>
-      <TextInput
+      <BottomSheetTextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -200,6 +201,9 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
         backgroundStyle={{ backgroundColor: colors.sheet }}
         handleIndicatorStyle={{ backgroundColor: colors.border }}
         backdropComponent={renderBackdrop}
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
         onChange={(idx) => {
           if (idx === -1) reset()
         }}
@@ -416,7 +420,7 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
                 minHeight: 80,
               }}
             >
-              <TextInput
+              <BottomSheetTextInput
                 value={notes}
                 onChangeText={setNotes}
                 placeholder="Contexte initial, source précise, etc."

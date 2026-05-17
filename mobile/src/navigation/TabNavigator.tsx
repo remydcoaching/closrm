@@ -3,11 +3,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
 import type { TabParamList } from './types'
 import LeadsStack from './stacks/LeadsStack'
-import CallsStack from './stacks/CallsStack'
+import AgendaStack from './stacks/AgendaStack'
 import MessagesStack from './stacks/MessagesStack'
 import MoreStack from './stacks/MoreStack'
 import { PulseScreen } from '../app/pulse/PulseScreen'
 import { useUnreadCounts } from '../hooks/useUnreadCounts'
+import { colors } from '../theme/colors'
 
 const Tab = createBottomTabNavigator<TabParamList>()
 
@@ -26,8 +27,8 @@ const iconFor = (route: keyof TabParamList, focused: boolean): IoniconName => {
   switch (route) {
     case 'LeadsTab':
       return focused ? 'people' : 'people-outline'
-    case 'CallsTab':
-      return focused ? 'call' : 'call-outline'
+    case 'AgendaTab':
+      return focused ? 'calendar' : 'calendar-outline'
     case 'MessagesTab':
       return focused ? 'chatbubbles' : 'chatbubbles-outline'
     case 'PulseTab':
@@ -50,7 +51,7 @@ export default function TabNavigator() {
           borderTopColor: '#3a3a3c',
           borderTopWidth: 0.33,
         },
-        tabBarActiveTintColor: '#00C853',
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: '#8a8a8e',
         tabBarLabelStyle: {
           fontSize: 10,
@@ -63,7 +64,7 @@ export default function TabNavigator() {
       })}
     >
       <Tab.Screen name="LeadsTab" component={LeadsStack} options={{ title: 'Leads' }} />
-      <Tab.Screen name="CallsTab" component={CallsStack} options={{ title: 'Calls' }} />
+      <Tab.Screen name="AgendaTab" component={AgendaStack} options={{ title: 'Agenda' }} />
       <Tab.Screen
         name="MessagesTab"
         component={MessagesStack}

@@ -1,10 +1,18 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { Appearance } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
-import { getTheme, setTheme as setThemeSingleton, type Theme } from './colors'
+import {
+  getTheme,
+  setTheme as setThemeSingleton,
+  setAccentColor,
+  darkenHex,
+  isValidHex,
+  type Theme,
+} from './colors'
 
 type Mode = 'auto' | Theme
 const STORAGE_KEY = 'closrm.theme.mode'
+const ACCENT_KEY = 'closrm.accent_color_v1'
 
 interface ThemeContextValue {
   /** Thème effectif (résolu après auto). */
@@ -13,6 +21,10 @@ interface ThemeContextValue {
   mode: Mode
   setMode: (m: Mode) => Promise<void>
   toggle: () => Promise<void>
+  /** Couleur d'accent actuelle (hex). null = défaut vert ClosRM. */
+  accent: string | null
+  /** Change la couleur d'accent ; null = reset au défaut. */
+  setAccent: (hex: string | null) => Promise<void>
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -31,7 +43,9 @@ const resolveTheme = (mode: Mode): Theme => {
 }
 
 interface Props {
-  children: (theme: Theme) => React.ReactNode
+  /** Render-prop. La `key` qu'on calcule en interne (theme + accent) sert
+   *  à forcer le remount de l'arbre quand l'un des deux change. */
+  children: (theme: Theme, key: string) => React.ReactNode
 }
 
 /** Provider — accepte une render-prop pour qu'on puisse forcer le remount
@@ -45,20 +59,30 @@ export function ThemeProvider({ children }: Props) {
     setThemeSingleton(t)
     return t
   })
+  const [accent, setAccentState] = useState<string | null>(null)
 
   // Hydrate depuis SecureStore au démarrage
   useEffect(() => {
     let cancelled = false
     void (async () => {
       try {
-        const stored = await SecureStore.getItemAsync(STORAGE_KEY)
+        const [storedMode, storedAccent] = await Promise.all([
+          SecureStore.getItemAsync(STORAGE_KEY),
+          SecureStore.getItemAsync(ACCENT_KEY),
+        ])
         if (cancelled) return
         const m: Mode =
-          stored === 'dark' || stored === 'light' || stored === 'auto' ? (stored as Mode) : 'auto'
+          storedMode === 'dark' || storedMode === 'light' || storedMode === 'auto'
+            ? (storedMode as Mode)
+            : 'auto'
         const t = resolveTheme(m)
         setThemeSingleton(t)
         setModeState(m)
         setThemeStateInternal(t)
+        if (storedAccent && isValidHex(storedAccent)) {
+          applyAccentToSingleton(storedAccent)
+          setAccentState(storedAccent)
+        }
       } catch {
         /* default auto */
       }
@@ -97,11 +121,35 @@ export function ThemeProvider({ children }: Props) {
     await setMode(next)
   }, [setMode])
 
-  // key = theme : force le remount de l'arbre enfant à chaque changement
-  // → tous les composants re-renderent et lisent le nouveau proxy `colors`.
+  const setAccent = useCallback(async (hex: string | null) => {
+    if (hex !== null && !isValidHex(hex)) return
+    if (hex) applyAccentToSingleton(hex)
+    else setAccentColor({ dark: null, light: null })
+    setAccentState(hex)
+    try {
+      if (hex) await SecureStore.setItemAsync(ACCENT_KEY, hex)
+      else await SecureStore.deleteItemAsync(ACCENT_KEY)
+    } catch {
+      /* swallow */
+    }
+  }, [])
+
+  // key = theme uniquement. On ne remonte PAS sur changement d'accent (sinon
+  // l'app entière se recharge à chaque tap sur une couleur). L'accent est
+  // appliqué via le singleton `colors` proxy → les composants captent la
+  // nouvelle valeur au prochain rerender naturel (navigation, scroll, etc).
+  // Pour la BrandingScreen elle-même la preview se met à jour parce qu'elle
+  // utilise `accent` du contexte (React state).
+  const remountKey = theme
+
   return (
-    <ThemeContext.Provider value={{ theme, mode, setMode, toggle }}>
-      {children(theme)}
+    <ThemeContext.Provider value={{ theme, mode, setMode, toggle, accent, setAccent }}>
+      {children(theme, remountKey)}
     </ThemeContext.Provider>
   )
+}
+
+function applyAccentToSingleton(hex: string) {
+  // Dark : hex tel quel. Light : assombri 15% pour le contraste sur fond clair.
+  setAccentColor({ dark: hex, light: darkenHex(hex, 15) })
 }

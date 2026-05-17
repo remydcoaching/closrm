@@ -1,6 +1,7 @@
 import React from 'react'
 import { Pressable, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { colors } from '../../theme/colors'
 
 interface FABProps {
   onPress?: () => void
@@ -9,8 +10,6 @@ interface FABProps {
   label?: string
   bottom?: number
 }
-
-const PRIMARY = '#00C853'
 
 /** FAB rond simple — 56pt vert primary, juste un icône. Bottom-right. */
 export function FAB({ onPress, icon = 'add', bottom = 100 }: FABProps) {
@@ -29,10 +28,10 @@ export function FAB({ onPress, icon = 'add', bottom = 100 }: FABProps) {
             width: 56,
             height: 56,
             borderRadius: 28,
-            backgroundColor: PRIMARY,
+            backgroundColor: colors.primary,
             alignItems: 'center',
             justifyContent: 'center',
-            shadowColor: PRIMARY,
+            shadowColor: colors.primary,
             shadowOffset: { width: 0, height: 8 },
             shadowOpacity: 0.45,
             shadowRadius: 14,
