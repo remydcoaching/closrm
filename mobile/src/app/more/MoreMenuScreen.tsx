@@ -232,8 +232,8 @@ export function MoreMenuScreen() {
             <ListRow
               leading={<DotIcon name="videocam" tint="#FF0000" />}
               title="Plan de tournage"
-              subtitle="Reels — préparation et jour J"
-              onPress={() => navigation.navigate('ReelsJourJ', { reelIds: null })}
+              subtitle="Sessions de tournage — prep, jour J, brief"
+              onPress={() => navigation.navigate('TournageSessions')}
               separator={false}
             />
           </ListSection>

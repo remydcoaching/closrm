@@ -138,7 +138,7 @@ export function SocialPostsScreen() {
         </Pressable>
         <View style={{ flex: 1 }} />
         <Pressable
-          onPress={() => navigation.navigate('ReelsJourJ', { reelIds: null })}
+          onPress={() => navigation.navigate('TournageSessions')}
           hitSlop={8}
           style={{
             paddingHorizontal: 10,
@@ -148,7 +148,7 @@ export function SocialPostsScreen() {
           }}
         >
           <Text style={{ ...t.caption1, color: colors.primary, fontWeight: '700' }}>
-            🎬 Jour J
+            🎬 Tournages
           </Text>
         </Pressable>
       </View>
