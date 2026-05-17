@@ -79,6 +79,10 @@ export const socialPostFiltersSchema = z.object({
   content_kind: z.enum(contentKinds).optional(),
   production_status: z.string().optional(), // single value or comma-separated
   pillar_id: z.string().uuid().optional(),
+  // Liste explicite d'IDs (CSV). Utilisé par les vues qui ont déjà la liste
+  // exacte des posts à afficher (ex: sessions de tournage) — évite la
+  // pagination + le filtrage client-side qui devenait fragile au-delà de 100 reels.
+  ids: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(500).default(25),
 })

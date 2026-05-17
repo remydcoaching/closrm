@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { encrypt } from '@/lib/crypto'
 
+const COLORS = ['#4285F4', '#34A853', '#EA4335', '#FBBC04', '#8E24AA', '#00ACC1', '#FF7043']
+
 export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const redirectBase = `${appUrl}/parametres/integrations`
@@ -64,10 +66,18 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Calculate expiry timestamp
+    // Fetch the Google account email
+    const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${access_token}` },
+    })
+    let email = 'unknown@gmail.com'
+    if (userinfoRes.ok) {
+      const userinfo = await userinfoRes.json()
+      email = userinfo.email || email
+    }
+
     const expiresAt = new Date(Date.now() + expires_in * 1000).toISOString()
 
-    // Encrypt credentials
     const credentialsEncrypted = encrypt(
       JSON.stringify({
         access_token,
@@ -76,26 +86,49 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    // Upsert into integrations table using service client (no user session in OAuth callback)
     const supabase = createServiceClient()
 
-    console.log('[Google OAuth] Saving credentials for workspace:', state)
-    console.log('[Google OAuth] Has access_token:', !!access_token)
-    console.log('[Google OAuth] Has refresh_token:', !!refresh_token)
+    // Count existing accounts to pick a color
+    const { count } = await supabase
+      .from('google_calendar_accounts')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', state)
 
-    // Try update first, then insert if not exists
-    const { data: existing, error: selectError } = await supabase
+    const colorIndex = (count ?? 0) % COLORS.length
+
+    // Upsert into google_calendar_accounts (on conflict email per workspace)
+    const { error: upsertError } = await supabase
+      .from('google_calendar_accounts')
+      .upsert(
+        {
+          workspace_id: state,
+          email,
+          label: email.split('@')[0],
+          color: COLORS[colorIndex],
+          credentials_encrypted: credentialsEncrypted,
+          is_active: true,
+          connected_at: new Date().toISOString(),
+        },
+        { onConflict: 'workspace_id,email' }
+      )
+
+    if (upsertError) {
+      console.error('Failed to save Google account:', upsertError)
+      return NextResponse.redirect(
+        `${redirectBase}?error=${encodeURIComponent('Erreur lors de la sauvegarde')}`
+      )
+    }
+
+    // Also keep the legacy integrations row for backward compat
+    const { data: existing } = await supabase
       .from('integrations')
       .select('id')
       .eq('workspace_id', state)
       .eq('type', 'google_calendar')
       .maybeSingle()
 
-    console.log('[Google OAuth] Existing integration:', existing, 'Select error:', selectError)
-
-    let upsertError
     if (existing) {
-      const { error } = await supabase
+      await supabase
         .from('integrations')
         .update({
           credentials_encrypted: credentialsEncrypted,
@@ -103,9 +136,8 @@ export async function GET(request: NextRequest) {
           connected_at: new Date().toISOString(),
         })
         .eq('id', existing.id)
-      upsertError = error
     } else {
-      const { error } = await supabase
+      await supabase
         .from('integrations')
         .insert({
           workspace_id: state,
@@ -114,15 +146,6 @@ export async function GET(request: NextRequest) {
           is_active: true,
           connected_at: new Date().toISOString(),
         })
-      upsertError = error
-    }
-
-    console.log('[Google OAuth] Upsert error:', upsertError)
-    if (upsertError) {
-      console.error('Failed to save Google credentials:', upsertError)
-      return NextResponse.redirect(
-        `${redirectBase}?error=${encodeURIComponent('Erreur lors de la sauvegarde')}`
-      )
     }
 
     return NextResponse.redirect(

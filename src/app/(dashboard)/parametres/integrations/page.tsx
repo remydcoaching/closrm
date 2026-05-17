@@ -22,7 +22,6 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
     .eq('workspace_id', workspaceId)
 
   const metaIntegration = integrations?.find(i => i.type === 'meta')
-  const googleIntegration = integrations?.find(i => i.type === 'google_calendar')
   const telegramIntegration = integrations?.find(i => i.type === 'telegram')
   const youtubeIntegration = integrations?.find(i => i.type === 'youtube')
 
@@ -80,8 +79,8 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
         {/* Meta Ads */}
         <MetaIntegrationCard integration={metaIntegration ?? null} />
 
-        {/* Google Agenda */}
-        <GoogleCalendarCard integration={googleIntegration ?? null} />
+        {/* Google Agenda (multi-comptes) */}
+        <GoogleCalendarCard />
 
         {/* YouTube */}
         <YoutubeCard integration={youtubeIntegration ?? null} />

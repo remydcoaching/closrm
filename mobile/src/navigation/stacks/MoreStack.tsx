@@ -5,13 +5,12 @@ import { MoreMenuScreen } from '../../app/more/MoreMenuScreen'
 import { NotificationsScreen } from '../../app/more/NotificationsScreen'
 import { NotificationSettingsScreen } from '../../app/more/NotificationSettingsScreen'
 import { BrandingScreen } from '../../app/more/BrandingScreen'
-import { TournageSessionsScreen } from '../../app/more/TournageSessionsScreen'
 import { SocialPostsScreen } from '../../app/social/SocialPostsScreen'
 import { SocialPostDetailScreen } from '../../app/social/SocialPostDetailScreen'
 import { SocialPostFormScreen } from '../../app/social/SocialPostFormScreen'
 import { ReelsTournagePrepScreen } from '../../app/social/ReelsTournagePrepScreen'
 import { ReelsTournageJourJScreen } from '../../app/social/ReelsTournageJourJScreen'
-import { ReelsTournageBriefScreen } from '../../app/social/ReelsTournageBriefScreen'
+import { TournageSessionsScreen } from '../../app/social/TournageSessionsScreen'
 
 const Stack = createNativeStackNavigator<MoreStackParamList>()
 
@@ -22,13 +21,12 @@ export default function MoreStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
       <Stack.Screen name="Branding" component={BrandingScreen} />
-      <Stack.Screen name="TournageSessions" component={TournageSessionsScreen} />
       <Stack.Screen name="SocialPosts" component={SocialPostsScreen} />
       <Stack.Screen name="SocialPostDetail" component={SocialPostDetailScreen} />
       <Stack.Screen name="SocialPostForm" component={SocialPostFormScreen} />
+      <Stack.Screen name="TournageSessions" component={TournageSessionsScreen} />
       <Stack.Screen name="ReelsPrep" component={ReelsTournagePrepScreen} />
       <Stack.Screen name="ReelsJourJ" component={ReelsTournageJourJScreen} />
-      <Stack.Screen name="ReelsBrief" component={ReelsTournageBriefScreen} />
     </Stack.Navigator>
   )
 }

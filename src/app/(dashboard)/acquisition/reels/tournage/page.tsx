@@ -123,10 +123,16 @@ export default function SessionsIndexPage() {
 }
 
 function SessionCard({ session, onChange }: { session: SessionRow; onChange: () => void }) {
-  const meta = STATUS_META[session.status]
   const total = session.stats.total
   const done = session.stats.done
   const pct = total ? (done / total) * 100 : 0
+  const derivedStatus: SessionRow['status'] =
+    session.status === 'archived' ? 'archived'
+    : total > 0 && done === total ? 'completed'
+    : done > 0 ? 'in_progress'
+    : session.reels_count > 0 ? 'ready'
+    : 'draft'
+  const meta = STATUS_META[derivedStatus]
   const dateLabel = session.scheduled_date
     ? new Date(session.scheduled_date).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' })
     : null
@@ -187,13 +193,6 @@ function SessionCard({ session, onChange }: { session: SessionRow; onChange: () 
               color: '#fff', background: '#FF0000',
               borderRadius: 6, textDecoration: 'none',
             }}>📋 Prep</Link>
-          <Link
-            href={`/acquisition/reels/tournage/${session.id}/jour-j`}
-            style={{
-              padding: '6px 12px', fontSize: 11, fontWeight: 600,
-              color: '#FF0000', background: 'rgba(255,0,0,0.1)',
-              border: '1px solid rgba(255,0,0,0.25)', borderRadius: 6, textDecoration: 'none',
-            }}>🎬 Jour J</Link>
           <Link
             href={`/acquisition/reels/tournage/${session.id}/brief`}
             style={{

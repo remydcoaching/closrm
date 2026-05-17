@@ -286,73 +286,75 @@ export default function NewBookingModal({
     [onClose]
   )
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    setLoading(true)
 
-    try {
-      // Build a proper local Date and convert to ISO (UTC) so the server stores the correct time
-      const localDate = new Date(`${date}T${time}:00`)
-      const scheduledAt = localDate.toISOString()
+    // Build a proper local Date and convert to ISO (UTC) so the server stores the correct time
+    const localDate = new Date(`${date}T${time}:00`)
+    const scheduledAt = localDate.toISOString()
 
-      // Recurrence n'est appliquée qu'en création (pas en édition V1)
-      const recurrencePayload = !isEditing && recurrenceFreq !== 'none'
-        ? { frequency: recurrenceFreq, count: recurrenceCount }
-        : null
+    // Recurrence n'est appliquée qu'en création (pas en édition V1)
+    const recurrencePayload = !isEditing && recurrenceFreq !== 'none'
+      ? { frequency: recurrenceFreq, count: recurrenceCount }
+      : null
 
-      const body = isBlocked
-        ? {
-            is_personal: true,
-            calendar_id: null,
-            lead_id: null,
-            location_id: null,
-            title: title || 'Horaire bloqué',
-            scheduled_at: scheduledAt,
-            duration_minutes: duration,
-            notes: notes || null,
-            color,
-            ...(recurrencePayload ? { recurrence: recurrencePayload } : {}),
-          }
-        : {
-            is_personal: false,
-            calendar_id: calendarId || null,
-            lead_id: selectedLead?.id ?? null,
-            location_id: locationId || null,
-            title: title.trim()
-              || (selectedLead
-                ? `${selectedLead.first_name} ${selectedLead.last_name}`.trim()
-                : 'Rendez-vous'),
-            scheduled_at: scheduledAt,
-            duration_minutes: duration,
-            notes: notes || null,
-            color,
-            ...(recurrencePayload ? { recurrence: recurrencePayload } : {}),
-          }
+    const body = isBlocked
+      ? {
+          is_personal: true,
+          calendar_id: null,
+          lead_id: null,
+          location_id: null,
+          title: title || 'Horaire bloqué',
+          scheduled_at: scheduledAt,
+          duration_minutes: duration,
+          notes: notes || null,
+          color,
+          ...(recurrencePayload ? { recurrence: recurrencePayload } : {}),
+        }
+      : {
+          is_personal: false,
+          calendar_id: calendarId || null,
+          lead_id: selectedLead?.id ?? null,
+          location_id: locationId || null,
+          title: title.trim()
+            || (selectedLead
+              ? `${selectedLead.first_name} ${selectedLead.last_name}`.trim()
+              : 'Rendez-vous'),
+          scheduled_at: scheduledAt,
+          duration_minutes: duration,
+          notes: notes || null,
+          color,
+          ...(recurrencePayload ? { recurrence: recurrencePayload } : {}),
+        }
 
-      // En édition : PATCH /api/bookings/[id]. Sinon : POST /api/bookings.
-      const url = isEditing && editingBooking
-        ? `/api/bookings/${editingBooking.id}`
-        : '/api/bookings'
-      const method = isEditing ? 'PATCH' : 'POST'
+    // En édition : PATCH /api/bookings/[id]. Sinon : POST /api/bookings.
+    const url = isEditing && editingBooking
+      ? `/api/bookings/${editingBooking.id}`
+      : '/api/bookings'
+    const method = isEditing ? 'PATCH' : 'POST'
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+    // UX snappy : on ferme la modale immédiatement, la requête part en
+    // arrière-plan. Le refetch déclenché par onCreated réconcilie l'état.
+    // En cas d'échec, alert + refetch fait disparaître l'éventuel optimistic.
+    onClose()
+    fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          alert(data.error ?? (isEditing ? 'Erreur lors de la modification' : 'Erreur lors de la création'))
+        }
       })
-
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error ?? (isEditing ? 'Erreur lors de la modification' : 'Erreur lors de la création'))
-      }
-
-      onCreated()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue')
-    } finally {
-      setLoading(false)
-    }
+      .catch((err) => {
+        alert(err instanceof Error ? err.message : 'Erreur réseau')
+      })
+      .finally(() => {
+        onCreated()
+      })
   }
 
   // Heure de fin calculée depuis time + duration

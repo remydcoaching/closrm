@@ -1,6 +1,7 @@
 import { getIntegrationCredentials } from '@/lib/integrations/get-credentials'
 import { createServiceClient } from '@/lib/supabase/service'
 import { encrypt } from '@/lib/crypto'
+import { getValidAccessTokenForAccount } from './accounts'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -46,12 +47,10 @@ async function getValidAccessToken(workspaceId: string): Promise<string | null> 
 
   const { access_token, refresh_token, expires_at } = creds
 
-  // If token still valid (with 60s buffer), return it
   if (new Date(expires_at) > new Date(Date.now() + 60_000)) {
     return access_token
   }
 
-  // Refresh the token
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
   if (!clientId || !clientSecret || !refresh_token) return null
@@ -74,7 +73,6 @@ async function getValidAccessToken(workspaceId: string): Promise<string | null> 
 
   const data = await res.json()
 
-  // Save new tokens (keep existing refresh_token if Google doesn't return a new one)
   const supabase = createServiceClient()
   const newCreds = {
     access_token: data.access_token,
@@ -91,19 +89,25 @@ async function getValidAccessToken(workspaceId: string): Promise<string | null> 
   return data.access_token
 }
 
+async function resolveAccessToken(
+  opts: { workspaceId: string } | { accountId: string }
+): Promise<string | null> {
+  if ('accountId' in opts) return getValidAccessTokenForAccount(opts.accountId)
+  return getValidAccessToken(opts.workspaceId)
+}
+
 // ─── API Helpers ────────────────────────────────────────────────────────────
 
 const CALENDAR_API = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
 
-/**
- * Fetch events from Google Calendar within a time range.
- */
 export async function getGoogleCalendarEvents(
-  workspaceId: string,
+  target: string | { accountId: string },
   timeMin: string,
   timeMax: string
 ): Promise<GoogleCalendarEvent[]> {
-  const accessToken = await getValidAccessToken(workspaceId)
+  const accessToken = typeof target === 'string'
+    ? await resolveAccessToken({ workspaceId: target })
+    : await resolveAccessToken(target)
   if (!accessToken) return []
 
   const params = new URLSearchParams({
@@ -127,22 +131,18 @@ export async function getGoogleCalendarEvents(
   return (data.items ?? []) as GoogleCalendarEvent[]
 }
 
-/**
- * Create a new event on Google Calendar.
- * If withMeet is true, a Google Meet conference link is attached to the event.
- * Returns { eventId, meetUrl } or null on failure.
- */
 export async function createGoogleCalendarEvent(
-  workspaceId: string,
+  target: string | { accountId: string },
   event: CreateEventPayload,
   options?: { withMeet?: boolean }
 ): Promise<CreateEventResult | null> {
-  const accessToken = await getValidAccessToken(workspaceId)
+  const accessToken = typeof target === 'string'
+    ? await resolveAccessToken({ workspaceId: target })
+    : await resolveAccessToken(target)
   if (!accessToken) return null
 
   const withMeet = options?.withMeet ?? false
 
-  // Build payload — optionally include conference request
   const payload: Record<string, unknown> = { ...event }
   if (withMeet) {
     payload.conferenceData = {
@@ -153,7 +153,6 @@ export async function createGoogleCalendarEvent(
     }
   }
 
-  // Add conferenceDataVersion query param when requesting Meet
   const url = withMeet
     ? `${CALENDAR_API}?conferenceDataVersion=1`
     : CALENDAR_API
@@ -181,15 +180,14 @@ export async function createGoogleCalendarEvent(
   return { eventId: responseData.id, meetUrl }
 }
 
-/**
- * Update an existing Google Calendar event. Returns updated event or null.
- */
 export async function updateGoogleCalendarEvent(
-  workspaceId: string,
+  target: string | { accountId: string },
   eventId: string,
   event: UpdateEventPayload
 ): Promise<GoogleCalendarEvent | null> {
-  const accessToken = await getValidAccessToken(workspaceId)
+  const accessToken = typeof target === 'string'
+    ? await resolveAccessToken({ workspaceId: target })
+    : await resolveAccessToken(target)
   if (!accessToken) return null
 
   const res = await fetch(`${CALENDAR_API}/${encodeURIComponent(eventId)}`, {
@@ -209,14 +207,13 @@ export async function updateGoogleCalendarEvent(
   return (await res.json()) as GoogleCalendarEvent
 }
 
-/**
- * Delete a Google Calendar event. Returns true on success.
- */
 export async function deleteGoogleCalendarEvent(
-  workspaceId: string,
+  target: string | { accountId: string },
   eventId: string
 ): Promise<boolean> {
-  const accessToken = await getValidAccessToken(workspaceId)
+  const accessToken = typeof target === 'string'
+    ? await resolveAccessToken({ workspaceId: target })
+    : await resolveAccessToken(target)
   if (!accessToken) return false
 
   const res = await fetch(`${CALENDAR_API}/${encodeURIComponent(eventId)}`, {
@@ -225,7 +222,6 @@ export async function deleteGoogleCalendarEvent(
   })
 
   if (!res.ok && res.status !== 410) {
-    // 410 Gone = already deleted, treat as success
     console.error('[Google Calendar] Failed to delete event:', res.status, await res.text())
     return false
   }
