@@ -60,15 +60,23 @@ export default function PrepTournagePageWrapper() {
 interface PrepViewProps {
   embedded?: boolean
   reelParamProp?: string | null
+  /**
+   * ID de la session de tournage ciblée (si on vient de TournagesModal ou
+   * de la route [sessionId]/prep). Distingue "session ciblée mais vide"
+   * de "pas de session — montre tous les reels".
+   */
+  targetSessionId?: string | null
   onClose?: () => void
   onNavigate?: (url: string) => void
   onSwitchView?: (view: 'jour-j' | 'brief') => void
 }
 
-export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitchView }: PrepViewProps = {}) {
+export function PrepView({ embedded, reelParamProp, targetSessionId, onClose, onNavigate, onSwitchView }: PrepViewProps = {}) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const reelParam = embedded ? (reelParamProp ?? null) : searchParams.get('reel')
+  const sessionIdFromUrl = embedded ? null : searchParams.get('session')
+  const effectiveSessionId = targetSessionId ?? sessionIdFromUrl
 
   const navigate = useCallback((url: string) => {
     if (embedded && onNavigate) onNavigate(url)
@@ -125,6 +133,11 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
         if (!sessionRes.ok) throw new Error(`Session reels fetch failed: ${sessionRes.status}`)
         const sessionJson = await sessionRes.json()
         filtered = sessionJson.data ?? []
+      } else if (effectiveSessionId) {
+        // Session ciblée mais sans reels liés (reelIds null) : on N'AFFICHE PAS
+        // tous les reels du workspace, sinon l'user voit les reels d'AUTRES
+        // sessions et croit qu'ils sont dans celle-ci.
+        filtered = []
       } else {
         filtered = allFetched
       }
@@ -167,7 +180,7 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
     } finally {
       setLoading(false)
     }
-  }, [reelIds])
+  }, [reelIds, effectiveSessionId])
 
   useEffect(() => { loadAll() }, [loadAll])
 
@@ -252,6 +265,60 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
   )
 
   if (reels.length === 0) {
+    // Cas 1 : session ciblée mais vide → CTA pour ajouter des reels qui PERSISTE
+    if (effectiveSessionId) {
+      return (
+        <>
+          <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
+            <div style={{ fontSize: 14, color: '#fff', marginBottom: 8 }}>Cette session ne contient aucun reel</div>
+            <div style={{ fontSize: 12, marginBottom: 18 }}>
+              Ajoute les reels que tu vas filmer dans cette session.
+            </div>
+            <button onClick={() => setPickerOpen(true)} style={{
+              padding: '10px 16px', background: '#FF0000', color: '#fff',
+              border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            }}>+ Ajouter des reels à cette session</button>
+            {embedded && onClose && (
+              <div style={{ marginTop: 12 }}>
+                <button onClick={onClose} style={{
+                  padding: '6px 12px', fontSize: 12, color: '#888',
+                  background: 'transparent', border: '1px solid #262626', borderRadius: 6, cursor: 'pointer',
+                }}>← Sessions</button>
+              </div>
+            )}
+          </div>
+          {pickerOpen && (
+            <ReelPicker
+              allReels={allReels}
+              currentIds={[]}
+              onClose={() => setPickerOpen(false)}
+              onConfirm={async (ids) => {
+                if (ids.length === 0) { setPickerOpen(false); return }
+                const res = await fetch(`/api/tournage-sessions/${effectiveSessionId}/reels`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ social_post_ids: ids }),
+                })
+                if (!res.ok) {
+                  const j = await res.json().catch(() => ({}))
+                  alert(`Erreur : ${j.error ?? res.status}`)
+                  return
+                }
+                setPickerOpen(false)
+                // Refresh la vue avec les nouveaux reels
+                if (embedded && onNavigate) {
+                  onNavigate(`/acquisition/reels/tournage/prep?reel=${ids.join(',')}&session=${effectiveSessionId}`)
+                } else {
+                  navigate(`/acquisition/reels/tournage/prep?reel=${ids.join(',')}&session=${effectiveSessionId}`)
+                }
+              }}
+            />
+          )}
+        </>
+      )
+    }
+    // Cas 2 : pas de session ciblée — vraiment aucun reel dans le workspace
     return (
       <div style={{ padding: 40, textAlign: 'center', color: '#888' }}>
         <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
@@ -548,7 +615,44 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
           allReels={allReels}
           currentIds={reelIds ?? reels.map(r => r.id)}
           onClose={() => setPickerOpen(false)}
-          onConfirm={(ids) => {
+          onConfirm={async (ids) => {
+            // Quand on est dans le contexte d'une session : on PERSISTE
+            // (POST /api/tournage-sessions/{id}/reels). Sinon : juste
+            // un filtre d'URL (comportement historique pour "Tous les reels").
+            if (effectiveSessionId) {
+              // 1) On retire les reels désélectionnés (présents en DB mais
+              //    plus dans la sélection). 2) On ajoute les nouveaux.
+              const currentSet = new Set(reels.map(r => r.id))
+              const newSet = new Set(ids)
+              const toAdd = ids.filter(id => !currentSet.has(id))
+              const toRemove = reels.map(r => r.id).filter(id => !newSet.has(id))
+              try {
+                if (toRemove.length > 0) {
+                  await Promise.all(toRemove.map(rid =>
+                    fetch(`/api/tournage-sessions/${effectiveSessionId}/reels/${rid}`, { method: 'DELETE' })
+                  ))
+                }
+                if (toAdd.length > 0) {
+                  const res = await fetch(`/api/tournage-sessions/${effectiveSessionId}/reels`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ social_post_ids: toAdd }),
+                  })
+                  if (!res.ok) {
+                    const j = await res.json().catch(() => ({}))
+                    alert(`Erreur ajout : ${j.error ?? res.status}`)
+                    return
+                  }
+                }
+              } catch (e) {
+                alert(`Erreur réseau : ${(e as Error).message}`)
+                return
+              }
+              setPickerOpen(false)
+              navigate(`/acquisition/reels/tournage/prep?reel=${ids.join(',')}&session=${effectiveSessionId}`)
+              return
+            }
+            // Pas de session ciblée — filtre d'URL pur (legacy)
             setPickerOpen(false)
             if (ids.length === allReels.length) {
               navigate('/acquisition/reels/tournage/prep')

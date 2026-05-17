@@ -131,6 +131,7 @@ export default function TournagesModal({ open, onClose }: Props) {
                 <PrepView
                   embedded
                   reelParamProp={reelParam}
+                  targetSessionId={view.sessionId}
                   onClose={backToIndex}
                   onSwitchView={(v) => switchSubView(v)}
                   onNavigate={handleSubNavigate}
@@ -140,6 +141,7 @@ export default function TournagesModal({ open, onClose }: Props) {
                 <JourJView
                   embedded
                   reelParamProp={reelParam}
+                  targetSessionId={view.sessionId}
                   onClose={backToIndex}
                   onSwitchView={(v) => switchSubView(v)}
                 />
@@ -148,6 +150,7 @@ export default function TournagesModal({ open, onClose }: Props) {
                 <BriefView
                   embedded
                   reelParamProp={reelParam}
+                  targetSessionId={view.sessionId}
                   onClose={backToIndex}
                   onSwitchView={(v) => switchSubView(v)}
                 />

@@ -41,13 +41,16 @@ export default function BriefMontagePageWrapper() {
 interface BriefViewProps {
   embedded?: boolean
   reelParamProp?: string | null
+  targetSessionId?: string | null
   onClose?: () => void
   onSwitchView?: (view: 'prep' | 'jour-j') => void
 }
 
-export function BriefView({ embedded, reelParamProp, onClose, onSwitchView }: BriefViewProps = {}) {
+export function BriefView({ embedded, reelParamProp, targetSessionId, onClose, onSwitchView }: BriefViewProps = {}) {
   const searchParams = useSearchParams()
   const reelParam = embedded ? (reelParamProp ?? null) : searchParams.get('reel')
+  const sessionIdFromUrl = embedded ? null : searchParams.get('session')
+  const effectiveSessionId = targetSessionId ?? sessionIdFromUrl
 
   const [reels, setReels] = useState<SocialPost[]>([])
   const [shots, setShots] = useState<ReelShot[]>([])
@@ -60,16 +63,22 @@ export function BriefView({ embedded, reelParamProp, onClose, onSwitchView }: Br
       setLoading(true)
       try {
         const reelIds = reelParam ? reelParam.split(',').map(s => s.trim()).filter(Boolean) : null
-        // Quand on cible une session (reelIds présents), on fetch par IDs pour
-        // éviter le bug "session vide" quand la session contient des reels
-        // au-delà des 100 premiers du content_kind=reel.
-        const url = reelIds && reelIds.length > 0
-          ? `/api/social/posts?ids=${reelIds.join(',')}&slim=true&per_page=500`
-          : '/api/social/posts?content_kind=reel&slim=true&per_page=500'
-        const reelsRes = await fetch(url)
-        if (!reelsRes.ok) throw new Error(`Reels: ${reelsRes.status}`)
-        const reelsJson = await reelsRes.json()
-        const filtered: SocialPost[] = reelsJson.data ?? []
+        // Session ciblée mais vide → on n'affiche RIEN (sinon Brief montrerait
+        // les reels d'autres sessions). Sinon on fetch par IDs ou par content_kind.
+        let filtered: SocialPost[]
+        if (reelIds && reelIds.length > 0) {
+          const reelsRes = await fetch(`/api/social/posts?ids=${reelIds.join(',')}&slim=true&per_page=500`)
+          if (!reelsRes.ok) throw new Error(`Reels: ${reelsRes.status}`)
+          const reelsJson = await reelsRes.json()
+          filtered = reelsJson.data ?? []
+        } else if (effectiveSessionId) {
+          filtered = []
+        } else {
+          const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=500')
+          if (!reelsRes.ok) throw new Error(`Reels: ${reelsRes.status}`)
+          const reelsJson = await reelsRes.json()
+          filtered = reelsJson.data ?? []
+        }
         // Tri stable par id pour codes R1, R2... reproductibles
         filtered.sort((a, b) => a.id.localeCompare(b.id))
         setReels(filtered)
@@ -90,7 +99,7 @@ export function BriefView({ embedded, reelParamProp, onClose, onSwitchView }: Br
         setLoading(false)
       }
     })()
-  }, [reelParam])
+  }, [reelParam, effectiveSessionId])
 
   // Génère un code court par phrase : R1-P1, R1-P2, R2-P1, etc.
   // Stable car reels triés par id et position est invariant.
