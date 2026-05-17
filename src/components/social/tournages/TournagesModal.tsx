@@ -292,10 +292,18 @@ function SessionCard({ session, onChange, onOpenSubView }: {
     .slice()
     .sort((a, b) => a.position - b.position)
     .map(r => r.social_post_id)
-  const meta = STATUS_META[session.status]
   const total = session.stats.total
   const done = session.stats.done
   const pct = total ? (done / total) * 100 : 0
+  // Statut dérivé : on n'utilise plus session.status sauf pour archived,
+  // sinon Pierre voyait toujours "Brouillon" même avec 37/78 tournées.
+  const derivedStatus: SessionRow['status'] =
+    session.status === 'archived' ? 'archived'
+    : total > 0 && done === total ? 'completed'
+    : done > 0 ? 'in_progress'
+    : session.reels_count > 0 ? 'ready'
+    : 'draft'
+  const meta = STATUS_META[derivedStatus]
   const dateLabel = session.scheduled_date
     ? new Date(session.scheduled_date).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' })
     : null
@@ -352,13 +360,6 @@ function SessionCard({ session, onChange, onOpenSubView }: {
               color: '#fff', background: '#FF0000',
               border: 'none', borderRadius: 6, cursor: 'pointer',
             }}>📋 Prep</button>
-          <button
-            onClick={() => onOpenSubView('jour-j', session.id, reelIds)}
-            style={{
-              padding: '6px 11px', fontSize: 11, fontWeight: 600,
-              color: '#FF0000', background: 'rgba(255,0,0,0.1)',
-              border: '1px solid rgba(255,0,0,0.25)', borderRadius: 6, cursor: 'pointer',
-            }}>🎬 Jour J</button>
           <button
             onClick={() => onOpenSubView('brief', session.id, reelIds)}
             style={{

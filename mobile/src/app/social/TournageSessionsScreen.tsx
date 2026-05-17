@@ -176,10 +176,18 @@ function SessionCard({
   session: SessionRow
   onOpen: (view: 'prep' | 'jour-j' | 'brief') => void
 }) {
-  const meta = STATUS_META[session.status]
   const total = session.stats.total
   const done = session.stats.done
   const pct = total > 0 ? (done / total) * 100 : 0
+  // Statut dérivé depuis les stats — sinon tout reste "Brouillon" même quand
+  // tu as 37/78 phrases tournées.
+  const derivedStatus: SessionRow['status'] =
+    session.status === 'archived' ? 'archived'
+    : total > 0 && done === total ? 'completed'
+    : done > 0 ? 'in_progress'
+    : session.reels_count > 0 ? 'ready'
+    : 'draft'
+  const meta = STATUS_META[derivedStatus]
   const dateLabel = formatDate(session.scheduled_date)
 
   return (
@@ -256,22 +264,6 @@ function SessionCard({
               }}
             >
               <Text style={{ ...t.subheadline, color: colors.primary, fontWeight: '700' }}>🎬 Jour J</Text>
-            </View>
-          )}
-        </Pressable>
-        <Pressable onPress={() => onOpen('brief')} style={{ flex: 1 }}>
-          {({ pressed }) => (
-            <View
-              style={{
-                paddingVertical: 10,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.md,
-                alignItems: 'center',
-                opacity: pressed ? 0.6 : 1,
-              }}
-            >
-              <Text style={{ ...t.subheadline, color: colors.textSecondary, fontWeight: '700' }}>📄 Brief</Text>
             </View>
           )}
         </Pressable>
