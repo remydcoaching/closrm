@@ -86,13 +86,6 @@ export function ReelsTournageJourJScreen() {
           <Ionicons name="chevron-back" size={28} color={colors.primary} />
         </Pressable>
         <View style={{ flex: 1 }} />
-        <Pressable
-          onPress={() => navigation.navigate('ReelsBrief', { reelIds })}
-          hitSlop={8}
-          style={{ padding: 4 }}
-        >
-          <Text style={{ ...t.body, color: colors.primary, fontWeight: '600' }}>Brief →</Text>
-        </Pressable>
       </View>
 
       <NavLarge
