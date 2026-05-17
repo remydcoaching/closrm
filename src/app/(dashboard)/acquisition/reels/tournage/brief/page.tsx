@@ -59,23 +59,31 @@ export function BriefView({ embedded, reelParamProp, onClose, onSwitchView }: Br
     (async () => {
       setLoading(true)
       try {
-        const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=100')
+        const reelIds = reelParam ? reelParam.split(',').map(s => s.trim()).filter(Boolean) : null
+        // Quand on cible une session (reelIds présents), on fetch par IDs pour
+        // éviter le bug "session vide" quand la session contient des reels
+        // au-delà des 100 premiers du content_kind=reel.
+        const url = reelIds && reelIds.length > 0
+          ? `/api/social/posts?ids=${reelIds.join(',')}&slim=true&per_page=500`
+          : '/api/social/posts?content_kind=reel&slim=true&per_page=500'
+        const reelsRes = await fetch(url)
         if (!reelsRes.ok) throw new Error(`Reels: ${reelsRes.status}`)
         const reelsJson = await reelsRes.json()
-        const allReels: SocialPost[] = reelsJson.data ?? []
-        const reelIds = reelParam ? reelParam.split(',').map(s => s.trim()) : null
-        const filtered = reelIds ? allReels.filter(r => reelIds.includes(r.id)) : allReels
+        const filtered: SocialPost[] = reelsJson.data ?? []
         // Tri stable par id pour codes R1, R2... reproductibles
         filtered.sort((a, b) => a.id.localeCompare(b.id))
         setReels(filtered)
 
-        let url = '/api/reel-shots'
-        if (filtered.length > 0) url += `?social_post_ids=${filtered.map(r => r.id).join(',')}`
-        const shotsRes = await fetch(url)
-        if (!shotsRes.ok) throw new Error(`Shots: ${shotsRes.status}`)
-        const shotsJson = await shotsRes.json()
-        // On garde TOUS les shots done OR skipped (le brief montre les 2 sections)
-        setShots((shotsJson.data ?? []).filter((s: ReelShot) => s.done || s.skipped))
+        if (filtered.length === 0) {
+          setShots([])
+        } else {
+          const shotsUrl = `/api/reel-shots?social_post_ids=${filtered.map(r => r.id).join(',')}`
+          const shotsRes = await fetch(shotsUrl)
+          if (!shotsRes.ok) throw new Error(`Shots: ${shotsRes.status}`)
+          const shotsJson = await shotsRes.json()
+          // On garde TOUS les shots done OR skipped (le brief montre les 2 sections)
+          setShots((shotsJson.data ?? []).filter((s: ReelShot) => s.done || s.skipped))
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erreur')
       } finally {

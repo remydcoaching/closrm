@@ -127,12 +127,12 @@ export function ReelsTournageJourJScreen() {
         </View>
       ) : places.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, gap: spacing.md }}>
-          <Text style={{ fontSize: 48 }}>🎉</Text>
+          <Text style={{ fontSize: 48 }}>📍</Text>
           <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary, textAlign: 'center' }}>
-            Tous les shots sont tournés !
+            Aucun lieu assigné
           </Text>
           <Text style={{ ...t.subheadline, color: colors.textSecondary, textAlign: 'center' }}>
-            (ou aucun lieu n'est encore assigné)
+            Va dans la prep pour attribuer un lieu à tes phrases.
           </Text>
         </View>
       ) : (
@@ -205,6 +205,7 @@ export function ReelsTournageJourJScreen() {
                     key={s.id}
                     shot={s}
                     onDone={() => void patchShot(s.id, { done: true, skipped: false })}
+                    onUndo={() => void patchShot(s.id, { done: false, skipped: false })}
                     onSkip={() => void patchShot(s.id, { skipped: true })}
                     onPreview={() => {
                       setPreviewReelId(s.reelId)
@@ -370,11 +371,13 @@ export function ReelsTournageJourJScreen() {
 function ShotCard({
   shot,
   onDone,
+  onUndo,
   onSkip,
   onPreview,
 }: {
   shot: import('../../types/reel-shots').ShotInfo
   onDone: () => void
+  onUndo: () => void
   onSkip: () => void
   onPreview: () => void
 }) {
@@ -385,19 +388,27 @@ function ShotCard({
         borderRadius: radius.lg,
         padding: spacing.lg,
         gap: spacing.sm,
+        opacity: shot.done ? 0.55 : 1,
       }}
     >
-      <Text
-        style={{
-          ...t.caption2,
-          color: colors.textTertiary,
-          textTransform: 'uppercase',
-          letterSpacing: 0.4,
-          fontWeight: '700',
-        }}
-      >
-        Phrase {shot.position}/{shot.total}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text
+          style={{
+            ...t.caption2,
+            color: colors.textTertiary,
+            textTransform: 'uppercase',
+            letterSpacing: 0.4,
+            fontWeight: '700',
+          }}
+        >
+          Phrase {shot.position}/{shot.total}
+        </Text>
+        {shot.done ? (
+          <Text style={{ fontSize: 11, color: '#22c55e', fontWeight: '700' }}>
+            ✓ Tournée
+          </Text>
+        ) : null}
+      </View>
       {shot.prevText ? (
         <View
           style={{
@@ -432,6 +443,7 @@ function ShotCard({
           lineHeight: 26,
           fontWeight: '700',
           color: colors.textPrimary,
+          textDecorationLine: shot.done ? 'line-through' : 'none',
         }}
       >
         « {shot.text} »
@@ -498,38 +510,61 @@ function ShotCard({
         )}
       </Pressable>
       <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: 4 }}>
-        <Pressable onPress={onDone} style={{ flex: 1 }}>
-          {({ pressed }) => (
-            <View
-              style={{
-                paddingVertical: 12,
-                backgroundColor: '#22c55e',
-                borderRadius: radius.md,
-                alignItems: 'center',
-                opacity: pressed ? 0.85 : 1,
-              }}
-            >
-              <Text style={{ ...t.bodyEmphasis, color: '#fff' }}>✓ Tournée</Text>
-            </View>
-          )}
-        </Pressable>
-        <Pressable onPress={onSkip}>
-          {({ pressed }) => (
-            <View
-              style={{
-                paddingHorizontal: spacing.lg,
-                paddingVertical: 12,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: radius.md,
-                alignItems: 'center',
-                opacity: pressed ? 0.6 : 1,
-              }}
-            >
-              <Text style={{ ...t.subheadline, color: colors.textSecondary }}>Reporter</Text>
-            </View>
-          )}
-        </Pressable>
+        {shot.done ? (
+          <Pressable onPress={onUndo} style={{ flex: 1 }}>
+            {({ pressed }) => (
+              <View
+                style={{
+                  paddingVertical: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: radius.md,
+                  alignItems: 'center',
+                  opacity: pressed ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ ...t.subheadline, color: colors.textSecondary, fontWeight: '600' }}>
+                  ↻ Annuler
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        ) : (
+          <>
+            <Pressable onPress={onDone} style={{ flex: 1 }}>
+              {({ pressed }) => (
+                <View
+                  style={{
+                    paddingVertical: 12,
+                    backgroundColor: '#22c55e',
+                    borderRadius: radius.md,
+                    alignItems: 'center',
+                    opacity: pressed ? 0.85 : 1,
+                  }}
+                >
+                  <Text style={{ ...t.bodyEmphasis, color: '#fff' }}>✓ Tournée</Text>
+                </View>
+              )}
+            </Pressable>
+            <Pressable onPress={onSkip}>
+              {({ pressed }) => (
+                <View
+                  style={{
+                    paddingHorizontal: spacing.lg,
+                    paddingVertical: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: radius.md,
+                    alignItems: 'center',
+                    opacity: pressed ? 0.6 : 1,
+                  }}
+                >
+                  <Text style={{ ...t.subheadline, color: colors.textSecondary }}>Reporter</Text>
+                </View>
+              )}
+            </Pressable>
+          </>
+        )}
       </View>
     </View>
   )

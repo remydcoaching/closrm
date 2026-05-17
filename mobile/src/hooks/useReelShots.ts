@@ -26,23 +26,26 @@ export function useReelShots(reelIds?: string[] | null): UseReelShotsResult {
     setLoading(true)
     setError(null)
     try {
-      // 1. Liste des reels (pour titre + filtrage)
-      const reelsRes = await api.get<{ data: Pick<SocialPost, 'id' | 'title' | 'hook'>[] }>(
-        '/api/social/posts?content_kind=reel&slim=true&per_page=100',
-      )
-      const allReels = reelsRes.data ?? []
-      const filtered = reelIds && reelIds.length > 0
-        ? allReels.filter((r) => reelIds.includes(r.id))
-        : allReels
-      setReels(filtered)
+      // 1. Liste des reels : quand on a une liste d'IDs (session de tournage),
+      // on fetch par IDs pour éviter la pagination + le filtre `content_kind=reel`
+      // qui rate des reels au-delà des 100 premiers ou avec un content_kind différent.
+      const url = reelIds && reelIds.length > 0
+        ? `/api/social/posts?ids=${reelIds.join(',')}&slim=true&per_page=500`
+        : '/api/social/posts?content_kind=reel&slim=true&per_page=100'
+      const reelsRes = await api.get<{ data: Pick<SocialPost, 'id' | 'title' | 'hook'>[] }>(url)
+      const fetchedReels = reelsRes.data ?? []
+      setReels(fetchedReels)
 
-      // 2. Shots pour les reels visibles
-      let url = '/api/reel-shots'
-      if (filtered.length > 0) {
-        url += `?social_post_ids=${filtered.map((r) => r.id).join(',')}`
+      // 2. Shots pour les reels visibles. Si la liste est vide, on n'envoie PAS
+      // de filtre social_post_ids : sans paramètre l'API renvoie tous les shots
+      // du workspace, ce qu'on ne veut surtout pas quand une session est ciblée.
+      if (fetchedReels.length === 0) {
+        setShots([])
+      } else {
+        const shotsUrl = `/api/reel-shots?social_post_ids=${fetchedReels.map((r) => r.id).join(',')}`
+        const shotsRes = await api.get<{ data: ReelShot[] }>(shotsUrl)
+        setShots(shotsRes.data ?? [])
       }
-      const shotsRes = await api.get<{ data: ReelShot[] }>(url)
-      setShots(shotsRes.data ?? [])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur chargement reel-shots')
       setShots([])
@@ -70,7 +73,11 @@ export function useReelShots(reelIds?: string[] | null): UseReelShotsResult {
     [fetch],
   )
 
-  // Groupage par lieu — uniquement les shots non terminés ET avec un lieu
+  // Groupage par lieu — on garde les shots `done` dans la liste pour que
+  // marquer une phrase ne fasse pas disparaître le lieu (et donc sauter
+  // brutalement vers un autre lieu pendant le tournage). Le `done` est
+  // exposé via ShotInfo et l'écran affiche la phrase barrée + un bouton
+  // "Annuler" à la place de "Tournée".
   const byPlace = useMemo(() => {
     const r: Record<string, ShotInfo[]> = {}
     const byReel = new Map<string, ReelShot[]>()
@@ -81,7 +88,7 @@ export function useReelShots(reelIds?: string[] | null): UseReelShotsResult {
     byReel.forEach((arr) => arr.sort((a, b) => a.position - b.position))
 
     shots.forEach((s) => {
-      if (!s.text || s.done || !s.location) return
+      if (!s.text || !s.location) return
       const arr = byReel.get(s.social_post_id) ?? []
       const idx = arr.findIndex((x) => x.id === s.id)
       const reel = reels.find((re) => re.id === s.social_post_id)
@@ -98,18 +105,21 @@ export function useReelShots(reelIds?: string[] | null): UseReelShotsResult {
         prevText: idx > 0 ? arr[idx - 1].text : null,
         nextText: idx < arr.length - 1 ? arr[idx + 1].text : null,
         skipped: s.skipped,
+        done: s.done,
       })
     })
     return r
   }, [shots, reels])
 
-  // Lieux ordonnés par nombre de shots actifs (le plus rempli en premier)
+  // Lieux ordonnés par nombre de shots restants à tourner (skip + done exclus).
+  // Si tout est tourné/reporté, le lieu reste visible (sort stable car
+  // tous les comptes valent 0).
   const places = useMemo(
     () =>
       Object.keys(byPlace).sort((a, b) => {
-        const aActive = byPlace[a].filter((s) => !s.skipped).length
-        const bActive = byPlace[b].filter((s) => !s.skipped).length
-        return bActive - aActive
+        const aTodo = byPlace[a].filter((s) => !s.skipped && !s.done).length
+        const bTodo = byPlace[b].filter((s) => !s.skipped && !s.done).length
+        return bTodo - aTodo
       }),
     [byPlace],
   )

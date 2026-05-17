@@ -32,6 +32,7 @@ interface ShotInfo {
   prevText: string | null
   nextText: string | null
   skipped: boolean
+  done: boolean
 }
 
 function placeIcon(loc: string): string {
@@ -91,11 +92,15 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
     setLoading(true)
     setError(null)
     try {
-      const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=100')
+      // Quand reelIds est fourni (session de tournage), on fetch par IDs pour
+      // ne PAS rater des reels au-delà des 100 premiers du content_kind=reel.
+      const url = reelIds
+        ? `/api/social/posts?ids=${reelIds.join(',')}&slim=true&per_page=500`
+        : '/api/social/posts?content_kind=reel&slim=true&per_page=500'
+      const reelsRes = await fetch(url)
       if (!reelsRes.ok) throw new Error(`Reels fetch: ${reelsRes.status}`)
       const reelsJson = await reelsRes.json()
-      const allReels: SocialPost[] = reelsJson.data ?? []
-      const filtered = reelIds ? allReels.filter(r => reelIds.includes(r.id)) : allReels
+      const filtered: SocialPost[] = reelsJson.data ?? []
       setReels(filtered)
 
       // Sync : si l'user a modifié son script, on re-split en reel_shots avant
@@ -108,12 +113,17 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
         }).catch(() => null)
       ))
 
-      let shotsUrl = '/api/reel-shots'
-      if (filtered.length > 0) shotsUrl += `?social_post_ids=${filtered.map(r => r.id).join(',')}`
-      const shotsRes = await fetch(shotsUrl)
-      if (!shotsRes.ok) throw new Error(`Shots fetch: ${shotsRes.status}`)
-      const shotsJson = await shotsRes.json()
-      setShots(shotsJson.data ?? [])
+      // Si la session est vide, on n'envoie PAS de filtre social_post_ids : sinon
+      // l'API renvoie tous les shots du workspace et la vue mélange tout.
+      if (filtered.length === 0) {
+        setShots([])
+      } else {
+        const shotsUrl = `/api/reel-shots?social_post_ids=${filtered.map(r => r.id).join(',')}`
+        const shotsRes = await fetch(shotsUrl)
+        if (!shotsRes.ok) throw new Error(`Shots fetch: ${shotsRes.status}`)
+        const shotsJson = await shotsRes.json()
+        setShots(shotsJson.data ?? [])
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur')
     } finally {
@@ -162,8 +172,11 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
     })
     byReel.forEach(arr => arr.sort((a, b) => a.position - b.position))
 
+    // On garde les shots `done` dans la liste : sans ça, marquer la dernière
+    // phrase d'un lieu faisait disparaître le lieu et la vue sautait
+    // brutalement vers un autre lieu pendant le tournage.
     shots.forEach(s => {
-      if (!s.text || s.done || !s.location) return
+      if (!s.text || !s.location) return
       const arr = byReel.get(s.social_post_id) ?? []
       const idx = arr.findIndex(x => x.id === s.id)
       const reel = reels.find(re => re.id === s.social_post_id)
@@ -180,15 +193,18 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
         prevText: idx > 0 ? arr[idx - 1].text : null,
         nextText: idx < arr.length - 1 ? arr[idx + 1].text : null,
         skipped: s.skipped,
+        done: s.done,
       })
     })
     return r
   }, [shots, reels])
 
+  // Tri par nombre de phrases restantes à tourner (skip + done exclus).
+  // Une fois tout tourné, l'ordre reste stable (toutes valeurs à 0).
   const places = useMemo(() => Object.keys(byPlace).sort((a, b) => {
-    const aActive = byPlace[a].filter(s => !s.skipped).length
-    const bActive = byPlace[b].filter(s => !s.skipped).length
-    return bActive - aActive
+    const aTodo = byPlace[a].filter(s => !s.skipped && !s.done).length
+    const bTodo = byPlace[b].filter(s => !s.skipped && !s.done).length
+    return bTodo - aTodo
   }), [byPlace])
 
   if (loading) return <div style={{ padding: 40, color: '#888' }}>Chargement…</div>
@@ -202,9 +218,9 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
   if (places.length === 0) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: '#888', minHeight: '100vh', background: '#000' }}>
-        <div style={{ fontSize: 48, marginBottom: 12, marginTop: 60 }}>🎉</div>
-        <div style={{ fontSize: 14, color: '#fff', marginBottom: 8 }}>Tous les shots sont tournés !</div>
-        <div style={{ fontSize: 12, marginBottom: 24 }}>(ou aucun lieu n&apos;est encore assigné)</div>
+        <div style={{ fontSize: 48, marginBottom: 12, marginTop: 60 }}>📍</div>
+        <div style={{ fontSize: 14, color: '#fff', marginBottom: 8 }}>Aucun lieu assigné</div>
+        <div style={{ fontSize: 12, marginBottom: 24 }}>Va dans la prep pour attribuer un lieu à tes phrases.</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           {embedded && onSwitchView ? (
             <>
@@ -287,8 +303,18 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
             {placeIcon(currentPlace)} {currentPlace}
           </div>
           <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-            {activeShots.length} shot{activeShots.length > 1 ? 's' : ''} · {Object.keys(reelGroups).length} reel{Object.keys(reelGroups).length > 1 ? 's' : ''}
-            {skippedShots.length > 0 && ` · ${skippedShots.length} reporté${skippedShots.length > 1 ? 's' : ''}`}
+            {(() => {
+              const todo = activeShots.filter(s => !s.done).length
+              const done = activeShots.filter(s => s.done).length
+              const reelsN = Object.keys(reelGroups).length
+              const parts = [
+                `${todo} à tourner`,
+                done > 0 ? `${done} tournée${done > 1 ? 's' : ''}` : null,
+                `${reelsN} reel${reelsN > 1 ? 's' : ''}`,
+                skippedShots.length > 0 ? `${skippedShots.length} reporté${skippedShots.length > 1 ? 's' : ''}` : null,
+              ].filter(Boolean)
+              return parts.join(' · ')
+            })()}
           </div>
         </div>
 
@@ -303,9 +329,17 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
                 <div key={s.id} style={{
                   background: '#141414', border: '1px solid #262626',
                   borderRadius: 14, padding: 18, marginBottom: 10,
+                  opacity: s.done ? 0.55 : 1,
                 }}>
-                  <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-                    Phrase {s.position}/{s.total}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Phrase {s.position}/{s.total}
+                    </div>
+                    {s.done && (
+                      <div style={{ fontSize: 10, color: '#38A169', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        ✓ Tournée
+                      </div>
+                    )}
                   </div>
                   {s.prevText && (
                     <div style={{
@@ -320,7 +354,10 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
                       }}>{s.prevText}</div>
                     </div>
                   )}
-                  <div style={{ fontSize: 17, lineHeight: 1.4, color: '#fff', fontWeight: 700, marginBottom: 10 }}>
+                  <div style={{
+                    fontSize: 17, lineHeight: 1.4, color: '#fff', fontWeight: 700, marginBottom: 10,
+                    textDecoration: s.done ? 'line-through' : 'none',
+                  }}>
                     « {s.text} »
                   </div>
                   {s.shotNote && (
@@ -351,15 +388,25 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
                       border: '1px solid #262626', borderRadius: 6, cursor: 'pointer',
                     }}>👁 Voir le reel entier</button>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => patchShot(s.id, { done: true, skipped: false })} style={{
-                      flex: 1, padding: 11, fontSize: 13, fontWeight: 700,
-                      border: 'none', borderRadius: 8, cursor: 'pointer',
-                      background: '#38A169', color: '#fff',
-                    }}>✓ Tournée</button>
-                    <button onClick={() => patchShot(s.id, { skipped: true })} style={{
-                      padding: '11px 18px', background: 'transparent', color: '#888',
-                      border: '1px solid #262626', borderRadius: 8, fontSize: 13, cursor: 'pointer',
-                    }}>Reporter</button>
+                    {s.done ? (
+                      <button onClick={() => patchShot(s.id, { done: false, skipped: false })} style={{
+                        flex: 1, padding: 11, fontSize: 13, fontWeight: 600,
+                        background: 'transparent', color: '#888',
+                        border: '1px solid #262626', borderRadius: 8, cursor: 'pointer',
+                      }}>↻ Annuler</button>
+                    ) : (
+                      <>
+                        <button onClick={() => patchShot(s.id, { done: true, skipped: false })} style={{
+                          flex: 1, padding: 11, fontSize: 13, fontWeight: 700,
+                          border: 'none', borderRadius: 8, cursor: 'pointer',
+                          background: '#38A169', color: '#fff',
+                        }}>✓ Tournée</button>
+                        <button onClick={() => patchShot(s.id, { skipped: true })} style={{
+                          padding: '11px 18px', background: 'transparent', color: '#888',
+                          border: '1px solid #262626', borderRadius: 8, fontSize: 13, cursor: 'pointer',
+                        }}>Reporter</button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}

@@ -1,7 +1,33 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-05-10
+> Derniere mise a jour : 2026-05-17
+
+---
+
+## Session 2026-05-17 — Fix bugs tournage (Pierre)
+
+Pierre signale deux bugs côté tournage (web + mobile) :
+
+1. **Session de tournage vide alors que les reels existent** : la session « Tournage 1 Geoffrey » ne montrait aucun reel dans Prep/Jour J alors qu'elle en contient. Root cause : `PrepView`/`JourJView`/`BriefView` (web) et `useReelShots` (mobile) chargeaient `/api/social/posts?content_kind=reel&per_page=100` puis filtraient en JS par les IDs de la session. Au-delà de 100 reels OU si un post avait changé de `content_kind`, la session apparaissait vide. Pire, en Jour J la liste filtrée vide faisait un fallback vers `/api/reel-shots` sans filtre → tous les shots du workspace s'affichaient mélangés.
+
+   **Fix** : ajout d'un filtre `ids` au schéma `socialPostFiltersSchema` + handling dans `/api/social/posts`. Les vues fetchent désormais par IDs quand une session est ciblée (`?ids=a,b,c&per_page=500`). Le fallback "pas de filtre social_post_ids" sur l'API reel-shots est neutralisé (on retourne `[]` au lieu de fetcher tout le workspace).
+
+2. **Clic « ✓ Tournée » change le lieu** : marquer la dernière phrase d'un lieu faisait disparaître le lieu (le filtre `byPlace` excluait `done`) → `safeIdx` sautait vers un autre lieu pendant le tournage. Pierre veut juste voir la phrase barrée + un undo, pas qu'elle disparaisse.
+
+   **Fix** : suppression de l'exclusion `s.done` dans `byPlace` (web `jour-j/page.tsx` + mobile `useReelShots.ts`). Les phrases tournées restent visibles (opacité 55% + line-through + badge « ✓ Tournée »). Bouton « ↻ Annuler » remplace « Tournée/Reporter » sur les phrases déjà tournées. Le tri des lieux est fait par nombre de phrases **restantes** (skip + done exclus) → stable jusqu'à ce que tout soit fini.
+
+**Fichiers modifiés** :
+- `src/lib/validations/social-posts.ts` — schéma : ajout `ids` (CSV)
+- `src/app/api/social/posts/route.ts` — handle filtre `ids`
+- `src/app/(dashboard)/acquisition/reels/tournage/prep/page.tsx` — fetch par IDs + 2 queries parallèles (session + picker)
+- `src/app/(dashboard)/acquisition/reels/tournage/jour-j/page.tsx` — fetch par IDs, `done` visible, bouton Annuler, header recompté
+- `src/app/(dashboard)/acquisition/reels/tournage/brief/page.tsx` — fetch par IDs
+- `mobile/src/hooks/useReelShots.ts` — fetch par IDs + `done` exposé dans byPlace
+- `mobile/src/types/reel-shots.ts` — `ShotInfo.done`
+- `mobile/src/app/social/ReelsTournageJourJScreen.tsx` — render done + bouton Annuler
+
+Branche : `feature/pierre-fix-tournage-sessions` (depuis develop). Non commité, pas de PR ouverte.
 
 ---
 
