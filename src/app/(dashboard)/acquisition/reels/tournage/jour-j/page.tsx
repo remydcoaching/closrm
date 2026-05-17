@@ -67,13 +67,16 @@ export default function JourJPageWrapper() {
 interface JourJViewProps {
   embedded?: boolean
   reelParamProp?: string | null
+  targetSessionId?: string | null
   onClose?: () => void
   onSwitchView?: (view: 'prep' | 'brief') => void
 }
 
-export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: JourJViewProps = {}) {
+export function JourJView({ embedded, reelParamProp, targetSessionId, onClose, onSwitchView }: JourJViewProps = {}) {
   const searchParams = useSearchParams()
   const reelParam = embedded ? (reelParamProp ?? null) : searchParams.get('reel')
+  const sessionIdFromUrl = embedded ? null : searchParams.get('session')
+  const effectiveSessionId = targetSessionId ?? sessionIdFromUrl
 
   const [shots, setShots] = useState<ReelShot[]>([])
   const [reels, setReels] = useState<SocialPost[]>([])
@@ -94,13 +97,24 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
     try {
       // Quand reelIds est fourni (session de tournage), on fetch par IDs pour
       // ne PAS rater des reels au-delà des 100 premiers du content_kind=reel.
-      const url = reelIds
-        ? `/api/social/posts?ids=${reelIds.join(',')}&slim=true&per_page=500`
-        : '/api/social/posts?content_kind=reel&slim=true&per_page=500'
-      const reelsRes = await fetch(url)
-      if (!reelsRes.ok) throw new Error(`Reels fetch: ${reelsRes.status}`)
-      const reelsJson = await reelsRes.json()
-      const filtered: SocialPost[] = reelsJson.data ?? []
+      // Si une session est ciblée mais vide (reelIds null) : on N'AFFICHE PAS
+      // tous les reels du workspace — sinon Jour J montre des shots d'autres
+      // sessions et c'est trompeur.
+      let filtered: SocialPost[]
+      if (reelIds) {
+        const url = `/api/social/posts?ids=${reelIds.join(',')}&slim=true&per_page=500`
+        const reelsRes = await fetch(url)
+        if (!reelsRes.ok) throw new Error(`Reels fetch: ${reelsRes.status}`)
+        const reelsJson = await reelsRes.json()
+        filtered = reelsJson.data ?? []
+      } else if (effectiveSessionId) {
+        filtered = []
+      } else {
+        const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=500')
+        if (!reelsRes.ok) throw new Error(`Reels fetch: ${reelsRes.status}`)
+        const reelsJson = await reelsRes.json()
+        filtered = reelsJson.data ?? []
+      }
       setReels(filtered)
 
       // Sync : si l'user a modifié son script, on re-split en reel_shots avant
@@ -129,7 +143,7 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
     } finally {
       setLoading(false)
     }
-  }, [reelIds])
+  }, [reelIds, effectiveSessionId])
 
   useEffect(() => { loadAll() }, [loadAll])
 
@@ -216,11 +230,18 @@ export function JourJView({ embedded, reelParamProp, onClose, onSwitchView }: Jo
   )
 
   if (places.length === 0) {
+    const isEmptySession = !!effectiveSessionId && reels.length === 0
     return (
       <div style={{ padding: 40, textAlign: 'center', color: '#888', minHeight: '100vh', background: '#000' }}>
         <div style={{ fontSize: 48, marginBottom: 12, marginTop: 60 }}>📍</div>
-        <div style={{ fontSize: 14, color: '#fff', marginBottom: 8 }}>Aucun lieu assigné</div>
-        <div style={{ fontSize: 12, marginBottom: 24 }}>Va dans la prep pour attribuer un lieu à tes phrases.</div>
+        <div style={{ fontSize: 14, color: '#fff', marginBottom: 8 }}>
+          {isEmptySession ? 'Cette session ne contient aucun reel' : 'Aucun lieu assigné'}
+        </div>
+        <div style={{ fontSize: 12, marginBottom: 24 }}>
+          {isEmptySession
+            ? 'Va dans la Prep pour ajouter des reels à cette session.'
+            : 'Va dans la prep pour attribuer un lieu à tes phrases.'}
+        </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           {embedded && onSwitchView ? (
             <>
