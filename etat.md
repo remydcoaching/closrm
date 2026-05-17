@@ -1,7 +1,100 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-05-17
+> Derniere mise a jour : 2026-05-17 (soir, ~22h30)
+
+---
+
+## Etat de référence — Versions & runtimes (au 2026-05-17 22h30)
+
+### Mobile (Expo)
+- **App version** : `1.0.0` (pinned, voir PR #501)
+- **iOS buildNumber** : `3` (bumped pour build local AirDrop)
+- **Runtime version policy** : `appVersion` → runtime = `1.0.0`
+- **Channel OTA** : `preview`
+- **Builds installés Pierre iPhone** : runtime 1.0.0 build 2 (build 3 en cours)
+
+### Web
+- **Branche prod** : `develop` (Vercel déploie develop → closrm.fr)
+- **Branche main** : reçoit uniquement les releases validées (pas auto-deploy)
+
+### Branches actives (au moment du commit)
+- `develop` : prod
+- `main` : releases
+- `feature/pierre-mobile-app` : mergée, à supprimer côté local (worktree nettoyé)
+- Toutes les anciennes branches merged en local ont été supprimées (commande `git branch --merged develop | xargs git branch -d`)
+- Branches unmerged conservées (potentielles WIP) — voir `git branch --no-merged develop`
+
+---
+
+## Session 2026-05-17 (soir) — Cleanup tournage + agenda UX + résurrection mobile-app
+
+Suite de l'après-midi (PR #494 + #495 + #496 + #497 déjà mergés). Pierre signale que :
+1. Brief encore présent sur mobile dans Jour J malgré le PR précédent
+2. Jour J encore présent sur web (dans Prep, Brief)
+3. Agenda v2 web : click direct ouvre panel (devrait être 2 clics), granularité 30min seulement, latence création
+4. App mobile : plus d'agenda alors qu'il y en avait un avant + bug "1h s'affiche sur toute la journée"
+
+### Découverte clé
+La branche `feature/pierre-mobile-app` (worktree `/Users/pierrerebmann/closrm-mobile`) contenait **228 commits locaux jamais pushés** entre le 10 et le 15 mai, incluant :
+- AgendaTimeline complet + fixes itératifs du bug "1h sur toute la journée"
+- BookingFormSheet, EventDetailSheet, AgendaList
+- useAgenda hook, useAgendaReminders, agenda-reminders service
+- AgendaStack navigation
+- Accent color custom, alarme klaxon, Branding screen, RDV add/edit
+
+C'est pour ça que la prod mobile n'avait pas l'agenda — branche jamais mergée. Pierre l'avait oublié (worktree séparé).
+
+### PRs créées et mergées dans cette session (toutes sur develop)
+| PR | Titre | Statut |
+|----|-------|--------|
+| #498 | chore(tournage): cleanup Brief mobile + Jour J web | Mergée |
+| #499 | fix(agenda): click 2-stage, granularité 15min, latence création | Mergée |
+| #500 | feat(mobile): agenda timeline + RDV edit + alarmes + accent color | Mergée (~4500 lignes) |
+| #501 | chore(mobile): pin version 1.0.0 | Mergée |
+
+### Détails PR #498 (tournage cleanup final)
+- Mobile : suppression bouton "Brief →" header Jour J, route `ReelsBrief` + écran + types supprimés
+- Web : `PrepView` "🎬 Jour J →" devient "📄 Brief →"
+- Web : `BriefView` "← Jour J" devient "← Prep", empty state pointe vers prep
+- Web : `TournagesModal` retire le case `view.kind === 'jour-j'` + import `JourJView`
+- **Effet** : web = Prep + Brief uniquement, mobile = Prep + Jour J uniquement (cohérent avec décision plateforme)
+
+### Détails PR #499 (agenda v2 web)
+- `handleEventClick` (page.tsx) : si event déjà highlighted → ouvre panel, sinon → highlight seul + ferme panel précédent
+- `snapToHalf` → `snapToQuarter` dans WeekView + DayView (drag/move/resize/preview)
+- Min duration drag 30min → 15min, `+0.5` → `+0.25` sur dragEnd
+- `NewBookingModal.handleSubmit` : `onClose()` immédiat + fetch en background + refetch via onCreated dans finally. UX instantanée, `alert()` si POST échoue.
+
+### Détails PR #500 (résurrection mobile-app)
+- Push de `feature/pierre-mobile-app` sur origin (228 commits)
+- Merge `origin/develop` dedans pour intégrer les fixes récents (tournage cleanup + agenda v2)
+- Conflit résolu : `MoreMenuScreen.tsx` subtitle "prep & jour J" (côté develop)
+- Doublon résolu : ancien `app/more/TournageSessionsScreen.tsx` supprimé (gardé `app/social/` de develop)
+- Dédup `MoreStackParamList.TournageSessions` + import dans MoreStack
+- TypeScript check passe
+
+### Détails PR #501 (pin version mobile)
+- `app.json` version `1.1.0` → `1.0.0` pour matcher le build installé iPhone Pierre
+- Évite le swap manuel à chaque push OTA
+
+### OTAs publiés (preview channel)
+| Group ID | Runtime | Message | Commit |
+|----------|---------|---------|--------|
+| `72ea465f-ddaf-486a-8d8f-43131ce3a6f6` | 1.0.0 | tournage Brief retiré du Jour J | ca3fcb9 |
+| `7d824a01-72c6-4ead-adf0-d8badd99569a` | 1.1.0 | agenda timeline + RDV edit + alarmes (PR #500) | 8e19e33 |
+| `cb2d3c92-9191-4546-b237-18fa6444350b` | 1.0.0 | agenda timeline + RDV edit + alarmes (PR #500, rt 1.0.0) | 8e19e33 |
+
+### Build local iOS en cours (au moment de l'écriture)
+- Profile `preview`, buildNumber 3
+- Sortie : `/tmp/closrm-build.ipa`
+- À AirDrop sur iPhone Pierre pour récupérer l'agenda (l'OTA seul ne descendait pas — peut-être plugin `expo-notifications` qui nécessite un rebuild natif à cause des sons ajoutés)
+
+### Problème connu
+- Pierre voit encore "Call" dans le tab bar mobile au lieu de "Agenda" → l'OTA n'a pas appliqué malgré force-quit. Hypothèse : ajout de `sounds: ["./assets/sounds/alarm.wav"]` dans `expo-notifications` plugin → nécessite build natif. D'où le rebuild local en cours.
+
+### Branches locales nettoyées
+Toutes les branches mergées dans develop ont été supprimées en local (~40 branches). Liste des unmerged conservées : voir `git branch --no-merged develop`.
 
 ---
 
