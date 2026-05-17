@@ -111,15 +111,16 @@ export function useReelShots(reelIds?: string[] | null): UseReelShotsResult {
     return r
   }, [shots, reels])
 
-  // Lieux ordonnés par nombre de shots restants à tourner (skip + done exclus).
-  // Si tout est tourné/reporté, le lieu reste visible (sort stable car
-  // tous les comptes valent 0).
+  // Lieux ordonnés par nombre TOTAL de shots (stable : le tri ne change pas
+  // quand on marque des phrases done, sinon le lieu courant pourrait sauter
+  // de position en pleine session de tournage). Tiebreak: nom du lieu pour
+  // un ordre alphabétique déterministe.
   const places = useMemo(
     () =>
       Object.keys(byPlace).sort((a, b) => {
-        const aTodo = byPlace[a].filter((s) => !s.skipped && !s.done).length
-        const bTodo = byPlace[b].filter((s) => !s.skipped && !s.done).length
-        return bTodo - aTodo
+        const diff = byPlace[b].length - byPlace[a].length
+        if (diff !== 0) return diff
+        return a.localeCompare(b)
       }),
     [byPlace],
   )
