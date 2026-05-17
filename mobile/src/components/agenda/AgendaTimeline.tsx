@@ -19,6 +19,11 @@ const MIN_CARD_HEIGHT = 24
 // Plafond de lanes — 2 pour garder les cards lisibles à 50% width quand
 // plusieurs events se chevauchent.
 const MAX_LANES = 2
+// Seuil "long event" : au-delà, on bascule en bannière toute-la-journée
+// pour ne PAS dominer la grille. Un event blocked-day de 9h sinon mangerait
+// tout le viewport et clipperait les autres events. 4h = limite raisonnable
+// (matinée + déjeuner, etc.). Au-delà = comportement de planning bloqué.
+const LONG_EVENT_THRESHOLD_MIN = 4 * 60
 
 interface Props {
   items: AgendaItem[]
@@ -162,26 +167,46 @@ function layoutItems(items: AgendaItem[], startHour: number): Positioned[] {
 }
 
 export function AgendaTimeline({ items, date, onPressItem }: Props) {
-  // Plage horaire DATA-DRIVEN. On filtre les items invalides AVANT pour ne
-  // pas polluer le calcul. Si aucun event valide → fallback defaults.
-  // Si c'est aujourd'hui, on inclut l'heure actuelle dans la plage pour que
-  // la NOW line s'affiche correctement.
-  const { startHour, endHour } = useMemo(() => {
-    // Filtre: uniquement scheduled_at valide. La durée invalide a un
-    // fallback (30min) pour rester cohérent avec layoutItems — sinon un
-    // event à 14h avec duration_minutes=0 serait positionné par
-    // layoutItems mais ignoré du calcul de plage → invisible (clippé).
-    const valid = items.filter((it) => {
+  // Sépare les long events (> 4h) — ils vont en bannière toute-la-journée
+  // pour ne PAS dominer la grille. Un event mal-duré (template buggé,
+  // Google sync exotique) ne casse plus toute la timeline.
+  const { gridItems, longItems } = useMemo(() => {
+    const grid: AgendaItem[] = []
+    const long: AgendaItem[] = []
+    for (const it of items) {
       const d = new Date(it.scheduled_at)
-      return !Number.isNaN(d.getTime())
-    })
+      if (Number.isNaN(d.getTime())) continue
+      const dur =
+        Number.isFinite(it.duration_minutes) && it.duration_minutes > 0
+          ? it.duration_minutes
+          : 30
+      if (dur >= LONG_EVENT_THRESHOLD_MIN) long.push(it)
+      else grid.push(it)
+    }
+    return { gridItems: grid, longItems: long }
+  }, [items])
+
+  // Plage horaire DATA-DRIVEN, calculée UNIQUEMENT sur les events de la
+  // grille. Les long events n'influencent pas la plage (sinon un event 9h
+  // ferait `endHour = startHour + 10` et clipperait les vrais events).
+  // Si c'est aujourd'hui, on inclut l'heure actuelle pour la NOW line.
+  const { startHour, endHour } = useMemo(() => {
     const isTodayCheck = sameDay(date, new Date())
-    if (valid.length === 0) {
+    if (gridItems.length === 0) {
+      // Pas d'event court → fallback range, mais englobe quand même
+      // l'heure courante si aujourd'hui pour la NOW line.
+      if (isTodayCheck) {
+        const nowH = new Date().getHours() + new Date().getMinutes() / 60
+        return {
+          startHour: Math.max(0, Math.min(DEFAULT_START_HOUR, Math.floor(nowH) - 1)),
+          endHour: Math.min(23, Math.max(DEFAULT_END_HOUR, Math.ceil(nowH) + 1)),
+        }
+      }
       return { startHour: DEFAULT_START_HOUR, endHour: DEFAULT_END_HOUR }
     }
     let minH = 24
     let maxH = 0
-    for (const it of valid) {
+    for (const it of gridItems) {
       const start = new Date(it.scheduled_at)
       const startH = start.getHours() + start.getMinutes() / 60
       const dur =
@@ -192,7 +217,6 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
       if (startH < minH) minH = startH
       if (endH > maxH) maxH = endH
     }
-    // Si aujourd'hui, force la plage à englober l'heure courante (pour la NOW line).
     if (isTodayCheck) {
       const nowH = new Date().getHours() + new Date().getMinutes() / 60
       if (nowH < minH) minH = nowH
@@ -202,10 +226,13 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
       startHour: Math.max(0, Math.floor(minH) - 1),
       endHour: Math.min(23, Math.ceil(maxH) + 1),
     }
-  }, [items, date])
+  }, [gridItems, date])
   const totalHeight = (endHour - startHour + 1) * HOUR_HEIGHT
 
-  const positioned = useMemo(() => layoutItems(items, startHour), [items, startHour])
+  const positioned = useMemo(
+    () => layoutItems(gridItems, startHour),
+    [gridItems, startHour]
+  )
 
   // [TIMELINE DIAG 2026-05-15] log seulement quand les données changent
   // (pas à chaque render) + détection d'anomalie (event hors-bornes).
@@ -280,16 +307,16 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
   const autoScrollTargetY = useMemo(() => {
     let target: number
     if (isToday) target = Math.max(startHour, new Date().getHours() - 1)
-    else if (items.length > 0) {
+    else if (gridItems.length > 0) {
       const first = Math.min(
-        ...items
+        ...gridItems
           .map((it) => new Date(it.scheduled_at).getHours())
           .filter((h) => !Number.isNaN(h))
       )
       target = Number.isFinite(first) ? Math.max(startHour, first - 1) : Math.max(startHour, 8)
     } else target = Math.max(startHour, 8)
     return (target - startHour) * HOUR_HEIGHT
-  }, [isToday, items, startHour])
+  }, [isToday, gridItems, startHour])
 
   // Reset le flag d'auto-scroll quand la date ou la plage change.
   useEffect(() => {
@@ -310,6 +337,10 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
   }, [startHour, endHour])
 
   return (
+    <View style={{ flex: 1 }}>
+      {longItems.length > 0 ? (
+        <LongEventsBanner items={longItems} onPress={onPressItem} />
+      ) : null}
     <ScrollView
       ref={scrollRef}
       style={{ flex: 1 }}
@@ -441,6 +472,90 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
         ) : null}
       </View>
     </ScrollView>
+    </View>
+  )
+}
+
+function LongEventsBanner({
+  items,
+  onPress,
+}: {
+  items: AgendaItem[]
+  onPress: (item: AgendaItem) => void
+}) {
+  return (
+    <View
+      style={{
+        paddingHorizontal: spacing.lg,
+        paddingTop: 6,
+        paddingBottom: 8,
+        gap: 6,
+        borderBottomWidth: 0.33,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <Text
+        style={{
+          ...t.caption2,
+          color: colors.textSecondary,
+          fontWeight: '700',
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        }}
+      >
+        Plage longue ({items.length})
+      </Text>
+      {items.map((it) => {
+        const color = colorForItem(it)
+        const startTime = formatTime(it.scheduled_at)
+        const endTime = formatTime(
+          new Date(
+            new Date(it.scheduled_at).getTime() + (it.duration_minutes ?? 30) * 60_000
+          ).toISOString()
+        )
+        const durLabel = formatDuration(it.duration_minutes ?? 30)
+        return (
+          <Pressable
+            key={it.id}
+            onPress={() => onPress(it)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 6,
+              backgroundColor: color + '22',
+              borderLeftWidth: 3,
+              borderLeftColor: color,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: '700',
+                color: colors.textPrimary,
+              }}
+            >
+              {startTime}–{endTime}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={{
+                flex: 1,
+                fontSize: 12,
+                fontWeight: '600',
+                color: colors.textPrimary,
+              }}
+            >
+              {it.title}
+            </Text>
+            <Text style={{ ...t.caption2, color: colors.textTertiary }}>{durLabel}</Text>
+          </Pressable>
+        )
+      })}
+    </View>
   )
 }
 
