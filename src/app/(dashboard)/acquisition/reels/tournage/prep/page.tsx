@@ -103,13 +103,31 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
     setLoading(true)
     setError(null)
     try {
-      // 1. Reels
-      const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=100')
-      if (!reelsRes.ok) throw new Error(`Reels fetch failed: ${reelsRes.status}`)
-      const reelsJson = await reelsRes.json()
-      const allFetched: SocialPost[] = reelsJson.data ?? []
+      // 1. Quand la vue cible une session de tournage (reelIds fournis), on fetch
+      // EXACTEMENT ces IDs. Avant on faisait ?content_kind=reel&per_page=100 puis
+      // filtre client-side : si la session avait des reels au-delà des 100 premiers
+      // (ou si un content_kind avait changé), la session apparaissait vide.
+      // En parallèle on charge la liste complète des reels pour le ReelPicker.
+      const sessionUrl = reelIds
+        ? `/api/social/posts?ids=${reelIds.join(',')}&slim=true&per_page=500`
+        : null
+      const [sessionRes, allRes] = await Promise.all([
+        sessionUrl ? fetch(sessionUrl) : Promise.resolve(null),
+        fetch('/api/social/posts?content_kind=reel&slim=true&per_page=500'),
+      ])
+      if (!allRes.ok) throw new Error(`Reels fetch failed: ${allRes.status}`)
+      const allJson = await allRes.json()
+      const allFetched: SocialPost[] = allJson.data ?? []
       setAllReels(allFetched)
-      const filtered = reelIds ? allFetched.filter(r => reelIds.includes(r.id)) : allFetched
+
+      let filtered: SocialPost[]
+      if (sessionRes) {
+        if (!sessionRes.ok) throw new Error(`Session reels fetch failed: ${sessionRes.status}`)
+        const sessionJson = await sessionRes.json()
+        filtered = sessionJson.data ?? []
+      } else {
+        filtered = allFetched
+      }
       setReels(filtered)
 
       // 2. Sync les shots de tous les reels visibles (split script → reel_shots)
@@ -125,13 +143,18 @@ export function PrepView({ embedded, reelParamProp, onClose, onNavigate, onSwitc
         }).catch(() => null)
       ))
 
-      // 3. Charge les shots après sync
-      let shotsUrl = '/api/reel-shots'
-      if (filtered.length > 0) shotsUrl += `?social_post_ids=${filtered.map(r => r.id).join(',')}`
-      const shotsRes = await fetch(shotsUrl)
-      if (!shotsRes.ok) throw new Error(`Shots fetch failed: ${shotsRes.status}`)
-      const shotsJson = await shotsRes.json()
-      setShots(shotsJson.data ?? [])
+      // 3. Charge les shots après sync. Si une session est ciblée mais qu'elle est
+      // vide (pas de reels), on n'envoie PAS de filtre — sinon l'API retournerait
+      // TOUS les shots du workspace, donnant l'impression que tout est mélangé.
+      if (filtered.length === 0) {
+        setShots([])
+      } else {
+        const shotsUrl = `/api/reel-shots?social_post_ids=${filtered.map(r => r.id).join(',')}`
+        const shotsRes = await fetch(shotsUrl)
+        if (!shotsRes.ok) throw new Error(`Shots fetch failed: ${shotsRes.status}`)
+        const shotsJson = await shotsRes.json()
+        setShots(shotsJson.data ?? [])
+      }
 
       // 4. Locations autocomplete
       const locRes = await fetch('/api/reel-shots/locations')

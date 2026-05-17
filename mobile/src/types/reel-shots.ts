@@ -28,4 +28,5 @@ export interface ShotInfo {
   prevText: string | null
   nextText: string | null
   skipped: boolean
+  done: boolean
 }
