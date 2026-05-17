@@ -205,8 +205,17 @@ export default function AgendaV2Page() {
   const hoverPosRef = useRef<{ date: Date; hour: number } | null>(null)
 
   const handleEventClick = useCallback((ev: AgendaEvent) => {
-    setHighlightedEventId(ev.id)
-    setSelectedEvent(ev)
+    // 1er clic = highlight seul (sélection visuelle, raccourcis clavier actifs)
+    // 2e clic sur le même event = ouvre le panel détail.
+    // Click ailleurs (autre event) = re-highlight, ferme le panel précédent.
+    setHighlightedEventId((prev) => {
+      if (prev === ev.id) {
+        setSelectedEvent(ev)
+        return prev
+      }
+      setSelectedEvent(null)
+      return ev.id
+    })
   }, [])
 
   const handleHoverChange = useCallback((date: Date | null, hour: number | null) => {

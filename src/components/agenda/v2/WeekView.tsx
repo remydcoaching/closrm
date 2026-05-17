@@ -39,7 +39,7 @@ import {
   computeOverlapLayout,
   eventToPosition,
   pixelToHour,
-  snapToHalf,
+  snapToQuarter,
   totalGridHeight,
 } from '@/lib/agenda/positioning'
 import type { AgendaEvent } from '@/types/agenda'
@@ -224,7 +224,7 @@ export function WeekView({
       if (!col) return
       const rect = col.getBoundingClientRect()
       const y = e.clientY - rect.top
-      const newHour = snapToHalf(pixelToHour(y))
+      const newHour = snapToQuarter(pixelToHour(y))
       setResize((prev) => {
         if (!prev) return prev
         if (prev.currentHour === newHour) return prev
@@ -302,7 +302,7 @@ export function WeekView({
           const y = e.clientY - rect.top
           const cursorHour = pixelToHour(y)
           // Conserve l'offset pointer→event-start
-          const newStart = snapToHalf(cursorHour - prev.pointerOffsetMinutes / 60)
+          const newStart = snapToQuarter(cursorHour - prev.pointerOffsetMinutes / 60)
           currentHour = Math.max(0, Math.min(23.5, newStart))
           if (targetDayIdx >= 0) currentDayIdx = targetDayIdx
         }
@@ -354,7 +354,7 @@ export function WeekView({
     const onMove = (e: MouseEvent) => {
       const rect = col.getBoundingClientRect()
       const y = e.clientY - rect.top
-      const newHour = snapToHalf(pixelToHour(y))
+      const newHour = snapToQuarter(pixelToHour(y))
       setDrag((prev) => {
         if (!prev) return prev
         if (prev.currentHour === newHour) return prev
@@ -371,8 +371,8 @@ export function WeekView({
         if (!prev) return null
         if (prev.isDragging) {
           const start = Math.min(prev.startHour, prev.currentHour)
-          const end = Math.max(prev.startHour, prev.currentHour) + 0.5
-          const minutes = Math.max(30, Math.round((end - start) * 60))
+          const end = Math.max(prev.startHour, prev.currentHour) + 0.25
+          const minutes = Math.max(15, Math.round((end - start) * 60))
           onSlotClick?.(days[prev.dayIdx], start, minutes)
         } else {
           onSlotClick?.(days[prev.dayIdx], prev.startHour)
@@ -522,7 +522,7 @@ export function WeekView({
 
             const isDragCol = drag?.dayIdx === dayIdx
             const dragStart = isDragCol && drag ? Math.min(drag.startHour, drag.currentHour) : null
-            const dragEnd = isDragCol && drag ? Math.max(drag.startHour, drag.currentHour) + 0.5 : null
+            const dragEnd = isDragCol && drag ? Math.max(drag.startHour, drag.currentHour) + 0.25 : null
 
             const isGhostCol = dragMove?.isDragging && dragMove.currentDayIdx === dayIdx
 
@@ -595,7 +595,7 @@ export function WeekView({
                   e.preventDefault()
                   const colRect = e.currentTarget.getBoundingClientRect()
                   const y = e.clientY - colRect.top
-                  const hour = snapToHalf(pixelToHour(y))
+                  const hour = snapToQuarter(pixelToHour(y))
                   setDrag({ dayIdx, startHour: hour, currentHour: hour, isDragging: false })
                 }}
                 style={{

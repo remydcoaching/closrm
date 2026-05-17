@@ -23,7 +23,7 @@ import {
   computeOverlapLayout,
   eventToPosition,
   pixelToHour,
-  snapToHalf,
+  snapToQuarter,
   totalGridHeight,
 } from '@/lib/agenda/positioning'
 import type { AgendaEvent } from '@/types/agenda'
@@ -75,7 +75,7 @@ export function DayView({ date, events, onEventClick, onSlotClick }: DayViewProp
     const onMove = (e: MouseEvent) => {
       const rect = col.getBoundingClientRect()
       const y = e.clientY - rect.top
-      const newHour = snapToHalf(pixelToHour(y))
+      const newHour = snapToQuarter(pixelToHour(y))
       setDrag((prev) => {
         if (!prev) return prev
         if (prev.currentHour === newHour) return prev
@@ -91,8 +91,8 @@ export function DayView({ date, events, onEventClick, onSlotClick }: DayViewProp
         if (!prev) return null
         if (prev.isDragging) {
           const start = Math.min(prev.startHour, prev.currentHour)
-          const end = Math.max(prev.startHour, prev.currentHour) + 0.5
-          const minutes = Math.max(30, Math.round((end - start) * 60))
+          const end = Math.max(prev.startHour, prev.currentHour) + 0.25
+          const minutes = Math.max(15, Math.round((end - start) * 60))
           onSlotClick?.(date, start, minutes)
         } else {
           onSlotClick?.(date, prev.startHour)
@@ -109,7 +109,7 @@ export function DayView({ date, events, onEventClick, onSlotClick }: DayViewProp
   }, [drag, date, onSlotClick])
 
   const dragStart = drag ? Math.min(drag.startHour, drag.currentHour) : null
-  const dragEnd = drag ? Math.max(drag.startHour, drag.currentHour) + 0.5 : null
+  const dragEnd = drag ? Math.max(drag.startHour, drag.currentHour) + 0.25 : null
 
   return (
     <div
@@ -230,7 +230,7 @@ export function DayView({ date, events, onEventClick, onSlotClick }: DayViewProp
               e.preventDefault()
               const rect = e.currentTarget.getBoundingClientRect()
               const y = e.clientY - rect.top
-              const hour = snapToHalf(pixelToHour(y))
+              const hour = snapToQuarter(pixelToHour(y))
               setDrag({ startHour: hour, currentHour: hour, isDragging: false })
             }}
             style={{
