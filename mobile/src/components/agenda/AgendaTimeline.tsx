@@ -8,9 +8,18 @@ import { type as t, spacing } from '../../theme/tokens'
 
 // Grille horaire FIXE : 1 heure = 100 pt. Toujours.
 // Les events sont positionnés en absolu PAR-DESSUS la grille, avec :
-//   top = (startMin / 60 - startHour) * 100
+//   top = minutesFromMidnight / 60 * 100 - startHour * 100
 //   height = (durationMin / 60) * 100 - 2  (proportionnel à la durée)
 // → un 2h fait vraiment 198pt, un 1h fait 98pt, etc. Plus de compression.
+//
+// IMPORTANT : on calcule en MILLISECONDES depuis minuit local du jour,
+// PAS via getHours()/getMinutes(). Pourquoi ? Pour rendre le calcul
+// déterministe et débogable : si formatTime() (toLocaleTimeString) et
+// getHours() divergent (Hermes intl quirks, scheduled_at ambigu type
+// "2026-05-19 07:00:00+00" parsé différemment selon le moteur), le label
+// affichait "07:00" mais le top était calculé sur 06:00 → décalage 1h
+// silencieux. Avec ms-from-midnight, c'est UNE SEULE source de vérité
+// (epoch absolu) qui pilote tout : label, top, height.
 const HOUR_HEIGHT = 100
 const HOUR_LABEL_WIDTH = 56
 const DEFAULT_START_HOUR = 6
@@ -24,6 +33,16 @@ const MAX_LANES = 2
 // tout le viewport et clipperait les autres events. 4h = limite raisonnable
 // (matinée + déjeuner, etc.). Au-delà = comportement de planning bloqué.
 const LONG_EVENT_THRESHOLD_MIN = 4 * 60
+// Clamp défensif : un event positionné hors-grille (top < 0 ou > totalHeight)
+// est un signal de données corrompues. On le bouge vers la marge la plus
+// proche AU LIEU de le laisser flotter invisible/déformé.
+const MS_PER_MIN = 60_000
+
+// Flag debug visuel : ajoute un badge "[t=X h=Y]" en bas-droite de chaque
+// event card pour voir IN SITU si le top/height calculé matche la position
+// visuelle. À retirer une fois le bug 06:00-au-lieu-de-07:00 confirmé fixé.
+// Mis à true par défaut pour ce ship — flip à false ensuite.
+const SHOW_DEBUG_BADGE = true
 
 interface Props {
   items: AgendaItem[]
@@ -65,8 +84,31 @@ function labelForKind(item: AgendaItem): string {
   return 'Booking'
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+// Calcule les minutes écoulées depuis minuit local du jour `day` jusqu'à
+// l'event `iso`. Pas de getHours() — on fait de l'arithmétique ms pure pour
+// éviter toute dépendance à un quelconque pétard de timezone côté Hermes.
+function minutesFromLocalMidnight(iso: string, day: Date): number {
+  const eventMs = new Date(iso).getTime()
+  const dayStart = new Date(day)
+  dayStart.setHours(0, 0, 0, 0)
+  return (eventMs - dayStart.getTime()) / MS_PER_MIN
+}
+
+// formatTime : on utilise les mêmes minutes-from-midnight pour formater
+// l'heure affichée, garantissant que le LABEL "HH:MM" matche EXACTEMENT
+// la position visuelle. Plus de divergence entre toLocaleTimeString et le
+// calcul de top.
+function formatTimeFromMinutes(minutes: number): string {
+  // Normalise dans [0, 24*60) — un event hors-jour est clamped au jour
+  // affiché (rare, mais ne pas crasher avec négatif/débordement).
+  const m = ((Math.round(minutes) % 1440) + 1440) % 1440
+  const h = Math.floor(m / 60)
+  const min = m % 60
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+}
+
+function formatTime(iso: string, day: Date): string {
+  return formatTimeFromMinutes(minutesFromLocalMidnight(iso, day))
 }
 
 function formatDuration(min: number): string {
@@ -80,8 +122,11 @@ function formatDuration(min: number): string {
  * Layout : top + height proportionnels, lanes pour les overlaps visuels.
  * On groupe les events qui se chevauchent (top+height) et on leur attribue
  * des lanes (max 3). Cap dur pour ne pas avoir des cards 3% de large.
+ *
+ * Position = minutes-from-midnight (ms-based) — pas getHours(). Source
+ * unique de vérité pour éviter divergence label/position.
  */
-function layoutItems(items: AgendaItem[], startHour: number): Positioned[] {
+function layoutItems(items: AgendaItem[], startHour: number, day: Date): Positioned[] {
   type Slot = {
     item: AgendaItem
     top: number
@@ -92,12 +137,12 @@ function layoutItems(items: AgendaItem[], startHour: number): Positioned[] {
   }
   const slots: Slot[] = items
     .map((item) => {
-      const start = new Date(item.scheduled_at)
+      const eventMs = new Date(item.scheduled_at).getTime()
       // Defensive : invalid date → skip cet item plutôt que de l'afficher à NaN.
-      if (Number.isNaN(start.getTime())) {
+      if (Number.isNaN(eventMs)) {
         return null
       }
-      const startMin = start.getHours() * 60 + start.getMinutes()
+      const startMin = minutesFromLocalMidnight(item.scheduled_at, day)
       const top = (startMin / 60 - startHour) * HOUR_HEIGHT
       const durMin =
         Number.isFinite(item.duration_minutes) && item.duration_minutes > 0
@@ -207,8 +252,7 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
     let minH = 24
     let maxH = 0
     for (const it of gridItems) {
-      const start = new Date(it.scheduled_at)
-      const startH = start.getHours() + start.getMinutes() / 60
+      const startH = minutesFromLocalMidnight(it.scheduled_at, date) / 60
       const dur =
         Number.isFinite(it.duration_minutes) && it.duration_minutes > 0
           ? it.duration_minutes
@@ -230,22 +274,35 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
   const totalHeight = (endHour - startHour + 1) * HOUR_HEIGHT
 
   const positioned = useMemo(
-    () => layoutItems(gridItems, startHour),
-    [gridItems, startHour]
+    () => layoutItems(gridItems, startHour, date),
+    [gridItems, startHour, date]
   )
 
-  // [TIMELINE DIAG 2026-05-15] log seulement quand les données changent
-  // (pas à chaque render) + détection d'anomalie (event hors-bornes).
+  // [TIMELINE DIAG 2026-05-20] log seulement quand les données changent.
+  // On compare le calcul ms-from-midnight AVEC l'ancien getHours()/getMinutes()
+  // pour DÉTECTER une éventuelle divergence Hermes (root cause possible des
+  // 5 tentatives précédentes : label "07:00" mais top calculé sur 06:00).
   useEffect(() => {
     const diag = {
       itemsCount: items.length,
-      itemsRaw: items.map((it) => ({
-        id: it.id,
-        scheduled_at: it.scheduled_at,
-        duration_minutes: it.duration_minutes,
-        kind: it.kind,
-        title: it.title,
-      })),
+      tz: new Date().getTimezoneOffset(),
+      itemsRaw: items.map((it) => {
+        const d = new Date(it.scheduled_at)
+        const valid = !Number.isNaN(d.getTime())
+        return {
+          id: it.id,
+          scheduled_at: it.scheduled_at,
+          duration_minutes: it.duration_minutes,
+          kind: it.kind,
+          title: it.title,
+          parsed_ms: valid ? d.getTime() : null,
+          // Triple check : si ces 3 valeurs ne matchent pas, on a un bug
+          // de timezone côté moteur JS.
+          getHours_min: valid ? d.getHours() * 60 + d.getMinutes() : null,
+          ms_from_midnight: valid ? minutesFromLocalMidnight(it.scheduled_at, date) : null,
+          formatted: valid ? formatTime(it.scheduled_at, date) : 'INVALID',
+        }
+      }),
       startHour,
       endHour,
       totalHeight,
@@ -310,18 +367,20 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
     else if (gridItems.length > 0) {
       const first = Math.min(
         ...gridItems
-          .map((it) => new Date(it.scheduled_at).getHours())
-          .filter((h) => !Number.isNaN(h))
+          .map((it) => Math.floor(minutesFromLocalMidnight(it.scheduled_at, date) / 60))
+          .filter((h) => Number.isFinite(h))
       )
       target = Number.isFinite(first) ? Math.max(startHour, first - 1) : Math.max(startHour, 8)
     } else target = Math.max(startHour, 8)
     return (target - startHour) * HOUR_HEIGHT
-  }, [isToday, gridItems, startHour])
+  }, [isToday, gridItems, startHour, date])
 
-  // Reset le flag d'auto-scroll quand la date ou la plage change.
+  // Reset le flag d'auto-scroll quand la date, la plage OU le nombre
+  // d'items change (transition empty → loaded sinon scroll bloqué sur le
+  // target de l'état vide).
   useEffect(() => {
     hasAutoScrolledRef.current = false
-  }, [date, startHour])
+  }, [date, startHour, gridItems.length])
 
   const handleContentSizeChange = (_w: number, h: number) => {
     if (hasAutoScrolledRef.current) return
@@ -339,7 +398,7 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
   return (
     <View style={{ flex: 1 }}>
       {longItems.length > 0 ? (
-        <LongEventsBanner items={longItems} onPress={onPressItem} />
+        <LongEventsBanner items={longItems} day={date} onPress={onPressItem} />
       ) : null}
     <ScrollView
       ref={scrollRef}
@@ -415,6 +474,7 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
             <EventBlock
               key={item.id}
               item={item}
+              day={date}
               top={top}
               height={height}
               lane={lane}
@@ -478,9 +538,11 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
 
 function LongEventsBanner({
   items,
+  day,
   onPress,
 }: {
   items: AgendaItem[]
+  day: Date
   onPress: (item: AgendaItem) => void
 }) {
   return (
@@ -507,13 +569,11 @@ function LongEventsBanner({
       </Text>
       {items.map((it) => {
         const color = colorForItem(it)
-        const startTime = formatTime(it.scheduled_at)
-        const endTime = formatTime(
-          new Date(
-            new Date(it.scheduled_at).getTime() + (it.duration_minutes ?? 30) * 60_000
-          ).toISOString()
-        )
-        const durLabel = formatDuration(it.duration_minutes ?? 30)
+        const startMin = minutesFromLocalMidnight(it.scheduled_at, day)
+        const durMin = it.duration_minutes ?? 30
+        const startTime = formatTimeFromMinutes(startMin)
+        const endTime = formatTimeFromMinutes(startMin + durMin)
+        const durLabel = formatDuration(durMin)
         return (
           <Pressable
             key={it.id}
@@ -561,6 +621,7 @@ function LongEventsBanner({
 
 function EventBlock({
   item,
+  day,
   top,
   height,
   lane,
@@ -568,6 +629,7 @@ function EventBlock({
   onPress,
 }: {
   item: AgendaItem
+  day: Date
   top: number
   height: number
   lane: number
@@ -583,6 +645,7 @@ function EventBlock({
   const medium = height >= 26 && height < 48
   const showChip = height >= 38
   const showLocation = height >= 56 && Boolean(item.location_name)
+  const timeLabel = formatTime(item.scheduled_at, day)
   return (
     <Pressable
       onPress={onPress}
@@ -625,7 +688,7 @@ function EventBlock({
                 color: colors.textPrimary,
               }}
             >
-              {formatTime(item.scheduled_at)}
+              {timeLabel}
             </Text>
             <Text
               numberOfLines={1}
@@ -661,7 +724,7 @@ function EventBlock({
                   color: colors.textPrimary,
                 }}
               >
-                {formatTime(item.scheduled_at)}
+                {timeLabel}
               </Text>
               <Text
                 style={{
@@ -727,6 +790,25 @@ function EventBlock({
           pointerEvents="none"
         >
           <Avatar name={item.lead_name} size={20} />
+        </View>
+      ) : null}
+      {SHOW_DEBUG_BADGE ? (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 1,
+            right: 4,
+            paddingHorizontal: 4,
+            paddingVertical: 1,
+            backgroundColor: '#000a',
+            borderRadius: 3,
+          }}
+          pointerEvents="none"
+        >
+          <Text style={{ fontSize: 8, fontWeight: '700', color: '#0ff' }}>
+            t{Math.round(top)} h{Math.round(height)} ·{' '}
+            {Math.round(minutesFromLocalMidnight(item.scheduled_at, day))}m
+          </Text>
         </View>
       ) : null}
     </Pressable>
