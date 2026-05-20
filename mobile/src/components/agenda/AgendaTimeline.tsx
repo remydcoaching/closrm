@@ -650,9 +650,18 @@ function EventBlock({
   // measuredH ≠ height (prop), Fabric/new-arch ignore notre style.height
   // pour les absolute children → c'est ÇA le bug, pas le calcul.
   const [measured, setMeasured] = useState<{ w: number; h: number } | null>(null)
+  // ROOT-CAUSE FIX 2026-05-20 : Pressable + position:absolute + height
+  // ne respecte PAS la contrainte hauteur sur Fabric/new-arch iOS — la
+  // Pressable s'étire pour englober ses children (badge debug en
+  // particulier, qui est position:absolute bottom:1 → repousse le
+  // bottom de la Pressable jusqu'en bas du parent absolute container).
+  // Fix : on wrap dans une View qui PORTE le position:absolute + top +
+  // height + width (View respecte ces contraintes correctement), et la
+  // Pressable devient un enfant flex qui rempli le wrapper. Le badge
+  // est positionné dans le WRAPPER (pas la Pressable) pour qu'il ne
+  // déforme rien.
   return (
-    <Pressable
-      onPress={onPress}
+    <View
       onLayout={(e) => {
         const { width: w, height: h } = e.nativeEvent.layout
         setMeasured({ w: Math.round(w), h: Math.round(h) })
@@ -670,25 +679,27 @@ function EventBlock({
           )
         }
       }}
-      style={({ pressed }) => ({
+      style={{
         position: 'absolute',
         top,
         left: `${leftPct}%`,
         width: `${widthPct}%`,
         height,
-        minHeight: height,
-        maxHeight: height,
-        paddingRight: lane < laneCount - 1 ? 3 : 0,
-        opacity: isDone ? 0.55 : pressed ? 0.7 : 1,
-        // [DIAG] Bordure rouge fluo TRÈS visible pour identifier IN SITU
-        // la vraie bounding-box de la Pressable. Si on voit du rouge fluo
-        // étendu sur 9h de timeline → la Pressable est étirée. Si rouge
-        // fluo est petit (48pt) mais "Médoc" apparaît ailleurs → autre
-        // path de rendu fautif.
+        // Bordure debug magenta visible IN SITU pour confirmer la
+        // vraie bounding-box du wrapper.
         borderWidth: SHOW_DEBUG_BADGE ? 2 : 0,
         borderColor: SHOW_DEBUG_BADGE ? '#ff00ff' : 'transparent',
-      })}
+        overflow: 'hidden',
+      }}
     >
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({
+          flex: 1,
+          paddingRight: lane < laneCount - 1 ? 3 : 0,
+          opacity: isDone ? 0.55 : pressed ? 0.7 : 1,
+        })}
+      >
       <View
         style={{
           height: '100%',
@@ -812,6 +823,7 @@ function EventBlock({
           </>
         )}
       </View>
+      </Pressable>
       {item.lead_name && height >= 56 ? (
         <View
           style={{ position: 'absolute', top: 6, right: 6, opacity: 0.85 }}
@@ -840,6 +852,6 @@ function EventBlock({
           </Text>
         </View>
       ) : null}
-    </Pressable>
+    </View>
   )
 }
