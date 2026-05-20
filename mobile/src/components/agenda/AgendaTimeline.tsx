@@ -646,9 +646,30 @@ function EventBlock({
   const showChip = height >= 38
   const showLocation = height >= 56 && Boolean(item.location_name)
   const timeLabel = formatTime(item.scheduled_at, day)
+  // [DIAG 2026-05-20] mesure réelle de la Pressable après layout. Si
+  // measuredH ≠ height (prop), Fabric/new-arch ignore notre style.height
+  // pour les absolute children → c'est ÇA le bug, pas le calcul.
+  const [measured, setMeasured] = useState<{ w: number; h: number } | null>(null)
   return (
     <Pressable
       onPress={onPress}
+      onLayout={(e) => {
+        const { width: w, height: h } = e.nativeEvent.layout
+        setMeasured({ w: Math.round(w), h: Math.round(h) })
+        if (Math.abs(h - height) > 1) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            '[timeline-layout-mismatch]',
+            JSON.stringify({
+              id: item.id,
+              title: item.title,
+              styleHeight: height,
+              measuredHeight: h,
+              styleTop: top,
+            })
+          )
+        }
+      }}
       style={({ pressed }) => ({
         position: 'absolute',
         top,
@@ -659,6 +680,13 @@ function EventBlock({
         maxHeight: height,
         paddingRight: lane < laneCount - 1 ? 3 : 0,
         opacity: isDone ? 0.55 : pressed ? 0.7 : 1,
+        // [DIAG] Bordure rouge fluo TRÈS visible pour identifier IN SITU
+        // la vraie bounding-box de la Pressable. Si on voit du rouge fluo
+        // étendu sur 9h de timeline → la Pressable est étirée. Si rouge
+        // fluo est petit (48pt) mais "Médoc" apparaît ailleurs → autre
+        // path de rendu fautif.
+        borderWidth: SHOW_DEBUG_BADGE ? 2 : 0,
+        borderColor: SHOW_DEBUG_BADGE ? '#ff00ff' : 'transparent',
       })}
     >
       <View
@@ -806,7 +834,8 @@ function EventBlock({
           pointerEvents="none"
         >
           <Text style={{ fontSize: 8, fontWeight: '700', color: '#0ff' }}>
-            t{Math.round(top)} h{Math.round(height)} ·{' '}
+            t{Math.round(top)} h{Math.round(height)} · m
+            {measured ? `${measured.h}` : '?'} ·{' '}
             {Math.round(minutesFromLocalMidnight(item.scheduled_at, day))}m
           </Text>
         </View>
