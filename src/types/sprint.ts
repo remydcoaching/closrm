@@ -20,6 +20,10 @@ export interface SprintDayKpi {
   cpl: number
   notes: string
   updated_at: string
+  focus_theme: string | null
+  focus_emoji: string | null
+  focus_description: string | null
+  schedule_blocks: DayScheduleBlock[] | null
 }
 
 export interface DayScheduleBlock {
