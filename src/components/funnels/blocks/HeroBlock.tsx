@@ -30,6 +30,25 @@ interface Props {
   config: HeroBlockConfig
 }
 
+// Marge au-dessus du CTA selon la position choisie par le coach.
+// `hasSubtitle` change la base parce que `.fnl-hook` apporte déjà 35px de
+// margin-bottom — sans sous-titre il faut compenser manuellement.
+function ctaMarginTop(
+  position: HeroBlockConfig['ctaPosition'] | undefined,
+  hasSubtitle: boolean,
+): number {
+  const base = hasSubtitle ? 0 : 24
+  switch (position) {
+    case 'top':
+      return base
+    case 'bottom':
+      return base + 80
+    case 'middle':
+    default:
+      return base + 28
+  }
+}
+
 export default function HeroBlock({ config }: Props) {
   const hasImage = !!config.backgroundImage
 
@@ -83,7 +102,13 @@ export default function HeroBlock({ config }: Props) {
         </h1>
         {config.subtitle && <p className="fnl-hook">{config.subtitle}</p>}
         {config.ctaText && (
-          <a href={resolveFunnelUrl(config.ctaUrl)} className="fnl-btn">
+          <a
+            href={resolveFunnelUrl(config.ctaUrl)}
+            className="fnl-btn"
+            style={{
+              marginTop: ctaMarginTop(config.ctaPosition, !!config.subtitle),
+            }}
+          >
             {config.ctaText}
           </a>
         )}

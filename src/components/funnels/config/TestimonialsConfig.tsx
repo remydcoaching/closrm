@@ -13,8 +13,9 @@ const emptyItem: TestimonialItem = {
   content: '',
   avatarUrl: null,
   rating: 5,
-  beforeImageUrl: null,
-  afterImageUrl: null,
+  photoUrl: null,
+  photoPosition: 'top',
+  showAvatar: true,
 }
 
 export default function TestimonialsConfig({ config, onChange }: Props) {
@@ -76,7 +77,7 @@ export default function TestimonialsConfig({ config, onChange }: Props) {
             />
           </div>
           <div style={{ marginBottom: 6 }}>
-            <label style={labelStyle}>Photo (URL)</label>
+            <label style={labelStyle}>Photo de profil (URL)</label>
             <input
               type="url"
               value={item.avatarUrl || ''}
@@ -85,30 +86,47 @@ export default function TestimonialsConfig({ config, onChange }: Props) {
               style={inputStyle}
             />
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Photo « avant » (optionnelle)</label>
-              <input
-                type="url"
-                value={item.beforeImageUrl || ''}
-                onChange={e => updateItem(i, { beforeImageUrl: e.target.value || null })}
-                placeholder="https://..."
-                style={inputStyle}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Photo « après » (optionnelle)</label>
-              <input
-                type="url"
-                value={item.afterImageUrl || ''}
-                onChange={e => updateItem(i, { afterImageUrl: e.target.value || null })}
-                placeholder="https://..."
-                style={inputStyle}
-              />
-            </div>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 12,
+              color: '#aaa',
+              cursor: 'pointer',
+              marginBottom: 8,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={item.showAvatar !== false}
+              onChange={e => updateItem(i, { showAvatar: e.target.checked })}
+              style={{ accentColor: 'var(--color-primary, #E53E3E)' }}
+            />
+            Afficher la photo de profil
+          </label>
+          <div style={{ marginBottom: 6 }}>
+            <label style={labelStyle}>Photo du témoignage (optionnelle)</label>
+            <input
+              type="url"
+              value={item.photoUrl || ''}
+              onChange={e => updateItem(i, { photoUrl: e.target.value || null })}
+              placeholder="https://..."
+              style={inputStyle}
+            />
           </div>
-          <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
-            Les deux URLs doivent être renseignées pour afficher la comparaison avant / après.
+          <div>
+            <label style={labelStyle}>Position de la photo</label>
+            <select
+              value={item.photoPosition || 'top'}
+              onChange={e => updateItem(i, { photoPosition: e.target.value as TestimonialItem['photoPosition'] })}
+              style={inputStyle}
+              disabled={!item.photoUrl}
+            >
+              <option value="top">Au-dessus du témoignage</option>
+              <option value="left">À gauche du témoignage</option>
+              <option value="right">À droite du témoignage</option>
+            </select>
           </div>
         </div>
       ))}

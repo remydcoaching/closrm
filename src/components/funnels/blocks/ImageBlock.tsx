@@ -18,10 +18,12 @@ interface Props {
   config: FunnelImageBlockConfig
 }
 
+// Largeur max d'UNE image en mode galerie. `full` = pas de cap, l'image
+// remplit toute la cellule du grid (donc 100% / columns du conteneur).
 const SIZE_TO_MAXWIDTH: Record<NonNullable<FunnelImageBlockConfig['size']>, number | null> = {
-  small: 240,
-  medium: 420,
-  large: 640,
+  small: 200,
+  medium: 320,
+  large: 480,
   full: null,
 }
 
@@ -144,29 +146,41 @@ export default function ImageBlock({ config }: Props) {
     )
   }
 
-  // Mode galerie : grid auto-fit responsive avec un nombre de colonnes
-  // maximum imposé par `columns` et une taille maximale par image via `size`.
+  // Mode galerie : grid auto-fit responsive. Le nombre de colonnes max est
+  // imposé en plafonnant la largeur totale du conteneur (`columns × size`),
+  // et le min par colonne via `minmax(min(100%, X), 1fr)` permet aux colonnes
+  // de retomber en 1 seule sur mobile sans avoir besoin de media query.
+  const effectiveColumns = Math.min(columns, Math.max(items.length, 1)) as 1 | 2 | 3
+  const gap = 16
+  const containerMaxWidth =
+    maxItemWidth != null ? maxItemWidth * effectiveColumns + gap * (effectiveColumns - 1) : undefined
+  // Seuil minimum d'une colonne. En dessous, auto-fit recompose en moins de
+  // colonnes (donc 1 colonne quand la cellule serait trop étroite pour rester
+  // lisible — typiquement sur écran mobile).
+  const minColWidth = maxItemWidth ?? 260
+
+  const containerMargin: React.CSSProperties =
+    alignment === 'left'
+      ? { marginLeft: 0, marginRight: 'auto' }
+      : alignment === 'right'
+      ? { marginLeft: 'auto', marginRight: 0 }
+      : { marginLeft: 'auto', marginRight: 'auto' }
+
   return (
     <div style={{ padding: 20 }}>
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns:
-            items.length === 1
-              ? '1fr'
-              : `repeat(auto-fit, minmax(min(100%, ${
-                  maxItemWidth ? `${Math.min(maxItemWidth, 320)}px` : '260px'
-                }), 1fr))`,
-          maxWidth:
-            maxItemWidth != null ? maxItemWidth * Math.min(columns, items.length) + 24 * (columns - 1) : undefined,
-          gap: 24,
-          marginLeft: 'auto',
-          marginRight: 'auto',
+          gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${minColWidth}px), 1fr))`,
+          gap,
+          maxWidth: containerMaxWidth,
+          width: '100%',
+          ...containerMargin,
           justifyItems: justifyContent === 'flex-start' ? 'start' : justifyContent === 'flex-end' ? 'end' : 'center',
         }}
       >
         {items.map((item, i) => (
-          <div key={i} style={{ width: '100%', maxWidth: maxItemWidth ?? undefined }}>
+          <div key={i} style={{ width: '100%' }}>
             {renderImage(item, maxItemWidth)}
           </div>
         ))}

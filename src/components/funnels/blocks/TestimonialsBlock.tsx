@@ -58,80 +58,81 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
-function BeforeAfter({ before, after }: { before: string; after: string }) {
-  // Grille 50/50 avec ratio 4/5 portrait par défaut pour matcher les photos
-  // de transformation physique (cas d'usage principal des coachs sport).
+function TestimonialPhoto({ src, alt }: { src: string; alt: string }) {
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 6,
-        margin: '0 0 18px',
+        position: 'relative',
+        aspectRatio: '4 / 5',
+        background: 'rgba(var(--fnl-primary-rgb), 0.05)',
         borderRadius: 14,
         overflow: 'hidden',
       }}
     >
-      {[
-        { src: before, label: 'AVANT' },
-        { src: after, label: 'APRÈS' },
-      ].map((side, i) => (
-        <div key={i} style={{ position: 'relative', aspectRatio: '4 / 5', background: 'rgba(var(--fnl-primary-rgb), 0.05)' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={side.src}
-            alt={side.label}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              display: 'block',
-            }}
-          />
-          <span
-            style={{
-              position: 'absolute',
-              top: 8,
-              left: 8,
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: 1,
-              padding: '4px 8px',
-              borderRadius: 999,
-              background: 'rgba(0,0,0,0.6)',
-              color: '#fff',
-              backdropFilter: 'blur(4px)',
-            }}
-          >
-            {side.label}
-          </span>
-        </div>
-      ))}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+        }}
+      />
+    </div>
+  )
+}
+
+function Avatar({ item }: { item: TestimonialItem }) {
+  return item.avatarUrl ? (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      src={item.avatarUrl}
+      alt={item.name}
+      style={{
+        width: 48,
+        height: 48,
+        borderRadius: '50%',
+        objectFit: 'cover',
+        border: '2px solid rgba(var(--fnl-primary-rgb), 0.2)',
+        flexShrink: 0,
+      }}
+    />
+  ) : (
+    <div
+      style={{
+        width: 48,
+        height: 48,
+        borderRadius: '50%',
+        background:
+          'linear-gradient(135deg, var(--fnl-primary) 0%, var(--fnl-primary-light) 100%)',
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 800,
+        fontSize: 16,
+        fontFamily: 'Poppins, sans-serif',
+        boxShadow: '0 4px 12px rgba(var(--fnl-primary-rgb), 0.3)',
+        flexShrink: 0,
+      }}
+      aria-hidden="true"
+    >
+      {getInitials(item.name)}
     </div>
   )
 }
 
 function TestimonialCard({ item }: { item: TestimonialItem }) {
-  const hasBefore = !!item.beforeImageUrl
-  const hasAfter = !!item.afterImageUrl
-  return (
-    <div
-      style={{
-        background: 'var(--fnl-section-bg)',
-        borderRadius: 20,
-        padding: 28,
-        boxShadow:
-          '0 8px 30px rgba(var(--fnl-primary-rgb), 0.12), 0 2px 10px rgba(0, 0, 0, 0.05)',
-        border: '1px solid rgba(var(--fnl-primary-rgb), 0.1)',
-        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-        position: 'relative',
-      }}
-    >
-      {hasBefore && hasAfter && (
-        <BeforeAfter before={item.beforeImageUrl!} after={item.afterImageUrl!} />
-      )}
+  const hasPhoto = !!item.photoUrl
+  const photoPosition = item.photoPosition ?? 'top'
+  const showAvatar = item.showAvatar !== false
+
+  const textContent = (
+    <div style={{ flex: 1, minWidth: 0 }}>
       <Stars rating={item.rating} />
       <p
         style={{
@@ -145,41 +146,7 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
         &ldquo;{item.content}&rdquo;
       </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {item.avatarUrl ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={item.avatarUrl}
-            alt={item.name}
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              objectFit: 'cover',
-              border: '2px solid rgba(var(--fnl-primary-rgb), 0.2)',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              background:
-                'linear-gradient(135deg, var(--fnl-primary) 0%, var(--fnl-primary-light) 100%)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: 16,
-              fontFamily: 'Poppins, sans-serif',
-              boxShadow: '0 4px 12px rgba(var(--fnl-primary-rgb), 0.3)',
-            }}
-            aria-hidden="true"
-          >
-            {getInitials(item.name)}
-          </div>
-        )}
+        {showAvatar && <Avatar item={item} />}
         <div>
           <div
             style={{
@@ -204,6 +171,48 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
           )}
         </div>
       </div>
+    </div>
+  )
+
+  const isSideLayout = hasPhoto && (photoPosition === 'left' || photoPosition === 'right')
+
+  return (
+    <div
+      style={{
+        background: 'var(--fnl-section-bg)',
+        borderRadius: 20,
+        padding: 28,
+        boxShadow:
+          '0 8px 30px rgba(var(--fnl-primary-rgb), 0.12), 0 2px 10px rgba(0, 0, 0, 0.05)',
+        border: '1px solid rgba(var(--fnl-primary-rgb), 0.1)',
+        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+        position: 'relative',
+      }}
+    >
+      {isSideLayout ? (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: photoPosition === 'right' ? 'row-reverse' : 'row',
+            alignItems: 'stretch',
+            gap: 20,
+          }}
+        >
+          <div style={{ flex: '0 0 38%', maxWidth: 180 }}>
+            <TestimonialPhoto src={item.photoUrl!} alt={item.name} />
+          </div>
+          {textContent}
+        </div>
+      ) : (
+        <>
+          {hasPhoto && (
+            <div style={{ margin: '0 0 18px' }}>
+              <TestimonialPhoto src={item.photoUrl!} alt={item.name} />
+            </div>
+          )}
+          {textContent}
+        </>
+      )}
     </div>
   )
 }
