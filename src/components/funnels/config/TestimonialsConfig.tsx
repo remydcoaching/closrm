@@ -13,6 +13,8 @@ const emptyItem: TestimonialItem = {
   content: '',
   avatarUrl: null,
   rating: 5,
+  beforeImageUrl: null,
+  afterImageUrl: null,
 }
 
 export default function TestimonialsConfig({ config, onChange }: Props) {
@@ -73,7 +75,7 @@ export default function TestimonialsConfig({ config, onChange }: Props) {
               style={{ ...inputStyle, resize: 'vertical' }}
             />
           </div>
-          <div>
+          <div style={{ marginBottom: 6 }}>
             <label style={labelStyle}>Photo (URL)</label>
             <input
               type="url"
@@ -82,6 +84,31 @@ export default function TestimonialsConfig({ config, onChange }: Props) {
               placeholder="https://..."
               style={inputStyle}
             />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Photo « avant » (optionnelle)</label>
+              <input
+                type="url"
+                value={item.beforeImageUrl || ''}
+                onChange={e => updateItem(i, { beforeImageUrl: e.target.value || null })}
+                placeholder="https://..."
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Photo « après » (optionnelle)</label>
+              <input
+                type="url"
+                value={item.afterImageUrl || ''}
+                onChange={e => updateItem(i, { afterImageUrl: e.target.value || null })}
+                placeholder="https://..."
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+            Les deux URLs doivent être renseignées pour afficher la comparaison avant / après.
           </div>
         </div>
       ))}

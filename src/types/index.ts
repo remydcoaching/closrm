@@ -627,6 +627,8 @@ export interface TestimonialItem {
   content: string
   avatarUrl: string | null
   rating: number
+  beforeImageUrl?: string | null
+  afterImageUrl?: string | null
 }
 
 export interface TestimonialsBlockConfig {
@@ -707,12 +709,21 @@ export interface FunnelTextBlockConfig {
   effects?: BlockEffectsJSON
 }
 
+export interface FunnelImageItem {
+  src: string
+  alt: string
+  linkUrl: string | null
+}
+
 export interface FunnelImageBlockConfig {
   src: string
   alt: string
   width: number | null
   alignment: 'left' | 'center' | 'right'
   linkUrl: string | null
+  images?: FunnelImageItem[]
+  size?: 'small' | 'medium' | 'large' | 'full'
+  columns?: 1 | 2 | 3
 }
 
 export interface SpacerBlockConfig {

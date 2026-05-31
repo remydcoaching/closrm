@@ -58,7 +58,64 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
+function BeforeAfter({ before, after }: { before: string; after: string }) {
+  // Grille 50/50 avec ratio 4/5 portrait par défaut pour matcher les photos
+  // de transformation physique (cas d'usage principal des coachs sport).
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 6,
+        margin: '0 0 18px',
+        borderRadius: 14,
+        overflow: 'hidden',
+      }}
+    >
+      {[
+        { src: before, label: 'AVANT' },
+        { src: after, label: 'APRÈS' },
+      ].map((side, i) => (
+        <div key={i} style={{ position: 'relative', aspectRatio: '4 / 5', background: 'rgba(var(--fnl-primary-rgb), 0.05)' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={side.src}
+            alt={side.label}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+          <span
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: 1,
+              padding: '4px 8px',
+              borderRadius: 999,
+              background: 'rgba(0,0,0,0.6)',
+              color: '#fff',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            {side.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function TestimonialCard({ item }: { item: TestimonialItem }) {
+  const hasBefore = !!item.beforeImageUrl
+  const hasAfter = !!item.afterImageUrl
   return (
     <div
       style={{
@@ -72,6 +129,9 @@ function TestimonialCard({ item }: { item: TestimonialItem }) {
         position: 'relative',
       }}
     >
+      {hasBefore && hasAfter && (
+        <BeforeAfter before={item.beforeImageUrl!} after={item.afterImageUrl!} />
+      )}
       <Stars rating={item.rating} />
       <p
         style={{

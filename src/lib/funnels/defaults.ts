@@ -144,6 +144,9 @@ export function getDefaultBlockConfig(type: FunnelBlockType): FunnelBlockConfig 
         width: null,
         alignment: 'center',
         linkUrl: null,
+        images: [],
+        size: 'large',
+        columns: 1,
       }
     case 'spacer':
       return { height: 48 }
