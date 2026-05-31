@@ -35,6 +35,9 @@ export const FUNNEL_PRESETS: readonly FunnelPreset[] = [
   { id: 'anthracite', name: 'Anthracite', style: 'dark',  primary: '#94A3B8', heroBg: '#1E293B', sectionBg: '#0F172A', footerBg: '#020617' },
   { id: 'tropical',   name: 'Tropical',   style: 'light', primary: '#14B8A6', heroBg: '#F0FDFA', sectionBg: '#FFFFFF', footerBg: '#134E4A' },
   { id: 'lavande',    name: 'Lavande',    style: 'light', primary: '#8B5CF6', heroBg: '#FAF5FF', sectionBg: '#FFFFFF', footerBg: '#4C1D95' },
+  // Variante "Ocean" en rouge profond — même structure (light, hero tinté clair,
+  // sections blanches, footer foncé) avec primary #B30808 demandé par Pierre.
+  { id: 'cardinal',   name: 'Cardinal',   style: 'light', primary: '#B30808', heroBg: '#FEE2E2', sectionBg: '#FFFFFF', footerBg: '#450A0A' },
 ] as const
 
 /** Preset utilisé par défaut quand un funnel n'a pas encore été configuré. */
