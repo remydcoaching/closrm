@@ -46,7 +46,7 @@ export default function VideoBlock({ config }: Props) {
   // État vide : aucune URL configurée ou URL invalide
   if (!embedUrl) {
     return (
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px' }}>
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '64px 20px 60px' }}>
         <div
           style={{
             position: 'relative',
@@ -81,7 +81,7 @@ export default function VideoBlock({ config }: Props) {
   const suffix = params.toString() ? `?${params.toString()}` : ''
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px' }}>
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '64px 20px 60px' }}>
       <div
         style={{
           position: 'relative',

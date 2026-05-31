@@ -612,6 +612,13 @@ export interface HeroBlockConfig {
   badgeText?: string
   // T-028 Phase 9 — Effets activables au niveau du bloc (shimmer / button shine)
   effects?: BlockEffectsJSON
+  /**
+   * Position verticale du bouton CTA dans la section hero.
+   * 'top' = collé sous le titre/sous-titre (margin-top minimum)
+   * 'middle' = espacement standard (défaut)
+   * 'bottom' = poussé vers le bas du hero avec un grand margin-top
+   */
+  ctaPosition?: 'top' | 'middle' | 'bottom'
 }
 
 export interface VideoBlockConfig {
@@ -627,6 +634,19 @@ export interface TestimonialItem {
   content: string
   avatarUrl: string | null
   rating: number
+  /** Photo optionnelle illustrant le témoignage (résultat client, transformation, etc.). */
+  photoUrl?: string | null
+  /**
+   * Position de la photo par rapport au texte du témoignage.
+   * 'top' = au-dessus (par défaut), 'left' = à gauche, 'right' = à droite.
+   */
+  photoPosition?: 'top' | 'left' | 'right'
+  /** Affiche l'avatar / les initiales sous le témoignage. true par défaut. */
+  showAvatar?: boolean
+  /** @deprecated remplacé par photoUrl — conservé pour les drafts non publiés. */
+  beforeImageUrl?: string | null
+  /** @deprecated remplacé par photoUrl — conservé pour les drafts non publiés. */
+  afterImageUrl?: string | null
 }
 
 export interface TestimonialsBlockConfig {
@@ -707,12 +727,21 @@ export interface FunnelTextBlockConfig {
   effects?: BlockEffectsJSON
 }
 
+export interface FunnelImageItem {
+  src: string
+  alt: string
+  linkUrl: string | null
+}
+
 export interface FunnelImageBlockConfig {
   src: string
   alt: string
   width: number | null
   alignment: 'left' | 'center' | 'right'
   linkUrl: string | null
+  images?: FunnelImageItem[]
+  size?: 'small' | 'medium' | 'large' | 'full'
+  columns?: 1 | 2 | 3
 }
 
 export interface SpacerBlockConfig {

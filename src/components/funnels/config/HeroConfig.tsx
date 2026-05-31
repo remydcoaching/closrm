@@ -62,6 +62,18 @@ export default function HeroConfig({ config, onChange, pages, blocks }: Props) {
         required
       />
       <div>
+        <label style={labelStyle}>Position du bouton</label>
+        <select
+          value={config.ctaPosition || 'middle'}
+          onChange={e => onChange({ ...config, ctaPosition: e.target.value as HeroBlockConfig['ctaPosition'] })}
+          style={inputStyle}
+        >
+          <option value="top">Supérieure (collé au texte)</option>
+          <option value="middle">Milieu (espacement standard)</option>
+          <option value="bottom">Inférieure (poussé vers le bas)</option>
+        </select>
+      </div>
+      <div>
         <label style={labelStyle}>Image de fond (URL)</label>
         <input
           type="url"
