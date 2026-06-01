@@ -25,6 +25,7 @@ import VideoBlock from '../blocks/VideoBlock'
 import TestimonialsBlock from '../blocks/TestimonialsBlock'
 import FormBlock from '../blocks/FormBlock'
 import BookingBlock from '../blocks/BookingBlock'
+import BookingActionsBlock from '../blocks/BookingActionsBlock'
 import PricingBlock from '../blocks/PricingBlock'
 import FaqBlock from '../blocks/FaqBlock'
 import CountdownBlock from '../blocks/CountdownBlock'
@@ -68,6 +69,7 @@ function renderBlockContent(block: FunnelBlock): React.ReactNode {
     case 'testimonials': return <TestimonialsBlock key={block.id} config={block.config as Parameters<typeof TestimonialsBlock>[0]['config']} />
     case 'form': return <FormBlock key={block.id} config={block.config as Parameters<typeof FormBlock>[0]['config']} />
     case 'booking': return <BookingBlock key={block.id} config={block.config as Parameters<typeof BookingBlock>[0]['config']} />
+    case 'booking_actions': return <BookingActionsBlock key={block.id} config={block.config as Parameters<typeof BookingActionsBlock>[0]['config']} />
     case 'pricing': return <PricingBlock key={block.id} config={block.config as Parameters<typeof PricingBlock>[0]['config']} />
     case 'faq': return <FaqBlock key={block.id} config={block.config as Parameters<typeof FaqBlock>[0]['config']} />
     case 'countdown': return <CountdownBlock key={block.id} config={block.config as Parameters<typeof CountdownBlock>[0]['config']} />

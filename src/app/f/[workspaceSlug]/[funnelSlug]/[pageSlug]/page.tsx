@@ -23,6 +23,7 @@ import type {
   TestimonialsBlockConfig,
   FormBlockConfig,
   BookingBlockConfig,
+  BookingActionsBlockConfig,
   PricingBlockConfig,
   FaqBlockConfig,
   CountdownBlockConfig,
@@ -38,6 +39,7 @@ import VideoBlock from '@/components/funnels/blocks/VideoBlock'
 import TestimonialsBlock from '@/components/funnels/blocks/TestimonialsBlock'
 import FormBlock from '@/components/funnels/blocks/FormBlock'
 import BookingBlock from '@/components/funnels/blocks/BookingBlock'
+import BookingActionsBlock from '@/components/funnels/blocks/BookingActionsBlock'
 import PricingBlock from '@/components/funnels/blocks/PricingBlock'
 import FaqBlock from '@/components/funnels/blocks/FaqBlock'
 import CountdownBlock from '@/components/funnels/blocks/CountdownBlock'
@@ -169,6 +171,8 @@ function renderBlock(block: FunnelBlock) {
       content = <FormBlock config={block.config as FormBlockConfig} />; break
     case 'booking':
       content = <BookingBlock config={block.config as BookingBlockConfig} />; break
+    case 'booking_actions':
+      content = <BookingActionsBlock config={block.config as BookingActionsBlockConfig} />; break
     case 'pricing':
       content = <PricingBlock config={block.config as PricingBlockConfig} />; break
     case 'faq':

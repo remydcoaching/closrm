@@ -31,6 +31,10 @@ import {
 import { fr } from 'date-fns/locale'
 import type { BookingBlockConfig } from '@/types'
 import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
+import {
+  getFunnelScopeFromPathname,
+  saveFunnelBooking,
+} from '@/lib/funnels/booking-storage'
 
 interface Props {
   config: BookingBlockConfig
@@ -211,6 +215,41 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
         setError(data.error ?? 'Erreur lors de la réservation.')
         return
       }
+
+      // Persistance localStorage pour le bloc "Ajouter à mon agenda" (boutons
+      // calendrier qui peuvent être placés sur la page de remerciement, ou
+      // n'importe quelle autre page du funnel). On scope par funnel pour que
+      // 2 funnels du même host ne se piétinent pas.
+      try {
+        const data = (await res.json()) as {
+          booking?: { id?: string; manage_token?: string }
+        }
+        const bookingId = data.booking?.id
+        const manageToken = data.booking?.manage_token
+        const scope = getFunnelScopeFromPathname(window.location.pathname)
+        if (scope) {
+          const selectedLoc = locations.find(l => l.id === selectedLocationId)
+            ?? locations.find(l => l.location_type === 'online')
+            ?? locations[0]
+          const locationStr = selectedLoc
+            ? (selectedLoc.address ? `${selectedLoc.name}, ${selectedLoc.address}` : selectedLoc.name)
+            : ''
+          const manageUrl = bookingId && manageToken
+            ? `${window.location.origin}/booking/manage/${bookingId}?token=${manageToken}`
+            : ''
+          saveFunnelBooking(scope, {
+            title: `RDV ${calendar.name}`,
+            startISO: scheduledAt,
+            durationMinutes: calendar.duration_minutes,
+            location: locationStr,
+            description: `Rendez-vous ${calendar.name}`,
+            manageUrl,
+          })
+        }
+      } catch {
+        // Ne jamais bloquer le flux de redirection si la persistance échoue.
+      }
+
       // Si une URL de redirection valide est configurée → redirection
       // (page suivante du funnel ou URL externe). Sinon, fallback sur la
       // confirmation in-page. On filtre les valeurs "vides" type "https://",
