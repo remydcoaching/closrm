@@ -1,7 +1,7 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-05-17 (soir, ~22h30)
+> Derniere mise a jour : 2026-06-01
 
 ---
 
@@ -315,4 +315,24 @@ Détail dans `taches/tache-044-perf-audit-agenda-leads-social.md`.
 
 ---
 
-*Mis a jour le 2026-05-03 par Claude Code — ClosRM*
+## Session du 2026-06-01 — Resume des travaux Remy
+
+### T-045 — Funnel : Upload d'images depuis l'ordinateur
+
+| Element | Detail |
+|---------|--------|
+| **hook useImageUpload** | Validation format/taille, compression WebP (browser-image-compression), upload R2 via presigned URL PUT, progress XHR 0-100% |
+| **composant ImageUploadField** | 4 etats (vide, uploading, rempli, erreur), drag & drop + URL fallback, CSS variables exclusivement |
+| **API /api/storage/upload-url** | Nouveau type `funnel_image` : path `workspaces/{wsId}/funnels/{funnelId}/{uuid}.webp`, retourne `public_url` |
+| **HeroConfig** | Input URL image de fond remplace par ImageUploadField |
+| **ImageConfig** | Input URL par slot photo remplace par ImageUploadField, limite 10 images enforced |
+| **Propagation funnelId** | FunnelBuilderV2 → FunnelBlockConfig → HeroConfig / ImageConfig |
+| **package.json** | `browser-image-compression@^2.0.2` ajoute |
+
+**Prerequis production :** activer R2 Public Access dans Cloudflare dashboard + ajouter `R2_PUBLIC_URL` dans `.env.local` et Vercel.
+
+> Detail complet : `taches/tache-045-funnel-image-upload.md`.
+
+---
+
+*Mis a jour le 2026-06-01 par Claude Code — ClosRM*
