@@ -154,5 +154,5 @@ const dropZoneBase: React.CSSProperties = {
 }
 
 function overlayBtn(bg: string): React.CSSProperties {
-  return { background: bg, color: 'white', padding: '4px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', border: 'none' }
+  return { background: bg, color: 'var(--text-primary)', padding: '4px 10px', borderRadius: 5, fontSize: 11, cursor: 'pointer', border: 'none' }
 }
