@@ -52,6 +52,19 @@ export async function PUT(
     if (seo_description !== undefined) updates.seo_description = seo_description
     if (redirect_url !== undefined) updates.redirect_url = redirect_url
 
+    // Self-heal : si le funnel parent est publié, on synchronise la page sur
+    // publié. Sinon les pages créées après la 1re publication restaient en
+    // draft et 404aient quand un autre bloc les ciblait en redirect.
+    const { data: parentFunnel } = await supabase
+      .from('funnels')
+      .select('status')
+      .eq('id', id)
+      .eq('workspace_id', workspaceId)
+      .single()
+    if (parentFunnel?.status === 'published') {
+      updates.is_published = true
+    }
+
     const { data, error } = await supabase
       .from('funnel_pages')
       .update(updates)
