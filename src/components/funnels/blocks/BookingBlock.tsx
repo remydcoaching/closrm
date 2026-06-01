@@ -211,11 +211,19 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
         setError(data.error ?? 'Erreur lors de la réservation.')
         return
       }
-      // Si une URL de redirection est configurée → redirection (page suivante du
-      // funnel ou URL externe). Sinon, fallback sur la confirmation in-page.
-      const redirectUrl = config.redirectUrl
-      if (redirectUrl && redirectUrl.trim().length > 0) {
-        window.location.href = resolveFunnelUrl(redirectUrl)
+      // Si une URL de redirection valide est configurée → redirection
+      // (page suivante du funnel ou URL externe). Sinon, fallback sur la
+      // confirmation in-page. On filtre les valeurs "vides" type "https://",
+      // "#" qui aboutissaient sur un 404 racine du domaine.
+      const redirectUrl = config.redirectUrl?.trim() ?? ''
+      const resolved = redirectUrl ? resolveFunnelUrl(redirectUrl) : ''
+      const isUsable =
+        resolved.length > 0 &&
+        resolved !== '#' &&
+        resolved !== 'https://' &&
+        resolved !== 'http://'
+      if (isUsable) {
+        window.location.href = resolved
         return
       }
       setPhase('confirmed')
