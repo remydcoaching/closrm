@@ -35,9 +35,33 @@ export function buildIcsUrl(params: CalendarLinkParams): string {
   return url.toString()
 }
 
+/**
+ * Outlook deeplink — `startdt` / `enddt` doivent être en ISO 8601 UTC.
+ * On retire les millisecondes (`.000Z`) car certains parsers Outlook les
+ * rejettent ou produisent une date incorrecte.
+ */
+function toOutlookDate(d: Date): string {
+  return d.toISOString().replace(/\.\d{3}Z$/, 'Z')
+}
+
+export function buildOutlookCalendarUrl(params: CalendarLinkParams): string {
+  const start = new Date(params.startISO)
+  const end = new Date(start.getTime() + params.durationMinutes * 60 * 1000)
+  const url = new URL('https://outlook.live.com/calendar/0/deeplink/compose')
+  url.searchParams.set('rru', 'addevent')
+  url.searchParams.set('path', '/calendar/action/compose')
+  url.searchParams.set('subject', params.title)
+  url.searchParams.set('startdt', toOutlookDate(start))
+  url.searchParams.set('enddt', toOutlookDate(end))
+  if (params.location) url.searchParams.set('location', params.location)
+  if (params.description) url.searchParams.set('body', params.description)
+  return url.toString()
+}
+
 export function buildCalendarUrls(params: CalendarLinkParams) {
   return {
     googleCalendarUrl: buildGoogleCalendarUrl(params),
     icsUrl: buildIcsUrl(params),
+    outlookCalendarUrl: buildOutlookCalendarUrl(params),
   }
 }

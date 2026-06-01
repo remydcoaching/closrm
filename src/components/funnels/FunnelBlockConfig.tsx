@@ -6,6 +6,7 @@ import VideoConfig from './config/VideoConfig'
 import TestimonialsConfig from './config/TestimonialsConfig'
 import FormConfig from './config/FormConfig'
 import BookingConfig from './config/BookingConfig'
+import BookingActionsConfig from './config/BookingActionsConfig'
 import PricingConfig from './config/PricingConfig'
 import FaqConfig from './config/FaqConfig'
 import CountdownConfig from './config/CountdownConfig'
@@ -35,6 +36,7 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Pr
     testimonials: 'Temoignages',
     form: 'Formulaire',
     booking: 'Reservation',
+    booking_actions: 'Actions calendrier',
     pricing: 'Tarification',
     faq: 'FAQ',
     countdown: 'Compte a rebours',
@@ -69,6 +71,9 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Pr
       )}
       {block.type === 'booking' && (
         <BookingConfig config={block.config as Parameters<typeof BookingConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />
+      )}
+      {block.type === 'booking_actions' && (
+        <BookingActionsConfig config={block.config as Parameters<typeof BookingActionsConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
       )}
       {block.type === 'pricing' && (
         <PricingConfig config={block.config as Parameters<typeof PricingConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />

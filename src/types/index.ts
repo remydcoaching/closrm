@@ -577,6 +577,7 @@ export type FunnelBlockType =
   | 'testimonials'
   | 'form'
   | 'booking'
+  | 'booking_actions'
   | 'pricing'
   | 'faq'
   | 'countdown'
@@ -682,6 +683,27 @@ export interface BookingBlockConfig {
   redirectUrl?: string | null
 }
 
+/**
+ * Bloc "Actions calendrier" — affiche les boutons d'ajout au calendrier
+ * (Google / Apple / Outlook) + lien Reprogrammer/Annuler. Lit l'info de la
+ * dernière réservation faite sur le funnel depuis `localStorage`. Si rien
+ * n'a encore été réservé, montre un avertissement rouge et grise les boutons.
+ */
+export interface BookingActionsBlockConfig {
+  title: string
+  subtitle: string
+  /** Texte des 3 boutons d'ajout calendrier. */
+  googleLabel: string
+  appleLabel: string
+  outlookLabel: string
+  /** Label du lien "Reprogrammer ou annuler". */
+  manageLabel: string
+  /** Message affiché en rouge quand aucune réservation n'a été détectée. */
+  noBookingMessage: string
+  /** Si false, on masque le lien Reprogrammer/Annuler. */
+  showManageLink: boolean
+}
+
 export interface PricingBlockConfig {
   title: string
   price: string
@@ -765,6 +787,7 @@ export type FunnelBlockConfig =
   | TestimonialsBlockConfig
   | FormBlockConfig
   | BookingBlockConfig
+  | BookingActionsBlockConfig
   | PricingBlockConfig
   | FaqBlockConfig
   | CountdownBlockConfig
