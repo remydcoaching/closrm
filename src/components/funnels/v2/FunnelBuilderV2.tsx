@@ -71,6 +71,7 @@ const BLOCK_LABELS: Record<FunnelBlockType, string> = {
   spacer: 'Espacement',
   footer: 'Footer',
   booking: 'Réservation',
+  booking_actions: 'Actions calendrier',
   form: 'Formulaire',
 }
 

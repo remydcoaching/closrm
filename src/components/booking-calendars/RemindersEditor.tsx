@@ -62,6 +62,11 @@ function locationModeToVariant(mode?: string): 'meet' | 'location' | 'phone' {
   return 'meet'
 }
 
+// ID virtuel utilisé pour le bloc "Confirmation" tant qu'il n'a pas été
+// matérialisé dans le tableau `reminders`. Quand le coach édite le message,
+// on crée le vrai reminder (avec un uuid) et on remplace cet ID virtuel.
+const CONFIRMATION_VIRTUAL_ID = '__confirmation__'
+
 export default function RemindersEditor({
   reminders,
   onChange,
@@ -80,7 +85,26 @@ export default function RemindersEditor({
 
   const previewVariant = locationModeToVariant(locationInfo?.mode)
 
-  const expandedReminder = reminders.find((r) => r.id === expandedId)
+  // Reminder email de confirmation (delay=0, channel=email) — soit existant
+  // dans le tableau, soit un "virtuel" qu'on matérialise au 1er édit.
+  const confirmationReminder = reminders.find(
+    (r) => r.channel === 'email' && r.delay_value === 0,
+  )
+  const effectiveConfirmation: CalendarReminder = confirmationReminder ?? {
+    id: CONFIRMATION_VIRTUAL_ID,
+    delay_value: 0,
+    delay_unit: 'hours',
+    at_time: null,
+    channel: 'email',
+    message: CONFIRMATION_MESSAGES.email,
+  }
+  const isConfirmationExpanded = expandedId === effectiveConfirmation.id
+
+  const otherReminders = reminders.filter((r) => r.id !== confirmationReminder?.id)
+  const expandedReminder =
+    isConfirmationExpanded
+      ? effectiveConfirmation
+      : reminders.find((r) => r.id === expandedId)
   const expandedMessage = expandedReminder?.channel === 'email' ? expandedReminder.message : ''
   const isEmailExpanded = expandedReminder?.channel === 'email'
 
@@ -161,6 +185,25 @@ export default function RemindersEditor({
     onChange(reminders.map(r => r.id === id ? { ...r, ...updates } : r))
   }
 
+  function updateConfirmationMessage(message: string) {
+    if (confirmationReminder) {
+      updateReminder(confirmationReminder.id, { message })
+      return
+    }
+    // Matérialise le reminder virtuel — channel/timing verrouillés.
+    const materialized: CalendarReminder = {
+      id: crypto.randomUUID(),
+      delay_value: 0,
+      delay_unit: 'hours',
+      at_time: null,
+      channel: 'email',
+      message,
+    }
+    onChange([...reminders, materialized])
+    // Garde le bloc ouvert avec le nouvel ID au lieu de l'ID virtuel.
+    setExpandedId(materialized.id)
+  }
+
   function removeReminder(id: string) {
     onChange(reminders.filter(r => r.id !== id))
     if (expandedId === id) setExpandedId(null)
@@ -239,65 +282,186 @@ export default function RemindersEditor({
         </div>
       )}
 
-      {/* Mandatory confirmation email — always present, not removable */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '10px 12px',
-          borderRadius: 10,
-          border: '1px solid rgba(34, 197, 94, 0.25)',
-          background: 'rgba(34, 197, 94, 0.06)',
-        }}
-      >
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          padding: '4px 10px', borderRadius: 6,
-          background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
-        }}>
-          <Mail size={12} style={{ color: '#22c55e' }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#22c55e' }}>
-            Confirmation
+      {/* Mandatory confirmation email — éditable mais non supprimable.
+          Le timing (à la réservation) et le canal (email) sont verrouillés. */}
+      <div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 12px',
+            borderRadius: isConfirmationExpanded ? '10px 10px 0 0' : 10,
+            border: `1px solid ${isConfirmationExpanded ? '#22c55e' : 'rgba(34, 197, 94, 0.25)'}`,
+            borderBottom: isConfirmationExpanded ? 'none' : undefined,
+            background: 'rgba(34, 197, 94, 0.06)',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+          onClick={() =>
+            setExpandedId(isConfirmationExpanded ? null : effectiveConfirmation.id)
+          }
+        >
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '4px 10px', borderRadius: 6,
+            background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
+          }}>
+            <Mail size={12} style={{ color: '#22c55e' }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#22c55e' }}>
+              Confirmation
+            </span>
+          </div>
+          <span style={{
+            flex: 1, minWidth: 0,
+            fontSize: 12, color: 'var(--text-secondary)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {previewSnippet(effectiveConfirmation.message)}
           </span>
+          <span style={{
+            fontSize: 10, color: 'var(--text-muted)',
+            padding: '2px 8px', borderRadius: 4,
+            background: 'var(--bg-input)',
+            border: '1px solid var(--border-primary)',
+            whiteSpace: 'nowrap',
+          }}>
+            Obligatoire
+          </span>
+          {isConfirmationExpanded ? (
+            <ChevronUp size={14} color="var(--text-muted)" />
+          ) : (
+            <ChevronDown size={14} color="var(--text-muted)" />
+          )}
         </div>
-        <span style={{
-          flex: 1, minWidth: 0,
-          fontSize: 12, color: 'var(--text-secondary)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          Email de confirmation envoyé automatiquement au prospect
-        </span>
-        <span style={{
-          fontSize: 10, color: 'var(--text-muted)',
-          padding: '2px 8px', borderRadius: 4,
-          background: 'var(--bg-input)',
-          border: '1px solid var(--border-primary)',
-          whiteSpace: 'nowrap',
-        }}>
-          Obligatoire
-        </span>
+
+        {isConfirmationExpanded && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) 320px',
+            gap: 0,
+            border: '1px solid #22c55e',
+            borderTop: 'none',
+            borderRadius: '0 0 10px 10px',
+            background: 'var(--bg-elevated)',
+            overflow: 'hidden',
+          }}>
+            {/* PREVIEW (left) */}
+            <div style={{
+              background: '#E5E7EB',
+              borderRight: '1px solid var(--border-primary)',
+              display: 'flex', flexDirection: 'column',
+              minWidth: 0,
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 12px',
+                background: 'var(--bg-secondary)',
+                borderBottom: '1px solid var(--border-primary)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                    Aperçu live
+                  </span>
+                  {previewLoading && <Loader2 size={10} style={{ color: 'var(--text-muted)', animation: 'spin 1s linear infinite' }} />}
+                </div>
+                <div style={{
+                  padding: '3px 9px', borderRadius: 4,
+                  background: emailAccentColor,
+                  color: '#fff',
+                  fontSize: 10, fontWeight: 600,
+                }}>
+                  {previewVariant === 'meet' ? 'Visio' : previewVariant === 'location' ? 'Présentiel' : 'Téléphone'}
+                </div>
+              </div>
+              <div style={{ height: 640, position: 'relative' }}>
+                {previewError ? (
+                  <div style={{ padding: 20, fontSize: 12, color: '#dc2626' }}>{previewError}</div>
+                ) : previewHtml ? (
+                  <iframe
+                    srcDoc={previewHtml}
+                    title="Aperçu email de confirmation"
+                    sandbox=""
+                    style={{ width: '100%', height: '100%', border: 'none', display: 'block', background: '#E5E7EB' }}
+                  />
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6B7280', fontSize: 12 }}>
+                    <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* EDIT PANEL (right) — timing et canal verrouillés */}
+            <div style={{
+              display: 'flex', flexDirection: 'column',
+              padding: '14px 16px', gap: 14,
+              overflow: 'auto',
+              maxHeight: 680,
+            }}>
+              <div style={{
+                padding: '10px 12px', borderRadius: 8,
+                background: 'rgba(34, 197, 94, 0.06)',
+                border: '1px solid rgba(34, 197, 94, 0.2)',
+                fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5,
+              }}>
+                Envoyé automatiquement par email à la création de la réservation. Le canal et le timing sont verrouillés pour garantir la délivrabilité.
+              </div>
+
+              <Section label="Message personnalisé">
+                <textarea
+                  value={effectiveConfirmation.message}
+                  onChange={(e) => updateConfirmationMessage(e.target.value)}
+                  rows={6}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    background: 'var(--bg-input)', border: '1px solid var(--border-primary)',
+                    borderRadius: 8, padding: '8px 10px', fontSize: 13,
+                    color: 'var(--text-primary)', outline: 'none',
+                    resize: 'vertical', fontFamily: 'inherit',
+                  }}
+                />
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+                  {'{{prenom}}'} {'{{nom}}'} {'{{date_rdv}}'} {'{{heure_rdv}}'} {'{{nom_calendrier}}'}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateConfirmationMessage(CONFIRMATION_MESSAGES.email)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-tertiary)', fontSize: 11, padding: '6px 0 0',
+                    textDecoration: 'underline', textAlign: 'left',
+                  }}
+                >
+                  Réinitialiser au message par défaut
+                </button>
+              </Section>
+            </div>
+          </div>
+        )}
       </div>
 
-      {reminders.length === 0 && !showPresets && (
+      {otherReminders.length === 0 && !showPresets && (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>
           Aucun rappel supplémentaire configuré. Ajoutez-en pour notifier vos prospects avant leurs rendez-vous.
         </p>
       )}
 
-      {/* Bulk channel selector */}
-      {reminders.length > 1 && (
+      {/* Bulk channel selector — exclut la confirmation (canal email verrouillé). */}
+      {otherReminders.length > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Tous en :</span>
           {CHANNELS.map(c => {
             const CIcon = c.icon
-            const allMatch = reminders.every(r => r.channel === c.value)
+            const allMatch = otherReminders.every(r => r.channel === c.value)
             return (
               <button
                 key={c.value}
                 type="button"
                 onClick={() => {
                   onChange(reminders.map(r => {
+                    // Ne touche jamais au reminder de confirmation email.
+                    if (r.id === confirmationReminder?.id) return r
                     const isDefault = Object.values(DEFAULT_MESSAGES).includes(r.message) || Object.values(CONFIRMATION_MESSAGES).includes(r.message)
                     const messages = r.delay_value === 0 ? CONFIRMATION_MESSAGES : DEFAULT_MESSAGES
                     return {
@@ -325,8 +489,8 @@ export default function RemindersEditor({
         </div>
       )}
 
-      {/* Reminder list — compact rows */}
-      {reminders.map((reminder) => {
+      {/* Reminder list — compact rows (la confirmation est rendue à part au-dessus) */}
+      {otherReminders.map((reminder) => {
         const channel = CHANNELS.find(c => c.value === reminder.channel) ?? CHANNELS[0]
         const Icon = channel.icon
         const isExpanded = expandedId === reminder.id

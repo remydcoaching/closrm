@@ -92,6 +92,18 @@ export function getDefaultBlockConfig(type: FunnelBlockType): FunnelBlockConfig 
         title: 'Réserve ton appel',
         subtitle: '30 minutes pour qu\'on fasse le point sur ta situation.',
       }
+    case 'booking_actions':
+      return {
+        title: 'Ajoute le RDV à ton agenda',
+        subtitle: 'En 1 clic, ton rendez-vous est dans ton calendrier.',
+        googleLabel: 'Ajouter à Google Calendar',
+        appleLabel: 'Ajouter à Apple / iCal',
+        outlookLabel: 'Ajouter à Outlook',
+        manageLabel: 'Reprogrammer ou annuler',
+        noBookingMessage:
+          "Tu n'as pas encore réservé de rendez-vous. Reviens sur cette page après avoir choisi un créneau pour pouvoir l'ajouter à ton agenda.",
+        showManageLink: true,
+      }
     case 'pricing':
       return {
         title: 'Coaching essentiel',
@@ -144,6 +156,9 @@ export function getDefaultBlockConfig(type: FunnelBlockType): FunnelBlockConfig 
         width: null,
         alignment: 'center',
         linkUrl: null,
+        images: [],
+        size: 'large',
+        columns: 1,
       }
     case 'spacer':
       return { height: 48 }
