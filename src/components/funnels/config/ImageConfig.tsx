@@ -10,7 +10,6 @@ interface Props {
   pages?: FunnelPage[]
   blocks?: FunnelBlock[]
   funnelId: string
-  workspaceId: string
 }
 
 // On migre les funnels legacy (1 image via `src`) vers le mode `images[]`
@@ -23,7 +22,7 @@ function getImages(config: FunnelImageBlockConfig): FunnelImageItem[] {
   return []
 }
 
-export default function ImageConfig({ config, onChange, pages, blocks, funnelId, workspaceId }: Props) {
+export default function ImageConfig({ config, onChange, pages, blocks, funnelId }: Props) {
   const images = getImages(config)
   const size = config.size ?? 'large'
   const columns = config.columns ?? (images.length >= 2 ? 2 : 1)
@@ -144,7 +143,7 @@ export default function ImageConfig({ config, onChange, pages, blocks, funnelId,
               <button
                 type="button"
                 onClick={() => removeImage(i)}
-                style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: 12, cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#E53E3E', fontSize: 12, cursor: 'pointer' }}
               >
                 Supprimer
               </button>
@@ -154,7 +153,6 @@ export default function ImageConfig({ config, onChange, pages, blocks, funnelId,
             value={item.src}
             onChange={(src) => updateItem(i, { src })}
             funnelId={funnelId}
-            workspaceId={workspaceId}
           />
           <div style={{ marginBottom: 6 }}>
             <label style={labelStyle}>Texte alternatif</label>

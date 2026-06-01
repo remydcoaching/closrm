@@ -6,7 +6,6 @@ const MAX_INPUT_MB = 15
 
 interface UseImageUploadOptions {
   funnelId: string
-  workspaceId: string
 }
 
 interface UseImageUploadReturn {

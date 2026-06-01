@@ -7,12 +7,11 @@ interface Props {
   value: string
   onChange: (url: string) => void
   funnelId: string
-  workspaceId: string
   label?: string
 }
 
-export default function ImageUploadField({ value, onChange, funnelId, workspaceId, label }: Props) {
-  const { upload, isUploading, progress, error, reset } = useImageUpload({ funnelId, workspaceId })
+export default function ImageUploadField({ value, onChange, funnelId, label }: Props) {
+  const { upload, isUploading, progress, error, reset } = useImageUpload({ funnelId })
   const inputRef = useRef<HTMLInputElement>(null)
   const [urlInput, setUrlInput] = useState('')
   const [isDragging, setIsDragging] = useState(false)
@@ -57,8 +56,8 @@ export default function ImageUploadField({ value, onChange, funnelId, workspaceI
             className="img-ov"
             style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: 0, transition: '.15s' }}
           >
-            <button onClick={() => inputRef.current?.click()} style={overlayBtn('var(--color-primary)')}>Changer</button>
-            <button onClick={() => { onChange(''); reset() }} style={overlayBtn('rgba(255,255,255,0.15)')}>Supprimer</button>
+            <button type="button" onClick={() => inputRef.current?.click()} style={overlayBtn('var(--color-primary)')}>Changer</button>
+            <button type="button" onClick={() => { onChange(''); reset() }} style={overlayBtn('rgba(255,255,255,0.15)')}>Supprimer</button>
           </div>
         </div>
         <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }} />
@@ -89,7 +88,7 @@ export default function ImageUploadField({ value, onChange, funnelId, workspaceI
         {label && <label style={labelStyle}>{label}</label>}
         <div style={{ border: '2px dashed var(--color-primary)', borderRadius: 8, padding: '14px 12px', textAlign: 'center', background: 'var(--bg-input)' }}>
           <div style={{ fontSize: 12, color: 'var(--color-primary)', marginBottom: 6 }}>⚠️ {error}</div>
-          <button onClick={reset} style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 5, padding: '3px 10px', cursor: 'pointer' }}>
+          <button type="button" onClick={reset} style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', borderRadius: 5, padding: '3px 10px', cursor: 'pointer' }}>
             Réessayer
           </button>
         </div>
@@ -130,7 +129,7 @@ export default function ImageUploadField({ value, onChange, funnelId, workspaceI
           placeholder="https://..."
           style={{ flex: 1, padding: '7px 10px', fontSize: 12, background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8, color: 'var(--text-primary)', outline: 'none' }}
         />
-        <button onClick={handleUrlSubmit} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', borderRadius: 8, padding: '0 10px', fontSize: 12, cursor: 'pointer' }}>
+        <button type="button" onClick={handleUrlSubmit} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', borderRadius: 8, padding: '0 10px', fontSize: 12, cursor: 'pointer' }}>
           OK
         </button>
       </div>

@@ -24,10 +24,9 @@ interface Props {
   /** Blocs de la page active — pour le sélecteur d'ancre vers un bloc. */
   blocks?: FunnelBlock[]
   funnelId: string
-  workspaceId: string
 }
 
-export default function FunnelBlockConfig({ block, onChange, pages, blocks, funnelId, workspaceId }: Props) {
+export default function FunnelBlockConfig({ block, onChange, pages, blocks, funnelId }: Props) {
   function handleConfigChange(config: FunnelBlockConfigType) {
     onChange({ ...block, config })
   }
@@ -66,7 +65,6 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks, funn
           pages={pages}
           blocks={blocks}
           funnelId={funnelId}
-          workspaceId={workspaceId}
         />
       )}
       {block.type === 'video' && (
@@ -106,7 +104,6 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks, funn
           pages={pages}
           blocks={blocks}
           funnelId={funnelId}
-          workspaceId={workspaceId}
         />
       )}
       {block.type === 'spacer' && (

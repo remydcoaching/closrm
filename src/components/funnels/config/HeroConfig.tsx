@@ -10,10 +10,9 @@ interface Props {
   pages?: FunnelPage[]
   blocks?: FunnelBlock[]
   funnelId: string
-  workspaceId: string
 }
 
-export default function HeroConfig({ config, onChange, pages, blocks, funnelId, workspaceId }: Props) {
+export default function HeroConfig({ config, onChange, pages, blocks, funnelId }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
@@ -80,7 +79,6 @@ export default function HeroConfig({ config, onChange, pages, blocks, funnelId, 
         value={config.backgroundImage || ''}
         onChange={url => onChange({ ...config, backgroundImage: url || null })}
         funnelId={funnelId}
-        workspaceId={workspaceId}
         label="Image de fond"
       />
       <div>

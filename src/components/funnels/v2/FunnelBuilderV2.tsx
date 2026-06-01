@@ -77,7 +77,7 @@ const BLOCK_LABELS: Record<FunnelBlockType, string> = {
 
 interface Props {
   /** Funnel parent (avec design system v2). */
-  funnel: Pick<Funnel, 'id' | 'workspace_id' | 'preset_id' | 'preset_override' | 'effects_config'>
+  funnel: Pick<Funnel, 'id' | 'preset_id' | 'preset_override' | 'effects_config'>
   /** Pages du funnel. */
   pages: FunnelPage[]
   /** ID de la page actuellement éditée. */
@@ -244,7 +244,6 @@ export default function FunnelBuilderV2({
               pages={pages}
               blocks={blocks}
               funnelId={funnel.id}
-              workspaceId={funnel.workspace_id}
             />
             {/* T-028 Phase 9 — Panneau des effets propres au bloc
                 (shimmer, button shine) affiché uniquement pour Hero/CTA/Text */}
