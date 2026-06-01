@@ -80,7 +80,10 @@ export default function RedirectPicker({
       const firstPage = pages?.[0]
       onChange(firstPage ? `page:${firstPage.slug}` : null)
     } else {
-      onChange('https://')
+      // Mode "URL personnalisée" — on laisse null tant que le coach n'a rien
+      // tapé. Pré-remplir avec "https://" causait un redirect vers la racine
+      // du domaine après une réservation (cf. bug 2026-06-01).
+      onChange(null)
     }
   }
 
@@ -147,7 +150,15 @@ export default function RedirectPicker({
           <input
             type="url"
             value={isCustomUrl ? url : ''}
-            onChange={e => onChange(e.target.value || null)}
+            onChange={e => {
+              const v = e.target.value.trim()
+              // Refuse les valeurs trompeuses qui aboutissent à un 404 après nav.
+              if (v === '' || v === 'https://' || v === 'http://' || v === '#') {
+                onChange(null)
+                return
+              }
+              onChange(v)
+            }}
             placeholder="https://..."
             style={inputStyle}
           />
