@@ -52,10 +52,12 @@ export async function POST(
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
-    // Verify funnel belongs to workspace
+    // Verify funnel belongs to workspace + récupère son statut (on hérite
+    // is_published pour qu'une page créée dans un funnel déjà publié soit
+    // accessible immédiatement, sans devoir re-toggle "Dépublier/Publier").
     const { data: funnel, error: funnelError } = await supabase
       .from('funnels')
-      .select('id')
+      .select('id, status')
       .eq('id', id)
       .eq('workspace_id', workspaceId)
       .single()
@@ -113,7 +115,7 @@ export async function POST(
         slug: finalSlug,
         page_order: nextOrder,
         blocks: blocks ?? [],
-        is_published: false,
+        is_published: funnel.status === 'published',
       })
       .select()
       .single()
