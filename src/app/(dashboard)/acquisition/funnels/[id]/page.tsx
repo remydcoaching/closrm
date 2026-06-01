@@ -24,6 +24,7 @@ import { useWorkspaceSlugState, buildPublicFunnelUrl } from '@/lib/funnels/use-w
 
 interface FunnelData {
   id: string
+  workspace_id: string
   name: string
   slug: string
   status: 'draft' | 'published'
