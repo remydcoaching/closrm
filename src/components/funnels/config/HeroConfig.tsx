@@ -2,15 +2,18 @@
 
 import type { HeroBlockConfig, FunnelPage, FunnelBlock } from '@/types'
 import RedirectPicker from './RedirectPicker'
+import ImageUploadField from './ImageUploadField'
 
 interface Props {
   config: HeroBlockConfig
   onChange: (config: HeroBlockConfig) => void
   pages?: FunnelPage[]
   blocks?: FunnelBlock[]
+  funnelId: string
+  workspaceId: string
 }
 
-export default function HeroConfig({ config, onChange, pages, blocks }: Props) {
+export default function HeroConfig({ config, onChange, pages, blocks, funnelId, workspaceId }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
@@ -73,16 +76,13 @@ export default function HeroConfig({ config, onChange, pages, blocks }: Props) {
           <option value="bottom">Inférieure (poussé vers le bas)</option>
         </select>
       </div>
-      <div>
-        <label style={labelStyle}>Image de fond (URL)</label>
-        <input
-          type="url"
-          value={config.backgroundImage || ''}
-          onChange={e => onChange({ ...config, backgroundImage: e.target.value || null })}
-          placeholder="https://images.unsplash.com/..."
-          style={inputStyle}
-        />
-      </div>
+      <ImageUploadField
+        value={config.backgroundImage || ''}
+        onChange={url => onChange({ ...config, backgroundImage: url || null })}
+        funnelId={funnelId}
+        workspaceId={workspaceId}
+        label="Image de fond"
+      />
       <div>
         <label style={labelStyle}>Alignement</label>
         <select
@@ -100,11 +100,11 @@ export default function HeroConfig({ config, onChange, pages, blocks }: Props) {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 11, color: '#555', display: 'block', marginBottom: 4,
+  fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4,
 }
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '7px 10px', fontSize: 13,
-  background: '#0a0a0a', border: '1px solid #333', borderRadius: 8,
-  color: '#fff', outline: 'none',
+  background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8,
+  color: 'var(--text-primary)', outline: 'none',
 }
