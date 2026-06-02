@@ -45,11 +45,11 @@ export async function POST(request: NextRequest) {
 
       const upload_url = await signUpload({ path, contentType: content_type, contentLength: content_length })
 
-      const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL
-      if (!R2_PUBLIC_URL) {
-        return NextResponse.json({ error: 'R2_PUBLIC_URL not configured' }, { status: 503 })
+      const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL
+      if (!R2_PUBLIC_BASE_URL) {
+        return NextResponse.json({ error: 'R2_PUBLIC_BASE_URL not configured' }, { status: 503 })
       }
-      const public_url = `${R2_PUBLIC_URL}/${path}`
+      const public_url = `${R2_PUBLIC_BASE_URL}/${path}`
 
       return NextResponse.json({ upload_url, path, public_url })
     }
