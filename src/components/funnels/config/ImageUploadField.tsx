@@ -142,7 +142,9 @@ const labelStyle: React.CSSProperties = {
 }
 
 const dropZoneBase: React.CSSProperties = {
-  border: '2px dashed var(--border-secondary)',
+  borderWidth: 2,
+  borderStyle: 'dashed',
+  borderColor: 'var(--border-secondary)',
   borderRadius: 8,
   padding: '18px 12px',
   textAlign: 'center',

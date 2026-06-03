@@ -753,6 +753,7 @@ export interface FunnelImageItem {
   src: string
   alt: string
   linkUrl: string | null
+  caption?: string
 }
 
 export interface FunnelImageBlockConfig {
@@ -764,6 +765,10 @@ export interface FunnelImageBlockConfig {
   images?: FunnelImageItem[]
   size?: 'small' | 'medium' | 'large' | 'full'
   columns?: 1 | 2 | 3
+  captionSize?: 'small' | 'medium' | 'large'
+  captionColor?: string
+  captionAlignment?: 'left' | 'center' | 'right'
+  captionItalic?: boolean
 }
 
 export interface SpacerBlockConfig {

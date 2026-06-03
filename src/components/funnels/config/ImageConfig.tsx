@@ -164,6 +164,35 @@ export default function ImageConfig({ config, onChange, pages, blocks, funnelId 
               style={inputStyle}
             />
           </div>
+          <div style={{ marginBottom: 6 }}>
+            <label style={labelStyle}>Légende</label>
+            {item.caption !== undefined ? (
+              <div>
+                <textarea
+                  value={item.caption}
+                  onChange={(e) => updateItem(i, { caption: e.target.value })}
+                  placeholder="Texte sous l'image…"
+                  rows={2}
+                  style={{ ...inputStyle, resize: 'vertical', marginBottom: 4 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => updateItem(i, { caption: undefined })}
+                  style={{ fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  Supprimer la légende
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => updateItem(i, { caption: '' })}
+                style={{ fontSize: 11, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                + Ajouter une légende
+              </button>
+            )}
+          </div>
           <RedirectPicker
             value={item.linkUrl}
             onChange={(val) => updateItem(i, { linkUrl: val })}
@@ -173,6 +202,58 @@ export default function ImageConfig({ config, onChange, pages, blocks, funnelId 
           />
         </div>
       ))}
+
+      {images.some(img => img.caption !== undefined) && (
+        <div style={{ border: '1px solid var(--border-primary)', borderRadius: 8, padding: 10, background: 'var(--bg-elevated)' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>Style des légendes</span>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Taille</label>
+              <select
+                value={config.captionSize ?? 'small'}
+                onChange={(e) => onChange({ ...config, captionSize: e.target.value as FunnelImageBlockConfig['captionSize'] })}
+                style={inputStyle}
+              >
+                <option value="small">Petite</option>
+                <option value="medium">Moyenne</option>
+                <option value="large">Grande</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Alignement</label>
+              <select
+                value={config.captionAlignment ?? 'center'}
+                onChange={(e) => onChange({ ...config, captionAlignment: e.target.value as FunnelImageBlockConfig['captionAlignment'] })}
+                style={inputStyle}
+              >
+                <option value="left">Gauche</option>
+                <option value="center">Centre</option>
+                <option value="right">Droite</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Couleur (hex ou CSS var)</label>
+              <input
+                type="text"
+                value={config.captionColor ?? ''}
+                onChange={(e) => onChange({ ...config, captionColor: e.target.value || undefined })}
+                placeholder="ex : #ffffff ou var(--fnl-text)"
+                style={inputStyle}
+              />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', paddingBottom: 2 }}>
+              <input
+                type="checkbox"
+                checked={config.captionItalic ?? false}
+                onChange={(e) => onChange({ ...config, captionItalic: e.target.checked || undefined })}
+              />
+              Italique
+            </label>
+          </div>
+        </div>
+      )}
 
       <button
         type="button"
