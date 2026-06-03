@@ -238,7 +238,13 @@ export default function FunnelBuilderV2({
                 ×
               </button>
             </div>
-            <FunnelBlockConfigPanel block={selectedBlock} onChange={handleBlockChange} pages={pages} blocks={blocks} />
+            <FunnelBlockConfigPanel
+              block={selectedBlock}
+              onChange={handleBlockChange}
+              pages={pages}
+              blocks={blocks}
+              funnelId={funnel.id}
+            />
             {/* T-028 Phase 9 — Panneau des effets propres au bloc
                 (shimmer, button shine) affiché uniquement pour Hero/CTA/Text */}
             <BlockEffectsPanel

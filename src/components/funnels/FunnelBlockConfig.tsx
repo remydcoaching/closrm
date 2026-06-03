@@ -23,9 +23,10 @@ interface Props {
   pages?: FunnelPage[]
   /** Blocs de la page active — pour le sélecteur d'ancre vers un bloc. */
   blocks?: FunnelBlock[]
+  funnelId: string
 }
 
-export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Props) {
+export default function FunnelBlockConfig({ block, onChange, pages, blocks, funnelId }: Props) {
   function handleConfigChange(config: FunnelBlockConfigType) {
     onChange({ ...block, config })
   }
@@ -58,7 +59,13 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Pr
       </div>
 
       {block.type === 'hero' && (
-        <HeroConfig config={block.config as Parameters<typeof HeroConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />
+        <HeroConfig
+          config={block.config as Parameters<typeof HeroConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
+          pages={pages}
+          blocks={blocks}
+          funnelId={funnelId}
+        />
       )}
       {block.type === 'video' && (
         <VideoConfig config={block.config as Parameters<typeof VideoConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
@@ -91,7 +98,13 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Pr
         <TextConfig config={block.config as Parameters<typeof TextConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
       )}
       {block.type === 'image' && (
-        <ImageConfig config={block.config as Parameters<typeof ImageConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />
+        <ImageConfig
+          config={block.config as Parameters<typeof ImageConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
+          pages={pages}
+          blocks={blocks}
+          funnelId={funnelId}
+        />
       )}
       {block.type === 'spacer' && (
         <SpacerConfig config={block.config as Parameters<typeof SpacerConfig>[0]['config']} onChange={c => handleConfigChange(c)} />

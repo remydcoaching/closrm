@@ -2,12 +2,14 @@
 
 import type { FunnelImageBlockConfig, FunnelImageItem, FunnelPage, FunnelBlock } from '@/types'
 import RedirectPicker from './RedirectPicker'
+import ImageUploadField from './ImageUploadField'
 
 interface Props {
   config: FunnelImageBlockConfig
   onChange: (config: FunnelImageBlockConfig) => void
   pages?: FunnelPage[]
   blocks?: FunnelBlock[]
+  funnelId: string
 }
 
 // On migre les funnels legacy (1 image via `src`) vers le mode `images[]`
@@ -20,7 +22,7 @@ function getImages(config: FunnelImageBlockConfig): FunnelImageItem[] {
   return []
 }
 
-export default function ImageConfig({ config, onChange, pages, blocks }: Props) {
+export default function ImageConfig({ config, onChange, pages, blocks, funnelId }: Props) {
   const images = getImages(config)
   const size = config.size ?? 'large'
   const columns = config.columns ?? (images.length >= 2 ? 2 : 1)
@@ -45,6 +47,7 @@ export default function ImageConfig({ config, onChange, pages, blocks }: Props) 
   }
 
   const addImage = () => {
+    if (images.length >= 10) return
     updateImages([...images, { src: '', alt: '', linkUrl: null }])
   }
 
@@ -112,12 +115,12 @@ export default function ImageConfig({ config, onChange, pages, blocks }: Props) 
         </select>
       </div>
 
-      <div style={{ height: 1, background: '#222', margin: '4px 0' }} />
+      <div style={{ height: 1, background: 'var(--border-primary)', margin: '4px 0' }} />
 
       {images.map((item, i) => (
         <div key={i} style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, color: '#888' }}>Photo {i + 1}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Photo {i + 1}</span>
             <div style={{ display: 'flex', gap: 4 }}>
               <button
                 type="button"
@@ -146,16 +149,11 @@ export default function ImageConfig({ config, onChange, pages, blocks }: Props) 
               </button>
             </div>
           </div>
-          <div style={{ marginBottom: 6 }}>
-            <label style={labelStyle}>URL de l&apos;image</label>
-            <input
-              type="url"
-              value={item.src}
-              onChange={(e) => updateItem(i, { src: e.target.value })}
-              placeholder="https://images.unsplash.com/..."
-              style={inputStyle}
-            />
-          </div>
+          <ImageUploadField
+            value={item.src}
+            onChange={(src) => updateItem(i, { src })}
+            funnelId={funnelId}
+          />
           <div style={{ marginBottom: 6 }}>
             <label style={labelStyle}>Texte alternatif</label>
             <input
@@ -165,6 +163,35 @@ export default function ImageConfig({ config, onChange, pages, blocks }: Props) 
               placeholder="Description de l'image"
               style={inputStyle}
             />
+          </div>
+          <div style={{ marginBottom: 6 }}>
+            <label style={labelStyle}>Légende</label>
+            {item.caption !== undefined ? (
+              <div>
+                <textarea
+                  value={item.caption}
+                  onChange={(e) => updateItem(i, { caption: e.target.value })}
+                  placeholder="Texte sous l'image…"
+                  rows={2}
+                  style={{ ...inputStyle, resize: 'vertical', marginBottom: 4 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => updateItem(i, { caption: undefined })}
+                  style={{ fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  Supprimer la légende
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => updateItem(i, { caption: '' })}
+                style={{ fontSize: 11, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                + Ajouter une légende
+              </button>
+            )}
           </div>
           <RedirectPicker
             value={item.linkUrl}
@@ -176,20 +203,74 @@ export default function ImageConfig({ config, onChange, pages, blocks }: Props) 
         </div>
       ))}
 
+      {images.some(img => img.caption !== undefined) && (
+        <div style={{ border: '1px solid var(--border-primary)', borderRadius: 8, padding: 10, background: 'var(--bg-elevated)' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>Style des légendes</span>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Taille</label>
+              <select
+                value={config.captionSize ?? 'small'}
+                onChange={(e) => onChange({ ...config, captionSize: e.target.value as FunnelImageBlockConfig['captionSize'] })}
+                style={inputStyle}
+              >
+                <option value="small">Petite</option>
+                <option value="medium">Moyenne</option>
+                <option value="large">Grande</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Alignement</label>
+              <select
+                value={config.captionAlignment ?? 'center'}
+                onChange={(e) => onChange({ ...config, captionAlignment: e.target.value as FunnelImageBlockConfig['captionAlignment'] })}
+                style={inputStyle}
+              >
+                <option value="left">Gauche</option>
+                <option value="center">Centre</option>
+                <option value="right">Droite</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Couleur (hex ou CSS var)</label>
+              <input
+                type="text"
+                value={config.captionColor ?? ''}
+                onChange={(e) => onChange({ ...config, captionColor: e.target.value || undefined })}
+                placeholder="ex : #ffffff ou var(--fnl-text)"
+                style={inputStyle}
+              />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', paddingBottom: 2 }}>
+              <input
+                type="checkbox"
+                checked={config.captionItalic ?? false}
+                onChange={(e) => onChange({ ...config, captionItalic: e.target.checked || undefined })}
+              />
+              Italique
+            </label>
+          </div>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={addImage}
+        disabled={images.length >= 10}
         style={{
           padding: '8px 12px',
           fontSize: 12,
-          background: '#1a1a1a',
-          border: '1px dashed #444',
+          background: 'var(--bg-elevated)',
+          border: '1px dashed var(--border-secondary)',
           borderRadius: 8,
-          color: '#aaa',
-          cursor: 'pointer',
+          color: images.length >= 10 ? 'var(--text-muted)' : 'var(--text-secondary)',
+          cursor: images.length >= 10 ? 'not-allowed' : 'pointer',
+          opacity: images.length >= 10 ? 0.6 : 1,
         }}
       >
-        + Ajouter une photo
+        {images.length >= 10 ? '+ Ajouter une photo (max 10)' : '+ Ajouter une photo'}
       </button>
     </div>
   )
@@ -197,7 +278,7 @@ export default function ImageConfig({ config, onChange, pages, blocks }: Props) 
 
 const labelStyle: React.CSSProperties = {
   fontSize: 11,
-  color: '#888',
+  color: 'var(--text-muted)',
   display: 'block',
   marginBottom: 4,
 }
@@ -206,25 +287,25 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '7px 10px',
   fontSize: 13,
-  background: '#0a0a0a',
-  border: '1px solid #333',
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border-primary)',
   borderRadius: 8,
-  color: '#fff',
+  color: 'var(--text-primary)',
   outline: 'none',
 }
 
 const cardStyle: React.CSSProperties = {
-  background: '#111',
+  background: 'var(--bg-elevated)',
   borderRadius: 8,
   padding: 10,
-  border: '1px solid #262626',
+  border: '1px solid var(--border-primary)',
 }
 
 const iconBtn = (disabled: boolean): React.CSSProperties => ({
-  background: '#1a1a1a',
-  border: '1px solid #333',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-secondary)',
   borderRadius: 6,
-  color: disabled ? '#444' : '#aaa',
+  color: disabled ? 'var(--text-muted)' : 'var(--text-secondary)',
   fontSize: 11,
   width: 22,
   height: 22,

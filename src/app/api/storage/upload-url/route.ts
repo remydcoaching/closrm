@@ -1,17 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { randomUUID } from 'crypto'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { isR2Configured } from '@/lib/storage/r2-client'
 import { buildR2Path, signUpload, type R2Target } from '@/lib/storage/signing'
 
-const MAX_BYTES = 2 * 1024 * 1024 * 1024 // 2 GB — R2 supporte jusqu'a 5 GB par PUT
+const MAX_BYTES = 2 * 1024 * 1024 * 1024
+const FUNNEL_IMAGE_MAX_BYTES = 15 * 1024 * 1024 // 15 Mo avant compression
 
-const bodySchema = z.object({
+const postBodySchema = z.object({
+  type: z.undefined().or(z.literal('post')),
   post_id: z.string().uuid(),
   target: z.enum(['final', 'media', 'rush']),
   filename: z.string().min(1).max(255),
   content_type: z.string().min(1).max(100),
   content_length: z.number().int().positive().max(MAX_BYTES),
+})
+
+const funnelImageBodySchema = z.object({
+  type: z.literal('funnel_image'),
+  funnel_id: z.string().uuid(),
+  content_type: z.string().min(1).max(100),
+  content_length: z.number().int().positive().max(FUNNEL_IMAGE_MAX_BYTES),
 })
 
 export async function POST(request: NextRequest) {
@@ -22,13 +32,35 @@ export async function POST(request: NextRequest) {
 
     const { workspaceId } = await getWorkspaceId()
     const body = await request.json().catch(() => null)
-    const parsed = bodySchema.safeParse(body)
+
+    // Route funnel image
+    if (body?.type === 'funnel_image') {
+      const parsed = funnelImageBodySchema.safeParse(body)
+      if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+      }
+
+      const { funnel_id, content_type, content_length } = parsed.data
+      const path = `workspaces/${workspaceId}/funnels/${funnel_id}/${randomUUID()}.webp`
+
+      const upload_url = await signUpload({ path, contentType: content_type, contentLength: content_length })
+
+      const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL
+      if (!R2_PUBLIC_BASE_URL) {
+        return NextResponse.json({ error: 'R2_PUBLIC_BASE_URL not configured' }, { status: 503 })
+      }
+      const public_url = `${R2_PUBLIC_BASE_URL}/${path}`
+
+      return NextResponse.json({ upload_url, path, public_url })
+    }
+
+    // Route post (existante — inchangée)
+    const parsed = postBodySchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
 
     const { post_id, target, filename, content_type, content_length } = parsed.data
-
     const path = buildR2Path({
       workspaceId,
       postId: post_id,
@@ -36,12 +68,7 @@ export async function POST(request: NextRequest) {
       filename,
     })
 
-    const upload_url = await signUpload({
-      path,
-      contentType: content_type,
-      contentLength: content_length,
-    })
-
+    const upload_url = await signUpload({ path, contentType: content_type, contentLength: content_length })
     return NextResponse.json({ upload_url, path })
   } catch (e) {
     console.error('[storage/upload-url]', e)

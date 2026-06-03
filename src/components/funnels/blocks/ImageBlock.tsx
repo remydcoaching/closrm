@@ -27,7 +27,13 @@ const SIZE_TO_MAXWIDTH: Record<NonNullable<FunnelImageBlockConfig['size']>, numb
   full: null,
 }
 
-function renderImage(item: FunnelImageItem, maxWidth: number | null) {
+const CAPTION_SIZE: Record<NonNullable<FunnelImageBlockConfig['captionSize']>, number> = {
+  small: 12,
+  medium: 14,
+  large: 17,
+}
+
+function renderImage(item: FunnelImageItem, maxWidth: number | null, config: FunnelImageBlockConfig) {
   const img = (
     /* eslint-disable-next-line @next/next/no-img-element */
     <img
@@ -52,19 +58,41 @@ function renderImage(item: FunnelImageItem, maxWidth: number | null) {
     marginRight: 'auto',
   }
 
+  const caption = item.caption?.trim()
+  const captionEl = caption ? (
+    <p style={{
+      margin: '8px 0 0',
+      fontSize: CAPTION_SIZE[config.captionSize ?? 'small'],
+      color: config.captionColor || 'var(--fnl-text-secondary)',
+      textAlign: config.captionAlignment ?? 'center',
+      fontStyle: config.captionItalic ? 'italic' : 'normal',
+      lineHeight: 1.4,
+    }}>
+      {caption}
+    </p>
+  ) : null
+
   if (item.linkUrl) {
     return (
-      <a
-        href={resolveFunnelUrl(item.linkUrl)}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ display: 'block', ...wrapperStyle }}
-      >
-        {img}
-      </a>
+      <div style={wrapperStyle}>
+        <a
+          href={resolveFunnelUrl(item.linkUrl)}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ display: 'block' }}
+        >
+          {img}
+        </a>
+        {captionEl}
+      </div>
     )
   }
-  return <div style={wrapperStyle}>{img}</div>
+  return (
+    <div style={wrapperStyle}>
+      {img}
+      {captionEl}
+    </div>
+  )
 }
 
 export default function ImageBlock({ config }: Props) {
@@ -181,7 +209,7 @@ export default function ImageBlock({ config }: Props) {
       >
         {items.map((item, i) => (
           <div key={i} style={{ width: '100%' }}>
-            {renderImage(item, maxItemWidth)}
+            {renderImage(item, maxItemWidth, config)}
           </div>
         ))}
       </div>
