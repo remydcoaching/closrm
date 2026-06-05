@@ -43,8 +43,22 @@ export function generateTrackingScript(funnelPageId: string): string {
     }
   }
 
-  // ─── Page view ──────────────────────────────────────────────────────────
-  sendEvent("view");
+  // ─── Page view + ad/UTM attribution capture ─────────────────────────────
+  function captureAttribution() {
+    var out = {};
+    try {
+      var params = new URL(window.location.href).searchParams;
+      var keys = ["fbclid","gclid","ttclid","msclkid","utm_source","utm_medium","utm_campaign","utm_content","utm_term","ad_id","adset_id","campaign_id"];
+      for (var i = 0; i < keys.length; i++) {
+        var v = params.get(keys[i]);
+        if (v) out[keys[i]] = v.slice(0, 200);
+      }
+      if (document.referrer) out.referrer = document.referrer.slice(0, 300);
+      out.landing_path = window.location.pathname + window.location.search;
+    } catch (_e) {}
+    return out;
+  }
+  sendEvent("view", captureAttribution());
 
   // ─── CTA click tracking ─────────────────────────────────────────────────
   document.addEventListener("click", function(e) {

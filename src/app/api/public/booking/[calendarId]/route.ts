@@ -20,6 +20,7 @@ import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { createBookingReminders } from '@/lib/bookings/reminders'
 import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
+import { findExistingLeadId } from '@/lib/leads/identity'
 import type { CalendarReminder } from '@/types'
 import { startOfMonth, endOfMonth, parseISO, addMinutes } from 'date-fns'
 
@@ -257,27 +258,8 @@ export async function POST(
   const firstName = form_data['first_name'] ?? ''
   const lastName = form_data['last_name'] ?? ''
 
-  let leadId: string | null = null
-
-  if (email) {
-    const { data: leadByEmail } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('workspace_id', calendar.workspace_id)
-      .eq('email', email)
-      .maybeSingle()
-    if (leadByEmail) leadId = leadByEmail.id
-  }
-
-  if (!leadId && phone) {
-    const { data: leadByPhone } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('workspace_id', calendar.workspace_id)
-      .eq('phone', phone)
-      .maybeSingle()
-    if (leadByPhone) leadId = leadByPhone.id
-  }
+  // Dedup by normalized email then phone (handles case, whitespace, FR phone formats).
+  let leadId: string | null = await findExistingLeadId(supabase, calendar.workspace_id, { email, phone })
 
   if (!leadId) {
     const { data: newLead, error: leadError } = await supabase
