@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
+import { findExistingLeadId } from '@/lib/leads/identity'
 import { z } from 'zod'
 
 const submitSchema = z.object({
@@ -101,31 +102,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Au moins un champ de contact est requis (email, téléphone ou prénom).' }, { status: 422 })
   }
 
-  // Find existing lead
-  let leadId: string | null = null
+  // Dedup by normalized email then phone (handles case, whitespace, FR phone formats).
+  let leadId: string | null = await findExistingLeadId(supabase, workspace_id, { email, phone })
 
-  if (email) {
-    const { data: leadByEmail } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('workspace_id', workspace_id)
-      .eq('email', email)
-      .maybeSingle()
-    if (leadByEmail) leadId = leadByEmail.id
-  }
+  if (leadId) {
+    // Existing lead: backfill visitor_id and append custom-answer notes.
+    if (visitor_id || notesText) {
+      const { data: existing } = await supabase
+        .from('leads')
+        .select('visitor_id, notes, form_answers')
+        .eq('id', leadId)
+        .single()
 
-  if (!leadId && phone) {
-    const { data: leadByPhone } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('workspace_id', workspace_id)
-      .eq('phone', phone)
-      .maybeSingle()
-    if (leadByPhone) leadId = leadByPhone.id
-  }
-
-  // Create lead if not found
-  if (!leadId) {
+      const patch: Record<string, unknown> = {}
+      if (visitor_id && !existing?.visitor_id) {
+        patch.visitor_id = visitor_id
+      }
+      if (notesText) {
+        patch.notes = existing?.notes ? `${existing.notes}\n\n${notesText}` : notesText
+      }
+      if (Object.keys(customFields).length > 0) {
+        const merged = {
+          ...((existing?.form_answers as Record<string, string> | null) ?? {}),
+          ...customFields,
+        }
+        patch.form_answers = merged
+      }
+      if (Object.keys(patch).length > 0) {
+        await supabase.from('leads').update(patch).eq('id', leadId)
+      }
+    }
+  } else {
     const tags = [`funnel:${funnel_id}`]
 
     const { data: newLead, error: leadError } = await supabase
@@ -139,7 +146,9 @@ export async function POST(req: NextRequest) {
         source: 'funnel',
         status: 'nouveau',
         tags,
-        notes: notesText,
+        notes: notesText || null,
+        visitor_id: visitor_id ?? null,
+        form_answers: customFields,
       })
       .select('id')
       .single()

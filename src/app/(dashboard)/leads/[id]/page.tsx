@@ -13,6 +13,7 @@ import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadAttributionBlock from '@/components/leads/LeadAttributionBlock'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
+import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
 
 interface LeadWithRelations extends Lead {
   calls: Call[]
@@ -187,9 +188,10 @@ export default function LeadDetailPage() {
         </div>
       ) : (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
-        {/* Colonne gauche — detail + paiements */}
+        {/* Colonne gauche — detail + parcours + paiements */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <LeadDetail lead={lead} onUpdate={handleUpdate} />
+          <LeadJourneyBlock leadId={lead.id} />
           <div style={{
             background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
             borderRadius: 14, padding: 20,

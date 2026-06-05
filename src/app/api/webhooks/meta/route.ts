@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { decrypt } from '@/lib/meta/encryption'
 import { getLeadData, parseLeadFields, type MetaCredentials } from '@/lib/meta/client'
+import { findExistingLeadId } from '@/lib/leads/identity'
 
 // ─── GET : webhook verification ──────────────────────────────────────────────
 
@@ -86,27 +87,96 @@ export async function POST(request: NextRequest) {
         const leadData = await getLeadData(leadgen_id, creds.page_access_token)
         const parsed = parseLeadFields(leadData.field_data)
 
-        // 3. Insert lead into database
-        const { error } = await supabase
-          .from('leads')
-          .insert({
-            workspace_id: integration.workspace_id,
-            first_name: parsed.first_name,
-            last_name: parsed.last_name,
-            phone: parsed.phone ?? '',
-            email: parsed.email,
-            status: 'nouveau',
-            source: 'facebook_ads',
-            tags: [],
-            call_attempts: 0,
-            reached: false,
-            meta_campaign_id: campaign_id ?? null,
-            meta_adset_id: adset_id ?? null,
-            meta_ad_id: ad_id ?? null,
-          })
+        // Build full answers map (incl. custom Meta lead form questions)
+        // and a human-readable summary of the custom-only ones for `notes`.
+        const STANDARD_KEYS = new Set([
+          'first_name', 'prenom', 'prénom',
+          'last_name', 'nom', 'family_name', 'full_name',
+          'email', 'email_address',
+          'phone', 'phone_number', 'mobile_phone', 'telephone',
+        ])
+        const fullAnswers: Record<string, string> = {}
+        const customAnswers: Record<string, string> = {}
+        for (const f of leadData.field_data ?? []) {
+          const key = f.name
+          const value = (f.values?.[0] ?? '').trim()
+          if (!value) continue
+          fullAnswers[key] = value
+          if (!STANDARD_KEYS.has(key.toLowerCase())) {
+            customAnswers[key] = value
+          }
+        }
+        const customNotes = Object.entries(customAnswers)
+          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+          .join('\n')
+        const notesBlock = customNotes
+          ? `[Lead form Meta — ${new Date().toLocaleDateString('fr-FR')}]\n${customNotes}`
+          : null
 
-        if (error) {
-          console.error('Failed to insert Meta lead:', error)
+        // 3. Dedup: look for an existing lead in this workspace by normalized
+        //    email then phone. If found, enrich it instead of creating a duplicate.
+        const existingLeadId = await findExistingLeadId(supabase, integration.workspace_id, {
+          email: parsed.email,
+          phone: parsed.phone || null,
+        })
+
+        if (existingLeadId) {
+          // Update only the fields we have new info on. Append notes instead of
+          // overwriting; keep existing source/tags untouched.
+          const { data: existing } = await supabase
+            .from('leads')
+            .select('notes, form_answers, meta_campaign_id, meta_adset_id, meta_ad_id')
+            .eq('id', existingLeadId)
+            .single()
+
+          const mergedAnswers = {
+            ...((existing?.form_answers as Record<string, string> | null) ?? {}),
+            ...fullAnswers,
+          }
+          const mergedNotes = notesBlock
+            ? (existing?.notes ? `${existing.notes}\n\n${notesBlock}` : notesBlock)
+            : existing?.notes ?? null
+
+          const { error } = await supabase
+            .from('leads')
+            .update({
+              form_answers: mergedAnswers,
+              notes: mergedNotes,
+              // Only fill Meta IDs if missing — don't overwrite first-touch attribution.
+              meta_campaign_id: existing?.meta_campaign_id ?? campaign_id ?? null,
+              meta_adset_id: existing?.meta_adset_id ?? adset_id ?? null,
+              meta_ad_id: existing?.meta_ad_id ?? ad_id ?? null,
+            })
+            .eq('id', existingLeadId)
+
+          if (error) {
+            console.error('Failed to enrich existing Meta lead:', error)
+          }
+        } else {
+          // 4. Insert a fresh lead.
+          const { error } = await supabase
+            .from('leads')
+            .insert({
+              workspace_id: integration.workspace_id,
+              first_name: parsed.first_name,
+              last_name: parsed.last_name,
+              phone: parsed.phone ?? '',
+              email: parsed.email,
+              status: 'nouveau',
+              source: 'facebook_ads',
+              tags: [],
+              call_attempts: 0,
+              reached: false,
+              notes: notesBlock,
+              form_answers: fullAnswers,
+              meta_campaign_id: campaign_id ?? null,
+              meta_adset_id: adset_id ?? null,
+              meta_ad_id: ad_id ?? null,
+            })
+
+          if (error) {
+            console.error('Failed to insert Meta lead:', error)
+          }
         }
       } catch (err) {
         console.error(`Error processing leadgen_id=${leadgen_id}:`, err)

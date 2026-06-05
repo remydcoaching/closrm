@@ -48,8 +48,33 @@ export default function FunnelTracker({ funnelPageId }: Props) {
       }
     }
 
-    // ─── Page view ──────────────────────────────────────────────────────
-    sendEvent('view')
+    // ─── Page view + ad/UTM attribution capture ─────────────────────────
+    // On every view we surface URL params (fbclid, gclid, utm_*) and the
+    // referrer. The first event in a visitor's history that has any of these
+    // is the first-touch ad; the last one before form_submit is the last-touch.
+    function captureAttribution(): Record<string, string> {
+      const out: Record<string, string> = {}
+      try {
+        const params = new URL(window.location.href).searchParams
+        const keys = [
+          'fbclid', 'gclid', 'ttclid', 'msclkid',
+          'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
+          'ad_id', 'adset_id', 'campaign_id',
+        ]
+        for (const k of keys) {
+          const v = params.get(k)
+          if (v) out[k] = v.slice(0, 200)
+        }
+        if (document.referrer) {
+          out.referrer = document.referrer.slice(0, 300)
+        }
+        out.landing_path = window.location.pathname + window.location.search
+      } catch {
+        /* ignore — never block tracking */
+      }
+      return out
+    }
+    sendEvent('view', captureAttribution())
 
     // ─── CTA click tracking ─────────────────────────────────────────────
     function handleClick(e: MouseEvent) {
