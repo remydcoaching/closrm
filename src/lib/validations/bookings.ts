@@ -20,21 +20,25 @@ export const createBookingSchema = z.object({
   location_id: z.string().uuid('ID lieu invalide.').optional().nullable(),
   title: z.string().min(1, 'Le titre est requis.').max(200),
   scheduled_at: z.string().min(1, 'La date est requise.'),
-  duration_minutes: z.number().int().min(5).max(480),
+  // Max 14 jours (20160 min). Couvre les blocages "vacances" multi-jours.
+  duration_minutes: z.number().int().min(5).max(14 * 24 * 60),
   notes: z.string().max(5000).optional().nullable(),
   is_personal: z.boolean().default(false),
   recurrence: recurrenceSchema.optional().nullable(),
   color: hexColorSchema.optional().nullable(),
+  /** Si false, l'event ne bloque pas les réservations publiques. Default true. */
+  blocks_availability: z.boolean().optional(),
 })
 
 export const updateBookingSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   scheduled_at: z.string().optional(),
-  duration_minutes: z.number().int().min(5).max(480).optional(),
+  duration_minutes: z.number().int().min(5).max(14 * 24 * 60).optional(),
   status: z.enum(['pending', 'confirmed', 'cancelled', 'no_show', 'completed']).optional(),
   notes: z.string().max(5000).optional().nullable(),
   notify_lead: z.boolean().optional(),
   color: hexColorSchema.optional().nullable(),
+  blocks_availability: z.boolean().optional(),
 })
 
 export const bookingFiltersSchema = z.object({

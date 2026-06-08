@@ -46,7 +46,13 @@ export async function PATCH(
 
     const body = await request.json()
     const parsed = updateBookingSchema.safeParse(body)
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    if (!parsed.success) {
+      const msg = parsed.error.issues
+        .map((i) => i.message)
+        .filter(Boolean)
+        .join(' — ') || 'Données invalides.'
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
 
     const { data: existing } = await supabase
       .from('bookings')

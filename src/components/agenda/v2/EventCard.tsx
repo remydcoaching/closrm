@@ -32,14 +32,26 @@ export function EventCard({ event, onClick, style, isHighlighted, resizable }: E
   const isShort = event.durationMinutes <= 30
   const isMedium = event.durationMinutes > 30 && event.durationMinutes < 60
   const isPending = event.kind === 'booking' && event.booking.status === 'pending'
+  const isFree = event.kind === 'booking' && event.booking.blocks_availability === false
   const start = isoToHHmm(event.start)
   const end = isoToHHmm(addMinutes(parseISO(event.start), event.durationMinutes).toISOString())
-  const fillBg = isPending
+  const solidBg = isPending
     ? `color-mix(in srgb, ${event.color} 10%, var(--bg-elevated))`
     : `color-mix(in srgb, ${event.color} 22%, var(--bg-elevated))`
-  const fillBgHover = isPending
+  const solidBgHover = isPending
     ? `color-mix(in srgb, ${event.color} 18%, var(--bg-elevated))`
     : `color-mix(in srgb, ${event.color} 32%, var(--bg-elevated))`
+  // Quand l'event est marqué "disponible" (blocks_availability=false), on
+  // remplace le fill plein par un motif rayé diagonal pour signaler d'un
+  // coup d'œil que ce créneau reste réservable côté public.
+  const stripedBase = `color-mix(in srgb, ${event.color} 22%, var(--bg-elevated))`
+  const stripedAlt = `color-mix(in srgb, ${event.color} 8%, var(--bg-elevated))`
+  const fillBg = isFree
+    ? `repeating-linear-gradient(135deg, ${stripedBase} 0 8px, ${stripedAlt} 8px 16px)`
+    : solidBg
+  const fillBgHover = isFree
+    ? `repeating-linear-gradient(135deg, ${solidBgHover} 0 8px, ${stripedAlt} 8px 16px)`
+    : solidBgHover
   const outlineColor = `color-mix(in srgb, ${event.color} 35%, transparent)`
   const timeColor = `color-mix(in srgb, ${event.color} 30%, var(--text-secondary) 70%)`
 

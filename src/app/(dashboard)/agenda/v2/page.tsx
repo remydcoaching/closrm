@@ -332,7 +332,7 @@ export default function AgendaV2Page() {
    *  Pas d'ouverture de modal. */
   async function handleSaveEdit(
     ev: AgendaEvent,
-    patch: { title?: string; scheduled_at?: string; duration_minutes?: number; notes?: string | null; color?: string | null },
+    patch: { title?: string; scheduled_at?: string; duration_minutes?: number; notes?: string | null; color?: string | null; blocks_availability?: boolean },
   ) {
     if (ev.kind !== 'booking') return
 
@@ -353,6 +353,9 @@ export default function AgendaV2Page() {
       const newTitle = patch.title ?? e.title
       const newNotes = patch.notes !== undefined ? patch.notes : e.booking.notes
       const newColor = patch.color !== undefined ? patch.color : e.booking.color
+      const newBlocks = patch.blocks_availability !== undefined
+        ? patch.blocks_availability
+        : e.booking.blocks_availability
       return {
         ...e,
         title: newTitle,
@@ -366,6 +369,7 @@ export default function AgendaV2Page() {
           duration_minutes: newDuration,
           notes: newNotes,
           color: newColor,
+          blocks_availability: newBlocks,
         },
       }
     })
@@ -377,6 +381,9 @@ export default function AgendaV2Page() {
       const newTitle = patch.title ?? cur.title
       const newNotes = patch.notes !== undefined ? patch.notes : cur.booking.notes
       const newColor = patch.color !== undefined ? patch.color : cur.booking.color
+      const newBlocks = patch.blocks_availability !== undefined
+        ? patch.blocks_availability
+        : cur.booking.blocks_availability
       return {
         ...cur,
         title: newTitle,
@@ -390,6 +397,7 @@ export default function AgendaV2Page() {
           duration_minutes: newDuration,
           notes: newNotes,
           color: newColor,
+          blocks_availability: newBlocks,
         },
       }
     })

@@ -5,13 +5,13 @@ import {
   endOfWeek,
   eachDayOfInterval,
   isSameMonth,
-  isSameDay,
   isToday,
-  parseISO,
   format,
+  parseISO,
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { BookingWithCalendar } from '@/types'
+import { bookingTouchesDay } from '@/lib/bookings/multi-day'
 
 interface MonthViewProps {
   date: Date
@@ -31,7 +31,9 @@ export function MonthView({ date, bookings, onBookingClick, onDayClick }: MonthV
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd })
 
   function bookingsForDay(day: Date): BookingWithCalendar[] {
-    return bookings.filter((b) => isSameDay(parseISO(b.scheduled_at), day))
+    // Inclut les bookings multi-jours qui chevauchent ce jour, pas seulement
+    // ceux qui démarrent dessus.
+    return bookings.filter((b) => bookingTouchesDay(b, day))
   }
 
   return (

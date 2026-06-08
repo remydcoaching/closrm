@@ -1,10 +1,15 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { startOfWeek, addDays, isSameDay, isToday, parseISO, format, getHours, getMinutes } from 'date-fns'
+import { startOfWeek, addDays, isToday, format, differenceInCalendarDays, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { BookingWithCalendar } from '@/types'
 import { BookingBlock } from './BookingBlock'
+import {
+  getBookingSegmentsForDay,
+  isAllDayBooking,
+  type BookingDaySegment,
+} from '@/lib/bookings/multi-day'
 
 interface WeekViewProps {
   date: Date
@@ -21,42 +26,50 @@ const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_
 const TOTAL_HEIGHT = HOURS.length * CELL_HEIGHT
 const HALF_SLOTS = HOURS.flatMap((h) => [h, h + 0.5])
 
-function getBookingPosition(booking: BookingWithCalendar) {
-  const d = parseISO(booking.scheduled_at)
-  const hour = getHours(d)
-  const minutes = getMinutes(d)
-  const top = (hour - START_HOUR) * CELL_HEIGHT + (minutes / 60) * CELL_HEIGHT
-  const height = Math.max((booking.duration_minutes / 60) * CELL_HEIGHT, 20)
+function getSegmentPosition(seg: BookingDaySegment) {
+  // Clamp les bornes à la fenêtre visible [START_HOUR, END_HOUR] : pour un
+  // bloc "vacances 5 jours" qui démarre à minuit, sans clamp le top serait
+  // négatif (au-dessus de la grille) — on le coupe à 7h pour qu'il occupe
+  // visiblement toute la colonne du jour.
+  const visStart = Math.max(seg.startHour, START_HOUR)
+  const visEnd = Math.min(seg.endHour, END_HOUR)
+  const top = (visStart - START_HOUR) * CELL_HEIGHT
+  const height = Math.max((visEnd - visStart) * CELL_HEIGHT, 20)
   return { top, height }
 }
 
-function resolveOverlaps(bookings: BookingWithCalendar[]): (BookingWithCalendar & { col: number; totalCols: number })[] {
-  if (bookings.length === 0) return []
-  const sorted = [...bookings].sort((a, b) =>
-    new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
-  )
-  const result: (BookingWithCalendar & { col: number; totalCols: number })[] = []
-  const groups: BookingWithCalendar[][] = []
+/**
+ * Résout les chevauchements sur les segments d'une même journée. Pour un
+ * booking multi-jours, c'est son segment clampé du jour courant qui est
+ * comparé — pas la durée totale du booking d'origine — sinon une vacance
+ * de 5 jours ferait s'aligner tous les autres événements en colonne sur 5
+ * jours, ce qui n'a aucun sens visuellement.
+ */
+function resolveOverlaps(
+  segments: BookingDaySegment[],
+): (BookingDaySegment & { col: number; totalCols: number })[] {
+  if (segments.length === 0) return []
+  const sorted = [...segments].sort((a, b) => a.startHour - b.startHour)
+  const result: (BookingDaySegment & { col: number; totalCols: number })[] = []
+  const groups: BookingDaySegment[][] = []
 
-  for (const b of sorted) {
-    const bStart = new Date(b.scheduled_at).getTime()
+  for (const s of sorted) {
     let placed = false
     for (const group of groups) {
       const lastInGroup = group[group.length - 1]
-      const lastEnd = new Date(lastInGroup.scheduled_at).getTime() + lastInGroup.duration_minutes * 60000
-      if (bStart >= lastEnd) {
-        group.push(b)
+      if (s.startHour >= lastInGroup.endHour) {
+        group.push(s)
         placed = true
         break
       }
     }
-    if (!placed) groups.push([b])
+    if (!placed) groups.push([s])
   }
 
   const totalCols = groups.length
   for (let col = 0; col < groups.length; col++) {
-    for (const b of groups[col]) {
-      result.push({ ...b, col, totalCols })
+    for (const s of groups[col]) {
+      result.push({ ...s, col, totalCols })
     }
   }
   return result
@@ -71,6 +84,13 @@ interface DragState {
 export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBookingDrop }: WeekViewProps) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 })
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
+  // Sépare évènements "toute la journée" / multi-jours pour les rendre dans
+  // une lane horizontale en haut (à la Google Calendar) plutôt qu'en colonne
+  // dans la grille horaire — l'ancien rendu colonne mangeait toute la place
+  // sur 1 seul jour, ce qui n'avait aucun sens visuel.
+  const allDayBookings = bookings.filter(isAllDayBooking)
+  const hourlyBookings = bookings.filter((b) => !isAllDayBooking(b))
   const [drag, setDrag] = useState<DragState | null>(null)
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -172,6 +192,107 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBooki
         })}
       </div>
 
+      {/* Lane "Toute la journée" — bookings multi-jours en barres horizontales,
+          à la Google Calendar. On utilise un layout flex simple (pas sticky,
+          pas de grid) pour éviter tout problème de positionnement / overlap. */}
+      {allDayBookings.length > 0 && (
+        <div style={{
+          display: 'flex',
+          borderBottom: '1px solid var(--border-secondary)',
+          background: 'var(--bg-primary)',
+          minHeight: 32,
+        }}>
+          {/* Label gauche */}
+          <div style={{
+            width: HOUR_COL_WIDTH,
+            flexShrink: 0,
+            borderRight: GRID_BORDER,
+            padding: '6px 10px 6px 0',
+            fontSize: 10, color: 'var(--text-tertiary)',
+            textTransform: 'uppercase', letterSpacing: '0.05em',
+            lineHeight: 1.2, textAlign: 'right',
+          }}>
+            Toute la<br/>journée
+          </div>
+          {/* Bandeau qui contient les 7 colonnes jours + les barres absolument
+              positionnées. Les barres span horizontalement via left/width en %
+              calculés depuis l'index du jour. */}
+          <div style={{
+            flex: 1,
+            position: 'relative',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            padding: '4px 0',
+            minHeight: 24,
+          }}>
+            {/* Lignes verticales pour chaque colonne jour */}
+            {days.map((day) => (
+              <div key={day.toISOString()} style={{
+                borderRight: GRID_BORDER,
+                minHeight: 24,
+              }} />
+            ))}
+            {/* Bars all-day, stackées verticalement */}
+            <div style={{
+              position: 'absolute',
+              inset: '4px 0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 3,
+              pointerEvents: 'none',
+            }}>
+              {allDayBookings.map((b) => {
+                const start = parseISO(b.scheduled_at)
+                const end = new Date(start.getTime() + b.duration_minutes * 60_000)
+                const startIdx = differenceInCalendarDays(start, weekStart)
+                const lastDayIdx = differenceInCalendarDays(new Date(end.getTime() - 1), weekStart)
+                const visStart = Math.max(0, startIdx)
+                const visEnd = Math.min(6, lastDayIdx)
+                if (visStart > 6 || visEnd < 0) return null
+                const span = Math.max(1, visEnd - visStart + 1)
+                const leftPct = (visStart / 7) * 100
+                const widthPct = (span / 7) * 100
+                const color = b.is_personal
+                  ? (b.form_data?.color as string) || '#6b7280'
+                  : b.booking_calendar?.color || '#3b82f6'
+                const displayTitle = b.is_personal
+                  ? b.title
+                  : (b.lead ? `${b.lead.first_name} ${b.lead.last_name}`.trim() : b.title)
+                const isFree = b.blocks_availability === false
+                const bg = isFree
+                  ? `repeating-linear-gradient(135deg, ${color}33 0 8px, ${color}10 8px 16px)`
+                  : `${color}33`
+                return (
+                  <div
+                    key={b.id}
+                    onClick={() => onBookingClick(b)}
+                    style={{
+                      position: 'relative',
+                      marginLeft: `${leftPct}%`,
+                      width: `calc(${widthPct}% - 6px)`,
+                      height: 22,
+                      background: bg,
+                      borderLeft: `3px ${isFree ? 'dashed' : 'solid'} ${color}`,
+                      color: 'var(--text-primary)',
+                      fontSize: 12, fontWeight: 600,
+                      padding: '2px 10px',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      lineHeight: '18px',
+                    }}
+                    title={displayTitle}
+                  >
+                    {displayTitle}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Time grid + bookings overlay */}
       <div style={{ position: 'relative' }}>
         {/* Grid lines */}
@@ -246,19 +367,29 @@ export function WeekView({ date, bookings, onBookingClick, onSlotSelect, onBooki
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', height: '100%' }}>
             {days.map((day, dayIdx) => {
-              const dayBookings = bookings.filter((b) => isSameDay(parseISO(b.scheduled_at), day))
-              const positioned = resolveOverlaps(dayBookings)
+              // Segments des bookings horaires (les multi-jours/all-day sont
+              // déjà rendus dans la lane en haut — on les exclut ici).
+              const segments = getBookingSegmentsForDay(hourlyBookings, day)
+              const positioned = resolveOverlaps(segments)
               return (
                 <div key={day.toISOString()} style={{ position: 'relative', pointerEvents: 'none' }}>
-                  {positioned.map((b) => {
-                    const pos = getBookingPosition(b)
-                    const width = 100 / b.totalCols
-                    const left = width * b.col
+                  {positioned.map((seg) => {
+                    const pos = getSegmentPosition(seg)
+                    const width = 100 / seg.totalCols
+                    const left = width * seg.col
+                    // Pour les jours intermédiaires d'un booking multi-jours,
+                    // on suffixe le titre par "(suite)" pour que le coach voie
+                    // que le bloc continue. Le booking original est passé tel
+                    // quel à BookingBlock pour conserver le onClick correct.
+                    const isContinuation = !seg.isFirstDay
+                    const displayBooking = isContinuation
+                      ? { ...seg.booking, title: `${seg.booking.title} (suite)` }
+                      : seg.booking
                     return (
                       <BookingBlock
-                        key={b.id}
-                        booking={b}
-                        onClick={onBookingClick}
+                        key={`${seg.booking.id}-${day.toISOString()}`}
+                        booking={displayBooking}
+                        onClick={() => onBookingClick(seg.booking)}
                         style={{
                           top: pos.top,
                           height: pos.height,

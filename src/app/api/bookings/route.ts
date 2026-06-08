@@ -71,7 +71,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const parsed = createBookingSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+      // Sérialise les erreurs Zod en string lisible côté UI (sinon le client
+      // affichait "[object Object]" via alert()).
+      const msg = parsed.error.issues
+        .map((i) => i.message)
+        .filter(Boolean)
+        .join(' — ') || 'Données invalides.'
+      return NextResponse.json({ error: msg }, { status: 400 })
     }
 
     // ── Branche récurrente : insère N occurrences avec un `recurrence_group_id`
@@ -100,6 +106,7 @@ export async function POST(request: NextRequest) {
           source: 'manual' as const,
           recurrence_group_id: groupId,
           color: parsed.data.color ?? null,
+          blocks_availability: parsed.data.blocks_availability ?? true,
         }
       })
 
@@ -126,6 +133,7 @@ export async function POST(request: NextRequest) {
         is_personal: parsed.data.is_personal,
         location_id: parsed.data.location_id ?? null,
         color: parsed.data.color ?? null,
+        blocks_availability: parsed.data.blocks_availability ?? true,
         source: 'manual',
         status: 'confirmed',
       })

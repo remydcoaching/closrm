@@ -99,13 +99,22 @@ export async function GET(
     else if (rangeEnd > horizon) rangeEnd = horizon
   }
 
-  // Fetch existing confirmed bookings in that range
+  // Fetch existing confirmed bookings overlapping the range.
+  // On élargit la borne inférieure de 14 jours (= durée max d'un booking
+  // multi-day) pour catch les events qui ont démarré AVANT rangeStart mais
+  // qui s'étendent dedans. Sans ça, un bloc "vacances" multi-jours posé fin
+  // du mois précédent n'était pas vu côté slot generator → asymétrie avec
+  // le check côté POST.
+  const MAX_BOOKING_DAYS = 14
+  const fetchStart = new Date(rangeStart.getTime() - MAX_BOOKING_DAYS * 24 * 60 * 60 * 1000)
+
   const { data: existingBookings, error: bookingsError } = await supabase
     .from('bookings')
-    .select('scheduled_at, duration_minutes')
+    .select('scheduled_at, duration_minutes, blocks_availability')
     .eq('workspace_id', calendar.workspace_id)
     .eq('status', 'confirmed')
-    .gte('scheduled_at', rangeStart.toISOString())
+    .eq('blocks_availability', true)
+    .gte('scheduled_at', fetchStart.toISOString())
     .lte('scheduled_at', rangeEnd.toISOString())
 
   if (bookingsError) {
@@ -236,13 +245,23 @@ export async function POST(
     }
   }
 
+  // Lookback élargi à 14 jours pour catch les bookings multi-day qui auraient
+  // démarré bien avant `bookingStart` mais s'étendent jusque dans le créneau
+  // demandé. L'ancienne fenêtre `-calendar.duration_minutes` ratait ces cas
+  // (ex: bloc "vacances 10 jours" démarré il y a 5 jours).
+  const POST_MAX_BOOKING_DAYS = 14
+  const conflictLookbackStart = new Date(
+    bookingStart.getTime() - POST_MAX_BOOKING_DAYS * 24 * 60 * 60 * 1000,
+  )
+
   let conflictQuery = supabase
     .from('bookings')
     .select('id, scheduled_at, duration_minutes')
     .eq('workspace_id', calendar.workspace_id)
     .eq('status', 'confirmed')
+    .eq('blocks_availability', true)
     .lt('scheduled_at', bookingEnd.toISOString())
-    .gte('scheduled_at', addMinutes(bookingStart, -calendar.duration_minutes).toISOString())
+    .gte('scheduled_at', conflictLookbackStart.toISOString())
 
   if (reschedule_from) {
     conflictQuery = conflictQuery.neq('id', reschedule_from)
