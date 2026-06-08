@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Info, Ban, Calendar, Clock, User, MapPin, FileText, ChevronDown, Repeat, Palette } from 'lucide-react'
+import { X, Info, Ban, Calendar, Clock, User, MapPin, FileText, ChevronDown, Repeat, Palette, Shield } from 'lucide-react'
 import { BOOKING_COLOR_PALETTE } from '@/lib/agenda/color-palette'
 import { BookingCalendar, BookingWithCalendar, Lead, BookingLocation } from '@/types'
 
@@ -53,6 +53,11 @@ function formatDateLabel(iso: string): string {
 }
 
 function formatDuration(minutes: number): string {
+  // Multi-jours : 1440 = 1 jour, 4320 = 3 jours, etc.
+  if (minutes >= 1440 && minutes % 1440 === 0) {
+    const days = minutes / 1440
+    return days === 1 ? '1 jour' : `${days} jours`
+  }
   if (minutes >= 60) {
     const h = Math.floor(minutes / 60)
     const m = minutes % 60
@@ -138,6 +143,32 @@ export default function NewBookingModal({
   const [notes, setNotes] = useState(editingBooking?.notes ?? '')
   // Override couleur du booking. `null` = hérite du calendrier (ou bleu perso).
   const [color, setColor] = useState<string | null>(editingBooking?.color ?? null)
+  // Toggle "bloque les réservations". TRUE = créneau occupé (comportement par
+  // défaut, masque le slot côté booking page). FALSE = affiché sur l'agenda
+  // mais les leads peuvent quand même réserver dessus (ex: bloc "horaires de
+  // travail" qu'on veut visualiser sans masquer les créneaux).
+  const [blocksAvailability, setBlocksAvailability] = useState<boolean>(
+    editingBooking?.blocks_availability ?? true,
+  )
+
+  // Mode "toute la journée" / multi-jours : utile pour bloquer des vacances ou
+  // une journée entière. Active = time fixé à 00:00, durée = N jours en min.
+  // Auto-détecté à l'édition si la durée est un multiple de 1440 et démarre à 00:00.
+  const [allDay, setAllDay] = useState<boolean>(() => {
+    if (!editingBooking) return false
+    const d = new Date(editingBooking.scheduled_at)
+    return (
+      d.getHours() === 0 &&
+      d.getMinutes() === 0 &&
+      editingBooking.duration_minutes % 1440 === 0 &&
+      editingBooking.duration_minutes >= 1440
+    )
+  })
+  // Nombre de jours pour le mode allDay (1 = aujourd'hui seulement).
+  const [allDayDays, setAllDayDays] = useState<number>(() => {
+    if (!editingBooking) return 1
+    return Math.max(1, Math.round(editingBooking.duration_minutes / 1440))
+  })
 
   // Récurrence : `null` = pas récurrent. Sinon { frequency, count }.
   // Édition d'une série : on désactive le contrôle (V1 = pas de propagation).
@@ -290,8 +321,13 @@ export default function NewBookingModal({
     e.preventDefault()
     setError(null)
 
+    // Mode "toute la journée / multi-jours" : on force le départ à 00:00 local
+    // et la durée en jours complets. Sinon, on prend l'heure/durée renseignées.
+    const effectiveTime = allDay ? '00:00' : time
+    const effectiveDuration = allDay ? Math.max(1, allDayDays) * 1440 : duration
+
     // Build a proper local Date and convert to ISO (UTC) so the server stores the correct time
-    const localDate = new Date(`${date}T${time}:00`)
+    const localDate = new Date(`${date}T${effectiveTime}:00`)
     const scheduledAt = localDate.toISOString()
 
     // Recurrence n'est appliquée qu'en création (pas en édition V1)
@@ -307,9 +343,10 @@ export default function NewBookingModal({
           location_id: null,
           title: title || 'Horaire bloqué',
           scheduled_at: scheduledAt,
-          duration_minutes: duration,
+          duration_minutes: effectiveDuration,
           notes: notes || null,
           color,
+          blocks_availability: blocksAvailability,
           ...(recurrencePayload ? { recurrence: recurrencePayload } : {}),
         }
       : {
@@ -322,9 +359,10 @@ export default function NewBookingModal({
               ? `${selectedLead.first_name} ${selectedLead.last_name}`.trim()
               : 'Rendez-vous'),
           scheduled_at: scheduledAt,
-          duration_minutes: duration,
+          duration_minutes: effectiveDuration,
           notes: notes || null,
           color,
+          blocks_availability: blocksAvailability,
           ...(recurrencePayload ? { recurrence: recurrencePayload } : {}),
         }
 
@@ -346,7 +384,16 @@ export default function NewBookingModal({
       .then(async (res) => {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}))
-          alert(data.error ?? (isEditing ? 'Erreur lors de la modification' : 'Erreur lors de la création'))
+          // Le serveur retourne une string. On garde une serialisation
+          // défensive (JSON.stringify) au cas où un endpoint régresserait
+          // et renverrait un objet — éviter le fameux "[object Object]".
+          const errMsg =
+            typeof data.error === 'string'
+              ? data.error
+              : data.error
+                ? JSON.stringify(data.error)
+                : (isEditing ? 'Erreur lors de la modification' : 'Erreur lors de la création')
+          alert(errMsg)
         }
       })
       .catch((err) => {
@@ -520,20 +567,66 @@ export default function NewBookingModal({
                 </div>
               </Row>
 
-              {/* Date + Heures — un seul bloc visuel */}
-              <Row icon={<Clock size={15} />} ariaLabel="Date et heure">
+              {/* Toute la journée — toggle visible avant le bloc date/heure */}
+              <Row icon={<Clock size={15} />} ariaLabel="Toute la journée">
+                <label style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer',
+                  padding: '4px 0',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={allDay}
+                    onChange={(e) => setAllDay(e.target.checked)}
+                    style={{ accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                  />
+                  Toute la journée
+                </label>
+              </Row>
+
+              {/* Date + Heures — un seul bloc visuel, ou date range si allDay */}
+              <Row icon={null} ariaLabel="Date et heure">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, flexWrap: 'wrap' }}>
                   <DateField value={date} onChange={setDate} />
-                  <TimeSelect
-                    value={time}
-                    onChange={setTime}
-                    rangeStart={0}
-                    rangeEnd={23}
-                  />
-                  <span style={{ color: 'var(--text-tertiary)', fontSize: 13, padding: '0 2px' }}>→</span>
-                  <TimeSelect
-                    value={endTimeStr}
-                    onChange={(v) => {
+                  {allDay ? (
+                    <>
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: 13, padding: '0 2px' }}>→</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={14}
+                        value={allDayDays}
+                        onChange={(e) => setAllDayDays(Math.max(1, Math.min(14, Number(e.target.value) || 1)))}
+                        style={{
+                          width: 50,
+                          background: 'var(--bg-primary)',
+                          border: '1px solid transparent',
+                          color: 'var(--text-primary)',
+                          fontSize: 13,
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          textAlign: 'center',
+                          outline: 'none',
+                          fontFamily: 'inherit',
+                          colorScheme: 'dark',
+                        }}
+                      />
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
+                        {allDayDays > 1 ? 'jours' : 'jour'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <TimeSelect
+                        value={time}
+                        onChange={setTime}
+                        rangeStart={0}
+                        rangeEnd={23}
+                      />
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: 13, padding: '0 2px' }}>→</span>
+                      <TimeSelect
+                        value={endTimeStr}
+                        onChange={(v) => {
                       if (!time || !v) return
                       const [sh, sm] = time.split(':').map(Number)
                       const [eh, em] = v.split(':').map(Number)
@@ -545,6 +638,8 @@ export default function NewBookingModal({
                   />
                   <span style={{ color: 'var(--text-tertiary)', fontSize: 13, padding: '0 2px' }}>·</span>
                   <DurationSelect value={duration} onChange={setDuration} />
+                    </>
+                  )}
                 </div>
               </Row>
 
@@ -773,6 +868,31 @@ export default function NewBookingModal({
                   </div>
                 </Row>
               )}
+
+              {/* Disponibilité — toggle "bloque les réservations".
+                  OFF = l'event reste visible sur l'agenda mais ne masque pas
+                  le créneau côté page de booking publique. Cas d'usage :
+                  bloc "horaires de travail" qu'on veut juste visualiser. */}
+              <Row icon={<Shield size={15} />} ariaLabel="Disponibilité">
+                <label style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer',
+                  padding: '4px 0',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={blocksAvailability}
+                    onChange={(e) => setBlocksAvailability(e.target.checked)}
+                    style={{ accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                  />
+                  <span>
+                    Bloquer les réservations
+                    <span style={{ color: 'var(--text-tertiary)', marginLeft: 6, fontSize: 12 }}>
+                      {blocksAvailability ? '· créneau occupé' : '· créneau disponible'}
+                    </span>
+                  </span>
+                </label>
+              </Row>
 
               {/* Notes */}
               <Row icon={<FileText size={15} />} ariaLabel="Notes" alignTop>

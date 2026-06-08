@@ -23,6 +23,19 @@ const STATUS_CONFIG: Record<BookingStatus, { label: string; color: string; bg: s
 
 type TabKey = 'rdv' | 'prospect'
 
+function formatDurationHuman(minutes: number): string {
+  if (minutes >= 1440 && minutes % 1440 === 0) {
+    const days = minutes / 1440
+    return days === 1 ? '1 jour' : `${days} jours`
+  }
+  if (minutes >= 60) {
+    const h = Math.floor(minutes / 60)
+    const m = minutes % 60
+    return m > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
+  }
+  return `${minutes} min`
+}
+
 export function BookingDetailPanel({
   booking,
   onClose,
@@ -154,7 +167,7 @@ export function BookingDetailPanel({
               <span style={{ textTransform: 'capitalize' }}>{formattedDate}</span>
             </DetailRow>
             <DetailRow icon={<Clock size={15} />} label="Heure">
-              {formattedTime} · {booking.duration_minutes} min
+              {formattedTime} · {formatDurationHuman(booking.duration_minutes)}
             </DetailRow>
             {booking.location?.name && (
               <DetailRow icon={<MapPin size={15} />} label="Lieu">

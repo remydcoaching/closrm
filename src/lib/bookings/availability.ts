@@ -12,6 +12,8 @@ const DAY_MAP: Record<number, DayOfWeek> = {
 interface ExistingBooking {
   scheduled_at: string
   duration_minutes: number
+  /** Si false, ce booking ne bloque pas les créneaux disponibles. */
+  blocks_availability?: boolean
 }
 
 /**
@@ -29,6 +31,13 @@ export function getAvailableSlots(
   const now = new Date()
   const days = eachDayOfInterval({ start: rangeStart, end: rangeEnd })
   const result: { date: string; slots: string[] }[] = []
+
+  // Garde-fou : ignore les bookings marqués "disponible" (blocks_availability=false).
+  // Le filtre est fait aussi côté SQL au cas où, mais on protège la fonction
+  // pour ne pas dépendre de l'appelant.
+  const blockingBookings = existingBookings.filter(
+    (b) => b.blocks_availability !== false,
+  )
 
   for (const day of days) {
     const dayOfWeek = DAY_MAP[getDay(day)]
@@ -55,7 +64,7 @@ export function getAvailableSlots(
         }
 
         // Check overlap with existing bookings
-        const hasConflict = existingBookings.some((b) => {
+        const hasConflict = blockingBookings.some((b) => {
           const bStart = parseISO(b.scheduled_at)
           const bEnd = addMinutes(bStart, b.duration_minutes)
           // Apply buffer: expand the blocked range

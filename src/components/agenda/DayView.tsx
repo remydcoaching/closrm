@@ -1,10 +1,16 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { isSameDay, isToday, parseISO, format, getHours, getMinutes } from 'date-fns'
+import { isToday, format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { BookingWithCalendar } from '@/types'
 import { BookingBlock } from './BookingBlock'
+import {
+  getBookingSegmentsForDay,
+  isAllDayBooking,
+  bookingTouchesDay,
+  type BookingDaySegment,
+} from '@/lib/bookings/multi-day'
 
 interface DayViewProps {
   date: Date
@@ -20,12 +26,11 @@ const END_HOUR = 21
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR)
 const TOTAL_HEIGHT = HOURS.length * CELL_HEIGHT
 
-function getBookingPosition(booking: BookingWithCalendar) {
-  const d = parseISO(booking.scheduled_at)
-  const hour = getHours(d)
-  const minutes = getMinutes(d)
-  const top = (hour - START_HOUR) * CELL_HEIGHT + (minutes / 60) * CELL_HEIGHT
-  const height = Math.max((booking.duration_minutes / 60) * CELL_HEIGHT, 20)
+function getSegmentPosition(seg: BookingDaySegment) {
+  const visStart = Math.max(seg.startHour, START_HOUR)
+  const visEnd = Math.min(seg.endHour, END_HOUR)
+  const top = (visStart - START_HOUR) * CELL_HEIGHT
+  const height = Math.max((visEnd - visStart) * CELL_HEIGHT, 20)
   return { top, height }
 }
 
@@ -35,7 +40,12 @@ interface DragState {
 }
 
 export function DayView({ date, bookings, onBookingClick, onSlotSelect, onBookingDrop }: DayViewProps) {
-  const dayBookings = bookings.filter((b) => isSameDay(parseISO(b.scheduled_at), date))
+  // Sépare les bookings "toute la journée" / multi-jours pour les rendre dans
+  // une lane en haut (à la Google Calendar). Les bookings horaires gardent
+  // leur position dans la grille.
+  const allDayForThisDay = bookings.filter((b) => isAllDayBooking(b) && bookingTouchesDay(b, date))
+  const hourlyBookings = bookings.filter((b) => !isAllDayBooking(b))
+  const daySegments = getBookingSegmentsForDay(hourlyBookings, date)
   const [drag, setDrag] = useState<DragState | null>(null)
   const isDragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -111,6 +121,55 @@ export function DayView({ date, bookings, onBookingClick, onSlotSelect, onBookin
         {format(date, 'EEEE d MMMM yyyy', { locale: fr })}
       </div>
 
+      {/* Lane "Toute la journée" — barre horizontale en haut pour les
+          évènements multi-jours / all-day qui touchent ce jour. */}
+      {allDayForThisDay.length > 0 && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 2,
+          padding: '6px 8px',
+          borderBottom: '1px solid var(--border-secondary)',
+          background: 'var(--bg-primary)',
+        }}>
+          {allDayForThisDay.map((b) => {
+            const color = b.is_personal
+              ? (b.form_data?.color as string) || '#6b7280'
+              : b.booking_calendar?.color || '#3b82f6'
+            const displayTitle = b.is_personal
+              ? b.title
+              : (b.lead ? `${b.lead.first_name} ${b.lead.last_name}`.trim() : b.title)
+            const totalDays = Math.max(1, Math.round(b.duration_minutes / 1440))
+            const isFree = b.blocks_availability === false
+            const bg = isFree
+              ? `repeating-linear-gradient(135deg, ${color}33 0 8px, ${color}10 8px 16px)`
+              : `${color}33`
+            return (
+              <div
+                key={b.id}
+                onClick={() => onBookingClick(b)}
+                style={{
+                  marginLeft: HOUR_COL_WIDTH,
+                  background: bg,
+                  borderLeft: `3px ${isFree ? 'dashed' : 'solid'} ${color}`,
+                  color: 'var(--text-primary)',
+                  fontSize: 12, fontWeight: 600,
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+                }}
+              >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {displayTitle}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 500 }}>
+                  {totalDays > 1 ? `${totalDays} jours` : 'Toute la journée'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Time grid */}
       <div style={{ position: 'relative', flex: 1 }}>
         {HOURS.map((hour) => (
@@ -173,13 +232,17 @@ export function DayView({ date, bookings, onBookingClick, onSlotSelect, onBookin
         {/* Bookings overlay */}
         <div style={{ position: 'absolute', top: 0, left: HOUR_COL_WIDTH, right: 0, height: TOTAL_HEIGHT, pointerEvents: 'none' }}>
           <div style={{ position: 'relative', height: '100%', pointerEvents: 'none' }}>
-            {dayBookings.map((b) => {
-              const pos = getBookingPosition(b)
+            {daySegments.map((seg) => {
+              const pos = getSegmentPosition(seg)
+              const isContinuation = !seg.isFirstDay
+              const displayBooking = isContinuation
+                ? { ...seg.booking, title: `${seg.booking.title} (suite)` }
+                : seg.booking
               return (
                 <BookingBlock
-                  key={b.id}
-                  booking={b}
-                  onClick={onBookingClick}
+                  key={`${seg.booking.id}-${date.toISOString()}`}
+                  booking={displayBooking}
+                  onClick={() => onBookingClick(seg.booking)}
                   style={{ top: pos.top, height: pos.height, left: 4, right: 4 }}
                 />
               )

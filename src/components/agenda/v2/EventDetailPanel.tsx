@@ -32,6 +32,7 @@ export interface BookingPatch {
   duration_minutes?: number
   notes?: string | null
   color?: string | null
+  blocks_availability?: boolean
 }
 
 interface EventDetailPanelProps {
@@ -111,6 +112,9 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
   const [editColor, setEditColor] = useState<string | null>(
     isBooking ? event.booking.color ?? null : null,
   )
+  const [editBlocks, setEditBlocks] = useState<boolean>(
+    isBooking ? event.booking.blocks_availability !== false : true,
+  )
 
   // Reset les champs quand on change d'event sélectionné
   useEffect(() => {
@@ -120,6 +124,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
     setEditEndTime(format(end, 'HH:mm'))
     setEditNotes(notes ?? '')
     setEditColor(isBooking ? event.booking.color ?? null : null)
+    setEditBlocks(isBooking ? event.booking.blocks_availability !== false : true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.id])
 
@@ -159,6 +164,11 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
   function saveColor(next: string | null) {
     setEditColor(next)
     autoSave({ color: next })
+  }
+
+  function saveBlocks(next: boolean) {
+    setEditBlocks(next)
+    autoSave({ blocks_availability: next })
   }
 
   // Popup centré flottant — sans backdrop full-screen. La grille derrière
@@ -543,6 +553,29 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
                 />
               ))}
             </div>
+          </Section>
+        )}
+
+        {/* Disponibilité — toggle bloque/laisse réserver dessus */}
+        {canEdit && (
+          <Section title="Disponibilité">
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer',
+            }}>
+              <input
+                type="checkbox"
+                checked={editBlocks}
+                onChange={(e) => saveBlocks(e.target.checked)}
+                style={{ accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+              />
+              <span>
+                Bloquer les réservations
+                <span style={{ color: 'var(--text-tertiary)', marginLeft: 6, fontSize: 12 }}>
+                  {editBlocks ? '· créneau occupé' : '· créneau disponible'}
+                </span>
+              </span>
+            </label>
           </Section>
         )}
 

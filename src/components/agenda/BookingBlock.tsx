@@ -33,6 +33,16 @@ export function BookingBlock({ booking, onClick, style, draggable = true }: Book
   // Short blocks (<=30min) → single line
   const isShort = booking.duration_minutes <= 30
 
+  // Event marqué "disponible" : on l'affiche en pointillé/rayé pour
+  // signaler visuellement qu'il ne bloque pas les réservations publiques.
+  const isFree = booking.blocks_availability === false
+  const background = isFree
+    ? `repeating-linear-gradient(135deg, ${color}26 0 8px, ${color}10 8px 16px)`
+    : `${color}26`
+  const borderLeftStyle = isFree
+    ? `3px dashed ${color}`
+    : `3px solid ${color}`
+
   return (
     <div
       draggable={draggable}
@@ -47,8 +57,8 @@ export function BookingBlock({ booking, onClick, style, draggable = true }: Book
         left: 2,
         right: 2,
         pointerEvents: 'auto',
-        background: `${color}26`,
-        borderLeft: `3px solid ${color}`,
+        background,
+        borderLeft: borderLeftStyle,
         borderRadius: 4,
         padding: isShort ? '2px 6px' : '4px 6px',
         cursor: 'pointer',

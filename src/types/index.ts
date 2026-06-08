@@ -497,6 +497,10 @@ export interface Booking {
   /** Override de couleur côté UI. Si null, on retombe sur la couleur du
    *  calendrier (ou bleu pour `is_personal`). Format hex `#RRGGBB`. */
   color: string | null
+  /** Si false, l'event est affiché sur l'agenda mais NE BLOQUE PAS les
+   *  réservations publiques (ex: un bloc "horaires de travail" qu'on veut
+   *  voir sur l'agenda sans masquer les créneaux de booking). */
+  blocks_availability: boolean
   google_account_id: string | null
   created_at: string
 }
