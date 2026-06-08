@@ -16,6 +16,7 @@ import {
   subMonths,
   format,
 } from 'date-fns'
+import { fromZonedTime } from 'date-fns-tz'
 import { fr } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Clock, MapPin, Phone, Video } from 'lucide-react'
 import type { FormField } from '@/types'
@@ -30,6 +31,10 @@ interface CalendarInfo {
   color: string
   form_fields: FormField[]
   require_confirmation?: boolean
+  /** TZ du workspace (ex: "Europe/Paris"). Utilisée pour convertir le HH:mm
+   *  affiché en moment UTC à submitter. Sans ça, un lead dans une autre TZ
+   *  envoyait un scheduled_at décalé. */
+  timezone?: string
 }
 
 interface WorkspaceInfo {
@@ -172,10 +177,12 @@ export default function PublicBookingPage() {
       return
     }
 
-    // Build ISO datetime: combine date + time with local timezone offset
+    // Build ISO datetime: combine date + time, interprété dans la TZ du
+    // workspace (et non celle du navigateur du lead — sinon un lead à Montréal
+    // qui réserve un coach parisien envoyait un scheduled_at décalé de 6h).
     const dateStr = format(selectedDate, 'yyyy-MM-dd')
-    const localDate = new Date(`${dateStr}T${selectedTime}:00`)
-    const scheduledAt = localDate.toISOString()
+    const tz = calendar.timezone || 'Europe/Paris'
+    const scheduledAt = fromZonedTime(`${dateStr}T${selectedTime}:00`, tz).toISOString()
 
     setSubmitting(true)
     setError(null)
