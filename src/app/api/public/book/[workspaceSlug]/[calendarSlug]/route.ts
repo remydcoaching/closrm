@@ -122,6 +122,17 @@ export async function GET(
     return NextResponse.json({ error: 'Erreur lors de la récupération des disponibilités.' }, { status: 500 })
   }
 
+  // Fetch workspace branding: workspace name, TZ + coach owner info
+  // La TZ est nécessaire pour générer les slots dans le bon fuseau — sans ça,
+  // sur Vercel (UTC), un slot "13:00" était en réalité 13:00 UTC = 15:00 CEST.
+  const { data: workspaceRow } = await supabase
+    .from('workspaces')
+    .select('name, timezone')
+    .eq('id', calendar.workspace_id)
+    .maybeSingle()
+
+  const workspaceTz = workspaceRow?.timezone || 'Europe/Paris'
+
   // Compute available slots
   const slots = beyondHorizon ? [] : getAvailableSlots(
     calendar.availability as Parameters<typeof getAvailableSlots>[0],
@@ -130,14 +141,8 @@ export async function GET(
     existingBookings ?? [],
     rangeStart,
     rangeEnd,
+    workspaceTz,
   )
-
-  // Fetch workspace branding: workspace name + coach owner info
-  const { data: workspaceRow } = await supabase
-    .from('workspaces')
-    .select('name')
-    .eq('id', calendar.workspace_id)
-    .maybeSingle()
 
   const { data: ownerRow } = await supabase
     .from('users')
@@ -168,6 +173,7 @@ export async function GET(
       form_fields: calendar.form_fields,
       max_advance_days: calendar.max_advance_days,
       require_confirmation: calendar.require_confirmation,
+      timezone: workspaceTz,
     },
     workspace: {
       name: workspaceRow?.name ?? null,
