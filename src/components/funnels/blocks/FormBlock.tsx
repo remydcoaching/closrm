@@ -63,6 +63,8 @@ export default function FormBlock({ config }: Props) {
         return
       }
 
+      window.fbq?.('track', 'Lead')
+
       // Redirect or show success message
       if (config.redirectUrl) {
         window.location.href = resolveFunnelUrl(config.redirectUrl)

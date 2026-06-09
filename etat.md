@@ -1,7 +1,7 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-06-01
+> Derniere mise a jour : 2026-06-09
 
 ---
 
@@ -335,4 +335,27 @@ Détail dans `taches/tache-044-perf-audit-agenda-leads-social.md`.
 
 ---
 
-*Mis a jour le 2026-06-01 par Claude Code — ClosRM*
+## Session 2026-06-09 — Meta Pixel par funnel (Rémy)
+
+### T-046 · Intégration Meta Pixel par funnel
+
+**Statut :** Implémenté. PR ouverte sur `feature/remy-meta-pixel-funnel`.
+
+**Pourquoi :**
+Les tunnels de vente de ClosRM sont liés aux campagnes Meta Ads. Sans pixel, Meta ne peut pas retargeter les visiteurs, optimiser les campagnes ni mesurer le coût par lead réel.
+
+**Ce qui a été livré :**
+- Colonne `meta_pixel_id TEXT` sur la table `funnels` (migration 083)
+- Section "Tracking & Pixels" dans la sidebar du builder — champ Pixel ID + guide intégré
+- Injection du script fbq sur les pages publiques via `<Script strategy="afterInteractive">`
+- Events automatiques : `PageView` (chargement), `Lead` (FormBlock soumis), `Schedule` (BookingBlock confirmé)
+- Couleurs du panel liées à `var(--color-primary)` (accent du workspace)
+
+**⚠️ Action manuelle requise :** exécuter la migration SQL dans Supabase dashboard avant de déployer.
+
+> Detail complet : `taches/tache-046-meta-pixel-funnel.md`
+> Spec : `docs/superpowers/specs/2026-06-09-meta-pixel-funnel-design.md`
+
+---
+
+*Mis a jour le 2026-06-09 par Claude Code — ClosRM*

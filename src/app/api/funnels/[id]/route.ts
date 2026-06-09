@@ -62,6 +62,7 @@ export async function PUT(
       preset_id,
       preset_override,
       effects_config,
+      meta_pixel_id,
     } = body
 
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
@@ -82,6 +83,12 @@ export async function PUT(
     // effects_config : map { effect-id: boolean }. Une map vide {} est valide.
     if (effects_config !== undefined && typeof effects_config === 'object' && effects_config !== null) {
       updates.effects_config = effects_config
+    }
+    // meta_pixel_id: null clears the pixel, string sets it, undefined = no change
+    if (meta_pixel_id !== undefined) {
+      updates.meta_pixel_id = typeof meta_pixel_id === 'string' && meta_pixel_id.trim()
+        ? meta_pixel_id.trim()
+        : null
     }
 
     const { data, error } = await supabase
