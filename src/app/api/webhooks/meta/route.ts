@@ -87,31 +87,23 @@ export async function POST(request: NextRequest) {
         const leadData = await getLeadData(leadgen_id, creds.page_access_token)
         const parsed = parseLeadFields(leadData.field_data)
 
-        // Build full answers map (incl. custom Meta lead form questions)
-        // and a human-readable summary of the custom-only ones for `notes`.
-        const STANDARD_KEYS = new Set([
-          'first_name', 'prenom', 'prénom',
-          'last_name', 'nom', 'family_name', 'full_name',
-          'email', 'email_address',
-          'phone', 'phone_number', 'mobile_phone', 'telephone',
-        ])
+        // Build full answers map (incl. custom Meta lead form questions).
+        // Avant on dupliquait les réponses dans `notes` sous forme texte —
+        // supprimé car le bloc Parcours du lead les affiche déjà proprement
+        // depuis `form_answers`. Évite des notes auto-générées en double.
         const fullAnswers: Record<string, string> = {}
-        const customAnswers: Record<string, string> = {}
         for (const f of leadData.field_data ?? []) {
           const key = f.name
           const value = (f.values?.[0] ?? '').trim()
           if (!value) continue
           fullAnswers[key] = value
-          if (!STANDARD_KEYS.has(key.toLowerCase())) {
-            customAnswers[key] = value
-          }
         }
-        const customNotes = Object.entries(customAnswers)
-          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
-          .join('\n')
-        const notesBlock = customNotes
-          ? `[Lead form Meta — ${new Date().toLocaleDateString('fr-FR')}]\n${customNotes}`
-          : null
+
+        // Distingue Facebook vs Instagram via le champ `platform` que Meta
+        // expose au niveau du leadgen (renvoie "fb" ou "ig"). Sans ça tout
+        // arrivait comme `facebook_ads` même si l'ad était vu sur Instagram.
+        const leadSource: 'facebook_ads' | 'instagram_ads' =
+          leadData.platform === 'ig' ? 'instagram_ads' : 'facebook_ads'
 
         // 3. Dedup: look for an existing lead in this workspace by normalized
         //    email then phone. If found, enrich it instead of creating a duplicate.
@@ -121,11 +113,12 @@ export async function POST(request: NextRequest) {
         })
 
         if (existingLeadId) {
-          // Update only the fields we have new info on. Append notes instead of
-          // overwriting; keep existing source/tags untouched.
+          // Update only the fields we have new info on. Keep existing
+          // source/tags/notes untouched — les réponses Meta sont reflétées
+          // via `form_answers`, plus de duplication dans `notes`.
           const { data: existing } = await supabase
             .from('leads')
-            .select('notes, form_answers, meta_campaign_id, meta_adset_id, meta_ad_id')
+            .select('form_answers, meta_campaign_id, meta_adset_id, meta_ad_id')
             .eq('id', existingLeadId)
             .single()
 
@@ -133,15 +126,11 @@ export async function POST(request: NextRequest) {
             ...((existing?.form_answers as Record<string, string> | null) ?? {}),
             ...fullAnswers,
           }
-          const mergedNotes = notesBlock
-            ? (existing?.notes ? `${existing.notes}\n\n${notesBlock}` : notesBlock)
-            : existing?.notes ?? null
 
           const { error } = await supabase
             .from('leads')
             .update({
               form_answers: mergedAnswers,
-              notes: mergedNotes,
               // Only fill Meta IDs if missing — don't overwrite first-touch attribution.
               meta_campaign_id: existing?.meta_campaign_id ?? campaign_id ?? null,
               meta_adset_id: existing?.meta_adset_id ?? adset_id ?? null,
@@ -163,11 +152,11 @@ export async function POST(request: NextRequest) {
               phone: parsed.phone ?? '',
               email: parsed.email,
               status: 'nouveau',
-              source: 'facebook_ads',
+              source: leadSource,
               tags: [],
               call_attempts: 0,
               reached: false,
-              notes: notesBlock,
+              notes: null,
               form_answers: fullAnswers,
               meta_campaign_id: campaign_id ?? null,
               meta_adset_id: adset_id ?? null,
