@@ -78,20 +78,45 @@ export async function POST(request: NextRequest) {
     let updated = 0
     const errors: { ad_id: string; error: string }[] = []
 
+    // Cache form_id → leads (un form peut servir plusieurs ads)
+    const formLeadsCache = new Map<string, MetaLeadWithPlatform[]>()
+
     for (const [adId, leadsOfAd] of byAdId.entries()) {
       try {
-        // Liste tous les leads de cette ad côté Meta. On utilise le
-        // `user_access_token` (perm ads_management) — le `page_access_token`
-        // ne donne pas accès aux endpoints `/{ad_id}/leads`.
-        const url = `${GRAPH}/${adId}/leads?fields=id,platform,created_time,field_data&limit=200&access_token=${creds.user_access_token}`
-        const res = await fetch(url)
-        if (!res.ok) {
-          const text = await res.text()
-          errors.push({ ad_id: adId, error: `Meta ${res.status}: ${text.slice(0, 120)}` })
+        // Étape 1 : trouver le form_id de l'ad via son creative.
+        // L'endpoint /{ad_id}/leads est gated derrière une perm que Meta ne
+        // grant pas toujours. /{form_id}/leads est plus permissif (le page
+        // token suffit + scope leads_retrieval).
+        const adUrl = `${GRAPH}/${adId}?fields=creative{lead_gen_form{id}}&access_token=${creds.user_access_token}`
+        const adRes = await fetch(adUrl)
+        if (!adRes.ok) {
+          const text = await adRes.text()
+          errors.push({ ad_id: adId, error: `Meta ${adRes.status} (ad fetch): ${text.slice(0, 150)}` })
           continue
         }
-        const json: { data?: MetaLeadWithPlatform[] } = await res.json()
-        const metaLeads = json.data ?? []
+        const adJson = await adRes.json() as {
+          creative?: { lead_gen_form?: { id?: string } }
+        }
+        const formId = adJson.creative?.lead_gen_form?.id
+        if (!formId) {
+          errors.push({ ad_id: adId, error: 'Ad sans lead_gen_form rattaché.' })
+          continue
+        }
+
+        // Étape 2 : récupère tous les leads du form (avec cache).
+        let metaLeads = formLeadsCache.get(formId)
+        if (!metaLeads) {
+          const url = `${GRAPH}/${formId}/leads?fields=id,platform,created_time,field_data&limit=200&access_token=${creds.page_access_token}`
+          const res = await fetch(url)
+          if (!res.ok) {
+            const text = await res.text()
+            errors.push({ ad_id: adId, error: `Meta ${res.status} (form leads): ${text.slice(0, 150)}` })
+            continue
+          }
+          const json: { data?: MetaLeadWithPlatform[] } = await res.json()
+          metaLeads = json.data ?? []
+          formLeadsCache.set(formId, metaLeads)
+        }
 
         // Index par email (lowercase) pour match
         const byEmail = new Map<string, MetaLeadWithPlatform>()
