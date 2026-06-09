@@ -58,8 +58,9 @@ interface Props {
 function renderBlock(block: FunnelBlock): React.ReactNode {
   const fxClasses = getBlockEffectsClasses(block)
   const content = renderBlockContent(block)
-  if (fxClasses.length === 0) return content
-  return <div key={block.id} className={fxClasses.join(' ')}>{content}</div>
+  const style = block.type === 'footer' ? { marginTop: 'auto' } : undefined
+  if (fxClasses.length === 0) return <div key={block.id} id={`block-${block.id}`} style={style}>{content}</div>
+  return <div key={block.id} id={`block-${block.id}`} className={fxClasses.join(' ')} style={style}>{content}</div>
 }
 
 function renderBlockContent(block: FunnelBlock): React.ReactNode {
