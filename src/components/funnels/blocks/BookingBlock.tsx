@@ -261,6 +261,9 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
         resolved !== '#' &&
         resolved !== 'https://' &&
         resolved !== 'http://'
+
+      window.fbq?.('track', 'Schedule')
+
       if (isUsable) {
         window.location.href = resolved
         return
