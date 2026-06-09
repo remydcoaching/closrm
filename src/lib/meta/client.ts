@@ -246,6 +246,8 @@ export interface MetaAdObject {
   status: string           // ACTIVE, PAUSED, DELETED, ARCHIVED
   effective_status: string  // ACTIVE, PAUSED, CAMPAIGN_PAUSED, IN_PROCESS, WITH_ISSUES, etc.
   objective?: string        // Only on campaigns: OUTCOME_LEADS, OUTCOME_AWARENESS, etc.
+  campaign_id?: string      // Set on adsets + ads
+  adset_id?: string         // Set on ads
 }
 
 const LEVEL_TO_EDGE: Record<string, string> = {
@@ -261,8 +263,17 @@ export async function listAdObjects(
   parentId?: string // campaign_id for adsets, adset_id for ads
 ): Promise<MetaAdObject[]> {
   const baseFields = 'id,name,status,effective_status'
-  // Add objective for campaigns (used for Leadform/Follow Ads classification)
-  const fields = level === 'campaign' ? `${baseFields},objective` : baseFields
+  // Pour les adsets/ads on récupère aussi les IDs parents — utile pour
+  // afficher le path complet (Campagne / Adset / Ad) côté lead à partir
+  // d'un seul ID résolu.
+  let fields: string
+  if (level === 'campaign') {
+    fields = `${baseFields},objective`
+  } else if (level === 'adset') {
+    fields = `${baseFields},campaign_id`
+  } else {
+    fields = `${baseFields},campaign_id,adset_id`
+  }
 
   // If we have a parent, fetch from the parent's edge instead of account level
   let url: string
