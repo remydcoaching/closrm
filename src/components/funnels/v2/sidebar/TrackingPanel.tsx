@@ -52,7 +52,7 @@ export default function TrackingPanel({ metaPixelId, onMetaPixelChange }: Props)
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'transparent', border: 'none', cursor: 'pointer',
-              color: '#E53E3E', fontSize: 12, fontWeight: 600,
+              color: 'var(--color-primary)', fontSize: 12, fontWeight: 600,
               padding: '8px 0 0', marginTop: 4,
             }}
           >
@@ -85,7 +85,7 @@ export default function TrackingPanel({ metaPixelId, onMetaPixelChange }: Props)
                   { name: 'Schedule', desc: 'call réservé' },
                 ].map(({ name, desc }) => (
                   <div key={name} style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#E53E3E', minWidth: 80 }}>{name}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', minWidth: 80 }}>{name}</span>
                     <span style={{ fontSize: 11, color: '#A0A0A0' }}>{desc}</span>
                   </div>
                 ))}
