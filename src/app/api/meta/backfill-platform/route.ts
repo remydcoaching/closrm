@@ -80,8 +80,10 @@ export async function POST(request: NextRequest) {
 
     for (const [adId, leadsOfAd] of byAdId.entries()) {
       try {
-        // Liste tous les leads de cette ad côté Meta
-        const url = `${GRAPH}/${adId}/leads?fields=id,platform,created_time,field_data&limit=200&access_token=${creds.page_access_token}`
+        // Liste tous les leads de cette ad côté Meta. On utilise le
+        // `user_access_token` (perm ads_management) — le `page_access_token`
+        // ne donne pas accès aux endpoints `/{ad_id}/leads`.
+        const url = `${GRAPH}/${adId}/leads?fields=id,platform,created_time,field_data&limit=200&access_token=${creds.user_access_token}`
         const res = await fetch(url)
         if (!res.ok) {
           const text = await res.text()
