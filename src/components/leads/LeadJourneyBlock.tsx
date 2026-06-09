@@ -58,6 +58,17 @@ interface JourneyPayload {
   attribution: { first_touch: AttributionTouch; last_touch: AttributionTouch }
 }
 
+/** Détecte la plateforme (Facebook / Instagram) à partir de la source du
+ *  lead. On ne distingue pas par touch — l'info n'est pas stockée à ce
+ *  niveau, et la grosse majorité des leads ont les mêmes touches first/last.
+ *  `glyph` est un caractère/court symbole rendu inline (lucide n'a pas les
+ *  icônes Facebook/Instagram pour cause de trademark). */
+function leadPlatform(source: string): { label: string; glyph: string; color: string } | null {
+  if (source === 'facebook_ads') return { label: 'Facebook', glyph: 'f', color: '#1877F2' }
+  if (source === 'instagram_ads') return { label: 'Instagram', glyph: '◯', color: '#E1306C' }
+  return null
+}
+
 interface ResolvedObject {
   id: string
   name: string
@@ -139,11 +150,13 @@ function AttributionPath({
   label,
   attributionMap,
   loading,
+  platform,
 }: {
   touch: AttributionTouch
   label: string
   attributionMap: AttributionMap
   loading: boolean
+  platform: { label: string; glyph: string; color: string } | null
 }) {
   const linkBase = '/acquisition/publicites'
 
@@ -210,6 +223,29 @@ function AttributionPath({
       </p>
       {items.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {platform && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{
+                fontSize: 9, fontWeight: 700, color: 'var(--text-muted)',
+                textTransform: 'uppercase', letterSpacing: '0.1em', minWidth: 52,
+              }}>
+                Plateforme
+              </span>
+              <span style={{
+                fontSize: 12, color: 'var(--text-primary)', fontWeight: 500,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+              }}>
+                <span aria-hidden style={{
+                  width: 14, height: 14, borderRadius: 3,
+                  background: platform.color, color: '#fff',
+                  fontSize: 10, fontWeight: 800,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  lineHeight: 1,
+                }}>{platform.glyph}</span>
+                {platform.label}
+              </span>
+            </div>
+          )}
           {items.map((item) => (
             <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{
@@ -416,23 +452,30 @@ export default function LeadJourneyBlock({ leadId, compact = false }: Props) {
       {open && (
         <>
           {/* Attribution — Première pub + Dernière pub avec path complet */}
-          <div style={{
-            display: 'flex', gap: 8, marginBottom: 16,
-            flexDirection: compact ? 'column' : 'row',
-          }}>
-            <AttributionPath
-              touch={data.attribution.first_touch}
-              label="Première pub"
-              attributionMap={attributionMap}
-              loading={resolvingAttribution}
-            />
-            <AttributionPath
-              touch={data.attribution.last_touch}
-              label="Dernière pub"
-              attributionMap={attributionMap}
-              loading={resolvingAttribution}
-            />
-          </div>
+          {(() => {
+            const platform = leadPlatform(data.lead.source)
+            return (
+              <div style={{
+                display: 'flex', gap: 8, marginBottom: 16,
+                flexDirection: compact ? 'column' : 'row',
+              }}>
+                <AttributionPath
+                  touch={data.attribution.first_touch}
+                  label="Première pub"
+                  attributionMap={attributionMap}
+                  loading={resolvingAttribution}
+                  platform={platform}
+                />
+                <AttributionPath
+                  touch={data.attribution.last_touch}
+                  label="Dernière pub"
+                  attributionMap={attributionMap}
+                  loading={resolvingAttribution}
+                  platform={platform}
+                />
+              </div>
+            )
+          })()}
 
           {/* Meta Lead Form answers */}
           <AnswersList
@@ -441,30 +484,48 @@ export default function LeadJourneyBlock({ leadId, compact = false }: Props) {
             icon={<Megaphone size={11} />}
           />
 
-          {/* Booking answers */}
-          {data.bookings.map((b) => (
-            <div key={b.id} style={{
-              background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-              borderRadius: 10, padding: 14, marginBottom: 10,
-            }}>
-              <p style={{
-                fontSize: 10, fontWeight: 700, color: 'var(--text-label)',
-                textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8,
-                display: 'flex', alignItems: 'center', gap: 6,
+          {/* Booking answers — un seul bloc par booking, titré avec le nom
+              du calendrier pour le distinguer du Lead Form Meta (sinon les
+              deux cartes se ressemblaient trop visuellement). */}
+          {data.bookings.map((b) => {
+            const entries = Object.entries(b.form_data ?? {})
+              .filter(([, v]) => v !== null && v !== undefined && String(v).length > 0)
+            if (entries.length === 0) return null
+            const calLabel = b.calendar_name ?? 'Calendrier'
+            return (
+              <div key={b.id} style={{
+                background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+                borderRadius: 10, padding: 14, marginBottom: 10,
               }}>
-                <Calendar size={11} />
-                {b.calendar_name ?? 'Réservation'} — {formatDateTimeFR(b.scheduled_at)}
-                <span style={{
-                  fontSize: 10, fontWeight: 600,
-                  color: b.status === 'confirmed' ? 'var(--color-success, #38A169)' : 'var(--text-muted)',
-                  textTransform: 'none', letterSpacing: 0,
+                <p style={{
+                  fontSize: 10, fontWeight: 700, color: 'var(--text-label)',
+                  textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10,
+                  display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
                 }}>
-                  · {b.status}
-                </span>
-              </p>
-              <AnswersList title="Réponses du calendrier" answers={b.form_data ?? {}} icon={<Calendar size={11} />} />
-            </div>
-          ))}
+                  <Calendar size={11} />
+                  Formulaire — {calLabel}
+                  <span style={{
+                    fontSize: 10, fontWeight: 500, color: 'var(--text-muted)',
+                    letterSpacing: 0, textTransform: 'none',
+                  }}>
+                    · {formatDateTimeFR(b.scheduled_at)} · {b.status}
+                  </span>
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {entries.map(([k, v]) => (
+                    <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <p style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {k.replace(/_/g, ' ')}
+                      </p>
+                      <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+                        {String(v)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
 
           {/* Timeline — masquée en mode compact (side panel) */}
           {!compact && data.events.length > 0 && (
