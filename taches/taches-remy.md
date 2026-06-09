@@ -87,10 +87,10 @@
 
 ---
 
-### T-045 · Meta Pixel par funnel
+### T-046 · Meta Pixel par funnel
 **Priorité :** Haute
-**Statut :** ⬜ Spec validée — Prêt à implémenter
-**Fiche :** `taches/tache-045-meta-pixel-funnel.md`
+**Statut :** ✅ Terminé (2026-06-09)
+**Fiche :** `taches/tache-046-meta-pixel-funnel.md`
 **Spec :** `docs/superpowers/specs/2026-06-09-meta-pixel-funnel-design.md`
 
 Permettre au coach de connecter son Meta Pixel ID à chacun de ses tunnels de vente directement depuis l'éditeur. Les pages publiques injectent automatiquement le script fbq et déclenchent `PageView` (chargement), `Lead` (FormBlock soumis), `Schedule` (BookingBlock confirmé). Indispensable pour le retargeting et l'optimisation des campagnes Meta Ads.
@@ -107,7 +107,7 @@ Permettre au coach de connecter son Meta Pixel ID à chacun de ses tunnels de ve
 | **A-028a-01** | **BookingBlock fonctionnel (calendrier intégré)** | **Haute** | **✅** |
 | **A-028a-02** | **FormBlock fonctionnel (lead + workflows + RedirectPicker)** | **Haute** | **✅** |
 | **T-031** | **Import portefeuille leads (CSV wizard 5 étapes)** | **Moyenne** | **✅** |
-| **T-045** | **Meta Pixel par funnel** | **Haute** | **⬜ À faire** |
+| **T-046** | **Meta Pixel par funnel** | **Haute** | **✅** |
 
 ---
 
