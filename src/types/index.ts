@@ -571,6 +571,7 @@ export interface Funnel {
   preset_id: string
   preset_override: FunnelPresetOverrideJSON | null
   effects_config: FunnelEffectsConfigJSON
+  meta_pixel_id: string | null
   created_at: string
   updated_at: string
 }
