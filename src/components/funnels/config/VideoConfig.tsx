@@ -11,12 +11,12 @@ export default function VideoConfig({ config, onChange }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
-        <label style={labelStyle}>URL de la vidéo (YouTube ou Vimeo)</label>
+        <label style={labelStyle}>URL de la vidéo (YouTube, Vimeo ou Wistia)</label>
         <input
           type="url"
           value={config.url}
           onChange={e => onChange({ ...config, url: e.target.value })}
-          placeholder="https://www.youtube.com/watch?v=..."
+          placeholder="https://www.youtube.com/watch?v=... ou wistia.com/medias/..."
           style={inputStyle}
         />
       </div>
