@@ -39,6 +39,10 @@ export interface MetaLeadData {
   adset_id: string | null
   campaign_id: string | null
   page_id: string | null
+  /** Plateforme d'origine renvoyée par Meta : "fb" | "ig". Permet de
+   *  distinguer un lead venu d'Instagram vs Facebook (sinon les deux
+   *  arrivent comme `facebook_ads` côté source). */
+  platform?: 'fb' | 'ig' | null
 }
 
 export interface MetaTokenResponse {
@@ -420,7 +424,7 @@ export async function getLeadData(
   pageToken: string
 ): Promise<MetaLeadData> {
   const res = await fetch(
-    `${GRAPH_URL}/${leadgenId}?fields=field_data,created_time,ad_id,adset_id,campaign_id&access_token=${pageToken}`
+    `${GRAPH_URL}/${leadgenId}?fields=field_data,created_time,ad_id,adset_id,campaign_id,platform&access_token=${pageToken}`
   )
   if (!res.ok) {
     const err = await res.json()
