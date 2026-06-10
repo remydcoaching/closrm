@@ -412,6 +412,7 @@ export interface BookingCalendar {
   max_advance_days: number | null
   email_template: 'premium' | 'minimal' | 'plain'
   email_accent_color: string
+  background_theme: 'dark' | 'light'
   purpose: CalendarPurpose
   reminders: CalendarReminder[]
   is_active: boolean

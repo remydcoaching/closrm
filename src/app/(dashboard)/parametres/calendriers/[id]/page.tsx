@@ -11,6 +11,7 @@ import LocationEditor, { type LocationInfo } from '@/components/booking-calendar
 import PurposeEditor from '@/components/booking-calendars/PurposeEditor'
 import RemindersEditor from '@/components/booking-calendars/RemindersEditor'
 import RemindersLog from '@/components/booking-calendars/RemindersLog'
+import BookingPagePreviewModal from '@/components/booking-calendars/BookingPagePreviewModal'
 
 const DEFAULT_AVAILABILITY: WeekAvailability = {
   monday: [{ start: '09:00', end: '17:00' }],
@@ -43,6 +44,9 @@ export default function EditCalendarPage() {
   const [emailTemplate, setEmailTemplate] = useState<'premium' | 'minimal' | 'plain'>('premium')
   const [emailAccentColor, setEmailAccentColor] = useState('#E53E3E')
   const [color, setColor] = useState('#E53E3E')
+  const [backgroundTheme, setBackgroundTheme] = useState<'dark' | 'light'>('dark')
+  const [workspaceSlug, setWorkspaceSlug] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const [availability, setAvailability] = useState<WeekAvailability>(DEFAULT_AVAILABILITY)
   const [formFields, setFormFields] = useState<FormField[]>([])
   const [locationIds, setLocationIds] = useState<string[]>([])
@@ -69,6 +73,7 @@ export default function EditCalendarPage() {
         setEmailTemplate(((cal as unknown as { email_template?: 'premium' | 'minimal' | 'plain' }).email_template) ?? 'premium')
         setEmailAccentColor(((cal as unknown as { email_accent_color?: string }).email_accent_color) ?? '#E53E3E')
         setColor(cal.color)
+        setBackgroundTheme(((cal as unknown as { background_theme?: 'dark' | 'light' }).background_theme) ?? 'dark')
         setAvailability(cal.availability ?? DEFAULT_AVAILABILITY)
         setFormFields(cal.form_fields ?? [])
         setLocationIds(cal.location_ids ?? [])
@@ -91,6 +96,12 @@ export default function EditCalendarPage() {
         setGoogleCalendarConnected(!!integration?.is_active)
       })
       .catch(() => {})
+
+    // Workspace slug — nécessaire pour construire l'URL publique de prévisualisation
+    fetch('/api/workspaces/slug')
+      .then((res) => res.ok ? res.json() : null)
+      .then((json) => setWorkspaceSlug(json?.slug ?? null))
+      .catch(() => {})
   }, [id])
 
   async function handleSave() {
@@ -111,6 +122,7 @@ export default function EditCalendarPage() {
           email_template: emailTemplate,
           email_accent_color: emailAccentColor,
           color,
+          background_theme: backgroundTheme,
           availability,
           form_fields: formFields,
           location_ids: locationIds,
@@ -322,10 +334,11 @@ export default function EditCalendarPage() {
             </div>
           </div>
 
-          {/* Color */}
+          {/* Apparence : couleur principale + thème de fond + prévisualisation */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Couleur</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <label style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>Apparence</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {/* Couleur principale */}
               <input
                 type="color"
                 value={color}
@@ -339,6 +352,7 @@ export default function EditCalendarPage() {
                   cursor: 'pointer',
                   padding: 2,
                 }}
+                aria-label="Couleur principale"
               />
               <input
                 type="text"
@@ -346,6 +360,68 @@ export default function EditCalendarPage() {
                 onChange={e => setColor(e.target.value)}
                 style={{ ...inputStyle, width: 100 }}
               />
+
+              {/* Toggle thème de fond */}
+              <div
+                role="radiogroup"
+                aria-label="Thème de fond de la page de réservation"
+                style={{
+                  display: 'inline-flex',
+                  padding: 3,
+                  borderRadius: 8,
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-primary)',
+                }}
+              >
+                {(['dark', 'light'] as const).map((theme) => {
+                  const isActive = backgroundTheme === theme
+                  const label = theme === 'dark' ? 'Fond sombre' : 'Fond clair'
+                  return (
+                    <button
+                      key={theme}
+                      type="button"
+                      role="radio"
+                      aria-checked={isActive}
+                      onClick={() => setBackgroundTheme(theme)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: isActive ? 'var(--bg-elevated)' : 'transparent',
+                        color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        boxShadow: isActive ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Bouton Prévisualiser */}
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(true)}
+                disabled={!workspaceSlug || !slug}
+                style={{
+                  padding: '8px 14px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  borderRadius: 8,
+                  border: '1px solid var(--border-primary)',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  cursor: workspaceSlug && slug ? 'pointer' : 'not-allowed',
+                  opacity: workspaceSlug && slug ? 1 : 0.5,
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                Prévisualiser
+              </button>
             </div>
           </div>
 
@@ -583,6 +659,15 @@ export default function EditCalendarPage() {
           <FormFieldsEditor fields={formFields} onChange={setFormFields} />
         </div>
       </section>
+
+      {/* Modale prévisualisation page de réservation */}
+      {previewOpen && workspaceSlug && slug && (
+        <BookingPagePreviewModal
+          workspaceSlug={workspaceSlug}
+          calendarSlug={slug}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   )
 }

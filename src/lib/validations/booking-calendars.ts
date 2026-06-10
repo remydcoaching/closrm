@@ -56,6 +56,7 @@ export const createBookingCalendarSchema = z.object({
   max_advance_days: z.number().int().min(1).max(365).nullable().optional(),
   email_template: z.enum(['premium', 'minimal', 'plain']).default('premium'),
   email_accent_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Couleur hex invalide').default('#E53E3E'),
+  background_theme: z.enum(['dark', 'light']).default('dark'),
   location_ids: z.array(z.string().uuid()).default([]),
   purpose: z.enum(['setting', 'closing', 'other']).default('other'),
   reminders: z.array(calendarReminderSchema).max(10).default([]),

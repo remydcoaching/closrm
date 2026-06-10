@@ -22,6 +22,7 @@ interface CalendarRow {
   duration_minutes: number
   location_ids: string[]
   color: string
+  background_theme: 'dark' | 'light'
   form_fields: unknown
   availability: unknown
   buffer_minutes: number
@@ -50,7 +51,7 @@ async function getCalendarBySlug(
   const { data: calendar, error: calError } = await supabase
     .from('booking_calendars')
     .select(
-      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose, reminders, max_advance_days, require_confirmation',
+      'id, workspace_id, name, description, duration_minutes, location_ids, color, background_theme, form_fields, availability, buffer_minutes, purpose, reminders, max_advance_days, require_confirmation',
     )
     .eq('workspace_id', slugRow.workspace_id)
     .eq('slug', calendarSlug)
@@ -170,6 +171,7 @@ export async function GET(
       duration_minutes: calendar.duration_minutes,
       location_ids: calendar.location_ids,
       color: calendar.color,
+      background_theme: calendar.background_theme ?? 'dark',
       form_fields: calendar.form_fields,
       max_advance_days: calendar.max_advance_days,
       require_confirmation: calendar.require_confirmation,
