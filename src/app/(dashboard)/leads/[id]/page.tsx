@@ -10,9 +10,9 @@ import LeadDetail from '@/components/leads/LeadDetail'
 import LeadMessagesTab from '@/components/leads/LeadMessagesTab'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
-import LeadAttributionBlock from '@/components/leads/LeadAttributionBlock'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
+import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
 
 interface LeadWithRelations extends Lead {
   calls: Call[]
@@ -187,9 +187,10 @@ export default function LeadDetailPage() {
         </div>
       ) : (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
-        {/* Colonne gauche — detail + paiements */}
+        {/* Colonne gauche — detail + parcours + paiements */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <LeadDetail lead={lead} onUpdate={handleUpdate} />
+          <LeadJourneyBlock leadId={lead.id} />
           <div style={{
             background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
             borderRadius: 14, padding: 20,
@@ -226,20 +227,6 @@ export default function LeadDetailPage() {
               <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
                 {lead.follow_ups.filter(f => f.status === 'en_attente').length}
               </p>
-            </div>
-            <div style={{ paddingTop: 8, borderTop: '1px solid var(--border-primary)' }}>
-              {lead.meta_campaign_id || lead.meta_adset_id || lead.meta_ad_id ? (
-                <LeadAttributionBlock
-                  meta_campaign_id={lead.meta_campaign_id}
-                  meta_adset_id={lead.meta_adset_id}
-                  meta_ad_id={lead.meta_ad_id}
-                />
-              ) : (
-                <>
-                  <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Origine publicitaire</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-label)' }}>Non disponible</p>
-                </>
-              )}
             </div>
           </div>
         </div>

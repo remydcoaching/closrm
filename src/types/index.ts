@@ -412,6 +412,7 @@ export interface BookingCalendar {
   max_advance_days: number | null
   email_template: 'premium' | 'minimal' | 'plain'
   email_accent_color: string
+  background_theme: 'dark' | 'light'
   purpose: CalendarPurpose
   reminders: CalendarReminder[]
   is_active: boolean
@@ -456,6 +457,19 @@ export interface BookingLocation {
   created_at: string
 }
 
+// ── Google Calendar Accounts ────────────────────────────────────────────────
+
+export interface GoogleCalendarAccount {
+  id: string
+  workspace_id: string
+  email: string
+  label: string | null
+  color: string
+  is_active: boolean
+  connected_at: string
+  created_at: string
+}
+
 // ── Booking ──────────────────────────────────────────────────────────────────
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'no_show' | 'completed'
@@ -484,6 +498,11 @@ export interface Booking {
   /** Override de couleur côté UI. Si null, on retombe sur la couleur du
    *  calendrier (ou bleu pour `is_personal`). Format hex `#RRGGBB`. */
   color: string | null
+  /** Si false, l'event est affiché sur l'agenda mais NE BLOQUE PAS les
+   *  réservations publiques (ex: un bloc "horaires de travail" qu'on veut
+   *  voir sur l'agenda sans masquer les créneaux de booking). */
+  blocks_availability: boolean
+  google_account_id: string | null
   created_at: string
 }
 
@@ -553,6 +572,7 @@ export interface Funnel {
   preset_id: string
   preset_override: FunnelPresetOverrideJSON | null
   effects_config: FunnelEffectsConfigJSON
+  meta_pixel_id: string | null
   created_at: string
   updated_at: string
 }
@@ -563,6 +583,7 @@ export type FunnelBlockType =
   | 'testimonials'
   | 'form'
   | 'booking'
+  | 'booking_actions'
   | 'pricing'
   | 'faq'
   | 'countdown'
@@ -598,6 +619,13 @@ export interface HeroBlockConfig {
   badgeText?: string
   // T-028 Phase 9 — Effets activables au niveau du bloc (shimmer / button shine)
   effects?: BlockEffectsJSON
+  /**
+   * Position verticale du bouton CTA dans la section hero.
+   * 'top' = collé sous le titre/sous-titre (margin-top minimum)
+   * 'middle' = espacement standard (défaut)
+   * 'bottom' = poussé vers le bas du hero avec un grand margin-top
+   */
+  ctaPosition?: 'top' | 'middle' | 'bottom'
 }
 
 export interface VideoBlockConfig {
@@ -613,6 +641,19 @@ export interface TestimonialItem {
   content: string
   avatarUrl: string | null
   rating: number
+  /** Photo optionnelle illustrant le témoignage (résultat client, transformation, etc.). */
+  photoUrl?: string | null
+  /**
+   * Position de la photo par rapport au texte du témoignage.
+   * 'top' = au-dessus (par défaut), 'left' = à gauche, 'right' = à droite.
+   */
+  photoPosition?: 'top' | 'left' | 'right'
+  /** Affiche l'avatar / les initiales sous le témoignage. true par défaut. */
+  showAvatar?: boolean
+  /** @deprecated remplacé par photoUrl — conservé pour les drafts non publiés. */
+  beforeImageUrl?: string | null
+  /** @deprecated remplacé par photoUrl — conservé pour les drafts non publiés. */
+  afterImageUrl?: string | null
 }
 
 export interface TestimonialsBlockConfig {
@@ -646,6 +687,27 @@ export interface BookingBlockConfig {
   /** URL de redirection après réservation réussie (page funnel ou URL externe).
    *  Si null/vide, on affiche la confirmation in-page (comportement par défaut). */
   redirectUrl?: string | null
+}
+
+/**
+ * Bloc "Actions calendrier" — affiche les boutons d'ajout au calendrier
+ * (Google / Apple / Outlook) + lien Reprogrammer/Annuler. Lit l'info de la
+ * dernière réservation faite sur le funnel depuis `localStorage`. Si rien
+ * n'a encore été réservé, montre un avertissement rouge et grise les boutons.
+ */
+export interface BookingActionsBlockConfig {
+  title: string
+  subtitle: string
+  /** Texte des 3 boutons d'ajout calendrier. */
+  googleLabel: string
+  appleLabel: string
+  outlookLabel: string
+  /** Label du lien "Reprogrammer ou annuler". */
+  manageLabel: string
+  /** Message affiché en rouge quand aucune réservation n'a été détectée. */
+  noBookingMessage: string
+  /** Si false, on masque le lien Reprogrammer/Annuler. */
+  showManageLink: boolean
 }
 
 export interface PricingBlockConfig {
@@ -693,12 +755,26 @@ export interface FunnelTextBlockConfig {
   effects?: BlockEffectsJSON
 }
 
+export interface FunnelImageItem {
+  src: string
+  alt: string
+  linkUrl: string | null
+  caption?: string
+}
+
 export interface FunnelImageBlockConfig {
   src: string
   alt: string
   width: number | null
   alignment: 'left' | 'center' | 'right'
   linkUrl: string | null
+  images?: FunnelImageItem[]
+  size?: 'small' | 'medium' | 'large' | 'full'
+  columns?: 1 | 2 | 3
+  captionSize?: 'small' | 'medium' | 'large'
+  captionColor?: string
+  captionAlignment?: 'left' | 'center' | 'right'
+  captionItalic?: boolean
 }
 
 export interface SpacerBlockConfig {
@@ -722,6 +798,7 @@ export type FunnelBlockConfig =
   | TestimonialsBlockConfig
   | FormBlockConfig
   | BookingBlockConfig
+  | BookingActionsBlockConfig
   | PricingBlockConfig
   | FaqBlockConfig
   | CountdownBlockConfig

@@ -26,7 +26,7 @@ import MessageInput from '@/components/messages/MessageInput'
 import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
-import LeadAttributionBlock from '@/components/leads/LeadAttributionBlock'
+import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -503,20 +503,12 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
             {/* Lead Magnets — le widget gère son propre card + title (cohérence avec LeadDetail) */}
             <LeadMagnetsWidget leadId={leadId} />
 
-            {/* Origine publicitaire (si Lead Ads) — en bas car contextuel */}
-            {(lead.meta_campaign_id || lead.meta_adset_id || lead.meta_ad_id) && (
-              <>
-                <SectionHeader>Acquisition</SectionHeader>
-                <div style={card}>
-                  <div style={sectionTitle}>Origine publicitaire</div>
-                  <LeadAttributionBlock
-                    meta_campaign_id={lead.meta_campaign_id}
-                    meta_adset_id={lead.meta_adset_id}
-                    meta_ad_id={lead.meta_ad_id}
-                  />
-                </div>
-              </>
-            )}
+            {/* Parcours du lead — inclut Première/Dernière pub + Lead Form
+                + bookings + activité. Affiche rien si vide. Mode compact pour
+                économiser la verticale dans le side panel. */}
+            <SectionHeader>Acquisition</SectionHeader>
+            <LeadJourneyBlock leadId={leadId} compact />
+
 
             {/* Supprimer */}
             <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-primary)' }}>

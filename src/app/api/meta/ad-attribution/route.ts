@@ -4,10 +4,21 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { decrypt } from '@/lib/meta/encryption'
 import { listAdObjects, type MetaCredentials, type MetaAdObject } from '@/lib/meta/client'
 
-// In-memory cache: workspace_id -> { fetched_at, byId }
+interface ResolvedObject {
+  id: string
+  name: string
+  type: 'campaign' | 'adset' | 'ad'
+  status: string
+  /** Campaign parent — set on adsets et ads. Permet de remonter le path
+   *  complet à partir d'un seul ID (ex: un ad_id de touch first/last). */
+  campaign_id?: string
+  /** Adset parent — set sur les ads uniquement. */
+  adset_id?: string
+}
+
 interface WorkspaceCache {
   fetched_at: number
-  byId: Record<string, { id: string; name: string; type: 'campaign' | 'adset' | 'ad'; status: string }>
+  byId: Record<string, ResolvedObject>
 }
 const CACHE = new Map<string, WorkspaceCache>()
 const TTL_MS = 60 * 60 * 1000 // 1h
@@ -18,7 +29,14 @@ async function loadAllObjects(adAccountId: string, token: string): Promise<Works
   for (const level of levels) {
     const objs: MetaAdObject[] = await listAdObjects(adAccountId, token, level)
     for (const o of objs) {
-      byId[o.id] = { id: o.id, name: o.name, type: level, status: o.effective_status }
+      byId[o.id] = {
+        id: o.id,
+        name: o.name,
+        type: level,
+        status: o.effective_status,
+        ...(o.campaign_id ? { campaign_id: o.campaign_id } : {}),
+        ...(o.adset_id ? { adset_id: o.adset_id } : {}),
+      }
     }
   }
   return byId
@@ -35,7 +53,7 @@ export async function GET(request: NextRequest) {
     const now = Date.now()
     const cached = CACHE.get(workspaceId)
     if (cached && now - cached.fetched_at < TTL_MS) {
-      const data: Record<string, { id: string; name: string; type: string; status: string } | null> = {}
+      const data: Record<string, ResolvedObject | null> = {}
       for (const id of ids) data[id] = cached.byId[id] ?? null
       return NextResponse.json({ data })
     }
@@ -61,7 +79,7 @@ export async function GET(request: NextRequest) {
     const byId = await loadAllObjects(credentials.ad_account_id, credentials.user_access_token)
     CACHE.set(workspaceId, { fetched_at: now, byId })
 
-    const data: Record<string, { id: string; name: string; type: string; status: string } | null> = {}
+    const data: Record<string, ResolvedObject | null> = {}
     for (const id of ids) data[id] = byId[id] ?? null
     return NextResponse.json({ data })
   } catch (err) {

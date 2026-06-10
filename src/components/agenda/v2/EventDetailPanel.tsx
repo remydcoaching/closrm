@@ -32,6 +32,7 @@ export interface BookingPatch {
   duration_minutes?: number
   notes?: string | null
   color?: string | null
+  blocks_availability?: boolean
 }
 
 interface EventDetailPanelProps {
@@ -111,6 +112,9 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
   const [editColor, setEditColor] = useState<string | null>(
     isBooking ? event.booking.color ?? null : null,
   )
+  const [editBlocks, setEditBlocks] = useState<boolean>(
+    isBooking ? event.booking.blocks_availability !== false : true,
+  )
 
   // Reset les champs quand on change d'event sélectionné
   useEffect(() => {
@@ -120,6 +124,7 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
     setEditEndTime(format(end, 'HH:mm'))
     setEditNotes(notes ?? '')
     setEditColor(isBooking ? event.booking.color ?? null : null)
+    setEditBlocks(isBooking ? event.booking.blocks_availability !== false : true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event.id])
 
@@ -161,6 +166,11 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
     autoSave({ color: next })
   }
 
+  function saveBlocks(next: boolean) {
+    setEditBlocks(next)
+    autoSave({ blocks_availability: next })
+  }
+
   // Popup centré flottant — sans backdrop full-screen. La grille derrière
   // reste cliquable, donc switcher d'événement se fait en un seul clic
   // (avant : overlay + backdrop interceptait le 1er clic, on devait double-
@@ -170,7 +180,6 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
     <aside
       role="dialog"
       aria-label="Détail de l'événement"
-      data-version="v3-inline-edit"
       style={{
         position: 'fixed',
         top: '50%',
@@ -179,11 +188,11 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
         width: 'min(520px, calc(100vw - 32px))',
         maxHeight: '88vh',
         background: 'var(--bg-primary)',
-        border: '2px solid #10b981',
+        border: '1px solid var(--border-primary)',
         borderRadius: 16,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 20px 80px rgba(0,0,0,0.6), 0 0 0 4px rgba(16,185,129,0.18)',
+        boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
         overflow: 'hidden',
         zIndex: Z_AGENDA.detailPanel,
       }}
@@ -544,6 +553,29 @@ export function EventDetailPanel({ event, onClose, onDelete, onStatusChange, onS
                 />
               ))}
             </div>
+          </Section>
+        )}
+
+        {/* Disponibilité — toggle bloque/laisse réserver dessus */}
+        {canEdit && (
+          <Section title="Disponibilité">
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer',
+            }}>
+              <input
+                type="checkbox"
+                checked={editBlocks}
+                onChange={(e) => saveBlocks(e.target.checked)}
+                style={{ accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+              />
+              <span>
+                Bloquer les réservations
+                <span style={{ color: 'var(--text-tertiary)', marginLeft: 6, fontSize: 12 }}>
+                  {editBlocks ? '· créneau occupé' : '· créneau disponible'}
+                </span>
+              </span>
+            </label>
           </Section>
         )}
 

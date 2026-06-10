@@ -1,18 +1,7 @@
 'use client'
 
-/**
- * Sidebar gauche fixe 240px (Phase 5). Toujours visible sur desktop. Contient :
- *  - MiniCalendar pour navigation rapide
- *  - Liste des calendriers de réservation avec toggle de visibilité
- *  - Toggle "Personnel" (bookings is_personal=true)
- *  - Filtre status (V1.5 — pas inclus Phase 5 pour limiter le scope)
- *
- * En Phase 7 (mobile), cette sidebar deviendra un drawer accessible via ☰
- * dans la toolbar.
- */
-
-import { Briefcase, User } from 'lucide-react'
-import type { BookingCalendar } from '@/types'
+import { Briefcase, Mail, Plus, User } from 'lucide-react'
+import type { BookingCalendar, GoogleCalendarAccount } from '@/types'
 import { MiniCalendar } from './MiniCalendar'
 
 interface AgendaSidebarProps {
@@ -28,6 +17,10 @@ interface AgendaSidebarProps {
 
   showCalls: boolean
   onToggleCalls: () => void
+
+  googleAccounts: GoogleCalendarAccount[]
+  visibleGoogleAccountIds: Set<string>
+  onToggleGoogleAccount: (id: string) => void
 }
 
 export function AgendaSidebar({
@@ -40,6 +33,9 @@ export function AgendaSidebar({
   onTogglePersonal,
   showCalls,
   onToggleCalls,
+  googleAccounts,
+  visibleGoogleAccountIds,
+  onToggleGoogleAccount,
 }: AgendaSidebarProps) {
   return (
     <aside
@@ -88,6 +84,42 @@ export function AgendaSidebar({
           </div>
         )}
       </div>
+
+      {/* Google Calendar accounts */}
+      {googleAccounts.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <SectionTitle>Comptes Google</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {googleAccounts.map((acc) => (
+              <CalendarRow
+                key={acc.id}
+                color={acc.color}
+                label={acc.email}
+                icon={<Mail size={11} />}
+                checked={visibleGoogleAccountIds.has(acc.id)}
+                onToggle={() => onToggleGoogleAccount(acc.id)}
+              />
+            ))}
+          </div>
+          <a
+            href="/api/integrations/google/authorize"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 11,
+              color: 'var(--text-tertiary)',
+              padding: '4px 6px',
+              textDecoration: 'none',
+              borderRadius: 4,
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-tertiary)' }}
+          >
+            <Plus size={11} /> Ajouter un compte
+          </a>
+        </div>
+      )}
 
       {/* Special filters */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

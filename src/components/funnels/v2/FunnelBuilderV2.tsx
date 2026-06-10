@@ -55,6 +55,7 @@ import FunnelBlockConfigPanel from '../FunnelBlockConfig'
 import DirectionArtistiquePanel from './sidebar/DirectionArtistiquePanel'
 import SectionsListPanel from './sidebar/SectionsListPanel'
 import BlockEffectsPanel from './inspector/BlockEffectsPanel'
+import TrackingPanel from './sidebar/TrackingPanel'
 import { createDefaultBlock } from '@/lib/funnels/defaults'
 
 // Labels FR des types de blocs (utilisés dans le header de l'inspector)
@@ -71,12 +72,13 @@ const BLOCK_LABELS: Record<FunnelBlockType, string> = {
   spacer: 'Espacement',
   footer: 'Footer',
   booking: 'Réservation',
+  booking_actions: 'Actions calendrier',
   form: 'Formulaire',
 }
 
 interface Props {
   /** Funnel parent (avec design system v2). */
-  funnel: Pick<Funnel, 'id' | 'preset_id' | 'preset_override' | 'effects_config'>
+  funnel: Pick<Funnel, 'id' | 'preset_id' | 'preset_override' | 'effects_config' | 'meta_pixel_id'>
   /** Pages du funnel. */
   pages: FunnelPage[]
   /** ID de la page actuellement éditée. */
@@ -94,6 +96,8 @@ interface Props {
   }) => void
   /** Mode d'affichage du preview (desktop / tablet / mobile). */
   mode: FunnelPreviewMode
+  /** Callback déclenché quand le coach modifie le Meta Pixel ID. */
+  onMetaPixelChange: (pixelId: string | null) => void
 }
 
 /* T-028 Phase 10 — getDefaultConfig() a été extraite dans
@@ -109,6 +113,7 @@ export default function FunnelBuilderV2({
   onPagesChange,
   onFunnelDesignChange,
   mode,
+  onMetaPixelChange,
 }: Props) {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
 
@@ -202,6 +207,15 @@ export default function FunnelBuilderV2({
           onDeleteBlock={handleDeleteBlock}
           onReorderBlocks={(reordered) => updateActivePageBlocks(() => reordered)}
         />
+
+        {/* Séparateur visuel */}
+        <div style={sidebarSeparatorStyle} />
+
+        {/* Tracking & Pixels */}
+        <TrackingPanel
+          metaPixelId={funnel.meta_pixel_id}
+          onMetaPixelChange={onMetaPixelChange}
+        />
       </aside>
 
       {/* ─── COLONNE CENTRALE : PREVIEW ──────────────────────────────────── */}
@@ -237,7 +251,13 @@ export default function FunnelBuilderV2({
                 ×
               </button>
             </div>
-            <FunnelBlockConfigPanel block={selectedBlock} onChange={handleBlockChange} pages={pages} blocks={blocks} />
+            <FunnelBlockConfigPanel
+              block={selectedBlock}
+              onChange={handleBlockChange}
+              pages={pages}
+              blocks={blocks}
+              funnelId={funnel.id}
+            />
             {/* T-028 Phase 9 — Panneau des effets propres au bloc
                 (shimmer, button shine) affiché uniquement pour Hero/CTA/Text */}
             <BlockEffectsPanel

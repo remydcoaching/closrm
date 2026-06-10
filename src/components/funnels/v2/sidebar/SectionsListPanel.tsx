@@ -32,7 +32,7 @@ import {
   // Icônes pour chaque type de bloc (remplacent les emojis)
   Crosshair, Video, Type, ImageIcon, MousePointerClick, DollarSign,
   MessageSquareQuote, HelpCircle, Timer, ArrowUpDown, PanelBottom,
-  Calendar, FileText,
+  Calendar, FileText, CalendarPlus,
 } from 'lucide-react'
 import type { FunnelBlock, FunnelBlockType } from '@/types'
 
@@ -68,6 +68,7 @@ const BLOCK_TYPES: BlockTypeMeta[] = [
   { type: 'spacer', label: 'Espacement', icon: <ArrowUpDown size={ICON_SIZE} /> },
   { type: 'footer', label: 'Footer', icon: <PanelBottom size={ICON_SIZE} /> },
   { type: 'booking', label: 'Réservation', icon: <Calendar size={ICON_SIZE} /> },
+  { type: 'booking_actions', label: 'Actions calendrier', icon: <CalendarPlus size={ICON_SIZE} /> },
   { type: 'form', label: 'Formulaire', icon: <FileText size={ICON_SIZE} /> },
 ]
 

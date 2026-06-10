@@ -1,7 +1,126 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-05-10
+> Derniere mise a jour : 2026-06-09
+
+---
+
+## Etat de référence — Versions & runtimes (au 2026-05-17 22h30)
+
+### Mobile (Expo)
+- **App version** : `1.0.0` (pinned, voir PR #501)
+- **iOS buildNumber** : `3` (bumped pour build local AirDrop)
+- **Runtime version policy** : `appVersion` → runtime = `1.0.0`
+- **Channel OTA** : `preview`
+- **Builds installés Pierre iPhone** : runtime 1.0.0 build 2 (build 3 en cours)
+
+### Web
+- **Branche prod** : `develop` (Vercel déploie develop → closrm.fr)
+- **Branche main** : reçoit uniquement les releases validées (pas auto-deploy)
+
+### Branches actives (au moment du commit)
+- `develop` : prod
+- `main` : releases
+- `feature/pierre-mobile-app` : mergée, à supprimer côté local (worktree nettoyé)
+- Toutes les anciennes branches merged en local ont été supprimées (commande `git branch --merged develop | xargs git branch -d`)
+- Branches unmerged conservées (potentielles WIP) — voir `git branch --no-merged develop`
+
+---
+
+## Session 2026-05-17 (soir) — Cleanup tournage + agenda UX + résurrection mobile-app
+
+Suite de l'après-midi (PR #494 + #495 + #496 + #497 déjà mergés). Pierre signale que :
+1. Brief encore présent sur mobile dans Jour J malgré le PR précédent
+2. Jour J encore présent sur web (dans Prep, Brief)
+3. Agenda v2 web : click direct ouvre panel (devrait être 2 clics), granularité 30min seulement, latence création
+4. App mobile : plus d'agenda alors qu'il y en avait un avant + bug "1h s'affiche sur toute la journée"
+
+### Découverte clé
+La branche `feature/pierre-mobile-app` (worktree `/Users/pierrerebmann/closrm-mobile`) contenait **228 commits locaux jamais pushés** entre le 10 et le 15 mai, incluant :
+- AgendaTimeline complet + fixes itératifs du bug "1h sur toute la journée"
+- BookingFormSheet, EventDetailSheet, AgendaList
+- useAgenda hook, useAgendaReminders, agenda-reminders service
+- AgendaStack navigation
+- Accent color custom, alarme klaxon, Branding screen, RDV add/edit
+
+C'est pour ça que la prod mobile n'avait pas l'agenda — branche jamais mergée. Pierre l'avait oublié (worktree séparé).
+
+### PRs créées et mergées dans cette session (toutes sur develop)
+| PR | Titre | Statut |
+|----|-------|--------|
+| #498 | chore(tournage): cleanup Brief mobile + Jour J web | Mergée |
+| #499 | fix(agenda): click 2-stage, granularité 15min, latence création | Mergée |
+| #500 | feat(mobile): agenda timeline + RDV edit + alarmes + accent color | Mergée (~4500 lignes) |
+| #501 | chore(mobile): pin version 1.0.0 | Mergée |
+
+### Détails PR #498 (tournage cleanup final)
+- Mobile : suppression bouton "Brief →" header Jour J, route `ReelsBrief` + écran + types supprimés
+- Web : `PrepView` "🎬 Jour J →" devient "📄 Brief →"
+- Web : `BriefView` "← Jour J" devient "← Prep", empty state pointe vers prep
+- Web : `TournagesModal` retire le case `view.kind === 'jour-j'` + import `JourJView`
+- **Effet** : web = Prep + Brief uniquement, mobile = Prep + Jour J uniquement (cohérent avec décision plateforme)
+
+### Détails PR #499 (agenda v2 web)
+- `handleEventClick` (page.tsx) : si event déjà highlighted → ouvre panel, sinon → highlight seul + ferme panel précédent
+- `snapToHalf` → `snapToQuarter` dans WeekView + DayView (drag/move/resize/preview)
+- Min duration drag 30min → 15min, `+0.5` → `+0.25` sur dragEnd
+- `NewBookingModal.handleSubmit` : `onClose()` immédiat + fetch en background + refetch via onCreated dans finally. UX instantanée, `alert()` si POST échoue.
+
+### Détails PR #500 (résurrection mobile-app)
+- Push de `feature/pierre-mobile-app` sur origin (228 commits)
+- Merge `origin/develop` dedans pour intégrer les fixes récents (tournage cleanup + agenda v2)
+- Conflit résolu : `MoreMenuScreen.tsx` subtitle "prep & jour J" (côté develop)
+- Doublon résolu : ancien `app/more/TournageSessionsScreen.tsx` supprimé (gardé `app/social/` de develop)
+- Dédup `MoreStackParamList.TournageSessions` + import dans MoreStack
+- TypeScript check passe
+
+### Détails PR #501 (pin version mobile)
+- `app.json` version `1.1.0` → `1.0.0` pour matcher le build installé iPhone Pierre
+- Évite le swap manuel à chaque push OTA
+
+### OTAs publiés (preview channel)
+| Group ID | Runtime | Message | Commit |
+|----------|---------|---------|--------|
+| `72ea465f-ddaf-486a-8d8f-43131ce3a6f6` | 1.0.0 | tournage Brief retiré du Jour J | ca3fcb9 |
+| `7d824a01-72c6-4ead-adf0-d8badd99569a` | 1.1.0 | agenda timeline + RDV edit + alarmes (PR #500) | 8e19e33 |
+| `cb2d3c92-9191-4546-b237-18fa6444350b` | 1.0.0 | agenda timeline + RDV edit + alarmes (PR #500, rt 1.0.0) | 8e19e33 |
+
+### Build local iOS en cours (au moment de l'écriture)
+- Profile `preview`, buildNumber 3
+- Sortie : `/tmp/closrm-build.ipa`
+- À AirDrop sur iPhone Pierre pour récupérer l'agenda (l'OTA seul ne descendait pas — peut-être plugin `expo-notifications` qui nécessite un rebuild natif à cause des sons ajoutés)
+
+### Problème connu
+- Pierre voit encore "Call" dans le tab bar mobile au lieu de "Agenda" → l'OTA n'a pas appliqué malgré force-quit. Hypothèse : ajout de `sounds: ["./assets/sounds/alarm.wav"]` dans `expo-notifications` plugin → nécessite build natif. D'où le rebuild local en cours.
+
+### Branches locales nettoyées
+Toutes les branches mergées dans develop ont été supprimées en local (~40 branches). Liste des unmerged conservées : voir `git branch --no-merged develop`.
+
+---
+
+## Session 2026-05-17 — Fix bugs tournage (Pierre)
+
+Pierre signale deux bugs côté tournage (web + mobile) :
+
+1. **Session de tournage vide alors que les reels existent** : la session « Tournage 1 Geoffrey » ne montrait aucun reel dans Prep/Jour J alors qu'elle en contient. Root cause : `PrepView`/`JourJView`/`BriefView` (web) et `useReelShots` (mobile) chargeaient `/api/social/posts?content_kind=reel&per_page=100` puis filtraient en JS par les IDs de la session. Au-delà de 100 reels OU si un post avait changé de `content_kind`, la session apparaissait vide. Pire, en Jour J la liste filtrée vide faisait un fallback vers `/api/reel-shots` sans filtre → tous les shots du workspace s'affichaient mélangés.
+
+   **Fix** : ajout d'un filtre `ids` au schéma `socialPostFiltersSchema` + handling dans `/api/social/posts`. Les vues fetchent désormais par IDs quand une session est ciblée (`?ids=a,b,c&per_page=500`). Le fallback "pas de filtre social_post_ids" sur l'API reel-shots est neutralisé (on retourne `[]` au lieu de fetcher tout le workspace).
+
+2. **Clic « ✓ Tournée » change le lieu** : marquer la dernière phrase d'un lieu faisait disparaître le lieu (le filtre `byPlace` excluait `done`) → `safeIdx` sautait vers un autre lieu pendant le tournage. Pierre veut juste voir la phrase barrée + un undo, pas qu'elle disparaisse.
+
+   **Fix** : suppression de l'exclusion `s.done` dans `byPlace` (web `jour-j/page.tsx` + mobile `useReelShots.ts`). Les phrases tournées restent visibles (opacité 55% + line-through + badge « ✓ Tournée »). Bouton « ↻ Annuler » remplace « Tournée/Reporter » sur les phrases déjà tournées. Le tri des lieux est fait par nombre de phrases **restantes** (skip + done exclus) → stable jusqu'à ce que tout soit fini.
+
+**Fichiers modifiés** :
+- `src/lib/validations/social-posts.ts` — schéma : ajout `ids` (CSV)
+- `src/app/api/social/posts/route.ts` — handle filtre `ids`
+- `src/app/(dashboard)/acquisition/reels/tournage/prep/page.tsx` — fetch par IDs + 2 queries parallèles (session + picker)
+- `src/app/(dashboard)/acquisition/reels/tournage/jour-j/page.tsx` — fetch par IDs, `done` visible, bouton Annuler, header recompté
+- `src/app/(dashboard)/acquisition/reels/tournage/brief/page.tsx` — fetch par IDs
+- `mobile/src/hooks/useReelShots.ts` — fetch par IDs + `done` exposé dans byPlace
+- `mobile/src/types/reel-shots.ts` — `ShotInfo.done`
+- `mobile/src/app/social/ReelsTournageJourJScreen.tsx` — render done + bouton Annuler
+
+Branche : `feature/pierre-fix-tournage-sessions` (depuis develop). Non commité, pas de PR ouverte.
 
 ---
 
@@ -196,4 +315,47 @@ Détail dans `taches/tache-044-perf-audit-agenda-leads-social.md`.
 
 ---
 
-*Mis a jour le 2026-05-03 par Claude Code — ClosRM*
+## Session du 2026-06-01 — Resume des travaux Remy
+
+### T-045 — Funnel : Upload d'images depuis l'ordinateur
+
+| Element | Detail |
+|---------|--------|
+| **hook useImageUpload** | Validation format/taille, compression WebP (browser-image-compression), upload R2 via presigned URL PUT, progress XHR 0-100% |
+| **composant ImageUploadField** | 4 etats (vide, uploading, rempli, erreur), drag & drop + URL fallback, CSS variables exclusivement |
+| **API /api/storage/upload-url** | Nouveau type `funnel_image` : path `workspaces/{wsId}/funnels/{funnelId}/{uuid}.webp`, retourne `public_url` |
+| **HeroConfig** | Input URL image de fond remplace par ImageUploadField |
+| **ImageConfig** | Input URL par slot photo remplace par ImageUploadField, limite 10 images enforced |
+| **Propagation funnelId** | FunnelBuilderV2 → FunnelBlockConfig → HeroConfig / ImageConfig |
+| **package.json** | `browser-image-compression@^2.0.2` ajoute |
+
+**Prerequis production :** activer R2 Public Access dans Cloudflare dashboard + ajouter `R2_PUBLIC_URL` dans `.env.local` et Vercel.
+
+> Detail complet : `taches/tache-045-funnel-image-upload.md`.
+
+---
+
+## Session 2026-06-09 — Meta Pixel par funnel (Rémy)
+
+### T-046 · Intégration Meta Pixel par funnel
+
+**Statut :** Implémenté. PR ouverte sur `feature/remy-meta-pixel-funnel`.
+
+**Pourquoi :**
+Les tunnels de vente de ClosRM sont liés aux campagnes Meta Ads. Sans pixel, Meta ne peut pas retargeter les visiteurs, optimiser les campagnes ni mesurer le coût par lead réel.
+
+**Ce qui a été livré :**
+- Colonne `meta_pixel_id TEXT` sur la table `funnels` (migration 083)
+- Section "Tracking & Pixels" dans la sidebar du builder — champ Pixel ID + guide intégré
+- Injection du script fbq sur les pages publiques via `<Script strategy="afterInteractive">`
+- Events automatiques : `PageView` (chargement), `Lead` (FormBlock soumis), `Schedule` (BookingBlock confirmé)
+- Couleurs du panel liées à `var(--color-primary)` (accent du workspace)
+
+**⚠️ Action manuelle requise :** exécuter la migration SQL dans Supabase dashboard avant de déployer.
+
+> Detail complet : `taches/tache-046-meta-pixel-funnel.md`
+> Spec : `docs/superpowers/specs/2026-06-09-meta-pixel-funnel-design.md`
+
+---
+
+*Mis a jour le 2026-06-09 par Claude Code — ClosRM*

@@ -8,6 +8,7 @@ import { sendBookingConfirmationEmail } from '@/lib/email/templates/booking-conf
 import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { createBookingReminders } from '@/lib/bookings/reminders'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
+import { findExistingLeadId } from '@/lib/leads/identity'
 import type { CalendarReminder } from '@/types'
 import { startOfMonth, endOfMonth, parseISO, addMinutes } from 'date-fns'
 
@@ -21,6 +22,7 @@ interface CalendarRow {
   duration_minutes: number
   location_ids: string[]
   color: string
+  background_theme: 'dark' | 'light'
   form_fields: unknown
   availability: unknown
   buffer_minutes: number
@@ -49,7 +51,7 @@ async function getCalendarBySlug(
   const { data: calendar, error: calError } = await supabase
     .from('booking_calendars')
     .select(
-      'id, workspace_id, name, description, duration_minutes, location_ids, color, form_fields, availability, buffer_minutes, purpose, reminders, max_advance_days, require_confirmation',
+      'id, workspace_id, name, description, duration_minutes, location_ids, color, background_theme, form_fields, availability, buffer_minutes, purpose, reminders, max_advance_days, require_confirmation',
     )
     .eq('workspace_id', slugRow.workspace_id)
     .eq('slug', calendarSlug)
@@ -99,18 +101,38 @@ export async function GET(
     else if (rangeEnd > horizon) rangeEnd = horizon
   }
 
-  // Fetch existing confirmed bookings in that range
+  // Fetch existing confirmed bookings overlapping the range.
+  // On élargit la borne inférieure de 14 jours (= durée max d'un booking
+  // multi-day) pour catch les events qui ont démarré AVANT rangeStart mais
+  // qui s'étendent dedans. Sans ça, un bloc "vacances" multi-jours posé fin
+  // du mois précédent n'était pas vu côté slot generator → asymétrie avec
+  // le check côté POST.
+  const MAX_BOOKING_DAYS = 14
+  const fetchStart = new Date(rangeStart.getTime() - MAX_BOOKING_DAYS * 24 * 60 * 60 * 1000)
+
   const { data: existingBookings, error: bookingsError } = await supabase
     .from('bookings')
-    .select('scheduled_at, duration_minutes')
+    .select('scheduled_at, duration_minutes, blocks_availability')
     .eq('workspace_id', calendar.workspace_id)
     .eq('status', 'confirmed')
-    .gte('scheduled_at', rangeStart.toISOString())
+    .eq('blocks_availability', true)
+    .gte('scheduled_at', fetchStart.toISOString())
     .lte('scheduled_at', rangeEnd.toISOString())
 
   if (bookingsError) {
     return NextResponse.json({ error: 'Erreur lors de la récupération des disponibilités.' }, { status: 500 })
   }
+
+  // Fetch workspace branding: workspace name, TZ + coach owner info
+  // La TZ est nécessaire pour générer les slots dans le bon fuseau — sans ça,
+  // sur Vercel (UTC), un slot "13:00" était en réalité 13:00 UTC = 15:00 CEST.
+  const { data: workspaceRow } = await supabase
+    .from('workspaces')
+    .select('name, timezone')
+    .eq('id', calendar.workspace_id)
+    .maybeSingle()
+
+  const workspaceTz = workspaceRow?.timezone || 'Europe/Paris'
 
   // Compute available slots
   const slots = beyondHorizon ? [] : getAvailableSlots(
@@ -120,14 +142,8 @@ export async function GET(
     existingBookings ?? [],
     rangeStart,
     rangeEnd,
+    workspaceTz,
   )
-
-  // Fetch workspace branding: workspace name + coach owner info
-  const { data: workspaceRow } = await supabase
-    .from('workspaces')
-    .select('name')
-    .eq('id', calendar.workspace_id)
-    .maybeSingle()
 
   const { data: ownerRow } = await supabase
     .from('users')
@@ -155,9 +171,11 @@ export async function GET(
       duration_minutes: calendar.duration_minutes,
       location_ids: calendar.location_ids,
       color: calendar.color,
+      background_theme: calendar.background_theme ?? 'dark',
       form_fields: calendar.form_fields,
       max_advance_days: calendar.max_advance_days,
       require_confirmation: calendar.require_confirmation,
+      timezone: workspaceTz,
     },
     workspace: {
       name: workspaceRow?.name ?? null,
@@ -236,13 +254,23 @@ export async function POST(
     }
   }
 
+  // Lookback élargi à 14 jours pour catch les bookings multi-day qui auraient
+  // démarré bien avant `bookingStart` mais s'étendent jusque dans le créneau
+  // demandé. L'ancienne fenêtre `-calendar.duration_minutes` ratait ces cas
+  // (ex: bloc "vacances 10 jours" démarré il y a 5 jours).
+  const POST_MAX_BOOKING_DAYS = 14
+  const conflictLookbackStart = new Date(
+    bookingStart.getTime() - POST_MAX_BOOKING_DAYS * 24 * 60 * 60 * 1000,
+  )
+
   let conflictQuery = supabase
     .from('bookings')
     .select('id, scheduled_at, duration_minutes')
     .eq('workspace_id', calendar.workspace_id)
     .eq('status', 'confirmed')
+    .eq('blocks_availability', true)
     .lt('scheduled_at', bookingEnd.toISOString())
-    .gte('scheduled_at', addMinutes(bookingStart, -calendar.duration_minutes).toISOString())
+    .gte('scheduled_at', conflictLookbackStart.toISOString())
 
   if (reschedule_from) {
     conflictQuery = conflictQuery.neq('id', reschedule_from)
@@ -271,30 +299,8 @@ export async function POST(
   const firstName = form_data['first_name'] ?? ''
   const lastName = form_data['last_name'] ?? ''
 
-  let leadId: string | null = null
-
-  // Search by email first, then phone
-  if (email) {
-    const { data: leadByEmail } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('workspace_id', calendar.workspace_id)
-      .eq('email', email)
-      .maybeSingle()
-
-    if (leadByEmail) leadId = leadByEmail.id
-  }
-
-  if (!leadId && phone) {
-    const { data: leadByPhone } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('workspace_id', calendar.workspace_id)
-      .eq('phone', phone)
-      .maybeSingle()
-
-    if (leadByPhone) leadId = leadByPhone.id
-  }
+  // Dedup by normalized email then phone (handles case, whitespace, FR phone formats).
+  let leadId: string | null = await findExistingLeadId(supabase, calendar.workspace_id, { email, phone })
 
   // Create lead if not found
   if (!leadId) {

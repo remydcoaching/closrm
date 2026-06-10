@@ -41,13 +41,16 @@ export default function BriefMontagePageWrapper() {
 interface BriefViewProps {
   embedded?: boolean
   reelParamProp?: string | null
+  targetSessionId?: string | null
   onClose?: () => void
-  onSwitchView?: (view: 'prep' | 'jour-j') => void
+  onSwitchView?: (view: 'prep') => void
 }
 
-export function BriefView({ embedded, reelParamProp, onClose, onSwitchView }: BriefViewProps = {}) {
+export function BriefView({ embedded, reelParamProp, targetSessionId, onClose, onSwitchView }: BriefViewProps = {}) {
   const searchParams = useSearchParams()
   const reelParam = embedded ? (reelParamProp ?? null) : searchParams.get('reel')
+  const sessionIdFromUrl = embedded ? null : searchParams.get('session')
+  const effectiveSessionId = targetSessionId ?? sessionIdFromUrl
 
   const [reels, setReels] = useState<SocialPost[]>([])
   const [shots, setShots] = useState<ReelShot[]>([])
@@ -59,30 +62,44 @@ export function BriefView({ embedded, reelParamProp, onClose, onSwitchView }: Br
     (async () => {
       setLoading(true)
       try {
-        const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=100')
-        if (!reelsRes.ok) throw new Error(`Reels: ${reelsRes.status}`)
-        const reelsJson = await reelsRes.json()
-        const allReels: SocialPost[] = reelsJson.data ?? []
-        const reelIds = reelParam ? reelParam.split(',').map(s => s.trim()) : null
-        const filtered = reelIds ? allReels.filter(r => reelIds.includes(r.id)) : allReels
+        const reelIds = reelParam ? reelParam.split(',').map(s => s.trim()).filter(Boolean) : null
+        // Session ciblée mais vide → on n'affiche RIEN (sinon Brief montrerait
+        // les reels d'autres sessions). Sinon on fetch par IDs ou par content_kind.
+        let filtered: SocialPost[]
+        if (reelIds && reelIds.length > 0) {
+          const reelsRes = await fetch(`/api/social/posts?ids=${reelIds.join(',')}&slim=true&per_page=500`)
+          if (!reelsRes.ok) throw new Error(`Reels: ${reelsRes.status}`)
+          const reelsJson = await reelsRes.json()
+          filtered = reelsJson.data ?? []
+        } else if (effectiveSessionId) {
+          filtered = []
+        } else {
+          const reelsRes = await fetch('/api/social/posts?content_kind=reel&slim=true&per_page=500')
+          if (!reelsRes.ok) throw new Error(`Reels: ${reelsRes.status}`)
+          const reelsJson = await reelsRes.json()
+          filtered = reelsJson.data ?? []
+        }
         // Tri stable par id pour codes R1, R2... reproductibles
         filtered.sort((a, b) => a.id.localeCompare(b.id))
         setReels(filtered)
 
-        let url = '/api/reel-shots'
-        if (filtered.length > 0) url += `?social_post_ids=${filtered.map(r => r.id).join(',')}`
-        const shotsRes = await fetch(url)
-        if (!shotsRes.ok) throw new Error(`Shots: ${shotsRes.status}`)
-        const shotsJson = await shotsRes.json()
-        // On garde TOUS les shots done OR skipped (le brief montre les 2 sections)
-        setShots((shotsJson.data ?? []).filter((s: ReelShot) => s.done || s.skipped))
+        if (filtered.length === 0) {
+          setShots([])
+        } else {
+          const shotsUrl = `/api/reel-shots?social_post_ids=${filtered.map(r => r.id).join(',')}`
+          const shotsRes = await fetch(shotsUrl)
+          if (!shotsRes.ok) throw new Error(`Shots: ${shotsRes.status}`)
+          const shotsJson = await shotsRes.json()
+          // On garde TOUS les shots done OR skipped (le brief montre les 2 sections)
+          setShots((shotsJson.data ?? []).filter((s: ReelShot) => s.done || s.skipped))
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Erreur')
       } finally {
         setLoading(false)
       }
     })()
-  }, [reelParam])
+  }, [reelParam, effectiveSessionId])
 
   // Génère un code court par phrase : R1-P1, R1-P2, R2-P1, etc.
   // Stable car reels triés par id et position est invariant.
@@ -118,11 +135,11 @@ export function BriefView({ embedded, reelParamProp, onClose, onSwitchView }: Br
           Le brief monteur s&apos;active quand au moins 1 phrase est marquée &quot;✓ Tournée&quot;.
         </div>
         {embedded && onSwitchView ? (
-          <button onClick={() => onSwitchView('jour-j')} style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, border: 'none', fontSize: 12, cursor: 'pointer' }}>← Retour au jour J</button>
+          <button onClick={() => onSwitchView('prep')} style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, border: 'none', fontSize: 12, cursor: 'pointer' }}>← Retour à la prep</button>
         ) : (
-          <Link href={reelParam ? `/acquisition/reels/tournage/jour-j?reel=${reelParam}` : '/acquisition/reels/tournage/jour-j'}
+          <Link href={reelParam ? `/acquisition/reels/tournage/prep?reel=${reelParam}` : '/acquisition/reels/tournage/prep'}
             style={{ padding: '8px 14px', background: '#FF0000', color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 12 }}>
-            ← Retour au jour J
+            ← Retour à la prep
           </Link>
         )}
       </div>
@@ -174,10 +191,10 @@ export function BriefView({ embedded, reelParamProp, onClose, onSwitchView }: Br
           </div>
         </div>
         {embedded && onSwitchView && (
-          <button onClick={() => onSwitchView('jour-j')} style={{
+          <button onClick={() => onSwitchView('prep')} style={{
             padding: '8px 14px', fontSize: 12, fontWeight: 600,
             color: '#888', background: 'transparent', border: '1px solid #262626', borderRadius: 8, cursor: 'pointer',
-          }}>← Jour J</button>
+          }}>← Prep</button>
         )}
         <button onClick={copyLink} style={{
           padding: '8px 14px', fontSize: 12, fontWeight: 600,

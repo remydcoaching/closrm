@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
       status, platform, from, to,
       plan_date_from, plan_date_to,
       content_kind, production_status, pillar_id,
+      ids,
       page, per_page,
     } = parsed.data
 
@@ -53,6 +54,11 @@ export async function GET(request: NextRequest) {
       else if (statuses.length > 1) query = query.in('production_status', statuses)
     }
     if (pillar_id) query = query.eq('pillar_id', pillar_id)
+    if (ids) {
+      const idList = ids.split(',').map(s => s.trim()).filter(Boolean)
+      if (idList.length === 0) return NextResponse.json({ data: [], total: 0, page, per_page })
+      query = query.in('id', idList)
+    }
 
     const { data, error } = await query
     if (error) throw error

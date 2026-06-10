@@ -82,6 +82,7 @@ export default function AgendaV2Page() {
   // Filtres sidebar. Pattern : `'all'` = tout visible (état initial / "reset"),
   // sinon une Set explicite. Évite un useEffect d'initialisation.
   const [calendarVisibility, setCalendarVisibility] = useState<Set<string> | 'all'>('all')
+  const [googleAccountVisibility, setGoogleAccountVisibility] = useState<Set<string> | 'all'>('all')
   const [showPersonal, setShowPersonal] = useState(true)
   const [showCalls, setShowCalls] = useState(true)
 
@@ -89,6 +90,7 @@ export default function AgendaV2Page() {
     events,
     calendars,
     locations,
+    googleAccounts,
     calendarsLoaded,
     syncError,
     dismissSyncError,
@@ -132,23 +134,45 @@ export default function AgendaV2Page() {
     return calendarVisibility
   }, [calendarVisibility, calendars])
 
+  const visibleGoogleAccountIds = useMemo<Set<string>>(() => {
+    if (googleAccountVisibility === 'all') return new Set(googleAccounts.map((a) => a.id))
+    return googleAccountVisibility
+  }, [googleAccountVisibility, googleAccounts])
+
   const filteredEvents = useMemo(() => {
     return events.filter((ev) => {
       if (ev.kind === 'call') return showCalls
       const b = ev.booking
+      // Google-synced bookings: filter by google_account_id
+      if (b.source === 'google_sync' && b.google_account_id) {
+        if (googleAccountVisibility !== 'all' && !visibleGoogleAccountIds.has(b.google_account_id)) return false
+        if (b.is_personal) return showPersonal
+        return true
+      }
       if (b.is_personal) return showPersonal
       if (calendarVisibility === 'all') return true
       if (b.calendar_id) return visibleCalendarIds.has(b.calendar_id)
       return true
     })
-  }, [events, visibleCalendarIds, calendarVisibility, showPersonal, showCalls])
+  }, [events, visibleCalendarIds, calendarVisibility, visibleGoogleAccountIds, googleAccountVisibility, showPersonal, showCalls])
 
   function toggleCalendar(id: string) {
     setCalendarVisibility((prev) => {
-      // Première interaction : on matérialise la Set complète puis on toggle
       const base =
         prev === 'all'
           ? new Set(calendars.map((c) => c.id))
+          : new Set(prev)
+      if (base.has(id)) base.delete(id)
+      else base.add(id)
+      return base
+    })
+  }
+
+  function toggleGoogleAccount(id: string) {
+    setGoogleAccountVisibility((prev) => {
+      const base =
+        prev === 'all'
+          ? new Set(googleAccounts.map((a) => a.id))
           : new Set(prev)
       if (base.has(id)) base.delete(id)
       else base.add(id)
@@ -181,8 +205,17 @@ export default function AgendaV2Page() {
   const hoverPosRef = useRef<{ date: Date; hour: number } | null>(null)
 
   const handleEventClick = useCallback((ev: AgendaEvent) => {
-    setHighlightedEventId(ev.id)
-    setSelectedEvent(ev)
+    // 1er clic = highlight seul (sélection visuelle, raccourcis clavier actifs)
+    // 2e clic sur le même event = ouvre le panel détail.
+    // Click ailleurs (autre event) = re-highlight, ferme le panel précédent.
+    setHighlightedEventId((prev) => {
+      if (prev === ev.id) {
+        setSelectedEvent(ev)
+        return prev
+      }
+      setSelectedEvent(null)
+      return ev.id
+    })
   }, [])
 
   const handleHoverChange = useCallback((date: Date | null, hour: number | null) => {
@@ -299,7 +332,7 @@ export default function AgendaV2Page() {
    *  Pas d'ouverture de modal. */
   async function handleSaveEdit(
     ev: AgendaEvent,
-    patch: { title?: string; scheduled_at?: string; duration_minutes?: number; notes?: string | null; color?: string | null },
+    patch: { title?: string; scheduled_at?: string; duration_minutes?: number; notes?: string | null; color?: string | null; blocks_availability?: boolean },
   ) {
     if (ev.kind !== 'booking') return
 
@@ -320,6 +353,9 @@ export default function AgendaV2Page() {
       const newTitle = patch.title ?? e.title
       const newNotes = patch.notes !== undefined ? patch.notes : e.booking.notes
       const newColor = patch.color !== undefined ? patch.color : e.booking.color
+      const newBlocks = patch.blocks_availability !== undefined
+        ? patch.blocks_availability
+        : e.booking.blocks_availability
       return {
         ...e,
         title: newTitle,
@@ -333,6 +369,7 @@ export default function AgendaV2Page() {
           duration_minutes: newDuration,
           notes: newNotes,
           color: newColor,
+          blocks_availability: newBlocks,
         },
       }
     })
@@ -344,6 +381,9 @@ export default function AgendaV2Page() {
       const newTitle = patch.title ?? cur.title
       const newNotes = patch.notes !== undefined ? patch.notes : cur.booking.notes
       const newColor = patch.color !== undefined ? patch.color : cur.booking.color
+      const newBlocks = patch.blocks_availability !== undefined
+        ? patch.blocks_availability
+        : cur.booking.blocks_availability
       return {
         ...cur,
         title: newTitle,
@@ -357,6 +397,7 @@ export default function AgendaV2Page() {
           duration_minutes: newDuration,
           notes: newNotes,
           color: newColor,
+          blocks_availability: newBlocks,
         },
       }
     })
@@ -620,6 +661,9 @@ export default function AgendaV2Page() {
               onTogglePersonal={() => setShowPersonal((v) => !v)}
               showCalls={showCalls}
               onToggleCalls={() => setShowCalls((v) => !v)}
+              googleAccounts={googleAccounts}
+              visibleGoogleAccountIds={visibleGoogleAccountIds}
+              onToggleGoogleAccount={toggleGoogleAccount}
             />
           )}
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>

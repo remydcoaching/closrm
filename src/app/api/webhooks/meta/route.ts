@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { decrypt } from '@/lib/meta/encryption'
 import { getLeadData, parseLeadFields, type MetaCredentials } from '@/lib/meta/client'
+import { findExistingLeadId } from '@/lib/leads/identity'
 
 // ─── GET : webhook verification ──────────────────────────────────────────────
 
@@ -86,27 +87,85 @@ export async function POST(request: NextRequest) {
         const leadData = await getLeadData(leadgen_id, creds.page_access_token)
         const parsed = parseLeadFields(leadData.field_data)
 
-        // 3. Insert lead into database
-        const { error } = await supabase
-          .from('leads')
-          .insert({
-            workspace_id: integration.workspace_id,
-            first_name: parsed.first_name,
-            last_name: parsed.last_name,
-            phone: parsed.phone ?? '',
-            email: parsed.email,
-            status: 'nouveau',
-            source: 'facebook_ads',
-            tags: [],
-            call_attempts: 0,
-            reached: false,
-            meta_campaign_id: campaign_id ?? null,
-            meta_adset_id: adset_id ?? null,
-            meta_ad_id: ad_id ?? null,
-          })
+        // Build full answers map (incl. custom Meta lead form questions).
+        // Avant on dupliquait les réponses dans `notes` sous forme texte —
+        // supprimé car le bloc Parcours du lead les affiche déjà proprement
+        // depuis `form_answers`. Évite des notes auto-générées en double.
+        const fullAnswers: Record<string, string> = {}
+        for (const f of leadData.field_data ?? []) {
+          const key = f.name
+          const value = (f.values?.[0] ?? '').trim()
+          if (!value) continue
+          fullAnswers[key] = value
+        }
 
-        if (error) {
-          console.error('Failed to insert Meta lead:', error)
+        // Distingue Facebook vs Instagram via le champ `platform` que Meta
+        // expose au niveau du leadgen (renvoie "fb" ou "ig"). Sans ça tout
+        // arrivait comme `facebook_ads` même si l'ad était vu sur Instagram.
+        const leadSource: 'facebook_ads' | 'instagram_ads' =
+          leadData.platform === 'ig' ? 'instagram_ads' : 'facebook_ads'
+
+        // 3. Dedup: look for an existing lead in this workspace by normalized
+        //    email then phone. If found, enrich it instead of creating a duplicate.
+        const existingLeadId = await findExistingLeadId(supabase, integration.workspace_id, {
+          email: parsed.email,
+          phone: parsed.phone || null,
+        })
+
+        if (existingLeadId) {
+          // Update only the fields we have new info on. Keep existing
+          // source/tags/notes untouched — les réponses Meta sont reflétées
+          // via `form_answers`, plus de duplication dans `notes`.
+          const { data: existing } = await supabase
+            .from('leads')
+            .select('form_answers, meta_campaign_id, meta_adset_id, meta_ad_id')
+            .eq('id', existingLeadId)
+            .single()
+
+          const mergedAnswers = {
+            ...((existing?.form_answers as Record<string, string> | null) ?? {}),
+            ...fullAnswers,
+          }
+
+          const { error } = await supabase
+            .from('leads')
+            .update({
+              form_answers: mergedAnswers,
+              // Only fill Meta IDs if missing — don't overwrite first-touch attribution.
+              meta_campaign_id: existing?.meta_campaign_id ?? campaign_id ?? null,
+              meta_adset_id: existing?.meta_adset_id ?? adset_id ?? null,
+              meta_ad_id: existing?.meta_ad_id ?? ad_id ?? null,
+            })
+            .eq('id', existingLeadId)
+
+          if (error) {
+            console.error('Failed to enrich existing Meta lead:', error)
+          }
+        } else {
+          // 4. Insert a fresh lead.
+          const { error } = await supabase
+            .from('leads')
+            .insert({
+              workspace_id: integration.workspace_id,
+              first_name: parsed.first_name,
+              last_name: parsed.last_name,
+              phone: parsed.phone ?? '',
+              email: parsed.email,
+              status: 'nouveau',
+              source: leadSource,
+              tags: [],
+              call_attempts: 0,
+              reached: false,
+              notes: null,
+              form_answers: fullAnswers,
+              meta_campaign_id: campaign_id ?? null,
+              meta_adset_id: adset_id ?? null,
+              meta_ad_id: ad_id ?? null,
+            })
+
+          if (error) {
+            console.error('Failed to insert Meta lead:', error)
+          }
         }
       } catch (err) {
         console.error(`Error processing leadgen_id=${leadgen_id}:`, err)

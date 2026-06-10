@@ -1,0 +1,47 @@
+# État ClosRM Mobile
+
+> Suivi global d'avancement de l'app mobile React Native.
+
+## Conventions
+- Branche : `feature/pierre-mobile-app` (Pierre)
+- Plan : `docs/superpowers/plans/2026-05-08-mobile-app.md`
+- Spec : `docs/superpowers/specs/2026-05-08-mobile-app-design.md`
+
+## ⚠️ Écart vs spec
+**Switch vers Expo** (spec dit React Native CLI). Décision Pierre 2026-05-08 :
+build dev infiniment plus rapide (Expo Go, pas de Xcode/pods en local).
+À valider avec Rémy. Conséquences : libs `expo-*` autorisées, build natif via
+EAS Build au lieu de Xcode/Android Studio direct.
+
+## Phase 1 — Fondations
+
+| # | Task | Statut | Notes |
+|---|------|--------|-------|
+| 1 | Setup Expo + NativeWind | ✅ | tsc OK, App boot avec tokens. Switch RN CLI→Expo (cf ameliorations) |
+| 2 | Dossier `shared/` | ✅ | types web extraits + zod schemas leads/calls |
+| 3 | Services Supabase + API | ✅ | Supabase + SecureStore + api client + auth helpers |
+| 4 | Navigation (tab + stacks) | ✅ | RootNavigator (Auth gate) + 5 tabs + 4 stacks placeholder |
+| 5 | Design system (composants UI) | ✅ | 13 composants ui/ + theme/colors+status + icons Ionicons sur tabs |
+| 6 | LoginScreen + auth flow | ✅ | LoginScreen branché. Phase 1 fondations terminée |
+
+## Phase 2 — Écrans
+
+| # | Task | Statut |
+|---|------|--------|
+| 7 | Leads List flat | ✅ | useLeads + LeadCard + segments/filters/search/realtime |
+| 8 | Leads List groupée + priorité | ✅ | view switcher 3 modes : Flat / Groupé (sections collapsible) / Priorité (scoring urgence×valeur×fraîcheur) |
+| 9 | Lead Detail | ✅ | useLead + hero + KPI + CTA + quick actions + infos + tags + notes |
+| 10 | Calls Day | ✅ | useCalls + DayStrip + CallSlot + KPI summary + flatlist |
+| 11 | Call Detail | ✅ | useCall + countdown hero + Zoom CTA + contexte/objectif + notes auto-save |
+| 12 | Schedule Sheet | ✅ | @gorhom/bottom-sheet global via Provider, type/day/time pickers, conflict detection, POST /api/calls |
+| 13 | Inbox | ✅ | useConversations + ConvRow + sections non-lus/précédemment |
+| 14 | Conversation | ✅ | useMessages + bubbles + composer + lead context strip |
+| 15 | Notifications + table SQL | ✅ | migration 076 + useNotifications + filterChips + group day + mark all read |
+| 16 | Push notifications | ✅ client | migration 077 push_tokens + expo-notifications + register + save token + tap deep links. Backend dispatch à brancher côté API web (env-spécifique). |
+| 17 | Pulse Dashboard | ✅ | usePulseKpis + hero revenue + 4 KPI cards + funnel 30j + activity heatmap 7j |
+| 18 | Tab badges + useUnreadCounts | ✅ | Hook + badges Messages (unread DM) + More (unread notifs), realtime subs |
+| 19 | Social Posts read-only | ✅ | SocialPostsScreen branché dans MoreStack, FilterChips/NavLarge fix, lien depuis MoreMenu |
+
+## Historique
+
+- **2026-05-08** : worktree `closrm-mobile` créé sur `feature/pierre-mobile-app` depuis `develop`. Démarrage Task 1.

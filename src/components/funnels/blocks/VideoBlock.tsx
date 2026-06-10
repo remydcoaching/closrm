@@ -29,6 +29,10 @@ function parseVideoUrl(url: string): string | null {
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
 
+  // Wistia: *.wistia.com/medias/ID or fast.wistia.net/embed/iframe/ID
+  const wistiaMatch = url.match(/wistia\.(?:com|net)\/(?:medias|embed\/iframe)\/([\w-]+)/)
+  if (wistiaMatch) return `https://fast.wistia.net/embed/iframe/${wistiaMatch[1]}`
+
   return null
 }
 
@@ -46,7 +50,7 @@ export default function VideoBlock({ config }: Props) {
   // État vide : aucune URL configurée ou URL invalide
   if (!embedUrl) {
     return (
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px' }}>
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '64px 20px 60px' }}>
         <div
           style={{
             position: 'relative',
@@ -74,14 +78,23 @@ export default function VideoBlock({ config }: Props) {
     )
   }
 
-  // Construction des query params (autoplay, contrôles)
+  // Construction des query params selon la plateforme
+  const isWistia = embedUrl.includes('wistia.net')
   const params = new URLSearchParams()
-  if (config.autoplay) params.set('autoplay', '1')
-  if (config.controls === false) params.set('controls', '0')
+  if (config.autoplay) {
+    if (isWistia) {
+      params.set('autoPlay', 'true')
+      params.set('muted', 'true') // requis par les navigateurs pour l'autoplay
+    } else {
+      params.set('autoplay', '1')
+      params.set('mute', '1') // requis par les navigateurs pour l'autoplay
+    }
+  }
+  if (!isWistia && config.controls === false) params.set('controls', '0')
   const suffix = params.toString() ? `?${params.toString()}` : ''
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px' }}>
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '64px 20px 60px' }}>
       <div
         style={{
           position: 'relative',

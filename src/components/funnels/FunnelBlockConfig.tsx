@@ -6,6 +6,7 @@ import VideoConfig from './config/VideoConfig'
 import TestimonialsConfig from './config/TestimonialsConfig'
 import FormConfig from './config/FormConfig'
 import BookingConfig from './config/BookingConfig'
+import BookingActionsConfig from './config/BookingActionsConfig'
 import PricingConfig from './config/PricingConfig'
 import FaqConfig from './config/FaqConfig'
 import CountdownConfig from './config/CountdownConfig'
@@ -22,9 +23,10 @@ interface Props {
   pages?: FunnelPage[]
   /** Blocs de la page active — pour le sélecteur d'ancre vers un bloc. */
   blocks?: FunnelBlock[]
+  funnelId: string
 }
 
-export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Props) {
+export default function FunnelBlockConfig({ block, onChange, pages, blocks, funnelId }: Props) {
   function handleConfigChange(config: FunnelBlockConfigType) {
     onChange({ ...block, config })
   }
@@ -35,6 +37,7 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Pr
     testimonials: 'Temoignages',
     form: 'Formulaire',
     booking: 'Reservation',
+    booking_actions: 'Actions calendrier',
     pricing: 'Tarification',
     faq: 'FAQ',
     countdown: 'Compte a rebours',
@@ -56,7 +59,13 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Pr
       </div>
 
       {block.type === 'hero' && (
-        <HeroConfig config={block.config as Parameters<typeof HeroConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />
+        <HeroConfig
+          config={block.config as Parameters<typeof HeroConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
+          pages={pages}
+          blocks={blocks}
+          funnelId={funnelId}
+        />
       )}
       {block.type === 'video' && (
         <VideoConfig config={block.config as Parameters<typeof VideoConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
@@ -69,6 +78,9 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Pr
       )}
       {block.type === 'booking' && (
         <BookingConfig config={block.config as Parameters<typeof BookingConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />
+      )}
+      {block.type === 'booking_actions' && (
+        <BookingActionsConfig config={block.config as Parameters<typeof BookingActionsConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
       )}
       {block.type === 'pricing' && (
         <PricingConfig config={block.config as Parameters<typeof PricingConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />
@@ -86,7 +98,13 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks }: Pr
         <TextConfig config={block.config as Parameters<typeof TextConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
       )}
       {block.type === 'image' && (
-        <ImageConfig config={block.config as Parameters<typeof ImageConfig>[0]['config']} onChange={c => handleConfigChange(c)} pages={pages} blocks={blocks} />
+        <ImageConfig
+          config={block.config as Parameters<typeof ImageConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
+          pages={pages}
+          blocks={blocks}
+          funnelId={funnelId}
+        />
       )}
       {block.type === 'spacer' && (
         <SpacerConfig config={block.config as Parameters<typeof SpacerConfig>[0]['config']} onChange={c => handleConfigChange(c)} />

@@ -2,15 +2,17 @@
 
 import type { HeroBlockConfig, FunnelPage, FunnelBlock } from '@/types'
 import RedirectPicker from './RedirectPicker'
+import ImageUploadField from './ImageUploadField'
 
 interface Props {
   config: HeroBlockConfig
   onChange: (config: HeroBlockConfig) => void
   pages?: FunnelPage[]
   blocks?: FunnelBlock[]
+  funnelId: string
 }
 
-export default function HeroConfig({ config, onChange, pages, blocks }: Props) {
+export default function HeroConfig({ config, onChange, pages, blocks, funnelId }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
@@ -62,15 +64,23 @@ export default function HeroConfig({ config, onChange, pages, blocks }: Props) {
         required
       />
       <div>
-        <label style={labelStyle}>Image de fond (URL)</label>
-        <input
-          type="url"
-          value={config.backgroundImage || ''}
-          onChange={e => onChange({ ...config, backgroundImage: e.target.value || null })}
-          placeholder="https://images.unsplash.com/..."
+        <label style={labelStyle}>Position du bouton</label>
+        <select
+          value={config.ctaPosition || 'middle'}
+          onChange={e => onChange({ ...config, ctaPosition: e.target.value as HeroBlockConfig['ctaPosition'] })}
           style={inputStyle}
-        />
+        >
+          <option value="top">Supérieure (collé au texte)</option>
+          <option value="middle">Milieu (espacement standard)</option>
+          <option value="bottom">Inférieure (poussé vers le bas)</option>
+        </select>
       </div>
+      <ImageUploadField
+        value={config.backgroundImage || ''}
+        onChange={url => onChange({ ...config, backgroundImage: url || null })}
+        funnelId={funnelId}
+        label="Image de fond"
+      />
       <div>
         <label style={labelStyle}>Alignement</label>
         <select
@@ -88,11 +98,11 @@ export default function HeroConfig({ config, onChange, pages, blocks }: Props) {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 11, color: '#555', display: 'block', marginBottom: 4,
+  fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4,
 }
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '7px 10px', fontSize: 13,
-  background: '#0a0a0a', border: '1px solid #333', borderRadius: 8,
-  color: '#fff', outline: 'none',
+  background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8,
+  color: 'var(--text-primary)', outline: 'none',
 }

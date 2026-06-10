@@ -16,6 +16,7 @@ import {
   subMonths,
   format,
 } from 'date-fns'
+import { fromZonedTime } from 'date-fns-tz'
 import { fr } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Clock, MapPin, Phone, Video } from 'lucide-react'
 import type { FormField } from '@/types'
@@ -28,8 +29,13 @@ interface CalendarInfo {
   duration_minutes: number
   location_ids: string[]
   color: string
+  background_theme?: 'dark' | 'light'
   form_fields: FormField[]
   require_confirmation?: boolean
+  /** TZ du workspace (ex: "Europe/Paris"). Utilisée pour convertir le HH:mm
+   *  affiché en moment UTC à submitter. Sans ça, un lead dans une autre TZ
+   *  envoyait un scheduled_at décalé. */
+  timezone?: string
 }
 
 interface WorkspaceInfo {
@@ -91,6 +97,35 @@ export default function PublicBookingPage() {
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // ─── Responsive : détection mobile pour empiler date / créneaux ───────────
+  // Sur mobile, on stack verticalement (date au-dessus, heures en-dessous)
+  // au lieu du grid 2 colonnes. matchMedia plutôt que window.innerWidth :
+  // évite un re-render à chaque scroll/resize bruyant.
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 720px)')
+    const onChange = () => setIsMobile(mq.matches)
+    onChange()
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  // ─── Thème de fond piloté par le calendrier (clair / sombre) ──────────────
+  // Pose data-theme sur <html> pour activer les surcharges CSS définies dans
+  // globals.css. On cleanup au démontage pour ne pas polluer d'autres pages
+  // si le user navigue sans full reload.
+  useEffect(() => {
+    const theme = calendar?.background_theme ?? 'dark'
+    const html = document.documentElement
+    const previous = html.getAttribute('data-theme')
+    if (theme === 'light') html.setAttribute('data-theme', 'light')
+    else html.removeAttribute('data-theme')
+    return () => {
+      if (previous) html.setAttribute('data-theme', previous)
+      else html.removeAttribute('data-theme')
+    }
+  }, [calendar?.background_theme])
 
   // Build a map: "YYYY-MM-DD" → string[]
   const slotsMap: Record<string, string[]> = {}
@@ -172,10 +207,12 @@ export default function PublicBookingPage() {
       return
     }
 
-    // Build ISO datetime: combine date + time with local timezone offset
+    // Build ISO datetime: combine date + time, interprété dans la TZ du
+    // workspace (et non celle du navigateur du lead — sinon un lead à Montréal
+    // qui réserve un coach parisien envoyait un scheduled_at décalé de 6h).
     const dateStr = format(selectedDate, 'yyyy-MM-dd')
-    const localDate = new Date(`${dateStr}T${selectedTime}:00`)
-    const scheduledAt = localDate.toISOString()
+    const tz = calendar.timezone || 'Europe/Paris'
+    const scheduledAt = fromZonedTime(`${dateStr}T${selectedTime}:00`, tz).toISOString()
 
     setSubmitting(true)
     setError(null)
@@ -555,14 +592,27 @@ export default function PublicBookingPage() {
             {initials || '?'}
           </div>
         )}
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
             {workspace.name}
           </div>
           <div style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '20px' }}>
             {calendar.name}
           </div>
-          <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
+          {calendar.description && (
+            <div
+              style={{
+                color: 'var(--text-secondary)',
+                fontSize: '14px',
+                lineHeight: 1.5,
+                marginTop: '8px',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {calendar.description}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
             <span style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Clock size={12} /> {calendar.duration_minutes} min
             </span>
@@ -591,20 +641,26 @@ export default function PublicBookingPage() {
         </div>
       </div>
 
-      {/* Two-column layout */}
+      {/* Two-column layout (PC) / stack vertical (mobile) */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '24px',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+          gap: isMobile ? '0' : '24px',
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border-secondary)',
           borderRadius: '16px',
           overflow: 'hidden',
         }}
       >
-        {/* Left: monthly calendar */}
-        <div style={{ padding: '24px', borderRight: '1px solid var(--border-secondary)' }}>
+        {/* Left (PC) / Top (mobile) : monthly calendar */}
+        <div
+          style={{
+            padding: '24px',
+            borderRight: isMobile ? 'none' : '1px solid var(--border-secondary)',
+            borderBottom: isMobile && selectedDate ? '1px solid var(--border-secondary)' : 'none',
+          }}
+        >
           {/* Month navigation */}
           <div
             style={{
@@ -756,7 +812,10 @@ export default function PublicBookingPage() {
           </div>
         </div>
 
-        {/* Right: time slots */}
+        {/* Right (PC) / Bottom (mobile) : time slots.
+            Sur mobile, on cache la zone tant qu'aucune date n'est sélectionnée
+            (sinon la phrase d'invite occupe inutilement l'écran). */}
+        {!(isMobile && !selectedDate) && (
         <div style={{ padding: '24px' }}>
           {!selectedDate ? (
             <div
@@ -845,6 +904,7 @@ export default function PublicBookingPage() {
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   )

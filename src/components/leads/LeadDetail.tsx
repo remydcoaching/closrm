@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Phone, Mail, Tag, FileText, CheckCircle, XCircle, Clock, X, Plus } from 'lucide-react'
 import { Lead, Call, FollowUp, LeadStatus } from '@/types'
 import StatusBadge from '@/components/leads/StatusBadge'
 import { useStatusConfig } from '@/lib/workspace/config-context'
 import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
+import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -63,27 +64,11 @@ const inputStyle = {
 export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
   const statusConfig = useStatusConfig()
 
-  const [notes, setNotes] = useState(lead.notes ?? '')
   const [tags, setTags] = useState<string[]>(lead.tags)
   const [tagInput, setTagInput] = useState('')
   const [statusOpen, setStatusOpen] = useState(false)
-  const notesDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => { setNotes(lead.notes ?? '') }, [lead.notes])
   useEffect(() => { setTags(lead.tags) }, [lead.tags])
-
-  function handleNotesChange(value: string) {
-    setNotes(value)
-    if (notesDebounce.current) clearTimeout(notesDebounce.current)
-    notesDebounce.current = setTimeout(async () => {
-      await fetch(`/api/leads/${lead.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: value }),
-      })
-      onUpdate({ notes: value })
-    }, 800)
-  }
 
   async function changeStatus(status: LeadStatus) {
     setStatusOpen(false)
@@ -299,13 +284,12 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
       {/* ─── ENRICHISSEMENT ─── */}
       <SectionHeader>Enrichissement</SectionHeader>
 
-      {/* Notes */}
+      {/* Notes — widget multi-notes timestampées, partagé avec le side panel.
+          Avant : un simple textarea sur `leads.notes` qui divergeait du widget
+          (table `lead_notes`) utilisé côté side panel. Source de vérité unifiée. */}
       <div style={card}>
         <p style={sectionTitle}><FileText size={11} style={{ marginRight: 5 }} />Notes</p>
-        <textarea value={notes} onChange={e => handleNotesChange(e.target.value)}
-          rows={5} placeholder="Notes libres sur ce lead..."
-          style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }} />
-        <p style={{ fontSize: 10, color: 'var(--text-label)', marginTop: 6 }}>Sauvegarde automatique</p>
+        <LeadNotesWidget leadId={lead.id} />
       </div>
 
       {/* Lead Magnets — wrappé en card pour spacing cohérent */}

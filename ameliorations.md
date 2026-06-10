@@ -869,4 +869,40 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-*Mis a jour le 2026-05-04 par Claude Code — ClosRM*
+## Améliorations mobile — Fiche lead (session 2026-05-13)
+
+### A-MOB-01 · Follow-ups depuis la fiche lead mobile
+- **Contexte :** Demandé par Rémy — sur le web on peut créer des follow-ups, mais pas depuis l'app mobile.
+- **Description :** Ajouter un bouton "Créer un follow-up" dans la fiche lead mobile. Ouvre une sheet avec : raison, date/heure planifiée, canal (WhatsApp/Email/Manuel). Utilise la même API `/api/follow-ups` que le web.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation — réflexion en cours
+
+---
+
+## Améliorations funnel image upload (session 2026-06-01)
+
+### A-FUN-01 · Médiathèque workspace centralisée
+- **Contexte :** Tâche 045 — upload d'images par bloc funnel. Chaque image est stockée directement dans R2 sans gestion centralisée.
+- **Description :** Médiathèque partagée au niveau du workspace : les images uploadées une fois sont réutilisables dans tous les blocs et funnels. Évite les doublons R2 et améliore le workflow coach.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Élevé
+- **Statut :** En attente de validation (V2)
+
+### A-FUN-02 · Suppression des objets R2 orphelins
+- **Contexte :** Tâche 045 — en V1 aucune suppression R2 n'est déclenchée quand le coach retire une image. Les objets restent dans le bucket indéfiniment.
+- **Description :** Job de nettoyage (cron ou webhook) qui supprime les objets R2 dont l'URL n'apparaît plus dans aucun bloc de funnel actif.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation (V2)
+
+### A-FUN-03 · Support GIF animé dans les blocs Image
+- **Contexte :** Tâche 045 — les GIFs sont acceptés en validation format mais convertis en WebP (statique) par browser-image-compression.
+- **Description :** Détecter les GIFs et les uploader sans conversion pour préserver l'animation.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+---
+
+*Mis à jour le 2026-06-01 par Claude Code — ClosRM*

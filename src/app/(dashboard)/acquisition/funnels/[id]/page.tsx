@@ -24,6 +24,7 @@ import { useWorkspaceSlugState, buildPublicFunnelUrl } from '@/lib/funnels/use-w
 
 interface FunnelData {
   id: string
+  workspace_id: string
   name: string
   slug: string
   status: 'draft' | 'published'
@@ -31,6 +32,7 @@ interface FunnelData {
   preset_id: string
   preset_override: FunnelPresetOverrideJSON | null
   effects_config: FunnelEffectsConfigJSON
+  meta_pixel_id: string | null
   pages: FunnelPage[]
 }
 
@@ -224,6 +226,18 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
       }).catch(() => {
         // Best-effort
       })
+    },
+    [id],
+  )
+
+  const handleMetaPixelChange = useCallback(
+    (pixelId: string | null) => {
+      setFunnel((prev) => (prev ? { ...prev, meta_pixel_id: pixelId } : prev))
+      fetch(`/api/funnels/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meta_pixel_id: pixelId }),
+      }).catch(() => {})
     },
     [id],
   )
@@ -826,6 +840,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
           activePageId={activePageId}
           onPagesChange={setPages}
           onFunnelDesignChange={handleFunnelDesignChange}
+          onMetaPixelChange={handleMetaPixelChange}
           mode={mode}
         />
       </div>

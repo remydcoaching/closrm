@@ -13,6 +13,7 @@
 
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import type {
   FunnelPage,
   FunnelBlock,
@@ -23,6 +24,7 @@ import type {
   TestimonialsBlockConfig,
   FormBlockConfig,
   BookingBlockConfig,
+  BookingActionsBlockConfig,
   PricingBlockConfig,
   FaqBlockConfig,
   CountdownBlockConfig,
@@ -38,6 +40,7 @@ import VideoBlock from '@/components/funnels/blocks/VideoBlock'
 import TestimonialsBlock from '@/components/funnels/blocks/TestimonialsBlock'
 import FormBlock from '@/components/funnels/blocks/FormBlock'
 import BookingBlock from '@/components/funnels/blocks/BookingBlock'
+import BookingActionsBlock from '@/components/funnels/blocks/BookingActionsBlock'
 import PricingBlock from '@/components/funnels/blocks/PricingBlock'
 import FaqBlock from '@/components/funnels/blocks/FaqBlock'
 import CountdownBlock from '@/components/funnels/blocks/CountdownBlock'
@@ -73,6 +76,7 @@ interface FunnelDesignFromApi {
   preset_id: string
   preset_override: FunnelPresetOverrideJSON | null
   effects_config: FunnelEffectsConfigJSON
+  meta_pixel_id: string | null
 }
 
 interface PageData {
@@ -107,7 +111,7 @@ async function loadFunnelPageData(
 
   const { data: funnel } = await supabase
     .from('funnels')
-    .select('id, preset_id, preset_override, effects_config')
+    .select('id, preset_id, preset_override, effects_config, meta_pixel_id')
     .eq('workspace_id', workspaceId)
     .eq('slug', funnelSlug)
     .eq('status', 'published')
@@ -137,6 +141,7 @@ async function loadFunnelPageData(
       preset_id: funnel.preset_id,
       preset_override: funnel.preset_override,
       effects_config: funnel.effects_config,
+      meta_pixel_id: funnel.meta_pixel_id ?? null,
     },
     branding: {
       accentColor: workspace?.accent_color ?? '#E53E3E',
@@ -169,6 +174,8 @@ function renderBlock(block: FunnelBlock) {
       content = <FormBlock config={block.config as FormBlockConfig} />; break
     case 'booking':
       content = <BookingBlock config={block.config as BookingBlockConfig} />; break
+    case 'booking_actions':
+      content = <BookingActionsBlock config={block.config as BookingActionsBlockConfig} />; break
     case 'pricing':
       content = <PricingBlock config={block.config as PricingBlockConfig} />; break
     case 'faq':
@@ -201,9 +208,26 @@ export default async function PublicFunnelPage({ params }: PageProps) {
   const { page, funnel, branding } = data
   const accentColor = branding.accentColor
   const design = loadFunnelDesign(funnel)
+  const metaPixelId = funnel.meta_pixel_id
 
   return (
     <>
+      {metaPixelId && (
+        <Script
+          id="meta-pixel"
+          strategy="afterInteractive"
+        >{`
+          !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+          n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+          if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+          n.queue=[];t=b.createElement(e);t.async=!0;
+          t.src=v;s=b.getElementsByTagName(e)[0];
+          s.parentNode.insertBefore(t,s)}(window,document,'script',
+          'https://connect.facebook.net/en_US/fbevents.js');
+          fbq('init', '${metaPixelId}');
+          fbq('track', 'PageView');
+        `}</Script>
+      )}
       <style>{`
         :root { --color-primary: ${accentColor}; }
         html { scroll-behavior: smooth; }

@@ -30,32 +30,6 @@ export default function DashboardShell({ children, logoUrl }: { children: React.
         {activeGroup && <PageTabs tabs={activeGroup.tabs} />}
         {children}
       </main>
-
-      {/* DEBUG MARKER — confirme que la nouvelle build est bien chargée
-          chez l'utilisateur. Si vous voyez ce bandeau, mes derniers commits
-          (color picker, inline edit, popup central) sont en prod. À retirer
-          une fois le bug deploy résolu. */}
-      <div
-        data-debug-build="2026-05-10-v2"
-        style={{
-          position: 'fixed',
-          bottom: 16,
-          right: 16,
-          zIndex: 99999,
-          background: '#ff00ff',
-          color: '#000',
-          padding: '10px 16px',
-          borderRadius: 12,
-          fontSize: 13,
-          fontWeight: 700,
-          fontFamily: 'monospace',
-          boxShadow: '0 4px 24px rgba(255,0,255,0.6), 0 0 0 3px #fff',
-          letterSpacing: 0.5,
-          pointerEvents: 'none',
-        }}
-      >
-        🟣 BUILD OK — 22:40
-      </div>
     </div>
   )
 }
