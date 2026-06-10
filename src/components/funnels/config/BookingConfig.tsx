@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { BookingBlockConfig, FunnelPage, FunnelBlock } from '@/types'
 import RedirectPicker from './RedirectPicker'
+import MetaEventPicker from './MetaEventPicker'
 
 interface Props {
   config: BookingBlockConfig
@@ -77,6 +78,16 @@ export default function BookingConfig({ config, onChange, pages, blocks }: Props
         blocks={blocks}
         label="Après réservation"
       />
+
+      {/* ── Event Meta envoyé à la confirmation ── */}
+      <div style={{ marginTop: 8, paddingTop: 12, borderTop: '1px dashed #262626' }}>
+        <MetaEventPicker
+          value={config.metaEvent}
+          onChange={val => onChange({ ...config, metaEvent: val })}
+          defaultChoice="schedule"
+          title="Quand un visiteur réserve…"
+        />
+      </div>
     </div>
   )
 }

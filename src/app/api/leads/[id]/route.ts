@@ -5,6 +5,8 @@ import { updateLeadSchema } from '@/lib/validations/leads'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { getNextCloser } from '@/lib/team/round-robin'
+import { resolveMetaPixelForLead } from '@/lib/meta/pixel-resolver'
+import { sendCapiEventForLead } from '@/lib/meta/capi'
 
 export async function GET(
   _request: NextRequest,
@@ -149,6 +151,39 @@ export async function PATCH(
           body: amount ? `${fullName} · ${amount}` : `${fullName}`,
           data: { entity_type: 'lead', entity_id: id },
         })
+
+        // Server-side CAPI Purchase event. Carries the deal_amount so
+        // Meta's algo learns from your actual revenue, not just lead count.
+        void (async () => {
+          try {
+            const pixel = await resolveMetaPixelForLead(supabase, workspaceId, {
+              id: data.id,
+              tags: data.tags,
+              visitor_id: data.visitor_id ?? null,
+            })
+            if (!pixel) return
+            await sendCapiEventForLead(
+              supabase,
+              workspaceId,
+              pixel.pixelId,
+              {
+                id: data.id,
+                first_name: data.first_name,
+                last_name: data.last_name,
+                email: data.email,
+                phone: data.phone,
+              },
+              'Purchase',
+              {
+                value: data.deal_amount ?? undefined,
+                currency: 'EUR',
+                content_name: 'Coaching',
+              },
+            )
+          } catch (err) {
+            console.error('[capi-purchase] non-blocking error', err)
+          }
+        })()
 
         // AI self-learning: record winning conversation outcome (non-blocking)
         Promise.resolve(

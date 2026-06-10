@@ -9,6 +9,7 @@
 
 import type { FormBlockConfig, FunnelFormField, FunnelPage, FunnelBlock } from '@/types'
 import RedirectPicker from './RedirectPicker'
+import MetaEventPicker from './MetaEventPicker'
 
 interface Props {
   config: FormBlockConfig
@@ -194,6 +195,16 @@ export default function FormConfig({ config, onChange, pages, blocks }: Props) {
         blocks={blocks}
         label="Redirection après envoi"
       />
+
+      {/* ── Event Meta envoyé à la soumission ── */}
+      <div style={{ marginTop: 8, paddingTop: 12, borderTop: '1px dashed #262626' }}>
+        <MetaEventPicker
+          value={config.metaEvent}
+          onChange={val => onChange({ ...config, metaEvent: val })}
+          defaultChoice="lead"
+          title="Quand ce formulaire est soumis…"
+        />
+      </div>
     </div>
   )
 }

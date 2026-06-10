@@ -31,6 +31,7 @@ import {
 import { fr } from 'date-fns/locale'
 import type { BookingBlockConfig } from '@/types'
 import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
+import { resolveMetaEvent } from '@/lib/meta/funnel-events'
 import {
   getFunnelScopeFromPathname,
   saveFunnelBooking,
@@ -128,6 +129,30 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
   const [phase, setPhase] = useState<'calendar' | 'form' | 'confirmed'>('calendar')
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+
+  // Pre-fill from URL params on mount. Meta Lead Forms (and most ad
+  // networks) can pass first_name / last_name / email / phone in the
+  // redirect URL. Honoring them removes friction for qualified prospects
+  // who already filled the qualifying form on Meta.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const params = new URL(window.location.href).searchParams
+      const prefill: Record<string, string> = {}
+      for (const key of ['first_name', 'last_name', 'email', 'phone']) {
+        const v = params.get(key)
+        if (v) prefill[key] = v
+      }
+      // Also accept Meta's common aliases.
+      if (!prefill.first_name && params.get('firstname')) prefill.first_name = params.get('firstname') as string
+      if (!prefill.last_name && params.get('lastname')) prefill.last_name = params.get('lastname') as string
+      if (Object.keys(prefill).length > 0) {
+        setFormData((p) => ({ ...prefill, ...p }))
+      }
+    } catch {
+      /* never block the form on a malformed URL */
+    }
+  }, [])
 
   // Build slots map
   const slotsMap: Record<string, string[]> = {}
@@ -262,7 +287,9 @@ function BookingWidget({ config, calendarId }: { config: BookingBlockConfig; cal
         resolved !== 'https://' &&
         resolved !== 'http://'
 
-      window.fbq?.('track', 'Schedule')
+      // Fire the Meta event the coach configured on this block ('schedule' by default).
+      const event = resolveMetaEvent(config.metaEvent, 'schedule')
+      if (event) window.fbq?.('track', event)
 
       if (isUsable) {
         window.location.href = resolved

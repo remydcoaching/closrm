@@ -14,6 +14,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Script from 'next/script'
+import { resolveMetaEvent } from '@/lib/meta/funnel-events'
 import type {
   FunnelPage,
   FunnelBlock,
@@ -210,6 +211,13 @@ export default async function PublicFunnelPage({ params }: PageProps) {
   const design = loadFunnelDesign(funnel)
   const metaPixelId = funnel.meta_pixel_id
 
+  // Page-level Meta event (in addition to PageView). NULL when the coach
+  // chose "Ne rien envoyer" or left it default.
+  const pageMetaEvent = resolveMetaEvent(page.meta_event, 'none')
+  // Sanitize defensively: the event name lands inside a JS string template
+  // injected verbatim into the page. Strip anything that isn't a-zA-Z0-9_.
+  const safePageMetaEvent = pageMetaEvent ? pageMetaEvent.replace(/[^a-zA-Z0-9_]/g, '') : null
+
   return (
     <>
       {metaPixelId && (
@@ -226,6 +234,7 @@ export default async function PublicFunnelPage({ params }: PageProps) {
           'https://connect.facebook.net/en_US/fbevents.js');
           fbq('init', '${metaPixelId}');
           fbq('track', 'PageView');
+          ${safePageMetaEvent ? `fbq('track', '${safePageMetaEvent}');` : ''}
         `}</Script>
       )}
       <style>{`

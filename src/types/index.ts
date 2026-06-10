@@ -678,6 +678,8 @@ export interface FormBlockConfig {
   submitText: string
   redirectUrl: string | null
   successMessage: string
+  /** Event Meta envoyé via fbq() à la soumission. Défaut = 'lead' (rétrocompat). */
+  metaEvent?: import('@/lib/meta/funnel-events').MetaEventConfig | null
 }
 
 export interface BookingBlockConfig {
@@ -687,6 +689,8 @@ export interface BookingBlockConfig {
   /** URL de redirection après réservation réussie (page funnel ou URL externe).
    *  Si null/vide, on affiche la confirmation in-page (comportement par défaut). */
   redirectUrl?: string | null
+  /** Event Meta envoyé via fbq() à la confirmation de la résa. Défaut = 'schedule' (rétrocompat). */
+  metaEvent?: import('@/lib/meta/funnel-events').MetaEventConfig | null
 }
 
 /**
@@ -829,6 +833,9 @@ export interface FunnelPage {
   is_published: boolean
   views_count: number
   submissions_count: number
+  /** Event Meta envoyé via fbq() au chargement de la page (en plus du PageView auto).
+   *  Permet le cas "lead qualifié dès l'arrivée sur cette page" (pré-filtre). */
+  meta_event?: import('@/lib/meta/funnel-events').MetaEventConfig | null
   created_at: string
   updated_at: string
 }

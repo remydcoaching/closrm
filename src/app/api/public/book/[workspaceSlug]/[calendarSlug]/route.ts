@@ -9,6 +9,8 @@ import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { createBookingReminders } from '@/lib/bookings/reminders'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import { findExistingLeadId } from '@/lib/leads/identity'
+import { resolveMetaPixelForLead } from '@/lib/meta/pixel-resolver'
+import { sendCapiEventForLead } from '@/lib/meta/capi'
 import type { CalendarReminder } from '@/types'
 import { startOfMonth, endOfMonth, parseISO, addMinutes } from 'date-fns'
 
@@ -348,6 +350,38 @@ export async function POST(
 
   if (bookingError || !booking) {
     return NextResponse.json({ error: 'Erreur lors de la création de la réservation.' }, { status: 500 })
+  }
+
+  // Server-side CAPI Schedule (mirror of browser fbq).
+  if (leadId) {
+    void (async () => {
+      try {
+        const { data: leadRow } = await supabase
+          .from('leads')
+          .select('id, first_name, last_name, email, phone, tags, visitor_id')
+          .eq('id', leadId as string)
+          .single()
+        if (!leadRow) return
+        const pixel = await resolveMetaPixelForLead(supabase, calendar.workspace_id, leadRow)
+        if (!pixel) return
+        await sendCapiEventForLead(
+          supabase,
+          calendar.workspace_id,
+          pixel.pixelId,
+          {
+            id: leadRow.id,
+            first_name: leadRow.first_name,
+            last_name: leadRow.last_name,
+            email: leadRow.email,
+            phone: leadRow.phone,
+          },
+          'Schedule',
+          { calendar_id: calendar.id, booking_id: booking.id },
+        )
+      } catch (err) {
+        console.error('[capi-schedule] non-blocking error', err)
+      }
+    })()
   }
 
   // Cancel the old booking if this is a reschedule

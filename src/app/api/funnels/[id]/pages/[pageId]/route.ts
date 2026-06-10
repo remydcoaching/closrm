@@ -42,7 +42,7 @@ export async function PUT(
     const supabase = await createClient()
 
     const body = await request.json()
-    const { name, slug, blocks, seo_title, seo_description, redirect_url } = body
+    const { name, slug, blocks, seo_title, seo_description, redirect_url, meta_event } = body
 
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (name !== undefined) updates.name = name
@@ -51,6 +51,7 @@ export async function PUT(
     if (seo_title !== undefined) updates.seo_title = seo_title
     if (seo_description !== undefined) updates.seo_description = seo_description
     if (redirect_url !== undefined) updates.redirect_url = redirect_url
+    if (meta_event !== undefined) updates.meta_event = meta_event
 
     // Self-heal : si le funnel parent est publié, on synchronise la page sur
     // publié. Sinon les pages créées après la 1re publication restaient en

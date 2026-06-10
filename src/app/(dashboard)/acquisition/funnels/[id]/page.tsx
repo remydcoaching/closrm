@@ -190,7 +190,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         fetch(`/api/funnels/${id}/pages/${page.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ blocks: page.blocks, name: page.name }),
+          body: JSON.stringify({ blocks: page.blocks, name: page.name, meta_event: page.meta_event ?? null }),
         })
       ))
 
@@ -257,7 +257,7 @@ export default function FunnelBuilderPage({ params }: { params: Promise<{ id: st
         fetch(`/api/funnels/${id}/pages/${page.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ blocks: page.blocks, name: page.name }),
+          body: JSON.stringify({ blocks: page.blocks, name: page.name, meta_event: page.meta_event ?? null }),
         }),
       ),
     )
