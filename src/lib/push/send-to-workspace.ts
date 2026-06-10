@@ -36,6 +36,13 @@ interface ExpoMessage {
   priority?: 'high' | 'default'
 }
 
+interface ExpoTicket {
+  status: 'ok' | 'error'
+  id?: string
+  message?: string
+  details?: { error?: string }
+}
+
 // Service-role client (bypass RLS pour cross-user query).
 function admin() {
   return createClient(
@@ -108,15 +115,57 @@ export async function sendPushToWorkspace(args: PushArgs): Promise<void> {
       },
       body: JSON.stringify(messages),
     })
-    if (!res.ok && process.env.NODE_ENV !== 'production') {
+
+    if (!res.ok) {
       const txt = await res.text().catch(() => '')
-      console.warn('[push] Expo non-2xx', res.status, txt)
+      console.error(`[push] Expo HTTP ${res.status}`, txt.slice(0, 200), {
+        type: args.type, workspaceId: args.workspaceId, targets: list.length,
+      })
+      return
+    }
+
+    // 5. Parse Expo response — identifie les tokens devenus invalides
+    //    (DeviceNotRegistered = app désinstallée / token expiré). Les laisser
+    //    dans la DB fait silencieusement échouer les envois suivants → cause
+    //    du "1 fois sur 5" rapporté. On les supprime.
+    const json: { data?: ExpoTicket[] } = await res.json().catch(() => ({}))
+    const tickets = json.data ?? []
+    const invalidTokens: string[] = []
+    let errorCount = 0
+    tickets.forEach((ticket, idx) => {
+      if (ticket.status !== 'error') return
+      errorCount++
+      const code = ticket.details?.error
+      if (code === 'DeviceNotRegistered' || code === 'InvalidCredentials') {
+        const tok = list[idx]
+        if (tok) invalidTokens.push(tok)
+      }
+      console.error('[push] ticket error', {
+        code, message: ticket.message, type: args.type, workspaceId: args.workspaceId,
+      })
+    })
+
+    if (invalidTokens.length > 0) {
+      const { error: delErr } = await sb
+        .from('push_tokens')
+        .delete()
+        .in('token', invalidTokens)
+      if (delErr) {
+        console.error('[push] failed to purge invalid tokens', delErr.message)
+      } else {
+        console.log(`[push] purged ${invalidTokens.length} invalid token(s)`)
+      }
+    }
+
+    if (errorCount > 0) {
+      console.warn(`[push] ${errorCount}/${tickets.length} delivery error(s)`, {
+        type: args.type, workspaceId: args.workspaceId,
+      })
     }
   } catch (e) {
-    // Non-bloquant — la route caller continue.
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[push] sendPushToWorkspace failed', e)
-    }
+    // Non-bloquant pour la route caller, mais on log toujours en prod
+    // pour pouvoir diagnostiquer via Vercel logs.
+    console.error('[push] sendPushToWorkspace failed', e instanceof Error ? e.message : e)
   }
 }
 

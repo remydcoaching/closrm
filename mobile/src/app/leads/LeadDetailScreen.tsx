@@ -23,6 +23,7 @@ import type { LeadsStackParamList } from '../../navigation/types'
 import { useLead } from '../../hooks/useLead'
 import { useLeadNotes, type LeadNote } from '../../hooks/useLeadNotes'
 import { Avatar, Button } from '../../components/ui'
+import LeadJourneyBlock from '../../components/leads/LeadJourneyBlock'
 import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
 import { api } from '../../services/api'
 import { colors } from '../../theme/colors'
@@ -812,6 +813,10 @@ export function LeadDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Parcours du lead — Première/Dernière pub, Lead Form Meta,
+            réponses booking, activité. Vide → ne rend rien. */}
+        <LeadJourneyBlock leadId={lead.id} />
 
         {/* Archiver / Supprimer — discrets en bas */}
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg, marginBottom: spacing.xl, gap: 12 }}>
