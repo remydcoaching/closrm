@@ -105,6 +105,7 @@ function buildHashedUserData(input: CapiUserData): Record<string, string | strin
 interface MetaIntegrationRow {
   credentials_encrypted: string | null
   is_active: boolean | null
+  capi_enabled: boolean | null
 }
 
 /**
@@ -133,13 +134,18 @@ export async function sendCapiEvent(
 
   const { data: integration } = await supabase
     .from('integrations')
-    .select('credentials_encrypted, is_active')
+    .select('credentials_encrypted, is_active, capi_enabled')
     .eq('workspace_id', workspaceId)
     .eq('type', 'meta')
     .maybeSingle() as { data: MetaIntegrationRow | null }
 
   if (!integration || !integration.is_active) {
     return { success: false, error: 'meta_not_connected' }
+  }
+  // Workspace-level kill switch. Coach can disable the server-side relay
+  // from /parametres/integrations while keeping the browser pixel live.
+  if (integration.capi_enabled === false) {
+    return { success: false, error: 'capi_disabled' }
   }
   if (!integration.credentials_encrypted) {
     return { success: false, error: 'credentials_missing' }

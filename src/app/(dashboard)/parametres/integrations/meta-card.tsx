@@ -8,6 +8,7 @@ interface MetaIntegration {
   connected_at: string | null
   meta_page_id: string | null
   meta_pixel_id?: string | null
+  capi_enabled?: boolean | null
 }
 
 interface MetaIntegrationCardProps {
@@ -24,6 +25,12 @@ export default function MetaIntegrationCard({ integration }: MetaIntegrationCard
   const [pixelSaving, setPixelSaving] = useState(false)
   const [pixelSavedAt, setPixelSavedAt] = useState<number | null>(null)
   const [pixelError, setPixelError] = useState<string | null>(null)
+
+  // ── CAPI on/off toggle ──────────────────────────────────────────────────
+  const [capiEnabled, setCapiEnabled] = useState<boolean>(
+    integration?.capi_enabled !== false, // default true (also when null/undefined)
+  )
+  const [capiSaving, setCapiSaving] = useState(false)
 
   async function handleDisconnect() {
     if (!confirm('Déconnecter Facebook Meta Ads + Instagram ? Les leads ne seront plus importés automatiquement.')) return
@@ -62,6 +69,25 @@ export default function MetaIntegrationCard({ integration }: MetaIntegrationCard
       setPixelError('Erreur réseau.')
     } finally {
       setPixelSaving(false)
+    }
+  }
+
+  async function toggleCapi(next: boolean) {
+    // Optimistic update for snappy UX, revert on error.
+    const prev = capiEnabled
+    setCapiEnabled(next)
+    setCapiSaving(true)
+    try {
+      const res = await fetch('/api/integrations/meta/pixel', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ capi_enabled: next }),
+      })
+      if (!res.ok) setCapiEnabled(prev)
+    } catch {
+      setCapiEnabled(prev)
+    } finally {
+      setCapiSaving(false)
     }
   }
 
@@ -167,8 +193,47 @@ export default function MetaIntegrationCard({ integration }: MetaIntegrationCard
       {isConnected && (
         <div style={{
           marginTop: 14, paddingTop: 14, borderTop: '1px solid #262626',
-          display: 'flex', flexDirection: 'column', gap: 8,
+          display: 'flex', flexDirection: 'column', gap: 16,
         }}>
+          {/* ── Toggle CAPI ── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 4 }}>
+                Remonter les conversions à Meta
+              </p>
+              <p style={{ fontSize: 11, color: '#888', maxWidth: 540, lineHeight: 1.5 }}>
+                Quand un lead est qualifié, prend RDV ou clôt un deal, ClosRM le dit à Meta automatiquement (en plus du pixel browser). Meta apprend à cibler les bons profils → coût par lead qualifié plus bas.
+                <br />
+                <span style={{ color: '#666' }}>OFF = aucun event statut envoyé. Pixel du navigateur inchangé.</span>
+              </p>
+            </div>
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', cursor: capiSaving ? 'not-allowed' : 'pointer',
+              flexShrink: 0,
+            }}>
+              <input
+                type="checkbox"
+                checked={capiEnabled}
+                onChange={(e) => toggleCapi(e.target.checked)}
+                disabled={capiSaving}
+                style={{ display: 'none' }}
+              />
+              <span style={{
+                width: 40, height: 22, borderRadius: 12,
+                background: capiEnabled ? '#1877F2' : '#262626',
+                border: `1px solid ${capiEnabled ? '#1877F2' : '#333'}`,
+                position: 'relative', transition: 'background 0.15s ease',
+                opacity: capiSaving ? 0.5 : 1,
+              }}>
+                <span style={{
+                  position: 'absolute', top: 2, left: capiEnabled ? 20 : 2,
+                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.15s ease',
+                }} />
+              </span>
+            </label>
+          </div>
+
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, color: '#A0A0A0', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
               Pixel Meta global · pages calendrier directes

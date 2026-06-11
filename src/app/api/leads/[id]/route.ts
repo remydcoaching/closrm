@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateLeadSchema } from '@/lib/validations/leads'
@@ -127,7 +127,7 @@ export async function PATCH(
       // or closing_planifie, they're saying "this one is a real prospect".
       // Send a Lead event so Meta's algo learns who to target.
       if (parsed.data.status === 'setting_planifie' || parsed.data.status === 'closing_planifie') {
-        void (async () => {
+        after(async () => {
           try {
             const pixel = await resolveMetaPixelForLead(supabase, workspaceId, {
               id: data.id,
@@ -155,7 +155,7 @@ export async function PATCH(
           } catch (err) {
             console.error('[capi-lead-qualified] non-blocking error', err)
           }
-        })()
+        })
       }
 
       // Push : closing assigné au closer désigné
@@ -189,7 +189,7 @@ export async function PATCH(
 
         // Server-side CAPI Purchase event. Carries the deal_amount so
         // Meta's algo learns from your actual revenue, not just lead count.
-        void (async () => {
+        after(async () => {
           try {
             const pixel = await resolveMetaPixelForLead(supabase, workspaceId, {
               id: data.id,
@@ -218,7 +218,7 @@ export async function PATCH(
           } catch (err) {
             console.error('[capi-purchase] non-blocking error', err)
           }
-        })()
+        })
 
         // AI self-learning: record winning conversation outcome (non-blocking)
         Promise.resolve(

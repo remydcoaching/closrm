@@ -327,20 +327,27 @@ export async function POST(
   }
 
   // Server-side CAPI: notify Meta that a qualified lead booked a call.
-  // Mirrors the browser-side fbq('track', 'Schedule') so iOS / blocked
-  // pixel users still count. Fire-and-forget — never block the response.
   if (leadId) {
-    void (async () => {
+    const capiLeadId = leadId
+    after(async () => {
       try {
+        console.log('[capi-schedule] starting, leadId =', capiLeadId)
         const { data: leadRow } = await supabase
           .from('leads')
           .select('id, first_name, last_name, email, phone, tags, visitor_id')
-          .eq('id', leadId as string)
+          .eq('id', capiLeadId)
           .single()
-        if (!leadRow) return
+        if (!leadRow) {
+          console.warn('[capi-schedule] lead not found, skipping')
+          return
+        }
         const pixel = await resolveMetaPixelForLead(supabase, calendar.workspace_id, leadRow)
-        if (!pixel) return
-        await sendCapiEventForLead(
+        if (!pixel) {
+          console.warn('[capi-schedule] no pixel resolved for lead, skipping')
+          return
+        }
+        console.log('[capi-schedule] firing event with pixel', pixel.pixelId)
+        const result = await sendCapiEventForLead(
           supabase,
           calendar.workspace_id,
           pixel.pixelId,
@@ -354,10 +361,11 @@ export async function POST(
           'Schedule',
           { calendar_id: calendar.id, booking_id: booking.id },
         )
+        console.log('[capi-schedule] result:', result)
       } catch (err) {
         console.error('[capi-schedule] non-blocking error', err)
       }
-    })()
+    })
   }
 
   // Cancel the old booking if this is a reschedule

@@ -362,19 +362,29 @@ export async function POST(
     return NextResponse.json({ error: 'Erreur lors de la création de la réservation.' }, { status: 500 })
   }
 
-  // Server-side CAPI Schedule (mirror of browser fbq).
+  // Server-side CAPI Schedule (mirror of browser fbq). Run AFTER the
+  // response is sent so it doesn't block the user's confirmation page.
   if (leadId) {
-    void (async () => {
+    const capiLeadId = leadId
+    after(async () => {
       try {
+        console.log('[capi-schedule] starting, leadId =', capiLeadId)
         const { data: leadRow } = await supabase
           .from('leads')
           .select('id, first_name, last_name, email, phone, tags, visitor_id')
-          .eq('id', leadId as string)
+          .eq('id', capiLeadId)
           .single()
-        if (!leadRow) return
+        if (!leadRow) {
+          console.warn('[capi-schedule] lead not found, skipping')
+          return
+        }
         const pixel = await resolveMetaPixelForLead(supabase, calendar.workspace_id, leadRow)
-        if (!pixel) return
-        await sendCapiEventForLead(
+        if (!pixel) {
+          console.warn('[capi-schedule] no pixel resolved for lead, skipping')
+          return
+        }
+        console.log('[capi-schedule] firing event with pixel', pixel.pixelId)
+        const result = await sendCapiEventForLead(
           supabase,
           calendar.workspace_id,
           pixel.pixelId,
@@ -388,10 +398,11 @@ export async function POST(
           'Schedule',
           { calendar_id: calendar.id, booking_id: booking.id },
         )
+        console.log('[capi-schedule] result:', result)
       } catch (err) {
         console.error('[capi-schedule] non-blocking error', err)
       }
-    })()
+    })
   }
 
   // Cancel the old booking if this is a reschedule
