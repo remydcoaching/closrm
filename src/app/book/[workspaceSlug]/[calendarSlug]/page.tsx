@@ -42,6 +42,7 @@ interface WorkspaceInfo {
   name: string | null
   owner_name: string | null
   avatar_url: string | null
+  meta_pixel_id?: string | null
 }
 
 interface LocationInfo {
@@ -141,6 +142,38 @@ export default function PublicBookingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMonth])
 
+  // ─── Inject Meta Pixel + fire PageView (workspace-level fallback) ─────
+  // This page is outside any funnel, so Rémy's funnel-pixel injection
+  // doesn't apply. The pixel ID comes from integrations.meta_pixel_id
+  // and is sent back in the GET response (workspace.meta_pixel_id).
+  useEffect(() => {
+    const pixelId = workspace?.meta_pixel_id
+    if (!pixelId) return
+    if (typeof window === 'undefined') return
+    // Avoid double-injection on remounts / HMR.
+    if ((window as unknown as { _closrmMetaPixelLoaded?: string })._closrmMetaPixelLoaded === pixelId) return
+    ;(window as unknown as { _closrmMetaPixelLoaded?: string })._closrmMetaPixelLoaded = pixelId
+
+    const safe = pixelId.replace(/[^\d]/g, '')
+    // pixelId is digits-only (validated server-side + stripped here), so
+    // there's no injection risk, but use textContent rather than innerHTML
+    // as the safer-by-default API for inline <script>.
+    const s = document.createElement('script')
+    s.async = true
+    s.textContent = `
+      !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)}(window,document,'script',
+      'https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', '${safe}');
+      fbq('track', 'PageView');
+    `
+    document.head.appendChild(s)
+  }, [workspace?.meta_pixel_id])
+
   async function fetchSlots(month: string) {
     setLoading(true)
     setError(null)
@@ -235,6 +268,10 @@ export default function PublicBookingPage() {
         setError(data.error ?? 'Erreur lors de la réservation.')
         return
       }
+      // Browser-side Meta Pixel: fire Schedule. The server-side CAPI
+      // Schedule is fired in the POST handler too — Meta dedups via
+      // event_id so we don't double-count.
+      ;(window as unknown as { fbq?: (...args: unknown[]) => void }).fbq?.('track', 'Schedule')
       // Redirect to confirmation page
       const dateParam = encodeURIComponent(dateStr)
       const timeParam = encodeURIComponent(selectedTime)

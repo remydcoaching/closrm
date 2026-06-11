@@ -123,6 +123,41 @@ export async function PATCH(
         new_status: parsed.data.status,
       }).catch(() => {})
 
+      // Server-side CAPI: when the coach marks a lead as setting_planifie
+      // or closing_planifie, they're saying "this one is a real prospect".
+      // Send a Lead event so Meta's algo learns who to target.
+      if (parsed.data.status === 'setting_planifie' || parsed.data.status === 'closing_planifie') {
+        void (async () => {
+          try {
+            const pixel = await resolveMetaPixelForLead(supabase, workspaceId, {
+              id: data.id,
+              tags: data.tags,
+              visitor_id: data.visitor_id ?? null,
+            })
+            if (!pixel) return
+            await sendCapiEventForLead(
+              supabase,
+              workspaceId,
+              pixel.pixelId,
+              {
+                id: data.id,
+                first_name: data.first_name,
+                last_name: data.last_name,
+                email: data.email,
+                phone: data.phone,
+              },
+              'Lead',
+              {
+                lead_event_source: 'crm_manual_qualification',
+                status: parsed.data.status,
+              },
+            )
+          } catch (err) {
+            console.error('[capi-lead-qualified] non-blocking error', err)
+          }
+        })()
+      }
+
       // Push : closing assigné au closer désigné
       if (parsed.data.status === 'closing_planifie' && data.assigned_to) {
         const fullName = `${data.first_name} ${data.last_name}`.trim() || 'Nouveau lead'

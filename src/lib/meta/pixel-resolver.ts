@@ -68,5 +68,19 @@ export async function resolveMetaPixelForLead(
     }
   }
 
+  // ── Route 3: workspace-level fallback (integrations.meta_pixel_id) ────
+  //  Used when the lead arrived via Meta Lead Form (no funnel) or the
+  //  coach gave a direct /book/<ws>/<cal> link instead of a funnel.
+  const { data: integration } = await supabase
+    .from('integrations')
+    .select('meta_pixel_id')
+    .eq('workspace_id', workspaceId)
+    .eq('type', 'meta')
+    .maybeSingle() as { data: { meta_pixel_id: string | null } | null }
+
+  if (integration?.meta_pixel_id) {
+    return { pixelId: integration.meta_pixel_id, funnelId: '' }
+  }
+
   return null
 }

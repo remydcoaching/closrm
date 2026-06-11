@@ -166,6 +166,15 @@ export async function GET(
     locationsList = locs ?? []
   }
 
+  // Workspace-level Meta Pixel (used for the browser pixel on this direct
+  // booking page since it lives outside any funnel).
+  const { data: metaIntegration } = await supabase
+    .from('integrations')
+    .select('meta_pixel_id, is_active')
+    .eq('workspace_id', calendar.workspace_id)
+    .eq('type', 'meta')
+    .maybeSingle()
+
   return NextResponse.json({
     calendar: {
       name: calendar.name,
@@ -183,6 +192,7 @@ export async function GET(
       name: workspaceRow?.name ?? null,
       owner_name: ownerRow?.full_name ?? null,
       avatar_url: ownerRow?.avatar_url ?? null,
+      meta_pixel_id: metaIntegration?.is_active ? (metaIntegration.meta_pixel_id ?? null) : null,
     },
     locations: locationsList,
     slots,
