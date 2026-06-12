@@ -9,6 +9,8 @@ import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { createBookingReminders } from '@/lib/bookings/reminders'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import { findExistingLeadId } from '@/lib/leads/identity'
+import { resolveMetaPixelForLead } from '@/lib/meta/pixel-resolver'
+import { sendCapiEventForLead } from '@/lib/meta/capi'
 import type { CalendarReminder } from '@/types'
 import { startOfMonth, endOfMonth, parseISO, addMinutes } from 'date-fns'
 
@@ -164,6 +166,15 @@ export async function GET(
     locationsList = locs ?? []
   }
 
+  // Workspace-level Meta Pixel (used for the browser pixel on this direct
+  // booking page since it lives outside any funnel).
+  const { data: metaIntegration } = await supabase
+    .from('integrations')
+    .select('meta_pixel_id, is_active')
+    .eq('workspace_id', calendar.workspace_id)
+    .eq('type', 'meta')
+    .maybeSingle()
+
   return NextResponse.json({
     calendar: {
       name: calendar.name,
@@ -181,6 +192,7 @@ export async function GET(
       name: workspaceRow?.name ?? null,
       owner_name: ownerRow?.full_name ?? null,
       avatar_url: ownerRow?.avatar_url ?? null,
+      meta_pixel_id: metaIntegration?.is_active ? (metaIntegration.meta_pixel_id ?? null) : null,
     },
     locations: locationsList,
     slots,
@@ -348,6 +360,49 @@ export async function POST(
 
   if (bookingError || !booking) {
     return NextResponse.json({ error: 'Erreur lors de la création de la réservation.' }, { status: 500 })
+  }
+
+  // Server-side CAPI Schedule (mirror of browser fbq). Run AFTER the
+  // response is sent so it doesn't block the user's confirmation page.
+  if (leadId) {
+    const capiLeadId = leadId
+    after(async () => {
+      try {
+        console.log('[capi-schedule] starting, leadId =', capiLeadId)
+        const { data: leadRow } = await supabase
+          .from('leads')
+          .select('id, first_name, last_name, email, phone, tags, visitor_id')
+          .eq('id', capiLeadId)
+          .single()
+        if (!leadRow) {
+          console.warn('[capi-schedule] lead not found, skipping')
+          return
+        }
+        const pixel = await resolveMetaPixelForLead(supabase, calendar.workspace_id, leadRow)
+        if (!pixel) {
+          console.warn('[capi-schedule] no pixel resolved for lead, skipping')
+          return
+        }
+        console.log('[capi-schedule] firing event with pixel', pixel.pixelId)
+        const result = await sendCapiEventForLead(
+          supabase,
+          calendar.workspace_id,
+          pixel.pixelId,
+          {
+            id: leadRow.id,
+            first_name: leadRow.first_name,
+            last_name: leadRow.last_name,
+            email: leadRow.email,
+            phone: leadRow.phone,
+          },
+          'Schedule',
+          { calendar_id: calendar.id, booking_id: booking.id },
+        )
+        console.log('[capi-schedule] result:', result)
+      } catch (err) {
+        console.error('[capi-schedule] non-blocking error', err)
+      }
+    })
   }
 
   // Cancel the old booking if this is a reschedule

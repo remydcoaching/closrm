@@ -215,6 +215,10 @@ export default function FunnelBuilderV2({
         <TrackingPanel
           metaPixelId={funnel.meta_pixel_id}
           onMetaPixelChange={onMetaPixelChange}
+          activePage={activePage ? { id: activePage.id, name: activePage.name, meta_event: activePage.meta_event } : null}
+          onActivePageMetaEventChange={(next) => {
+            onPagesChange(pages.map((p) => p.id === activePageId ? { ...p, meta_event: next } : p))
+          }}
         />
       </aside>
 

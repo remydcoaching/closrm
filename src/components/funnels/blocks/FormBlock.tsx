@@ -19,6 +19,7 @@ import { useState } from 'react'
 import type { FormBlockConfig, FunnelFormField } from '@/types'
 import { useFunnelRender } from '../FunnelRenderContext'
 import { resolveFunnelUrl } from '@/lib/funnels/resolve-url'
+import { resolveMetaEvent } from '@/lib/meta/funnel-events'
 
 interface Props {
   config: FormBlockConfig
@@ -63,7 +64,9 @@ export default function FormBlock({ config }: Props) {
         return
       }
 
-      window.fbq?.('track', 'Lead')
+      // Fire the Meta event the coach configured on this block ('lead' by default).
+      const event = resolveMetaEvent(config.metaEvent, 'lead')
+      if (event) window.fbq?.('track', event)
 
       // Redirect or show success message
       if (config.redirectUrl) {

@@ -2,13 +2,24 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import MetaEventPicker from '../../config/MetaEventPicker'
+import type { MetaEventConfig } from '@/lib/meta/funnel-events'
 
 interface Props {
   metaPixelId: string | null
   onMetaPixelChange: (pixelId: string | null) => void
+  /** Page actuellement éditée — son meta_event optionnel et son nom. */
+  activePage?: { id: string; name: string; meta_event?: MetaEventConfig | null } | null
+  /** Callback déclenché quand le coach change l'event Meta de la page active. */
+  onActivePageMetaEventChange?: (next: MetaEventConfig | null) => void
 }
 
-export default function TrackingPanel({ metaPixelId, onMetaPixelChange }: Props) {
+export default function TrackingPanel({
+  metaPixelId,
+  onMetaPixelChange,
+  activePage,
+  onActivePageMetaEventChange,
+}: Props) {
   const [open, setOpen] = useState(true)
   const [guideOpen, setGuideOpen] = useState(false)
 
@@ -59,6 +70,24 @@ export default function TrackingPanel({ metaPixelId, onMetaPixelChange }: Props)
             {guideOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             {guideOpen ? 'Masquer le guide' : 'Afficher le guide'}
           </button>
+
+          {/* ─── Page-level Meta event (in addition to PageView) ──────── */}
+          {activePage && onActivePageMetaEventChange && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #262626' }}>
+              <p style={{ fontSize: 11, color: '#888', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+                Page : {activePage.name}
+              </p>
+              <MetaEventPicker
+                value={activePage.meta_event}
+                onChange={(next) => onActivePageMetaEventChange(next.type === 'none' ? null : next)}
+                defaultChoice="none"
+                title="Quand un visiteur arrive sur cette page…"
+              />
+              <p style={{ fontSize: 11, color: '#666', margin: '8px 0 0', lineHeight: 1.5 }}>
+                En plus du <code style={{ color: '#A0A0A0' }}>PageView</code> auto. Utile pour le cas pré-filtre : la page qualifiée envoie <code style={{ color: '#A0A0A0' }}>Lead</code>, la page « pas qualifié » envoie rien.
+              </p>
+            </div>
+          )}
 
           {guideOpen && (
             <div style={guideStyle}>

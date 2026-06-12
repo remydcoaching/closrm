@@ -18,7 +18,7 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
 
   const { data: integrations } = await supabase
     .from('integrations')
-    .select('type, is_active, connected_at, meta_page_id, credentials_encrypted')
+    .select('type, is_active, connected_at, meta_page_id, meta_pixel_id, capi_enabled, credentials_encrypted')
     .eq('workspace_id', workspaceId)
 
   const metaIntegration = integrations?.find(i => i.type === 'meta')
