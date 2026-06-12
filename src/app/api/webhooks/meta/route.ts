@@ -3,6 +3,9 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { decrypt } from '@/lib/meta/encryption'
 import { getLeadData, parseLeadFields, type MetaCredentials } from '@/lib/meta/client'
 import { findExistingLeadId } from '@/lib/leads/identity'
+import { planRevive } from '@/lib/leads/revive'
+import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 
 // ─── GET : webhook verification ──────────────────────────────────────────────
 
@@ -113,12 +116,11 @@ export async function POST(request: NextRequest) {
         })
 
         if (existingLeadId) {
-          // Update only the fields we have new info on. Keep existing
-          // source/tags/notes untouched — les réponses Meta sont reflétées
-          // via `form_answers`, plus de duplication dans `notes`.
+          // Pull what we need for both the enrichment AND the revive
+          // check (status / tags / notes / form_answers / Meta IDs).
           const { data: existing } = await supabase
             .from('leads')
-            .select('form_answers, meta_campaign_id, meta_adset_id, meta_ad_id')
+            .select('status, tags, notes, first_name, last_name, form_answers, meta_campaign_id, meta_adset_id, meta_ad_id')
             .eq('id', existingLeadId)
             .single()
 
@@ -127,19 +129,51 @@ export async function POST(request: NextRequest) {
             ...fullAnswers,
           }
 
+          const revive = planRevive(
+            (existing?.status ?? 'nouveau'),
+            (existing?.tags as string[] | null) ?? [],
+            'meta_lead_form',
+          )
+
+          const updates: Record<string, unknown> = {
+            form_answers: mergedAnswers,
+            // Only fill Meta IDs if missing — don't overwrite first-touch attribution.
+            meta_campaign_id: existing?.meta_campaign_id ?? campaign_id ?? null,
+            meta_adset_id: existing?.meta_adset_id ?? adset_id ?? null,
+            meta_ad_id: existing?.meta_ad_id ?? ad_id ?? null,
+          }
+
+          if (revive.shouldRevive) {
+            updates.status = revive.newStatus
+            updates.tags = revive.newTags
+            updates.notes = (existing?.notes ?? '') + (revive.noteAppend ?? '')
+            updates.reached = false
+            updates.last_activity_at = new Date().toISOString()
+          }
+
           const { error } = await supabase
             .from('leads')
-            .update({
-              form_answers: mergedAnswers,
-              // Only fill Meta IDs if missing — don't overwrite first-touch attribution.
-              meta_campaign_id: existing?.meta_campaign_id ?? campaign_id ?? null,
-              meta_adset_id: existing?.meta_adset_id ?? adset_id ?? null,
-              meta_ad_id: existing?.meta_ad_id ?? ad_id ?? null,
-            })
+            .update(updates)
             .eq('id', existingLeadId)
 
           if (error) {
             console.error('Failed to enrich existing Meta lead:', error)
+          } else if (revive.shouldRevive) {
+            // Treat the revived lead as a fresh inbound so the coach
+            // gets the same notifications as for a brand new lead.
+            fireTriggersForEvent(integration.workspace_id, 'new_lead', {
+              lead_id: existingLeadId,
+              source: leadSource,
+            }).catch(() => {})
+
+            const fullName = `${existing?.first_name ?? ''} ${existing?.last_name ?? ''}`.trim() || 'Lead'
+            sendPushToWorkspace({
+              workspaceId: integration.workspace_id,
+              type: 'new_lead',
+              title: '🔁 Lead relancé',
+              body: `${fullName} vient de re-soumettre via Meta (anciennement perdu).`,
+              data: { entity_type: 'lead', entity_id: existingLeadId },
+            }).catch(() => {})
           }
         } else {
           // 4. Insert a fresh lead.
