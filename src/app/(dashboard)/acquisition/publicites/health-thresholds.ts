@@ -39,12 +39,11 @@ export const DEFAULT_THRESHOLDS: Record<string, KpiThreshold> = {
   // Lead acquisition
   cpl: { direction: 'lower_is_better', label: 'CPL Meta (coût par lead brut)', green: 7.5, orange: 15, red: 30, unit: '€' },
   cpl_qualified: { direction: 'lower_is_better', label: 'CPL qualifié', green: 30, orange: 60, red: 100, unit: '€' },
-  // Setting
-  cr1: { direction: 'higher_is_better', label: 'CR1 (% leads → appels)', green: 70, orange: 50, red: 30, unit: '%' },
+  // Funnel conversions (clic → lead → joint → RDV)
+  cr1: { direction: 'higher_is_better', label: 'CR1 (% clics → leads)', green: 8, orange: 4, red: 2, unit: '%' },
+  cr2: { direction: 'higher_is_better', label: 'CR2 (% leads → joints)', green: 60, orange: 40, red: 20, unit: '%' },
+  cr3: { direction: 'higher_is_better', label: 'CR3 (% joints → RDV)', green: 50, orange: 30, red: 15, unit: '%' },
   joignabilite: { direction: 'higher_is_better', label: '% Joignabilité', green: 60, orange: 40, red: 20, unit: '%' },
-  cr2: { direction: 'higher_is_better', label: 'CR2 (% joints → RDV)', green: 50, orange: 30, red: 15, unit: '%' },
-  // Booking
-  cr3: { direction: 'higher_is_better', label: 'CR3 (% RDV → présents)', green: 80, orange: 60, red: 40, unit: '%' },
   no_show_rate: { direction: 'lower_is_better', label: '% No show', green: 15, orange: 30, red: 50, unit: '%' },
   cpsb: { direction: 'lower_is_better', label: 'CPSb (coût par RDV booké)', green: 80, orange: 150, red: 300, unit: '€' },
   cpsp: { direction: 'lower_is_better', label: 'CPSp (coût par RDV présenté)', green: 120, orange: 200, red: 400, unit: '€' },

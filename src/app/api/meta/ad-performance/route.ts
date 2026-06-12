@@ -76,13 +76,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'needs_upgrade' }, { status: 403 })
     }
 
-    // 2. Fetch leads from DB in period with meta ID at this level
+    // 2. Fetch leads from DB in period. We include leads that don't have
+    //    the current level's Meta ID (e.g. an ad-level view where the lead
+    //    only carries meta_campaign_id) so we can surface them in a
+    //    synthetic "Non attribué" bucket instead of silently dropping them.
     const column = LEVEL_COLUMN[level]
     let leadQuery = supabase
       .from('leads')
-      .select(`id, status, deal_amount, cash_collected, meta_campaign_id, meta_adset_id, meta_ad_id`)
+      .select(`id, status, deal_amount, cash_collected, source, meta_campaign_id, meta_adset_id, meta_ad_id`)
       .eq('workspace_id', workspaceId)
-      .not(column, 'is', null)
+      .in('source', ['facebook_ads', 'instagram_ads'])
       .gte('created_at', `${dateFrom}T00:00:00Z`)
       .lte('created_at', `${dateTo}T23:59:59Z`)
     if (parentCampaignId) leadQuery = leadQuery.eq('meta_campaign_id', parentCampaignId)
@@ -93,8 +96,11 @@ export async function GET(request: NextRequest) {
       console.error('ad-performance leads error', leadsErr)
       return NextResponse.json({ error: 'db_error' }, { status: 500 })
     }
-    type LeadRow = { id: string; status: string; deal_amount: number | null; cash_collected: number | null; meta_campaign_id: string | null; meta_adset_id: string | null; meta_ad_id: string | null }
+    type LeadRow = { id: string; status: string; deal_amount: number | null; cash_collected: number | null; source: string | null; meta_campaign_id: string | null; meta_adset_id: string | null; meta_ad_id: string | null }
     const leads = (leadsData ?? []) as LeadRow[]
+
+    // Synthetic ID used for the "Non attribué" bucket at the current level.
+    const UNATTRIBUTED_ID = '__unattributed__'
 
     // 3. Fetch call counts + reached per lead (single query)
     const leadIds = leads.map(l => l.id)
@@ -141,8 +147,7 @@ export async function GET(request: NextRequest) {
       return a
     }
     for (const l of leads) {
-      const groupId = (l as Record<string, string | null>)[column]
-      if (!groupId) continue
+      const groupId = (l as Record<string, string | null>)[column] || UNATTRIBUTED_ID
       const a = ensure(groupId)
       a.lead_count += 1
       if (l.status !== 'dead') a.qualified_count += 1
@@ -201,10 +206,13 @@ export async function GET(request: NextRequest) {
       const cpl = agg.lead_count > 0 && spend > 0 ? spend / agg.lead_count : null
       const cpl_qualified = agg.qualified_count > 0 && spend > 0 ? spend / agg.qualified_count : null
       const roas = spend > 0 ? agg.revenue / spend : null
+      const isUnattributed = id === UNATTRIBUTED_ID
       rows.push({
         id,
-        name: ins?.name ?? obj?.name ?? id,
-        status: obj?.effective_status ?? 'UNKNOWN',
+        name: isUnattributed
+          ? `Non attribué (${agg.lead_count} lead${agg.lead_count > 1 ? 's' : ''} sans ${level === 'campaign' ? 'campagne' : level === 'adset' ? 'adset' : 'ad'} Meta)`
+          : ins?.name ?? obj?.name ?? id,
+        status: isUnattributed ? 'UNATTRIBUTED' : (obj?.effective_status ?? 'UNKNOWN'),
         spend: Math.round(spend * 100) / 100,
         impressions: ins?.impressions ?? 0,
         clicks: ins?.clicks ?? 0,

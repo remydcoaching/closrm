@@ -175,9 +175,9 @@ const ALL_COLUMNS: ColumnDef[] = [
   { key: 'cpar', label: 'CPAr', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût par appel répondu = Dépense / Appels joints.' },
   { key: 'joignabilite', label: '% Joignabilité', sortable: true, align: 'right', defaultVisible: false, infoText: 'Appels joints / Appels passés × 100. % de leads que tu arrives à joindre.' },
   // Conversions
-  { key: 'cr1', label: 'CR1', sortable: true, align: 'right', defaultVisible: false, infoText: 'Conversion 1 : Appels passés / Leads × 100. % de leads que tu appelles.' },
-  { key: 'cr2', label: 'CR2', sortable: true, align: 'right', defaultVisible: false, infoText: 'Conversion 2 : Séances bookées / Appels joints × 100. % d\'appels joints qui prennent RDV.' },
-  { key: 'cr3', label: 'CR3', sortable: true, align: 'right', defaultVisible: false, infoText: 'Conversion 3 : Séances présentes / Séances bookées × 100. % de RDV où le prospect vient.' },
+  { key: 'cr1', label: 'CR1', sortable: true, align: 'right', defaultVisible: false, infoText: 'Conversion 1 : Leads / Clics × 100. % de clics qui deviennent un lead (formulaire rempli).' },
+  { key: 'cr2', label: 'CR2', sortable: true, align: 'right', defaultVisible: false, infoText: 'Conversion 2 : Appels joints / Leads × 100. % de leads que tu arrives à joindre au téléphone.' },
+  { key: 'cr3', label: 'CR3', sortable: true, align: 'right', defaultVisible: false, infoText: 'Conversion 3 : Séances bookées / Appels joints × 100. % d\'appels joints qui prennent un RDV.' },
   // Bookings
   { key: 'bookings_total', label: 'Séances bookées', sortable: true, align: 'right', defaultVisible: false, infoText: 'Nombre de RDV pris (tous statuts confondus).' },
   { key: 'cpsb', label: 'CPSb', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût par séance bookée = Dépense / Séances bookées.' },
@@ -647,9 +647,14 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
       case 'calls_reached': return crm.calls_reached
       case 'cpar': return crm.calls_reached > 0 ? spend / crm.calls_reached : 0
       case 'joignabilite': return crm.calls_count > 0 ? (crm.calls_reached / crm.calls_count) * 100 : 0
-      case 'cr1': return crm.lead_count > 0 ? (crm.calls_count / crm.lead_count) * 100 : 0
-      case 'cr2': return crm.calls_reached > 0 ? (crm.bookings_total / crm.calls_reached) * 100 : 0
-      case 'cr3': return crm.bookings_show_up > 0 ? (crm.closed_count / crm.bookings_show_up) * 100 : 0
+      // Funnel conversions selon la définition de Pierre :
+      //   click → lead → joint → RDV → présent → close
+      // CR1 = leads / clics            (clic → lead)
+      // CR2 = appels joints / leads    (lead → joint)
+      // CR3 = séances bookées / joints (joint → RDV)
+      case 'cr1': return row.clicks > 0 ? (crm.lead_count / row.clicks) * 100 : 0
+      case 'cr2': return crm.lead_count > 0 ? (crm.calls_reached / crm.lead_count) * 100 : 0
+      case 'cr3': return crm.calls_reached > 0 ? (crm.bookings_total / crm.calls_reached) * 100 : 0
       case 'bookings_total': return crm.bookings_total
       case 'cpsb': return crm.bookings_total > 0 ? spend / crm.bookings_total : 0
       case 'bookings_show_up': return crm.bookings_show_up
@@ -745,9 +750,9 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
       case 'cpar': return crm && crm.calls_reached > 0 ? formatEuro(spend / crm.calls_reached) : '—'
       case 'joignabilite': return crm && crm.calls_count > 0 ? ((crm.calls_reached / crm.calls_count) * 100).toFixed(0) + '%' : '—'
       // — Conversions
-      case 'cr1': return crm && crm.lead_count > 0 ? ((crm.calls_count / crm.lead_count) * 100).toFixed(0) + '%' : '—'
-      case 'cr2': return crm && crm.calls_reached > 0 ? ((crm.bookings_total / crm.calls_reached) * 100).toFixed(0) + '%' : '—'
-      case 'cr3': return crm && crm.bookings_show_up > 0 ? ((crm.closed_count / crm.bookings_show_up) * 100).toFixed(0) + '%' : '—'
+      case 'cr1': return crm && row.clicks > 0 ? ((crm.lead_count / row.clicks) * 100).toFixed(1) + '%' : '—'
+      case 'cr2': return crm && crm.lead_count > 0 ? ((crm.calls_reached / crm.lead_count) * 100).toFixed(0) + '%' : '—'
+      case 'cr3': return crm && crm.calls_reached > 0 ? ((crm.bookings_total / crm.calls_reached) * 100).toFixed(0) + '%' : '—'
       // — Bookings
       case 'bookings_total': return crm?.bookings_total ?? 0
       case 'cpsb': return crm && crm.bookings_total > 0 ? formatEuro(spend / crm.bookings_total) : '—'
