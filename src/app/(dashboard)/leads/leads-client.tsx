@@ -18,6 +18,7 @@ const ClosingModal = dynamic(() => import('@/components/leads/ClosingModal'), { 
 const ConfirmModal = dynamic(() => import('@/components/shared/ConfirmModal'), { ssr: false })
 const CallScheduleModal = dynamic(() => import('@/components/leads/CallScheduleModal'), { ssr: false })
 const LeadActionModal = dynamic(() => import('@/components/leads/LeadActionModal'), { ssr: false })
+const LogCallModal = dynamic(() => import('@/components/leads/LogCallModal'), { ssr: false })
 const LeadsKanbanView = dynamic(() => import('./views/LeadsKanbanView'), { ssr: false })
 const KanbanColumnsConfigModal = dynamic(() => import('./views/KanbanColumnsConfigModal'), { ssr: false })
 
@@ -76,6 +77,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   const [treatTarget, setTreatTarget] = useState<Lead | null>(null)
   const [closingTarget, setClosingTarget] = useState<Lead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
+  const [logCallTarget, setLogCallTarget] = useState<Lead | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -182,15 +184,8 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
   }, [patchLead])
 
   const callLead = useCallback((lead: Lead) => {
-    setConfirm({
-      title: 'Enregistrer un appel',
-      message: `Confirmer une tentative d'appel pour ${lead.first_name} ${lead.last_name} ? Le compteur passera à ${lead.call_attempts + 1}.`,
-      onConfirm: () => {
-        setConfirm(null)
-        patchLead(lead.id, { call_attempts: lead.call_attempts + 1 })
-      },
-    })
-  }, [patchLead])
+    setLogCallTarget(lead)
+  }, [])
 
   const archiveLead = useCallback((lead: Lead) => {
     setConfirm({
@@ -240,6 +235,8 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
       patchLead(lead.id, { status: 'pas_qualifie' })
     } else if (action.type === 'dead') {
       patchLead(lead.id, { status: 'dead' })
+    } else if (action.type === 'log_call') {
+      setLogCallTarget(lead)
     }
   }
 
@@ -386,6 +383,22 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
           lead={treatTarget}
           onClose={() => setTreatTarget(null)}
           onAction={(action) => handleLeadAction(treatTarget, action)}
+        />
+      )}
+      {logCallTarget && (
+        <LogCallModal
+          lead={logCallTarget}
+          onClose={() => setLogCallTarget(null)}
+          onLogged={({ reached, isUpdate }) => {
+            const targetId = logCallTarget.id
+            setLeads(prev => prev.map(l => {
+              if (l.id !== targetId) return l
+              if (isUpdate) {
+                return { ...l, reached: reached ? true : l.reached }
+              }
+              return { ...l, call_attempts: (l.call_attempts ?? 0) + 1, reached: reached ? true : l.reached }
+            }))
+          }}
         />
       )}
       {showForm && <LeadForm onClose={() => setShowForm(false)} onCreated={onLeadCreated} />}

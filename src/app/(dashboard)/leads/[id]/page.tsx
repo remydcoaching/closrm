@@ -9,7 +9,7 @@ import SourceBadge from '@/components/leads/SourceBadge'
 import LeadDetail from '@/components/leads/LeadDetail'
 import LeadMessagesTab from '@/components/leads/LeadMessagesTab'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
-import ConfirmModal from '@/components/shared/ConfirmModal'
+import LogCallModal from '@/components/leads/LogCallModal'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
 import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
@@ -27,8 +27,7 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showCallModal, setShowCallModal] = useState(false)
-  const [callingLoading, setCallingLoading] = useState(false)
-  const [confirmCall, setConfirmCall] = useState(false)
+  const [showLogCall, setShowLogCall] = useState(false)
   const [activeTab, setActiveTab] = useState<'detail' | 'messages'>('detail')
 
   async function fetchLead() {
@@ -49,23 +48,6 @@ export default function LeadDetailPage() {
 
   function handleUpdate(updated: Partial<Lead>) {
     setLead(prev => prev ? { ...prev, ...updated } : prev)
-  }
-
-  async function doCall() {
-    if (!lead) return
-    setConfirmCall(false)
-    setCallingLoading(true)
-    try {
-      const res = await fetch(`/api/leads/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ call_attempts: lead.call_attempts + 1 }),
-      })
-      const json = await res.json()
-      if (res.ok) handleUpdate({ call_attempts: json.data.call_attempts })
-    } finally {
-      setCallingLoading(false)
-    }
   }
 
   if (loading) {
@@ -124,17 +106,14 @@ export default function LeadDetailPage() {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setConfirmCall(true)} disabled={callingLoading} style={{
+          <button onClick={() => setShowLogCall(true)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
             background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.25)',
-            color: '#3b82f6', cursor: callingLoading ? 'not-allowed' : 'pointer',
+            color: '#3b82f6', cursor: 'pointer',
           }}>
-            {callingLoading
-              ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
-              : <Phone size={13} />
-            }
-            Appeler
+            <Phone size={13} />
+            Logger un appel
           </button>
           <button onClick={() => setShowCallModal(true)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
@@ -242,14 +221,22 @@ export default function LeadDetailPage() {
         />
       )}
 
-      {/* Confirmation appel */}
-      {confirmCall && (
-        <ConfirmModal
-          title="Enregistrer un appel"
-          message={`Confirmer une tentative d'appel pour ${lead.first_name} ${lead.last_name} ? Le compteur passera à ${lead.call_attempts + 1}.`}
-          confirmLabel="Confirmer"
-          onConfirm={doCall}
-          onCancel={() => setConfirmCall(false)}
+      {/* Logger un appel */}
+      {showLogCall && (
+        <LogCallModal
+          lead={{ id: lead.id, first_name: lead.first_name, last_name: lead.last_name }}
+          onClose={() => setShowLogCall(false)}
+          onLogged={({ reached, isUpdate }) => {
+            if (isUpdate) {
+              fetchLead()
+              return
+            }
+            handleUpdate({
+              call_attempts: lead.call_attempts + 1,
+              ...(reached ? { reached: true } : {}),
+            })
+            fetchLead()
+          }}
         />
       )}
     </div>

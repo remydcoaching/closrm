@@ -247,3 +247,130 @@ export async function sendCapiEventForLead(
 
   return sendCapiEvent(supabase, workspaceId, pixelId, event)
 }
+
+/**
+ * Mapping `LeadStatus` → Meta CAPI event configuration.
+ * - `Lead`/`Purchase` are Meta standard events. The 4 negative ones are
+ *   custom events the coach can wire to Custom Conversions in Ads Manager
+ *   to optimize away from these profiles.
+ * - Returning null means: don't fire anything for this status.
+ */
+type StatusCapiMapping = {
+  eventName: string
+  customData: CapiCustomData
+}
+
+export function mapStatusToCapiEvent(
+  newStatus: string,
+  context: { dealAmount?: number | null } = {},
+): StatusCapiMapping | null {
+  switch (newStatus) {
+    case 'setting_planifie':
+    case 'closing_planifie':
+      return {
+        eventName: 'Lead',
+        customData: {
+          lead_event_source: 'crm_manual_qualification',
+          status: newStatus,
+        },
+      }
+    case 'clos':
+      return {
+        eventName: 'Purchase',
+        customData: {
+          value: context.dealAmount ?? undefined,
+          currency: 'EUR',
+          content_name: 'Coaching',
+        },
+      }
+    case 'pas_qualifie':
+      return {
+        eventName: 'LeadDisqualified',
+        customData: {
+          lead_event_source: 'crm_status_change',
+          status: 'pas_qualifie',
+        },
+      }
+    case 'dead':
+      return {
+        eventName: 'LeadLost',
+        customData: {
+          lead_event_source: 'crm_status_change',
+          status: 'dead',
+        },
+      }
+    case 'no_show_setting':
+      return {
+        eventName: 'LeadNoShowSetting',
+        customData: {
+          lead_event_source: 'crm_status_change',
+          status: 'no_show_setting',
+        },
+      }
+    case 'no_show_closing':
+      return {
+        eventName: 'LeadNoShowClosing',
+        customData: {
+          lead_event_source: 'crm_status_change',
+          status: 'no_show_closing',
+        },
+      }
+    default:
+      return null
+  }
+}
+
+/**
+ * Single entry point for "send a CAPI event because the lead status changed".
+ * - Resolves the pixel via funnel attribution.
+ * - Maps the status to an event name + custom data.
+ * - Fires the event (non-blocking; errors are logged not thrown).
+ *
+ * Callers wrap this in `after(...)` so it never blocks the API response.
+ */
+export async function fireStatusChangeCapi(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  workspaceId: string,
+  lead: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+    phone: string | null
+    tags: string[] | null
+    visitor_id: string | null
+    deal_amount?: number | null
+  },
+  newStatus: string,
+): Promise<void> {
+  try {
+    const mapping = mapStatusToCapiEvent(newStatus, { dealAmount: lead.deal_amount })
+    if (!mapping) return
+
+    const { resolveMetaPixelForLead } = await import('@/lib/meta/pixel-resolver')
+    const pixel = await resolveMetaPixelForLead(supabase, workspaceId, {
+      id: lead.id,
+      tags: lead.tags,
+      visitor_id: lead.visitor_id,
+    })
+    if (!pixel) return
+
+    await sendCapiEventForLead(
+      supabase,
+      workspaceId,
+      pixel.pixelId,
+      {
+        id: lead.id,
+        first_name: lead.first_name,
+        last_name: lead.last_name,
+        email: lead.email,
+        phone: lead.phone,
+      },
+      mapping.eventName,
+      mapping.customData,
+    )
+  } catch (err) {
+    console.error(`[capi-status-change] non-blocking error (status=${newStatus})`, err)
+  }
+}

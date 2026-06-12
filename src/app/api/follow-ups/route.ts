@@ -74,8 +74,51 @@ export async function GET(request: NextRequest) {
     const { data, count, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    // Agrégat par lead : nb tentatives, dernière reach, dernier contact joint.
+    // Un seul fetch batch sur calls — évite un round-trip par ligne.
+    const leadIds = Array.from(new Set((data ?? []).map((fu) => fu.lead_id))).filter(Boolean) as string[]
+    const aggregates: Record<string, {
+      call_attempts: number
+      last_call_reached: boolean | null
+      last_call_at: string | null
+      last_call_id: string | null
+      last_call_notes: string | null
+    }> = {}
+
+    if (leadIds.length > 0) {
+      const { data: callsForLeads } = await supabase
+        .from('calls')
+        .select('id, lead_id, reached, scheduled_at, notes')
+        .eq('workspace_id', workspaceId)
+        .in('lead_id', leadIds)
+        .order('scheduled_at', { ascending: false }) as {
+          data: Array<{ id: string; lead_id: string; reached: boolean | null; scheduled_at: string; notes: string | null }> | null
+        }
+
+      for (const c of callsForLeads ?? []) {
+        if (!aggregates[c.lead_id]) {
+          aggregates[c.lead_id] = {
+            call_attempts: 0,
+            last_call_reached: c.reached,
+            last_call_at: c.reached ? c.scheduled_at : null,
+            last_call_id: c.id,
+            last_call_notes: c.notes,
+          }
+        }
+        aggregates[c.lead_id].call_attempts += 1
+        if (c.reached && !aggregates[c.lead_id].last_call_at) {
+          aggregates[c.lead_id].last_call_at = c.scheduled_at
+        }
+      }
+    }
+
+    const enriched = (data ?? []).map((fu) => ({
+      ...fu,
+      _aggregates: aggregates[fu.lead_id] ?? { call_attempts: 0, last_call_reached: null, last_call_at: null, last_call_id: null, last_call_notes: null },
+    }))
+
     return NextResponse.json({
-      data: data ?? [],
+      data: enriched,
       meta: { total: count ?? 0, page: filters.page, per_page: filters.per_page, total_pages: Math.ceil((count ?? 0) / filters.per_page) },
     })
   } catch (err) {

@@ -4,18 +4,46 @@ import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Plus, Search, Zap, Trash2 } from 'lucide-react'
+import { Plus, Search, Zap, Trash2, PhoneCall } from 'lucide-react'
 import { FollowUp, Lead, FollowUpStatus, FollowUpChannel, WorkspaceMemberWithUser } from '@/types'
 import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import FollowUpStatusBadge from '@/components/follow-ups/FollowUpStatusBadge'
 import ChannelBadge from '@/components/follow-ups/ChannelBadge'
 import AddFollowUpModal from '@/components/follow-ups/AddFollowUpModal'
 import LeadActionModal, { type LeadAction } from '@/components/leads/LeadActionModal'
+import LogCallModal from '@/components/leads/LogCallModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 
-type FUWithLead = FollowUp & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status' | 'assigned_to'> }
+type FUWithLead = FollowUp & {
+  lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status' | 'assigned_to'>
+  _aggregates?: {
+    call_attempts: number
+    last_call_reached: boolean | null
+    last_call_at: string | null
+    last_call_id: string | null
+    last_call_notes: string | null
+  }
+}
+
+interface LogCallEditTarget {
+  lead: Pick<Lead, 'id' | 'first_name' | 'last_name'>
+  editing: { callId: string; reached: boolean; notes: string | null }
+}
+
+function formatRelativeFr(date: Date, now: Date): string {
+  const diffMs = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / (1000 * 60))
+  if (diffMin < 1) return "à l'instant"
+  if (diffMin < 60) return `il y a ${diffMin}min`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24) return `il y a ${diffH}h`
+  const diffD = Math.floor(diffH / 24)
+  if (diffD < 7) return `il y a ${diffD}j`
+  if (diffD < 30) return `il y a ${Math.floor(diffD / 7)}sem`
+  return `il y a ${Math.floor(diffD / 30)}mo`
+}
 type Tab = 'today' | 'overdue' | 'upcoming' | 'done' | 'all'
 
 const TAB_CONFIG: Record<Tab, { label: string; color: string }> = {
@@ -48,6 +76,8 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
   const [scheduleLeadId, setScheduleLeadId] = useState<FUWithLead | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FUWithLead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
+  const [logCallTarget, setLogCallTarget] = useState<FUWithLead | null>(null)
+  const [logCallEdit, setLogCallEdit] = useState<LogCallEditTarget | null>(null)
 
   // Team members for assignment column
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -179,6 +209,9 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
     } else if (action.type === 'dead') {
       await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'annule' }) })
       await fetch(`/api/leads/${fu.lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'dead' }) })
+    } else if (action.type === 'log_call') {
+      setLogCallTarget(fu)
+      return
     }
     refresh()
   }
@@ -247,6 +280,9 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
                   <th style={th}>Lead</th>
                   <th style={th}>Raison</th>
                   <th style={th}>Canal</th>
+                  <th style={th}>Tentatives</th>
+                  <th style={th}>Joint</th>
+                  <th style={th}>Dernier contact</th>
                   <th style={th}>Statut</th>
                   <th style={th}>Assigné</th>
                   <th style={{ ...th, textAlign: 'right' }}>Actions</th>
@@ -273,6 +309,47 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
                       </td>
                       <td style={{ ...td, color: 'var(--text-primary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fu.reason}</td>
                       <td style={td}><ChannelBadge channel={fu.channel} /></td>
+                      <td style={td}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {fu._aggregates?.call_attempts ?? 0}
+                        </span>
+                      </td>
+                      <td style={td} onClick={(e) => e.stopPropagation()}>
+                        {fu._aggregates?.last_call_id && fu._aggregates?.last_call_reached !== null ? (
+                          <button
+                            onClick={() => setLogCallEdit({
+                              lead: fu.lead,
+                              editing: {
+                                callId: fu._aggregates!.last_call_id!,
+                                reached: fu._aggregates!.last_call_reached!,
+                                notes: fu._aggregates!.last_call_notes,
+                              },
+                            })}
+                            title="Cliquer pour modifier ce résultat"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '2px 8px', borderRadius: 99,
+                              background: fu._aggregates.last_call_reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
+                              color: fu._aggregates.last_call_reached ? '#38A169' : '#ef4444',
+                              fontSize: 11, fontWeight: 600,
+                              border: 'none', cursor: 'pointer',
+                            }}
+                          >
+                            {fu._aggregates.last_call_reached ? 'Joint' : 'Non'}
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--text-label)', fontSize: 11 }}>—</span>
+                        )}
+                      </td>
+                      <td style={td}>
+                        {fu._aggregates?.last_call_at ? (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                            {formatRelativeFr(new Date(fu._aggregates.last_call_at), now)}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-label)', fontSize: 11 }}>—</span>
+                        )}
+                      </td>
                       <td style={td}><FollowUpStatusBadge status={fu.status} /></td>
                       <td style={td} onClick={(e) => e.stopPropagation()}>
                         <MemberAssignDropdown
@@ -284,6 +361,19 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
                       </td>
                       <td style={{ ...td, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => setLogCallTarget(fu)}
+                            title="Logger un appel"
+                            style={{
+                              width: 30, height: 30, borderRadius: 8,
+                              border: '1px solid rgba(59,130,246,0.25)',
+                              background: 'rgba(59,130,246,0.06)',
+                              cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            <PhoneCall size={14} color="#3b82f6" />
+                          </button>
                           {fu.status === 'en_attente' && (
                             <button onClick={() => setActionTarget(fu)} title="Traiter" style={{
                               height: 30, paddingLeft: 10, paddingRight: 10, borderRadius: 8,
@@ -323,6 +413,21 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
       {scheduleLeadId && <CallScheduleModal lead={scheduleLeadId.lead} onClose={() => { setScheduleLeadId(null); refresh() }} onScheduled={() => { setScheduleLeadId(null); refresh() }} />}
       {deleteTarget && <ConfirmModal title="Supprimer la relance" message={`Supprimer la relance pour ${deleteTarget.lead.first_name} ${deleteTarget.lead.last_name} ?`} confirmLabel="Supprimer" confirmDanger onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />}
       {sidePanelLeadId && <LeadSidePanel leadId={sidePanelLeadId} onClose={() => setSidePanelLeadId(null)} />}
+      {logCallTarget && (
+        <LogCallModal
+          lead={logCallTarget.lead}
+          onClose={() => { setLogCallTarget(null); refresh() }}
+          onLogged={() => { refresh() }}
+        />
+      )}
+      {logCallEdit && (
+        <LogCallModal
+          lead={logCallEdit.lead}
+          editing={logCallEdit.editing}
+          onClose={() => { setLogCallEdit(null); refresh() }}
+          onLogged={() => { refresh() }}
+        />
+      )}
     </div>
   )
 }

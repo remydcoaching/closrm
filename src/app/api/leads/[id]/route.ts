@@ -5,8 +5,7 @@ import { updateLeadSchema } from '@/lib/validations/leads'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { getNextCloser } from '@/lib/team/round-robin'
-import { resolveMetaPixelForLead } from '@/lib/meta/pixel-resolver'
-import { sendCapiEventForLead } from '@/lib/meta/capi'
+import { fireStatusChangeCapi } from '@/lib/meta/capi'
 
 export async function GET(
   _request: NextRequest,
@@ -117,46 +116,29 @@ export async function PATCH(
 
     // Fire workflow triggers (non-blocking)
     if (oldLead && parsed.data.status && parsed.data.status !== oldLead.status) {
+      const newStatus = parsed.data.status
       fireTriggersForEvent(workspaceId, 'lead_status_changed', {
         lead_id: id,
         old_status: oldLead.status,
-        new_status: parsed.data.status,
+        new_status: newStatus,
       }).catch(() => {})
 
-      // Server-side CAPI: when the coach marks a lead as setting_planifie
-      // or closing_planifie, they're saying "this one is a real prospect".
-      // Send a Lead event so Meta's algo learns who to target.
-      if (parsed.data.status === 'setting_planifie' || parsed.data.status === 'closing_planifie') {
-        after(async () => {
-          try {
-            const pixel = await resolveMetaPixelForLead(supabase, workspaceId, {
-              id: data.id,
-              tags: data.tags,
-              visitor_id: data.visitor_id ?? null,
-            })
-            if (!pixel) return
-            await sendCapiEventForLead(
-              supabase,
-              workspaceId,
-              pixel.pixelId,
-              {
-                id: data.id,
-                first_name: data.first_name,
-                last_name: data.last_name,
-                email: data.email,
-                phone: data.phone,
-              },
-              'Lead',
-              {
-                lead_event_source: 'crm_manual_qualification',
-                status: parsed.data.status,
-              },
-            )
-          } catch (err) {
-            console.error('[capi-lead-qualified] non-blocking error', err)
-          }
-        })
-      }
+      // Server-side CAPI: fire the right event for the new status.
+      // Covers: setting_planifie/closing_planifie → Lead, clos → Purchase,
+      // pas_qualifie → LeadDisqualified, dead → LeadLost,
+      // no_show_setting → LeadNoShowSetting, no_show_closing → LeadNoShowClosing.
+      after(async () => {
+        await fireStatusChangeCapi(supabase, workspaceId, {
+          id: data.id,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          phone: data.phone,
+          tags: data.tags,
+          visitor_id: data.visitor_id ?? null,
+          deal_amount: data.deal_amount,
+        }, newStatus)
+      })
 
       // Push : closing assigné au closer désigné
       if (parsed.data.status === 'closing_planifie' && data.assigned_to) {
@@ -185,39 +167,6 @@ export async function PATCH(
           title: '🎉 Deal closé',
           body: amount ? `${fullName} · ${amount}` : `${fullName}`,
           data: { entity_type: 'lead', entity_id: id },
-        })
-
-        // Server-side CAPI Purchase event. Carries the deal_amount so
-        // Meta's algo learns from your actual revenue, not just lead count.
-        after(async () => {
-          try {
-            const pixel = await resolveMetaPixelForLead(supabase, workspaceId, {
-              id: data.id,
-              tags: data.tags,
-              visitor_id: data.visitor_id ?? null,
-            })
-            if (!pixel) return
-            await sendCapiEventForLead(
-              supabase,
-              workspaceId,
-              pixel.pixelId,
-              {
-                id: data.id,
-                first_name: data.first_name,
-                last_name: data.last_name,
-                email: data.email,
-                phone: data.phone,
-              },
-              'Purchase',
-              {
-                value: data.deal_amount ?? undefined,
-                currency: 'EUR',
-                content_name: 'Coaching',
-              },
-            )
-          } catch (err) {
-            console.error('[capi-purchase] non-blocking error', err)
-          }
         })
 
         // AI self-learning: record winning conversation outcome (non-blocking)

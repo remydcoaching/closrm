@@ -40,6 +40,13 @@ export const callFiltersSchema = z.object({
   order: z.enum(['asc', 'desc']).default('asc'),
 })
 
+export const logCallAttemptSchema = z.object({
+  lead_id: z.string().uuid('ID lead invalide.'),
+  reached: z.boolean(),
+  notes: z.string().max(2000).optional().nullable(),
+})
+
 export type CreateCallData = z.infer<typeof createCallSchema>
 export type UpdateCallData = z.infer<typeof updateCallSchema>
 export type CallFilters = z.infer<typeof callFiltersSchema>
+export type LogCallAttemptData = z.infer<typeof logCallAttemptSchema>
