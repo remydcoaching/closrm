@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateCallSchema } from '@/lib/validations/calls'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
+import { fireStatusChangeCapi } from '@/lib/meta/capi'
 
 export async function GET(
   _request: NextRequest,
@@ -61,6 +62,33 @@ export async function PATCH(
       if (newLeadStatus) {
         await supabase.from('leads').update({ status: newLeadStatus })
           .eq('id', existingCall.lead_id).eq('workspace_id', workspaceId)
+
+        // Fire CAPI for the resulting lead status change. This path doesn't
+        // go through PATCH /api/leads/[id], so the leads route's CAPI handler
+        // would miss it. Covers no_show_setting, no_show_closing, clos, and
+        // 'nouveau' (no-op since mapStatusToCapiEvent returns null for it).
+        const { data: leadForCapi } = await supabase
+          .from('leads')
+          .select('id, first_name, last_name, email, phone, tags, visitor_id, deal_amount')
+          .eq('id', existingCall.lead_id)
+          .eq('workspace_id', workspaceId)
+          .single() as { data: {
+            id: string
+            first_name: string | null
+            last_name: string | null
+            email: string | null
+            phone: string | null
+            tags: string[] | null
+            visitor_id: string | null
+            deal_amount: number | null
+          } | null }
+
+        if (leadForCapi) {
+          const statusForCapi = newLeadStatus
+          after(async () => {
+            await fireStatusChangeCapi(supabase, workspaceId, leadForCapi, statusForCapi)
+          })
+        }
       }
     }
 
