@@ -1,13 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { X, PhoneCall, PhoneOff, Check } from 'lucide-react'
+import { X, PhoneCall, PhoneOff, Check, Pencil } from 'lucide-react'
 import { Lead } from '@/types'
+
+interface EditingCall {
+  callId: string
+  reached: boolean
+  notes: string | null
+}
 
 interface Props {
   lead: Pick<Lead, 'id' | 'first_name' | 'last_name'>
   onClose: () => void
-  onLogged: (result: { reached: boolean; notes: string | null }) => void
+  onLogged: (result: { reached: boolean; notes: string | null; isUpdate: boolean }) => void
+  /** Si fourni, le modal s'ouvre en mode édition d'un call existant (PATCH au lieu de POST). */
+  editing?: EditingCall
 }
 
 const inputS: React.CSSProperties = {
@@ -24,12 +32,16 @@ const inputS: React.CSSProperties = {
   minHeight: 72,
 }
 
-export default function LogCallModal({ lead, onClose, onLogged }: Props) {
-  const [step, setStep] = useState<'reached' | 'notes'>('reached')
-  const [reached, setReached] = useState<boolean | null>(null)
-  const [notes, setNotes] = useState('')
+export default function LogCallModal({ lead, onClose, onLogged, editing }: Props) {
+  // Si on est en mode édition, on commence directement à l'étape notes
+  // avec les valeurs pré-remplies.
+  const [step, setStep] = useState<'reached' | 'notes' | 'success'>(editing ? 'notes' : 'reached')
+  const [reached, setReached] = useState<boolean | null>(editing?.reached ?? null)
+  const [notes, setNotes] = useState(editing?.notes ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // L'ID du call déjà enregistré — set après le 1er POST ou hérité de editing.
+  const [callId, setCallId] = useState<string | null>(editing?.callId ?? null)
 
   function pickReached(value: boolean) {
     setReached(value)
@@ -41,26 +53,41 @@ export default function LogCallModal({ lead, onClose, onLogged }: Props) {
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/calls/log-attempt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lead_id: lead.id,
-          reached,
-          notes: notes.trim() || null,
-        }),
-      })
+      const isUpdate = callId !== null
+      const res = isUpdate
+        ? await fetch(`/api/calls/${callId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reached, notes: notes.trim() || null }),
+          })
+        : await fetch('/api/calls/log-attempt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lead_id: lead.id,
+              reached,
+              notes: notes.trim() || null,
+            }),
+          })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         throw new Error(j.error?.formErrors?.[0] ?? j.error ?? 'Erreur')
       }
-      onLogged({ reached, notes: notes.trim() || null })
-      onClose()
+      const json = await res.json().catch(() => ({}))
+      if (!isUpdate && json.data?.id) {
+        setCallId(json.data.id)
+      }
+      onLogged({ reached, notes: notes.trim() || null, isUpdate })
+      setStep('success')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur réseau')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function backToEdit() {
+    setStep('reached')
   }
 
   return (
@@ -84,7 +111,7 @@ export default function LogCallModal({ lead, onClose, onLogged }: Props) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
             <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Logger un appel
+              {editing || callId ? 'Modifier l\'appel' : 'Logger un appel'}
             </h3>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
               {lead.first_name} {lead.last_name}
@@ -111,7 +138,7 @@ export default function LogCallModal({ lead, onClose, onLogged }: Props) {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
                   padding: '20px 12px',
                   borderRadius: 12,
-                  border: '1px solid rgba(56,161,105,0.3)',
+                  border: reached === true ? '2px solid #38A169' : '1px solid rgba(56,161,105,0.3)',
                   background: 'rgba(56,161,105,0.08)',
                   color: '#38A169',
                   cursor: 'pointer',
@@ -127,7 +154,7 @@ export default function LogCallModal({ lead, onClose, onLogged }: Props) {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
                   padding: '20px 12px',
                   borderRadius: 12,
-                  border: '1px solid rgba(239,68,68,0.3)',
+                  border: reached === false ? '2px solid #ef4444' : '1px solid rgba(239,68,68,0.3)',
                   background: 'rgba(239,68,68,0.08)',
                   color: '#ef4444',
                   cursor: 'pointer',
@@ -209,6 +236,68 @@ export default function LogCallModal({ lead, onClose, onLogged }: Props) {
               >
                 <Check size={14} />
                 {submitting ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'success' && (
+          <div>
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+              padding: '24px 16px', borderRadius: 12,
+              background: reached ? 'rgba(56,161,105,0.08)' : 'rgba(239,68,68,0.08)',
+              marginBottom: 16,
+            }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 99,
+                background: reached ? 'rgba(56,161,105,0.18)' : 'rgba(239,68,68,0.18)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: reached ? '#38A169' : '#ef4444',
+              }}>
+                <Check size={22} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Appel enregistré
+                </div>
+                <div style={{ fontSize: 12, color: reached ? '#38A169' : '#ef4444', marginTop: 4, fontWeight: 500 }}>
+                  {reached ? 'Joint' : 'Pas de réponse'}
+                </div>
+                {notes.trim() && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, fontStyle: 'italic' }}>
+                    « {notes.trim()} »
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={backToEdit}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 500,
+                  border: '1px solid var(--border-primary)',
+                  background: 'transparent',
+                  color: 'var(--text-tertiary)',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <Pencil size={13} />
+                Modifier
+              </button>
+              <button
+                onClick={onClose}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                  background: 'var(--color-primary)',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                }}
+              >
+                Fermer
               </button>
             </div>
           </div>

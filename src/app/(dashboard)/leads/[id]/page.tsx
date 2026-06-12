@@ -226,7 +226,11 @@ export default function LeadDetailPage() {
         <LogCallModal
           lead={{ id: lead.id, first_name: lead.first_name, last_name: lead.last_name }}
           onClose={() => setShowLogCall(false)}
-          onLogged={({ reached }) => {
+          onLogged={({ reached, isUpdate }) => {
+            if (isUpdate) {
+              fetchLead()
+              return
+            }
             handleUpdate({
               call_attempts: lead.call_attempts + 1,
               ...(reached ? { reached: true } : {}),

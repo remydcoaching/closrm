@@ -389,13 +389,15 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         <LogCallModal
           lead={logCallTarget}
           onClose={() => setLogCallTarget(null)}
-          onLogged={({ reached }) => {
+          onLogged={({ reached, isUpdate }) => {
             const targetId = logCallTarget.id
-            setLeads(prev => prev.map(l =>
-              l.id === targetId
-                ? { ...l, call_attempts: (l.call_attempts ?? 0) + 1, reached: reached ? true : l.reached }
-                : l
-            ))
+            setLeads(prev => prev.map(l => {
+              if (l.id !== targetId) return l
+              if (isUpdate) {
+                return { ...l, reached: reached ? true : l.reached }
+              }
+              return { ...l, call_attempts: (l.call_attempts ?? 0) + 1, reached: reached ? true : l.reached }
+            }))
           }}
         />
       )}

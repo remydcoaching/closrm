@@ -22,7 +22,14 @@ type FUWithLead = FollowUp & {
     call_attempts: number
     last_call_reached: boolean | null
     last_call_at: string | null
+    last_call_id: string | null
+    last_call_notes: string | null
   }
+}
+
+interface LogCallEditTarget {
+  lead: Pick<Lead, 'id' | 'first_name' | 'last_name'>
+  editing: { callId: string; reached: boolean; notes: string | null }
 }
 
 function formatRelativeFr(date: Date, now: Date): string {
@@ -70,6 +77,7 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
   const [deleteTarget, setDeleteTarget] = useState<FUWithLead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
   const [logCallTarget, setLogCallTarget] = useState<FUWithLead | null>(null)
+  const [logCallEdit, setLogCallEdit] = useState<LogCallEditTarget | null>(null)
 
   // Team members for assignment column
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -306,24 +314,30 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
                           {fu._aggregates?.call_attempts ?? 0}
                         </span>
                       </td>
-                      <td style={td}>
-                        {fu._aggregates?.last_call_reached === true && (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            padding: '2px 8px', borderRadius: 99,
-                            background: 'rgba(56,161,105,0.12)', color: '#38A169',
-                            fontSize: 11, fontWeight: 600,
-                          }}>Joint</span>
-                        )}
-                        {fu._aggregates?.last_call_reached === false && (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            padding: '2px 8px', borderRadius: 99,
-                            background: 'rgba(239,68,68,0.12)', color: '#ef4444',
-                            fontSize: 11, fontWeight: 600,
-                          }}>Non</span>
-                        )}
-                        {(fu._aggregates?.last_call_reached === null || fu._aggregates?.last_call_reached === undefined) && (
+                      <td style={td} onClick={(e) => e.stopPropagation()}>
+                        {fu._aggregates?.last_call_id && fu._aggregates?.last_call_reached !== null ? (
+                          <button
+                            onClick={() => setLogCallEdit({
+                              lead: fu.lead,
+                              editing: {
+                                callId: fu._aggregates!.last_call_id!,
+                                reached: fu._aggregates!.last_call_reached!,
+                                notes: fu._aggregates!.last_call_notes,
+                              },
+                            })}
+                            title="Cliquer pour modifier ce résultat"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '2px 8px', borderRadius: 99,
+                              background: fu._aggregates.last_call_reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
+                              color: fu._aggregates.last_call_reached ? '#38A169' : '#ef4444',
+                              fontSize: 11, fontWeight: 600,
+                              border: 'none', cursor: 'pointer',
+                            }}
+                          >
+                            {fu._aggregates.last_call_reached ? 'Joint' : 'Non'}
+                          </button>
+                        ) : (
                           <span style={{ color: 'var(--text-label)', fontSize: 11 }}>—</span>
                         )}
                       </td>
@@ -402,8 +416,16 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
       {logCallTarget && (
         <LogCallModal
           lead={logCallTarget.lead}
-          onClose={() => setLogCallTarget(null)}
-          onLogged={() => { setLogCallTarget(null); refresh() }}
+          onClose={() => { setLogCallTarget(null); refresh() }}
+          onLogged={() => { refresh() }}
+        />
+      )}
+      {logCallEdit && (
+        <LogCallModal
+          lead={logCallEdit.lead}
+          editing={logCallEdit.editing}
+          onClose={() => { setLogCallEdit(null); refresh() }}
+          onLogged={() => { refresh() }}
         />
       )}
     </div>
