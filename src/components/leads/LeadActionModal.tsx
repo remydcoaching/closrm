@@ -16,6 +16,7 @@ export type LeadAction =
   | { type: 'won'; amount: number; installments: number; cash_collected: number; duration_months: number | null; closer_id: string | null; setter_id: string | null }
   | { type: 'pas_qualifie' }
   | { type: 'dead' }
+  | { type: 'log_call' }
 
 const INSTALLMENT_OPTIONS = [
   { value: 1, label: 'Unique' },
@@ -127,6 +128,17 @@ export default function LeadActionModal({ lead, onClose, onAction }: Props) {
 
         {mode === 'menu' && (
           <div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 8, paddingLeft: 4 }}>Logger une activité</div>
+              <ActionButton
+                icon={Phone}
+                label="Logger un appel"
+                desc="Joint / pas joint + notes — pour ne rien oublier"
+                color="#3b82f6"
+                onClick={() => { onAction({ type: 'log_call' }); onClose() }}
+              />
+            </div>
+
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 8, paddingLeft: 4 }}>Prospect intéressé</div>
               <ActionButton icon={Phone} label="Planifier un RDV" desc="Le prospect est chaud → planifier un appel" color="var(--color-primary)" onClick={() => { onAction({ type: 'schedule_call', leadId: lead.id }); onClose() }} />
