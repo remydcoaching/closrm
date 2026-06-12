@@ -235,6 +235,8 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
       patchLead(lead.id, { status: 'pas_qualifie' })
     } else if (action.type === 'dead') {
       patchLead(lead.id, { status: 'dead' })
+    } else if (action.type === 'log_call') {
+      setLogCallTarget(lead)
     }
   }
 
