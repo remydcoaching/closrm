@@ -9,6 +9,8 @@ import { buildCalendarUrls } from '@/lib/email/calendar-links'
 import { createBookingReminders } from '@/lib/bookings/reminders'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import { findExistingLeadId } from '@/lib/leads/identity'
+import { planRevive } from '@/lib/leads/revive'
+import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { resolveMetaPixelForLead } from '@/lib/meta/pixel-resolver'
 import { sendCapiEventForLead } from '@/lib/meta/capi'
 import type { CalendarReminder } from '@/types'
@@ -313,6 +315,44 @@ export async function POST(
 
   // Dedup by normalized email then phone (handles case, whitespace, FR phone formats).
   let leadId: string | null = await findExistingLeadId(supabase, calendar.workspace_id, { email, phone })
+
+  if (leadId) {
+    // Revive dead/no-show leads when they come back through the direct link.
+    const { data: existing } = await supabase
+      .from('leads')
+      .select('status, tags, notes, first_name, last_name')
+      .eq('id', leadId)
+      .single()
+    const revive = planRevive(
+      (existing?.status ?? 'nouveau'),
+      (existing?.tags as string[] | null) ?? [],
+      'booking_direct',
+    )
+    if (revive.shouldRevive) {
+      await supabase
+        .from('leads')
+        .update({
+          status: revive.newStatus,
+          tags: revive.newTags,
+          notes: (existing?.notes ?? '') + (revive.noteAppend ?? ''),
+          reached: false,
+          last_activity_at: new Date().toISOString(),
+        })
+        .eq('id', leadId)
+      fireTriggersForEvent(calendar.workspace_id, 'new_lead', {
+        lead_id: leadId,
+        source: 'formulaire',
+      }).catch(() => {})
+      const fullName = `${existing?.first_name ?? ''} ${existing?.last_name ?? ''}`.trim() || 'Lead'
+      sendPushToWorkspace({
+        workspaceId: calendar.workspace_id,
+        type: 'new_lead',
+        title: '🔁 Lead relancé',
+        body: `${fullName} vient de re-prendre un RDV via lien direct (anciennement perdu).`,
+        data: { entity_type: 'lead', entity_id: leadId },
+      }).catch(() => {})
+    }
+  }
 
   // Create lead if not found
   if (!leadId) {

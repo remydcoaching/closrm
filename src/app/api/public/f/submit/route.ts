@@ -20,6 +20,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { findExistingLeadId } from '@/lib/leads/identity'
+import { planRevive } from '@/lib/leads/revive'
 import { z } from 'zod'
 
 const submitSchema = z.object({
@@ -106,31 +107,56 @@ export async function POST(req: NextRequest) {
   let leadId: string | null = await findExistingLeadId(supabase, workspace_id, { email, phone })
 
   if (leadId) {
-    // Existing lead: backfill visitor_id and append custom-answer notes.
-    if (visitor_id || notesText) {
-      const { data: existing } = await supabase
-        .from('leads')
-        .select('visitor_id, notes, form_answers')
-        .eq('id', leadId)
-        .single()
+    // Existing lead: enrich + revive if status was dead / no-show.
+    const { data: existing } = await supabase
+      .from('leads')
+      .select('status, tags, notes, first_name, last_name, visitor_id, form_answers')
+      .eq('id', leadId)
+      .single()
 
-      const patch: Record<string, unknown> = {}
-      if (visitor_id && !existing?.visitor_id) {
-        patch.visitor_id = visitor_id
+    const revive = planRevive(
+      (existing?.status ?? 'nouveau'),
+      (existing?.tags as string[] | null) ?? [],
+      'funnel_form',
+    )
+
+    const patch: Record<string, unknown> = {}
+    if (visitor_id && !existing?.visitor_id) {
+      patch.visitor_id = visitor_id
+    }
+    if (notesText) {
+      patch.notes = existing?.notes ? `${existing.notes}\n\n${notesText}` : notesText
+    }
+    if (Object.keys(customFields).length > 0) {
+      const merged = {
+        ...((existing?.form_answers as Record<string, string> | null) ?? {}),
+        ...customFields,
       }
-      if (notesText) {
-        patch.notes = existing?.notes ? `${existing.notes}\n\n${notesText}` : notesText
-      }
-      if (Object.keys(customFields).length > 0) {
-        const merged = {
-          ...((existing?.form_answers as Record<string, string> | null) ?? {}),
-          ...customFields,
-        }
-        patch.form_answers = merged
-      }
-      if (Object.keys(patch).length > 0) {
-        await supabase.from('leads').update(patch).eq('id', leadId)
-      }
+      patch.form_answers = merged
+    }
+    if (revive.shouldRevive) {
+      patch.status = revive.newStatus
+      patch.tags = revive.newTags
+      patch.notes = `${(patch.notes as string | undefined) ?? existing?.notes ?? ''}${revive.noteAppend ?? ''}`
+      patch.reached = false
+      patch.last_activity_at = new Date().toISOString()
+    }
+    if (Object.keys(patch).length > 0) {
+      await supabase.from('leads').update(patch).eq('id', leadId)
+    }
+    if (revive.shouldRevive) {
+      fireTriggersForEvent(workspace_id, 'new_lead', {
+        lead_id: leadId,
+        source: 'funnel',
+      }).catch(() => {})
+      const fullName = `${existing?.first_name ?? ''} ${existing?.last_name ?? ''}`.trim() || 'Lead'
+      sendPushToWorkspace({
+        workspaceId: workspace_id,
+        type: 'new_lead',
+        title: '🔁 Lead relancé',
+        body: `${fullName} vient de re-soumettre un formulaire funnel (anciennement perdu).`,
+        data: { entity_type: 'lead', entity_id: leadId },
+      }).catch(() => {})
     }
   } else {
     const tags = [`funnel:${funnel_id}`]
