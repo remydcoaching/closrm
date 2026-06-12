@@ -526,7 +526,7 @@ export async function GET(request: NextRequest) {
 
     console.error('Meta insights error:', err)
     return NextResponse.json(
-      { error: 'meta_error', message: 'Erreur lors de la récupération des données Meta' },
+      { error: 'meta_error', message: `Erreur Meta: ${message}` },
       { status: 502 }
     )
   }
