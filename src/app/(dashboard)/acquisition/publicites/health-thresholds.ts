@@ -14,12 +14,15 @@ export interface KpiThreshold {
   /** Sens du KPI : "plus c'est haut mieux c'est" (CR1, ROAS, CTR…) ou
    *  l'inverse (CPL, CPM, % no show…). Pas modifiable par le coach. */
   direction: Direction
-  /** Frontière vert / orange. Pour higher_is_better : >= green → vert.
-   *  Pour lower_is_better : <= green → vert. */
+  /** Seuil vert. Pour higher_is_better : value >= green → vert.
+   *  Pour lower_is_better : value <= green → vert. */
   green: number
-  /** Frontière orange / rouge. Pour higher_is_better : >= orange (et < green) → orange.
-   *  Pour lower_is_better : <= orange (et > green) → orange. */
+  /** Seuil orange. Pour higher_is_better : value >= orange (et < green) → orange.
+   *  Pour lower_is_better : value <= orange (et > green) → orange. */
   orange: number
+  /** Seuil rouge. Pour higher_is_better : value < red → rouge.
+   *  Pour lower_is_better : value > red → rouge. */
+  red: number
   /** Libellé court affiché dans la modale de config. */
   label: string
   /** Unité affichée. */
@@ -30,26 +33,26 @@ export interface KpiThreshold {
 
 export const DEFAULT_THRESHOLDS: Record<string, KpiThreshold> = {
   // Top of funnel Meta
-  cpm: { direction: 'lower_is_better', label: 'CPM (€ / 1 000 imp.)', green: 5, orange: 10, unit: '€' },
-  cpc: { direction: 'lower_is_better', label: 'CPC (€ par clic)', green: 0.5, orange: 1, unit: '€' },
-  ctr: { direction: 'higher_is_better', label: 'CTR (% clics / impressions)', green: 2, orange: 1, unit: '%' },
+  cpm: { direction: 'lower_is_better', label: 'CPM (€ / 1 000 imp.)', green: 5, orange: 10, red: 20, unit: '€' },
+  cpc: { direction: 'lower_is_better', label: 'CPC (€ par clic)', green: 0.5, orange: 1, red: 2, unit: '€' },
+  ctr: { direction: 'higher_is_better', label: 'CTR (% clics / impressions)', green: 2, orange: 1, red: 0.5, unit: '%' },
   // Lead acquisition
-  cpl: { direction: 'lower_is_better', label: 'CPL Meta (coût par lead brut)', green: 7.5, orange: 15, unit: '€' },
-  cpl_qualified: { direction: 'lower_is_better', label: 'CPL qualifié (coût par lead qualifié)', green: 30, orange: 60, unit: '€' },
+  cpl: { direction: 'lower_is_better', label: 'CPL Meta (coût par lead brut)', green: 7.5, orange: 15, red: 30, unit: '€' },
+  cpl_qualified: { direction: 'lower_is_better', label: 'CPL qualifié', green: 30, orange: 60, red: 100, unit: '€' },
   // Setting
-  cr1: { direction: 'higher_is_better', label: 'CR1 (% leads → appels)', green: 70, orange: 50, unit: '%' },
-  joignabilite: { direction: 'higher_is_better', label: '% Joignabilité', green: 60, orange: 40, unit: '%' },
-  cr2: { direction: 'higher_is_better', label: 'CR2 (% joints → RDV)', green: 50, orange: 30, unit: '%' },
+  cr1: { direction: 'higher_is_better', label: 'CR1 (% leads → appels)', green: 70, orange: 50, red: 30, unit: '%' },
+  joignabilite: { direction: 'higher_is_better', label: '% Joignabilité', green: 60, orange: 40, red: 20, unit: '%' },
+  cr2: { direction: 'higher_is_better', label: 'CR2 (% joints → RDV)', green: 50, orange: 30, red: 15, unit: '%' },
   // Booking
-  cr3: { direction: 'higher_is_better', label: 'CR3 (% RDV → présents)', green: 80, orange: 60, unit: '%' },
-  no_show_rate: { direction: 'lower_is_better', label: '% No show', green: 15, orange: 30, unit: '%' },
-  cpsb: { direction: 'lower_is_better', label: 'CPSb (coût par RDV booké)', green: 80, orange: 150, unit: '€' },
-  cpsp: { direction: 'lower_is_better', label: 'CPSp (coût par RDV présenté)', green: 120, orange: 200, unit: '€' },
+  cr3: { direction: 'higher_is_better', label: 'CR3 (% RDV → présents)', green: 80, orange: 60, red: 40, unit: '%' },
+  no_show_rate: { direction: 'lower_is_better', label: '% No show', green: 15, orange: 30, red: 50, unit: '%' },
+  cpsb: { direction: 'lower_is_better', label: 'CPSb (coût par RDV booké)', green: 80, orange: 150, red: 300, unit: '€' },
+  cpsp: { direction: 'lower_is_better', label: 'CPSp (coût par RDV présenté)', green: 120, orange: 200, red: 400, unit: '€' },
   // Closing
-  closing_rate: { direction: 'higher_is_better', label: '% Closing (RDV → vente)', green: 25, orange: 15, unit: '%' },
-  cpclose: { direction: 'lower_is_better', label: 'CPClose (coût par vente)', green: 300, orange: 600, unit: '€' },
+  closing_rate: { direction: 'higher_is_better', label: '% Closing (RDV → vente)', green: 25, orange: 15, red: 5, unit: '%' },
+  cpclose: { direction: 'lower_is_better', label: 'CPClose (coût par vente)', green: 300, orange: 600, red: 1200, unit: '€' },
   // Financier
-  roas: { direction: 'higher_is_better', label: 'ROAS (CA / Dépense)', green: 3, orange: 1, unit: 'x' },
+  roas: { direction: 'higher_is_better', label: 'ROAS (CA / Dépense)', green: 3, orange: 1, red: 0.5, unit: 'x' },
 }
 
 /* ── Logique de coloration ───────────────────────────────────────── */
@@ -62,7 +65,7 @@ export const DEFAULT_THRESHOLDS: Record<string, KpiThreshold> = {
 export function evaluateHealthColor(
   kpiKey: string,
   value: number | null,
-  overrides?: Record<string, Partial<Pick<KpiThreshold, 'green' | 'orange'>>> | null,
+  overrides?: Record<string, Partial<Pick<KpiThreshold, 'green' | 'orange' | 'red'>>> | null,
 ): HealthColor | null {
   if (value === null || Number.isNaN(value)) return null
   const base = DEFAULT_THRESHOLDS[kpiKey]
@@ -72,21 +75,25 @@ export function evaluateHealthColor(
     ...base,
     ...(overrides?.[kpiKey] ?? {}),
   }
-  // Sanity: if the user inverted the cutoffs, fall back to defaults.
-  if (
-    (t.direction === 'higher_is_better' && t.green < t.orange) ||
-    (t.direction === 'lower_is_better' && t.green > t.orange)
-  ) {
-    Object.assign(t, base)
-  }
+  // Sanity: if the user inverted the cutoffs (e.g. red > green for an
+  // "higher is better" KPI), fall back to defaults so we never display
+  // garbage. Expected ordering:
+  //   higher_is_better:  green >= orange >= red
+  //   lower_is_better:   green <= orange <= red
+  const orderOK = t.direction === 'higher_is_better'
+    ? (t.green >= t.orange && t.orange >= t.red)
+    : (t.green <= t.orange && t.orange <= t.red)
+  if (!orderOK) Object.assign(t, base)
 
   if (t.direction === 'higher_is_better') {
     if (value >= t.green) return 'green'
     if (value >= t.orange) return 'orange'
+    if (value >= t.red) return 'orange' // between red and orange = warning
     return 'red'
   }
   if (value <= t.green) return 'green'
   if (value <= t.orange) return 'orange'
+  if (value <= t.red) return 'orange'
   return 'red'
 }
 
@@ -100,7 +107,7 @@ export function getHealthColor(
   _campaignType: CampaignType | string,
   kpi: string,
   value: number | null,
-  overrides?: Record<string, Partial<Pick<KpiThreshold, 'green' | 'orange'>>> | null,
+  overrides?: Record<string, Partial<Pick<KpiThreshold, 'green' | 'orange' | 'red'>>> | null,
 ): HealthColor | null {
   return evaluateHealthColor(kpi, value, overrides)
 }
