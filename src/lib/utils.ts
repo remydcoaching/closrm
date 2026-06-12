@@ -30,6 +30,7 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   closing_planifie: 'Closing planifié',
   no_show_closing: 'No-show Closing',
   clos: 'Closé ✅',
+  pas_qualifie: 'Pas qualifié',
   dead: 'Dead ❌',
 }
 
@@ -41,6 +42,7 @@ export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
   closing_planifie: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
   no_show_closing: 'bg-red-500/20 text-red-400 border-red-500/30',
   clos: 'bg-green-500/20 text-green-400 border-green-500/30',
+  pas_qualifie: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
   dead: 'bg-neutral-500/20 text-neutral-400 border-neutral-500/30',
 }
 

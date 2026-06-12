@@ -14,6 +14,7 @@ import type { LeadStatus } from '@/types'
 /** Statuses we consider "given up on" — any resubmission revives them. */
 const REVIVED_FROM: readonly LeadStatus[] = [
   'dead',
+  'pas_qualifie',
   'no_show_setting',
   'no_show_closing',
 ]

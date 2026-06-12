@@ -168,6 +168,9 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
           setter_id: action.setter_id,
         }),
       })
+    } else if (action.type === 'pas_qualifie') {
+      await fetch(`/api/calls/${call.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'cancelled' }) })
+      await fetch(`/api/leads/${call.lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'pas_qualifie' }) })
     } else if (action.type === 'dead') {
       await fetch(`/api/calls/${call.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'cancelled' }) })
       await fetch(`/api/leads/${call.lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'dead' }) })

@@ -8,5 +8,6 @@ export const DEFAULT_STATUS_CONFIG: StatusConfig = [
   { key: 'closing_planifie', label: 'Closing planifié', color: '#a855f7',              bg: 'rgba(168,85,247,0.12)',  visible: true },
   { key: 'no_show_closing',  label: 'No-show Closing',  color: '#f97316',              bg: 'rgba(249,115,22,0.12)',  visible: true },
   { key: 'clos',             label: 'Closé ✅',         color: 'var(--color-primary)', bg: 'rgba(0,200,83,0.12)',    visible: true },
+  { key: 'pas_qualifie',     label: 'Pas qualifié',     color: '#94a3b8',              bg: 'rgba(148,163,184,0.15)', visible: true },
   { key: 'dead',             label: 'Dead ❌',          color: '#ef4444',              bg: 'rgba(239,68,68,0.12)',   visible: true },
 ]

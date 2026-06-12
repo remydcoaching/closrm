@@ -236,6 +236,8 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
         }),
       })
       setRefreshKey(k => k + 1)
+    } else if (action.type === 'pas_qualifie') {
+      patchLead(lead.id, { status: 'pas_qualifie' })
     } else if (action.type === 'dead') {
       patchLead(lead.id, { status: 'dead' })
     }
