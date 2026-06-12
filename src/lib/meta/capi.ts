@@ -12,7 +12,7 @@ import { createHash } from 'crypto'
 import { decrypt } from '@/lib/meta/encryption'
 import type { MetaCredentials } from '@/lib/meta/client'
 
-const GRAPH_URL = 'https://graph.facebook.com/v18.0'
+const GRAPH_URL = 'https://graph.facebook.com/v21.0'
 
 export interface CapiUserData {
   email?: string | null
