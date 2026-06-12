@@ -1,4 +1,4 @@
-const GRAPH_URL = 'https://graph.facebook.com/v18.0'
+const GRAPH_URL = 'https://graph.facebook.com/v21.0'
 
 function appId(): string {
   const id = process.env.META_APP_ID
@@ -115,7 +115,7 @@ export function buildOAuthUrl(state: string): string {
     scope: 'leads_retrieval,pages_show_list,pages_manage_metadata,pages_read_engagement,business_management,ads_read,read_insights,instagram_basic,instagram_manage_messages,instagram_content_publish,instagram_manage_insights,instagram_manage_comments',
     response_type: 'code',
   })
-  return `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`
+  return `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`
 }
 
 export async function exchangeCodeForToken(code: string): Promise<string> {
