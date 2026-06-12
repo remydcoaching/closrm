@@ -4,13 +4,14 @@ import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Plus, Search, Zap, Trash2 } from 'lucide-react'
+import { Plus, Search, Zap, Trash2, PhoneCall } from 'lucide-react'
 import { FollowUp, Lead, FollowUpStatus, FollowUpChannel, WorkspaceMemberWithUser } from '@/types'
 import MemberAssignDropdown from '@/components/shared/MemberAssignDropdown'
 import FollowUpStatusBadge from '@/components/follow-ups/FollowUpStatusBadge'
 import ChannelBadge from '@/components/follow-ups/ChannelBadge'
 import AddFollowUpModal from '@/components/follow-ups/AddFollowUpModal'
 import LeadActionModal, { type LeadAction } from '@/components/leads/LeadActionModal'
+import LogCallModal from '@/components/leads/LogCallModal'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
@@ -48,6 +49,7 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
   const [scheduleLeadId, setScheduleLeadId] = useState<FUWithLead | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FUWithLead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
+  const [logCallTarget, setLogCallTarget] = useState<FUWithLead | null>(null)
 
   // Team members for assignment column
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -179,6 +181,9 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
     } else if (action.type === 'dead') {
       await fetch(`/api/follow-ups/${fu.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'annule' }) })
       await fetch(`/api/leads/${fu.lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'dead' }) })
+    } else if (action.type === 'log_call') {
+      setLogCallTarget(fu)
+      return
     }
     refresh()
   }
@@ -284,6 +289,19 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
                       </td>
                       <td style={{ ...td, textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => setLogCallTarget(fu)}
+                            title="Logger un appel"
+                            style={{
+                              width: 30, height: 30, borderRadius: 8,
+                              border: '1px solid rgba(59,130,246,0.25)',
+                              background: 'rgba(59,130,246,0.06)',
+                              cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            <PhoneCall size={14} color="#3b82f6" />
+                          </button>
                           {fu.status === 'en_attente' && (
                             <button onClick={() => setActionTarget(fu)} title="Traiter" style={{
                               height: 30, paddingLeft: 10, paddingRight: 10, borderRadius: 8,
@@ -323,6 +341,13 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
       {scheduleLeadId && <CallScheduleModal lead={scheduleLeadId.lead} onClose={() => { setScheduleLeadId(null); refresh() }} onScheduled={() => { setScheduleLeadId(null); refresh() }} />}
       {deleteTarget && <ConfirmModal title="Supprimer la relance" message={`Supprimer la relance pour ${deleteTarget.lead.first_name} ${deleteTarget.lead.last_name} ?`} confirmLabel="Supprimer" confirmDanger onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />}
       {sidePanelLeadId && <LeadSidePanel leadId={sidePanelLeadId} onClose={() => setSidePanelLeadId(null)} />}
+      {logCallTarget && (
+        <LogCallModal
+          lead={logCallTarget.lead}
+          onClose={() => setLogCallTarget(null)}
+          onLogged={() => { setLogCallTarget(null); refresh() }}
+        />
+      )}
     </div>
   )
 }
