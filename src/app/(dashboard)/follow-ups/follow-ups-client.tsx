@@ -16,7 +16,27 @@ import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 
-type FUWithLead = FollowUp & { lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status' | 'assigned_to'> }
+type FUWithLead = FollowUp & {
+  lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status' | 'assigned_to'>
+  _aggregates?: {
+    call_attempts: number
+    last_call_reached: boolean | null
+    last_call_at: string | null
+  }
+}
+
+function formatRelativeFr(date: Date, now: Date): string {
+  const diffMs = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / (1000 * 60))
+  if (diffMin < 1) return "à l'instant"
+  if (diffMin < 60) return `il y a ${diffMin}min`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24) return `il y a ${diffH}h`
+  const diffD = Math.floor(diffH / 24)
+  if (diffD < 7) return `il y a ${diffD}j`
+  if (diffD < 30) return `il y a ${Math.floor(diffD / 7)}sem`
+  return `il y a ${Math.floor(diffD / 30)}mo`
+}
 type Tab = 'today' | 'overdue' | 'upcoming' | 'done' | 'all'
 
 const TAB_CONFIG: Record<Tab, { label: string; color: string }> = {
@@ -252,6 +272,9 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
                   <th style={th}>Lead</th>
                   <th style={th}>Raison</th>
                   <th style={th}>Canal</th>
+                  <th style={th}>Tentatives</th>
+                  <th style={th}>Joint</th>
+                  <th style={th}>Dernier contact</th>
                   <th style={th}>Statut</th>
                   <th style={th}>Assigné</th>
                   <th style={{ ...th, textAlign: 'right' }}>Actions</th>
@@ -278,6 +301,41 @@ export default function FollowUpsClient({ initialFollowUps, initialMeta, initial
                       </td>
                       <td style={{ ...td, color: 'var(--text-primary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fu.reason}</td>
                       <td style={td}><ChannelBadge channel={fu.channel} /></td>
+                      <td style={td}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {fu._aggregates?.call_attempts ?? 0}
+                        </span>
+                      </td>
+                      <td style={td}>
+                        {fu._aggregates?.last_call_reached === true && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            padding: '2px 8px', borderRadius: 99,
+                            background: 'rgba(56,161,105,0.12)', color: '#38A169',
+                            fontSize: 11, fontWeight: 600,
+                          }}>Joint</span>
+                        )}
+                        {fu._aggregates?.last_call_reached === false && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            padding: '2px 8px', borderRadius: 99,
+                            background: 'rgba(239,68,68,0.12)', color: '#ef4444',
+                            fontSize: 11, fontWeight: 600,
+                          }}>Non</span>
+                        )}
+                        {(fu._aggregates?.last_call_reached === null || fu._aggregates?.last_call_reached === undefined) && (
+                          <span style={{ color: 'var(--text-label)', fontSize: 11 }}>—</span>
+                        )}
+                      </td>
+                      <td style={td}>
+                        {fu._aggregates?.last_call_at ? (
+                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                            {formatRelativeFr(new Date(fu._aggregates.last_call_at), now)}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-label)', fontSize: 11 }}>—</span>
+                        )}
+                      </td>
                       <td style={td}><FollowUpStatusBadge status={fu.status} /></td>
                       <td style={td} onClick={(e) => e.stopPropagation()}>
                         <MemberAssignDropdown
