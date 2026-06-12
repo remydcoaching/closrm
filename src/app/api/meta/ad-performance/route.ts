@@ -139,6 +139,33 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 3.5 Backfill parent IDs (campaign + adset) from Meta. Pierre's
+    //    diagnostic showed his leadgen webhook delivers only ad_id
+    //    reliably — meta_campaign_id and meta_adset_id end up null on
+    //    most leads. We resolve parents on the fly via listAdObjects so
+    //    the Campaigns and Adsets tabs aren't empty.
+    let adIdToParents: Map<string, { campaign_id?: string; adset_id?: string }> = new Map()
+    const leadsNeedingParents = leads.some(l => l.meta_ad_id && (!l.meta_campaign_id || !l.meta_adset_id))
+    if (leadsNeedingParents) {
+      const allAds = await listAdObjects(credentials.ad_account_id, credentials.user_access_token, 'ad').catch(() => [])
+      adIdToParents = new Map(allAds.map(a => [a.id, { campaign_id: a.campaign_id, adset_id: a.adset_id }]))
+    }
+
+    // Returns the lead's effective ID at the chosen level, falling back
+    // to the resolved parent map when the direct column is null.
+    function resolveLevelId(lead: LeadRow, lvl: typeof level): string | null {
+      if (lvl === 'campaign') {
+        if (lead.meta_campaign_id) return lead.meta_campaign_id
+        if (lead.meta_ad_id) return adIdToParents.get(lead.meta_ad_id)?.campaign_id ?? null
+      }
+      if (lvl === 'adset') {
+        if (lead.meta_adset_id) return lead.meta_adset_id
+        if (lead.meta_ad_id) return adIdToParents.get(lead.meta_ad_id)?.adset_id ?? null
+      }
+      if (lvl === 'ad') return lead.meta_ad_id ?? null
+      return null
+    }
+
     // 4. Aggregate by level id
     type Agg = { lead_count: number; qualified_count: number; closed_count: number; calls_count: number; calls_reached: number; bookings_total: number; bookings_show_up: number; revenue: number; cash_collected: number }
     const aggById = new Map<string, Agg>()
@@ -151,7 +178,7 @@ export async function GET(request: NextRequest) {
       return a
     }
     for (const l of leads) {
-      const groupId = (l as Record<string, string | null>)[column] || UNATTRIBUTED_ID
+      const groupId = resolveLevelId(l, level) || UNATTRIBUTED_ID
       const a = ensure(groupId)
       a.lead_count += 1
       if (l.status !== 'dead') a.qualified_count += 1
