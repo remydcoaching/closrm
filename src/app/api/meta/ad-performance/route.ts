@@ -76,16 +76,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'needs_upgrade' }, { status: 403 })
     }
 
-    // 2. Fetch leads from DB in period. We include leads that don't have
-    //    the current level's Meta ID (e.g. an ad-level view where the lead
-    //    only carries meta_campaign_id) so we can surface them in a
-    //    synthetic "Non attribué" bucket instead of silently dropping them.
+    // 2. Fetch leads from DB in period. We're permissive on inclusion :
+    //    every lead that either declares a Meta source OR carries any
+    //    meta_*_id is considered Meta-attributable. Older leads imported
+    //    via CSV or tagged as 'follow_ads'/'formulaire' can still have
+    //    valid Meta IDs and we don't want to lose them. Orphans (no level
+    //    ID) land in the "Non attribué" bucket.
     const column = LEVEL_COLUMN[level]
     let leadQuery = supabase
       .from('leads')
       .select(`id, status, deal_amount, cash_collected, source, meta_campaign_id, meta_adset_id, meta_ad_id`)
       .eq('workspace_id', workspaceId)
-      .in('source', ['facebook_ads', 'instagram_ads'])
+      // Match leads that look Meta-related: either declared Meta source,
+      // OR any campaign/adset/ad attribution.
+      .or('source.in.(facebook_ads,instagram_ads,follow_ads),meta_campaign_id.not.is.null,meta_adset_id.not.is.null,meta_ad_id.not.is.null')
       .gte('created_at', `${dateFrom}T00:00:00Z`)
       .lte('created_at', `${dateTo}T23:59:59Z`)
     if (parentCampaignId) leadQuery = leadQuery.eq('meta_campaign_id', parentCampaignId)
