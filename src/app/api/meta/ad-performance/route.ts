@@ -92,8 +92,10 @@ export async function GET(request: NextRequest) {
       .or('source.in.(facebook_ads,instagram_ads,follow_ads),meta_campaign_id.not.is.null,meta_adset_id.not.is.null,meta_ad_id.not.is.null')
       .gte('created_at', `${dateFrom}T00:00:00Z`)
       .lte('created_at', `${dateTo}T23:59:59Z`)
-    if (parentCampaignId) leadQuery = leadQuery.eq('meta_campaign_id', parentCampaignId)
-    if (parentAdsetId) leadQuery = leadQuery.eq('meta_adset_id', parentAdsetId)
+    // NOTE: parent filtering is applied AFTER parent resolution below.
+    // Filtering at the DB level on meta_campaign_id / meta_adset_id would
+    // drop every lead that only has meta_ad_id stored — which is most of
+    // them per Pierre's diagnostic (9/10 facebook_ads leads).
 
     const { data: leadsData, error: leadsErr } = await leadQuery
     if (leadsErr) {
@@ -177,7 +179,19 @@ export async function GET(request: NextRequest) {
       }
       return a
     }
+    // Resolve each lead's full hierarchy once, then apply the drill-down
+    // filters here (post-resolution) so leads that only carry meta_ad_id
+    // are still attributable to the parent campaign / adset.
+    function resolveCampaign(l: LeadRow): string | null {
+      return l.meta_campaign_id ?? (l.meta_ad_id ? adIdToParents.get(l.meta_ad_id)?.campaign_id ?? null : null)
+    }
+    function resolveAdset(l: LeadRow): string | null {
+      return l.meta_adset_id ?? (l.meta_ad_id ? adIdToParents.get(l.meta_ad_id)?.adset_id ?? null : null)
+    }
+
     for (const l of leads) {
+      if (parentCampaignId && resolveCampaign(l) !== parentCampaignId) continue
+      if (parentAdsetId && resolveAdset(l) !== parentAdsetId) continue
       const groupId = resolveLevelId(l, level) || UNATTRIBUTED_ID
       const a = ensure(groupId)
       a.lead_count += 1

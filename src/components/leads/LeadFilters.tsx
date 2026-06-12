@@ -12,6 +12,7 @@ const STATUSES: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'closing_planifie', label: 'Closing planifié', color: '#a855f7' },
   { value: 'no_show_closing', label: 'No-show Closing', color: '#f97316' },
   { value: 'clos', label: 'Closé ✅', color: 'var(--color-primary)' },
+  { value: 'pas_qualifie', label: 'Pas qualifié', color: '#94a3b8' },
   { value: 'dead', label: 'Dead ❌', color: '#ef4444' },
 ]
 

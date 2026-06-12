@@ -159,13 +159,17 @@ export const STATUS_SYNONYMS: Record<LeadStatus, string[]> = {
     'vendu', 'deal', 'bilan effectué', 'bilan effectue',
     'meeting done', 'rdv effectué', 'rdv effectue',
   ],
+  pas_qualifie: [
+    'pas qualifié', 'pas qualifie', 'non qualifié', 'non qualifie',
+    'not qualified', 'unqualified', 'disqualifié', 'disqualifie',
+    'hors cible', 'hors-cible', 'profil non retenu',
+  ],
   dead: [
     'dead', 'mort', 'refusé', 'refuse', 'rejeté', 'rejete',
     'perdu', 'lost', 'avorté', 'avorte',
     'avorte - plus de reponse', 'avorté - plus de réponse',
     'plus de reponse', 'plus de réponse',
-    'non qualifié', 'non qualifie', 'not qualified',
-    'disqualifié', 'disqualifie', 'abandonné', 'abandonne',
+    'abandonné', 'abandonne', 'ghost', 'ghosting',
   ],
 }
 

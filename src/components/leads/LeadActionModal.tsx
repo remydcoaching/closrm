@@ -14,6 +14,7 @@ export type LeadAction =
   | { type: 'schedule_call'; leadId: string }
   | { type: 'follow_up'; date: string; reason: string; channel: string }
   | { type: 'won'; amount: number; installments: number; cash_collected: number; duration_months: number | null; closer_id: string | null; setter_id: string | null }
+  | { type: 'pas_qualifie' }
   | { type: 'dead' }
 
 const INSTALLMENT_OPTIONS = [
@@ -143,8 +144,10 @@ export default function LeadActionModal({ lead, onClose, onAction }: Props) {
             </div>
 
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 8, paddingLeft: 4 }}>Abandonner</div>
-              <ActionButton icon={Skull} label="Dead — abandonner ce lead" desc="Plus de potentiel" color="#ef4444" onClick={() => { onAction({ type: 'dead' }); onClose() }} />
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-label)', letterSpacing: '0.15em', textTransform: 'uppercase' as const, marginBottom: 8, paddingLeft: 4 }}>Disqualifier</div>
+              <ActionButton icon={Skull} label="Pas qualifié — pas la cible" desc="Le profil ne correspond pas (budget, métier, situation)" color="#94a3b8" onClick={() => { onAction({ type: 'pas_qualifie' }); onClose() }} />
+              <div style={{ height: 6 }} />
+              <ActionButton icon={Skull} label="Dead — abandonner ce lead" desc="Plus aucun potentiel (ghost, désintéressé, hors zone)" color="#ef4444" onClick={() => { onAction({ type: 'dead' }); onClose() }} />
             </div>
           </div>
         )}
