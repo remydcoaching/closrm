@@ -11,6 +11,7 @@ import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import LeadSidePanel from '@/components/shared/LeadSidePanel'
 import LeadActionModal, { type LeadAction } from '@/components/leads/LeadActionModal'
+import LogCallModal from '@/components/leads/LogCallModal'
 
 type CallWithLead = Call & {
   lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'>
@@ -46,6 +47,7 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
   const [deleteTarget, setDeleteTarget] = useState<CallWithLead | null>(null)
   const [treatTarget, setTreatTarget] = useState<CallWithLead | null>(null)
   const [sidePanelLeadId, setSidePanelLeadId] = useState<string | null>(null)
+  const [logCallTarget, setLogCallTarget] = useState<CallWithLead | null>(null)
 
   // Team members for assignment column
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -174,6 +176,9 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
     } else if (action.type === 'dead') {
       await fetch(`/api/calls/${call.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'cancelled' }) })
       await fetch(`/api/leads/${call.lead.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'dead' }) })
+    } else if (action.type === 'log_call') {
+      setLogCallTarget(call)
+      return
     }
     refresh()
   }
@@ -240,6 +245,13 @@ export default function ClosingClient({ initialCalls, initialMeta, initialCounts
 
       {outcomeTarget && <CallOutcomeModal call={outcomeTarget} onClose={() => setOutcomeTarget(null)} onUpdated={refresh} />}
       {treatTarget && <LeadActionModal lead={treatTarget.lead} onClose={() => setTreatTarget(null)} onAction={(action) => handleTreatAction(treatTarget, action)} />}
+      {logCallTarget && (
+        <LogCallModal
+          lead={logCallTarget.lead}
+          onClose={() => setLogCallTarget(null)}
+          onLogged={() => { setLogCallTarget(null); refresh() }}
+        />
+      )}
       {rescheduleTarget && <CallScheduleModal lead={rescheduleTarget.lead} onClose={() => setRescheduleTarget(null)} onScheduled={() => { fetch(`/api/calls/${rescheduleTarget.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ outcome: 'cancelled' }) }); setRescheduleTarget(null); refresh() }} />}
       {deleteTarget && <ConfirmModal title="Supprimer l'appel" message={`Supprimer l'appel avec ${deleteTarget.lead.first_name} ${deleteTarget.lead.last_name} ?`} confirmLabel="Supprimer" confirmDanger onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />}
       {sidePanelLeadId && <LeadSidePanel leadId={sidePanelLeadId} onClose={() => setSidePanelLeadId(null)} />}
