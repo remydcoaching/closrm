@@ -11,6 +11,8 @@ import AdsTableTab from './ads-table-tab'
 import AdsCampaignTypeToggle, { type CampaignTypeFilter } from './ads-campaign-type-toggle'
 import AdsPerformanceTab from './ads-performance-tab'
 import AdCreativePanel from '@/components/ads/AdCreativePanel'
+import ThresholdsConfigModal from './ThresholdsConfigModal'
+import { SlidersHorizontal } from 'lucide-react'
 
 type TabKey = 'overview' | 'performance' | 'campaigns' | 'adsets' | 'ads'
 
@@ -46,6 +48,7 @@ function getDefaultDates(): { dateFrom: string; dateTo: string } {
 }
 
 export default function PublicitesClient({ connectionState }: PublicitesClientProps) {
+  const [thresholdsOpen, setThresholdsOpen] = useState(false)
   const [tab, setTab] = useState<TabKey>('overview')
   const [drillDown, setDrillDown] = useState<DrillDown>({})
   const [campaignType, setCampaignType] = useState<CampaignTypeFilter>('all')
@@ -245,8 +248,27 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
             dateTo={dateTo}
             onChange={handlePeriodChange}
           />
+          <button
+            onClick={() => setThresholdsOpen(true)}
+            title="Configurer les seuils vert / orange / rouge des KPIs"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'transparent', border: '1px solid var(--border-primary)',
+              color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600,
+              padding: '7px 12px', borderRadius: 8, cursor: 'pointer',
+            }}
+          >
+            <SlidersHorizontal size={12} />
+            Seuils
+          </button>
         </div>
       </div>
+
+      <ThresholdsConfigModal
+        open={thresholdsOpen}
+        onClose={() => setThresholdsOpen(false)}
+      />
+
 
       {/* Tabs */}
       <div style={{

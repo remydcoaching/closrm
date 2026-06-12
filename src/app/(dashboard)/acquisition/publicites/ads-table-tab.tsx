@@ -22,6 +22,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Layers, Save, X, Plus } from 'lucide-react'
 import type { MetaInsightsResponse } from '@/app/api/meta/insights/route'
 import type { AdPerformanceRow } from '@/app/api/meta/ad-performance/route'
+import { evaluateHealthColor, HEALTH_COLORS } from './health-thresholds'
 
 interface AdsTableTabProps {
   data: MetaInsightsResponse | null
@@ -58,6 +59,8 @@ interface ColumnDef {
   sortable: boolean
   align: 'left' | 'right'
   defaultVisible: boolean
+  /** Court explicatif affiché au survol (formule, source, etc.). */
+  infoText?: string
 }
 
 /* ── Saved views ─────────────────────────────────────────────── */
@@ -104,6 +107,28 @@ const DEFAULT_VIEWS: SavedView[] = [
       'roas', 'cpl_qualified', 'cpclose',
     ],
   },
+  {
+    id: 'complete',
+    name: 'Complète',
+    columns: [
+      // En-tête + dépense
+      'name', 'status', 'spend',
+      // Top of funnel Meta
+      'impressions', 'cpm', 'clicks', 'cpc', 'ctr',
+      // Lead capture
+      'leads', 'cpl', 'crm_leads',
+      // Setting
+      'cr1', 'calls_total', 'calls_reached', 'cpar', 'joignabilite', 'cr2',
+      // Booking
+      'bookings_total', 'cpsb', 'cr3', 'bookings_show_up', 'cpsp', 'no_show_rate',
+      // Closing
+      'closed', 'cpclose', 'closing_rate',
+      // Vidéo / accroche
+      'hook_rate', 'hold_rate_50',
+      // Financier
+      'qualified', 'cpl_qualified', 'cash_collected', 'revenue', 'marge_brute', 'roas',
+    ],
+  },
 ]
 
 function loadCustomViews(tabKey: string): SavedView[] {
@@ -125,50 +150,50 @@ function saveCustomViews(tabKey: string, views: SavedView[]) {
 
 const ALL_COLUMNS: ColumnDef[] = [
   // Meta Ads
-  { key: 'name', label: 'Nom', sortable: true, align: 'left', defaultVisible: true },
-  { key: 'status', label: 'Statut', sortable: false, align: 'left', defaultVisible: true },
-  { key: 'spend', label: 'Dépensé', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'impressions', label: 'Impressions', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'cpm', label: 'CPM', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'clicks', label: 'Clics', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'cpc', label: 'CPC', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'ctr', label: 'CTR', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'leads', label: 'Leads Meta', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'cpl', label: 'CPL Meta', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'frequency', label: 'Répétition', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'name', label: 'Nom', sortable: true, align: 'left', defaultVisible: true, infoText: 'Nom de la campagne / adset / publicité.' },
+  { key: 'status', label: 'Statut', sortable: false, align: 'left', defaultVisible: true, infoText: 'État Meta : Actif, Pausé, Refusé…' },
+  { key: 'spend', label: 'Dépensé', sortable: true, align: 'right', defaultVisible: true, infoText: 'Budget consommé sur la période (€).' },
+  { key: 'impressions', label: 'Impressions', sortable: true, align: 'right', defaultVisible: false, infoText: 'Nombre de fois où ta pub a été affichée.' },
+  { key: 'cpm', label: 'CPM', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût pour 1 000 impressions = (Dépense / Impressions) × 1 000.' },
+  { key: 'clicks', label: 'Clics', sortable: true, align: 'right', defaultVisible: false, infoText: 'Clics sur la pub (tous types : lien, profil, etc.).' },
+  { key: 'cpc', label: 'CPC', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût par clic = Dépense / Clics.' },
+  { key: 'ctr', label: 'CTR', sortable: true, align: 'right', defaultVisible: false, infoText: 'Taux de clic = (Clics / Impressions) × 100. Plus c\'est haut, plus ta créa accroche.' },
+  { key: 'leads', label: 'Leads Meta', sortable: true, align: 'right', defaultVisible: false, infoText: 'Leads remontés par Meta (formulaires soumis). Peut différer des Leads CRM si des dédoublons sont faits dans ClosRM.' },
+  { key: 'cpl', label: 'CPL Meta', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût par lead côté Meta = Dépense / Leads Meta.' },
+  { key: 'frequency', label: 'Répétition', sortable: true, align: 'right', defaultVisible: false, infoText: 'Nombre de fois moyen où un utilisateur a vu ta pub. Au-delà de 3-4, l\'audience sature.' },
   // Video
-  { key: 'hook_rate', label: 'Hook rate', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'hold_rate_25', label: 'Hold 25%', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'hold_rate_50', label: 'Hold 50%', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'hold_rate_75', label: 'Hold 75%', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'hook_rate', label: 'Hook rate', sortable: true, align: 'right', defaultVisible: false, infoText: 'Lectures vidéo / Impressions. % de gens qui s\'arrêtent au moins 3 sec. Mesure si ton hook accroche.' },
+  { key: 'hold_rate_25', label: 'Hold 25%', sortable: true, align: 'right', defaultVisible: false, infoText: '% de spectateurs qui regardent au moins 25 % de la vidéo.' },
+  { key: 'hold_rate_50', label: 'Hold 50%', sortable: true, align: 'right', defaultVisible: false, infoText: '% de spectateurs qui regardent au moins 50 % de la vidéo.' },
+  { key: 'hold_rate_75', label: 'Hold 75%', sortable: true, align: 'right', defaultVisible: false, infoText: '% de spectateurs qui regardent au moins 75 % de la vidéo.' },
   // CRM — Leads
-  { key: 'crm_leads', label: 'Leads CRM', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'qualified', label: 'Qualifiés', sortable: true, align: 'right', defaultVisible: true },
+  { key: 'crm_leads', label: 'Leads CRM', sortable: true, align: 'right', defaultVisible: true, infoText: 'Leads réellement présents dans ton CRM ClosRM (déduplication incluse).' },
+  { key: 'qualified', label: 'Qualifiés', sortable: true, align: 'right', defaultVisible: true, infoText: 'Leads dont le statut est passé à Setting planifié, Closing planifié ou Closé.' },
   // Appels
-  { key: 'calls_total', label: 'Appels passés', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'calls_reached', label: 'Appels joints', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'cpar', label: 'CPAr', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'joignabilite', label: '% Joignabilité', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'calls_total', label: 'Appels passés', sortable: true, align: 'right', defaultVisible: false, infoText: 'Nombre total de tentatives d\'appels (call_attempts).' },
+  { key: 'calls_reached', label: 'Appels joints', sortable: true, align: 'right', defaultVisible: false, infoText: 'Appels où tu as eu le prospect au bout du fil (reached = true).' },
+  { key: 'cpar', label: 'CPAr', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût par appel répondu = Dépense / Appels joints.' },
+  { key: 'joignabilite', label: '% Joignabilité', sortable: true, align: 'right', defaultVisible: false, infoText: 'Appels joints / Appels passés × 100. % de leads que tu arrives à joindre.' },
   // Conversions
-  { key: 'cr1', label: 'CR1', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'cr2', label: 'CR2', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'cr3', label: 'CR3', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'cr1', label: 'CR1', sortable: true, align: 'right', defaultVisible: false, infoText: 'Conversion 1 : Appels passés / Leads × 100. % de leads que tu appelles.' },
+  { key: 'cr2', label: 'CR2', sortable: true, align: 'right', defaultVisible: false, infoText: 'Conversion 2 : Séances bookées / Appels joints × 100. % d\'appels joints qui prennent RDV.' },
+  { key: 'cr3', label: 'CR3', sortable: true, align: 'right', defaultVisible: false, infoText: 'Conversion 3 : Séances présentes / Séances bookées × 100. % de RDV où le prospect vient.' },
   // Bookings
-  { key: 'bookings_total', label: 'Séances bookées', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'cpsb', label: 'CPSb', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'bookings_show_up', label: 'Séances présentes', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'cpsp', label: 'CPSp', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'no_show_rate', label: '% No show', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'bookings_total', label: 'Séances bookées', sortable: true, align: 'right', defaultVisible: false, infoText: 'Nombre de RDV pris (tous statuts confondus).' },
+  { key: 'cpsb', label: 'CPSb', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût par séance bookée = Dépense / Séances bookées.' },
+  { key: 'bookings_show_up', label: 'Séances présentes', sortable: true, align: 'right', defaultVisible: false, infoText: 'RDV où le prospect est venu (présent, complété).' },
+  { key: 'cpsp', label: 'CPSp', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût par séance présente = Dépense / Séances présentes.' },
+  { key: 'no_show_rate', label: '% No show', sortable: true, align: 'right', defaultVisible: false, infoText: '% de RDV où personne ne s\'est présenté = (Séances bookées − Séances présentes) / Séances bookées × 100.' },
   // Closing
-  { key: 'closed', label: 'Closings', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'cpclose', label: 'CPClose', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'closing_rate', label: '% Closing', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'closed', label: 'Closings', sortable: true, align: 'right', defaultVisible: true, infoText: 'Leads dont le statut est passé à Closé (vente conclue).' },
+  { key: 'cpclose', label: 'CPClose', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût par vente = Dépense / Closings.' },
+  { key: 'closing_rate', label: '% Closing', sortable: true, align: 'right', defaultVisible: false, infoText: 'Taux de closing = Closings / Séances présentes × 100. % de RDV qui débouchent sur une vente.' },
   // Financier
-  { key: 'revenue', label: 'CA contracté', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'cash_collected', label: 'Cash collecté', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'cpl_qualified', label: 'CPL qualifié', sortable: true, align: 'right', defaultVisible: false },
-  { key: 'roas', label: 'ROAS', sortable: true, align: 'right', defaultVisible: true },
-  { key: 'marge_brute', label: 'Marge brute', sortable: true, align: 'right', defaultVisible: false },
+  { key: 'revenue', label: 'CA contracté', sortable: true, align: 'right', defaultVisible: true, infoText: 'Chiffre d\'affaires total contracté (somme des deal_amount des leads closés).' },
+  { key: 'cash_collected', label: 'Cash collecté', sortable: true, align: 'right', defaultVisible: false, infoText: 'Argent réellement encaissé (somme des cash_collected des leads closés). Différent du CA si paiements en plusieurs fois.' },
+  { key: 'cpl_qualified', label: 'CPL qualifié', sortable: true, align: 'right', defaultVisible: false, infoText: 'Coût par lead qualifié = Dépense / Qualifiés. C\'est LA métrique que ton coach pub te dit de regarder.' },
+  { key: 'roas', label: 'ROAS', sortable: true, align: 'right', defaultVisible: true, infoText: 'Return on Ad Spend = CA contracté / Dépense. ROAS > 3 = c\'est rentable.' },
+  { key: 'marge_brute', label: 'Marge brute', sortable: true, align: 'right', defaultVisible: false, infoText: 'CA contracté − Dépense. Combien tu gardes après avoir payé tes pubs (avant les autres charges).' },
 ]
 
 const COLUMN_MAP = new Map(ALL_COLUMNS.map(c => [c.key, c]))
@@ -319,14 +344,40 @@ function SortableHeaderCell({
       style={style}
       {...attributes}
       {...listeners}
-      onClick={e => {
-        // Only trigger sort on click, not on drag
+      onClick={() => {
         if (col.sortable && col.key !== 'status') {
           onSort()
         }
       }}
+      // Native browser tooltip on hover. Cheap, accessible, no JS needed.
+      title={col.infoText ? `${col.label} — ${col.infoText}` : col.label}
     >
-      {col.label}{col.sortable && col.key !== 'status' ? sortArrow : ''}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+        {col.label}
+        {col.infoText && (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 13,
+              height: 13,
+              borderRadius: '50%',
+              border: '1px solid var(--text-tertiary)',
+              color: 'var(--text-tertiary)',
+              fontSize: 9,
+              fontWeight: 700,
+              fontStyle: 'italic',
+              cursor: 'help',
+              flexShrink: 0,
+            }}
+            onPointerDown={e => e.stopPropagation()}
+          >
+            i
+          </span>
+        )}
+        {col.sortable && col.key !== 'status' ? sortArrow : ''}
+      </span>
     </th>
   )
 }
@@ -336,6 +387,17 @@ function SortableHeaderCell({
 export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick }: AdsTableTabProps) {
   const [sort, setSort] = useState<SortState>(null)
   const [search, setSearch] = useState('')
+
+  // ── Health thresholds (workspace-level overrides on top of defaults) ──
+  const [thresholdOverrides, setThresholdOverrides] = useState<Record<string, { green?: number; orange?: number }>>({})
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/ads-thresholds')
+      .then(res => res.ok ? res.json() : { data: {} })
+      .then(json => { if (!cancelled) setThresholdOverrides((json?.data ?? {}) as Record<string, { green?: number; orange?: number }>) })
+      .catch(() => { /* fall back to defaults */ })
+    return () => { cancelled = true }
+  }, [])
 
   // Ordered columns (replaces visibleCols Set — maintains order)
   const [orderedCols, setOrderedCols] = useState<ColumnKey[]>(() => {
@@ -992,7 +1054,10 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
           background: 'var(--bg-elevated)',
           border: '1px solid var(--border-primary)',
           borderRadius: 10,
-          overflow: 'hidden',
+          // Horizontal scroll when the table is wider than its container
+          // (the Complète view with 30+ columns needs it).
+          overflowX: 'auto',
+          overflowY: 'hidden',
         }}>
           <DndContext
             sensors={headerSensors}
@@ -1000,7 +1065,15 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
             onDragStart={handleHeaderDragStart}
             onDragEnd={handleHeaderDragEnd}
           >
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{
+              // `max-content` lets the table grow as wide as it needs to
+              // accommodate every column without crushing them. Combined
+              // with overflowX:auto above, the user can slide right to see
+              // the rest.
+              width: 'max-content',
+              minWidth: '100%',
+              borderCollapse: 'collapse',
+            }}>
               <thead>
                 <tr>
                   <SortableContext items={orderedCols} strategy={horizontalListSortingStrategy}>
@@ -1027,11 +1100,29 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
                     onMouseEnter={e => (e.currentTarget.style.background = onRowClick ? 'rgba(24,119,242,0.04)' : 'rgba(255,255,255,0.02)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
-                    {columns.map(col => (
-                      <td key={col.key} style={{ ...tdStyle, textAlign: col.align }}>
-                        {renderCell(row, col)}
-                      </td>
-                    ))}
+                    {columns.map(col => {
+                      // Only paint the cell when the column maps to a KPI
+                      // we know how to score AND we have a numeric value.
+                      const rawValue = col.key !== 'status'
+                        ? computeValue(row, col.key as SortKey)
+                        : null
+                      const color = typeof rawValue === 'number' && rawValue !== 0
+                        ? evaluateHealthColor(col.key, rawValue, thresholdOverrides)
+                        : null
+                      const tinted = color ? {
+                        background: `${HEALTH_COLORS[color]}14`,
+                        color: HEALTH_COLORS[color],
+                        fontWeight: 600 as const,
+                      } : null
+                      return (
+                        <td
+                          key={col.key}
+                          style={{ ...tdStyle, textAlign: col.align, ...(tinted ?? {}) }}
+                        >
+                          {renderCell(row, col)}
+                        </td>
+                      )
+                    })}
                   </tr>
                 ))}
               </tbody>
