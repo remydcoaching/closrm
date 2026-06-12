@@ -15,7 +15,7 @@ import {
   type KpiThreshold,
 } from './health-thresholds'
 
-type Overrides = Record<string, { green?: number; orange?: number }>
+type Overrides = Record<string, { green?: number; orange?: number; red?: number }>
 
 interface Props {
   open: boolean
@@ -52,16 +52,17 @@ export default function ThresholdsConfigModal({ open, onClose, onSaved }: Props)
 
   if (!open) return null
 
-  const effective = (key: string): { green: number; orange: number } => {
+  const effective = (key: string): { green: number; orange: number; red: number } => {
     const base = DEFAULT_THRESHOLDS[key]
     const o = overrides[key]
     return {
       green: o?.green ?? base.green,
       orange: o?.orange ?? base.orange,
+      red: o?.red ?? base.red,
     }
   }
 
-  const setValue = (key: string, side: 'green' | 'orange', value: string) => {
+  const setValue = (key: string, side: 'green' | 'orange' | 'red', value: string) => {
     const num = Number(value)
     setOverrides(prev => {
       const next = { ...prev, [key]: { ...prev[key] } }
@@ -189,7 +190,7 @@ export default function ThresholdsConfigModal({ open, onClose, onSaved }: Props)
                         </button>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                       <ThresholdInput
                         color={HEALTH_COLORS.green}
                         labelTop={t.direction === 'higher_is_better' ? 'Vert si ≥' : 'Vert si ≤'}
@@ -204,13 +205,13 @@ export default function ThresholdsConfigModal({ open, onClose, onSaved }: Props)
                         unit={t.unit}
                         onChange={v => setValue(key, 'orange', v)}
                       />
-                      <div style={{
-                        flex: 1, fontSize: 11, color: '#555', textAlign: 'right',
-                      }}>
-                        {t.direction === 'higher_is_better'
-                          ? `Rouge si < ${eff.orange}${t.unit}`
-                          : `Rouge si > ${eff.orange}${t.unit}`}
-                      </div>
+                      <ThresholdInput
+                        color={HEALTH_COLORS.red}
+                        labelTop={t.direction === 'higher_is_better' ? 'Rouge si <' : 'Rouge si >'}
+                        value={eff.red}
+                        unit={t.unit}
+                        onChange={v => setValue(key, 'red', v)}
+                      />
                     </div>
                   </div>
                 )

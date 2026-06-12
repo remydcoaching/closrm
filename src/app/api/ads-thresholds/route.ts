@@ -13,17 +13,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 
-type Overrides = Record<string, { green?: number; orange?: number }>
+type Overrides = Record<string, { green?: number; orange?: number; red?: number }>
 
 function sanitize(raw: unknown): Overrides {
   if (!raw || typeof raw !== 'object') return {}
   const out: Overrides = {}
   for (const [k, v] of Object.entries(raw)) {
     if (!v || typeof v !== 'object') continue
-    const entry: { green?: number; orange?: number } = {}
+    const entry: { green?: number; orange?: number; red?: number } = {}
     const rec = v as Record<string, unknown>
     if (typeof rec.green === 'number' && Number.isFinite(rec.green)) entry.green = rec.green
     if (typeof rec.orange === 'number' && Number.isFinite(rec.orange)) entry.orange = rec.orange
+    if (typeof rec.red === 'number' && Number.isFinite(rec.red)) entry.red = rec.red
     if (Object.keys(entry).length > 0) out[k] = entry
   }
   return out

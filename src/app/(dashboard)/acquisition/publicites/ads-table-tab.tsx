@@ -324,6 +324,32 @@ function SortableHeaderCell({
   onSort: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: col.key })
+  const [showInfo, setShowInfo] = useState(false)
+  const infoIconRef = useRef<HTMLSpanElement | null>(null)
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null)
+
+  // Close on outside click. Uses a single window listener while open.
+  useEffect(() => {
+    if (!showInfo) return
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as Node | null
+      if (target && infoIconRef.current && infoIconRef.current.contains(target)) return
+      setShowInfo(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [showInfo])
+
+  // Recompute position whenever opened. Use position:fixed so the
+  // popover escapes the table wrapper's overflow-x:auto.
+  useEffect(() => {
+    if (!showInfo || !infoIconRef.current) {
+      setPopoverPos(null)
+      return
+    }
+    const r = infoIconRef.current.getBoundingClientRect()
+    setPopoverPos({ top: r.bottom + 6, left: Math.max(8, r.left - 8) })
+  }, [showInfo])
 
   const style: React.CSSProperties = {
     ...thStyle,
@@ -349,35 +375,69 @@ function SortableHeaderCell({
           onSort()
         }
       }}
-      // Native browser tooltip on hover. Cheap, accessible, no JS needed.
-      title={col.infoText ? `${col.label} — ${col.infoText}` : col.label}
     >
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
         {col.label}
         {col.infoText && (
           <span
+            ref={infoIconRef}
+            // Both pointer down AND click are stopped so the dnd-kit
+            // drag listeners + the sort onClick don't eat our click.
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowInfo(s => !s)
+            }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 13,
-              height: 13,
+              width: 14,
+              height: 14,
               borderRadius: '50%',
               border: '1px solid var(--text-tertiary)',
-              color: 'var(--text-tertiary)',
+              color: showInfo ? '#1877F2' : 'var(--text-tertiary)',
+              background: showInfo ? 'rgba(24,119,242,0.12)' : 'transparent',
               fontSize: 9,
               fontWeight: 700,
               fontStyle: 'italic',
-              cursor: 'help',
+              cursor: 'pointer',
               flexShrink: 0,
+              userSelect: 'none',
             }}
-            onPointerDown={e => e.stopPropagation()}
           >
             i
           </span>
         )}
         {col.sortable && col.key !== 'status' ? sortArrow : ''}
       </span>
+      {showInfo && col.infoText && popoverPos && (
+        <div
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            top: popoverPos.top,
+            left: popoverPos.left,
+            background: '#1a1a1a',
+            border: '1px solid #333',
+            borderRadius: 8,
+            padding: '10px 12px',
+            fontSize: 12,
+            color: '#e5e5e5',
+            lineHeight: 1.5,
+            maxWidth: 320,
+            zIndex: 1000,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            whiteSpace: 'normal',
+            textAlign: 'left',
+            fontWeight: 400,
+          }}
+        >
+          <div style={{ fontWeight: 700, color: '#fff', marginBottom: 4 }}>{col.label}</div>
+          {col.infoText}
+        </div>
+      )}
     </th>
   )
 }
