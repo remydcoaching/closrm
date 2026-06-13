@@ -181,13 +181,14 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
             </span>
           </div>
 
-          {/* Rangée 3 : Statut (modifiable) + Tags (modifiable) */}
+          {/* Rangée 3 : Statut (modifiable) + Tags (modifiable) — alignés strict */}
           <div style={{ position: 'relative' }}>
-            <p style={{ ...sectionTitle, marginBottom: 6 }}>Statut</p>
+            <p style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Statut</p>
             <button onClick={() => setStatusOpen(o => !o)} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
               width: '100%',
-              padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+              height: 38, boxSizing: 'border-box',
+              padding: '0 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
               background: 'var(--bg-subtle)', border: '1px solid var(--border-primary)',
               color: 'var(--text-primary)', cursor: 'pointer',
             }}>
@@ -214,14 +215,15 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
             )}
           </div>
           <div>
-            <p style={{ ...sectionTitle, marginBottom: 6 }}><Tag size={11} style={{ marginRight: 4, verticalAlign: '-1px' }} />Tags</p>
+            <p style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Tags</p>
             <div style={{
               display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
-              padding: '4px 6px',
+              height: 38, boxSizing: 'border-box',
+              padding: '0 6px',
               border: '1px solid var(--border-primary)',
               borderRadius: 8,
               background: 'var(--bg-subtle)',
-              minHeight: 38, boxSizing: 'border-box',
+              overflow: 'hidden',
             }}>
               {tags.map(tag => (
                 <span key={tag} style={{
@@ -244,7 +246,8 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
                   flex: 1, minWidth: 80,
                   background: 'transparent', border: 'none', outline: 'none',
                   fontSize: 12, color: 'var(--text-primary)',
-                  padding: '4px 6px',
+                  padding: '0 6px',
+                  height: '100%',
                 }}
               />
             </div>
