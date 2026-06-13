@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Layers, Save, X, Plus } from 'lucide-react'
+import { Layers, Save, X, Plus, Sparkles } from 'lucide-react'
 import type { MetaInsightsResponse } from '@/app/api/meta/insights/route'
 import type { AdPerformanceRow } from '@/app/api/meta/ad-performance/route'
 import { evaluateHealthColor, HEALTH_COLORS } from './health-thresholds'
@@ -33,6 +33,7 @@ interface AdsTableTabProps {
   dateTo?: string
   crmMap?: Map<string, AdPerformanceRow>
   onRowClick?: (id: string, name: string) => void
+  onAnalyze?: (id: string, name: string) => void
 }
 
 type ColumnKey =
@@ -444,7 +445,7 @@ function SortableHeaderCell({
 
 /* ── Main component ──────────────────────────────────────────── */
 
-export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick }: AdsTableTabProps) {
+export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick, onAnalyze }: AdsTableTabProps) {
   const [sort, setSort] = useState<SortState>(null)
   const [search, setSearch] = useState('')
 
@@ -714,9 +715,28 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
     switch (col.key) {
       case 'name':
         return (
-          <span style={{ fontWeight: 500, color: onRowClick ? '#1877F2' : 'var(--text-primary)' }}>
-            {row.name}{onRowClick ? ' →' : ''}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 500, color: onRowClick ? '#1877F2' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {row.name}{onRowClick ? ' →' : ''}
+            </span>
+            {onAnalyze && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onAnalyze(row.id, row.name) }}
+                title="Analyser avec Claude"
+                style={{
+                  flexShrink: 0,
+                  width: 24, height: 24, borderRadius: 6,
+                  border: '1px solid rgba(168,85,247,0.25)',
+                  background: 'rgba(168,85,247,0.06)',
+                  color: '#a855f7',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Sparkles size={12} />
+              </button>
+            )}
+          </div>
         )
       case 'status': {
         const s = getStatusLabel(row.status)
