@@ -70,6 +70,8 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   const [showActionModal, setShowActionModal] = useState(false)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [showLogCallModal, setShowLogCallModal] = useState(false)
+  const [showMoreDetails, setShowMoreDetails] = useState(false)
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false)
 
   // Team members state
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -358,61 +360,63 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
             {/* Infos tab */}
             {activeTab === 'infos' && (
           <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
-            {/* Identity */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0 }}>
+            {/* ─── HEADER : Identité + contact direct inline ─── */}
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 14,
+              padding: 16, marginBottom: 16,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 14,
+            }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 12,
+                background: 'rgba(0,200,83,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 19, fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0,
+              }}>
                 {lead.first_name[0]}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>{lead.first_name} {lead.last_name}</div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+                  {lead.first_name} {lead.last_name}
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                   <SourceBadge source={lead.source} />
+                  <StatusBadge status={lead.status} />
+                </div>
+                {/* Contact inline */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12 }}>
+                  {lead.phone && (
+                    <a href={`tel:${lead.phone}`} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      color: 'var(--text-tertiary)', textDecoration: 'none',
+                    }}>
+                      <Phone size={11} color="var(--text-label)" /> {lead.phone}
+                    </a>
+                  )}
+                  {lead.email && (
+                    <a href={`mailto:${lead.email}`} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      color: 'var(--text-tertiary)', textDecoration: 'none',
+                      maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      <Mail size={11} color="var(--text-label)" /> {lead.email}
+                    </a>
+                  )}
+                  {lead.instagram_handle && (
+                    <a href={`https://instagram.com/${lead.instagram_handle}`} target="_blank" rel="noopener noreferrer" style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      color: '#E1306C', textDecoration: 'none',
+                    }}>
+                      <InstagramIcon size={11} /> @{lead.instagram_handle}
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Message de confirmation pré-rendu pour les RDV planifiés */}
             <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
-
-            {/* ─── ÉTAT DU LEAD ─── */}
-            <SectionHeader>État du lead</SectionHeader>
-
-            {/* Status */}
-            <div style={card}>
-              <div style={sectionTitle}>Statut</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {statusConfig.filter((e) => e.visible).map((e) => {
-                  const active = lead.status === e.key
-                  const cfg = e
-                  return (
-                    <button key={e.key} onClick={async () => {
-                      if (e.key === 'clos') { setShowClosingModal(true); return }
-                      const previousAssignedTo = lead.assigned_to
-                      const updated = await patchLead({ status: e.key })
-                      // Show auto-assign notification for setters
-                      if (
-                        e.key === 'closing_planifie' &&
-                        currentRole === 'setter' &&
-                        updated?.assigned_to &&
-                        updated.assigned_to !== previousAssignedTo
-                      ) {
-                        const closer = members.find((m) => m.user_id === updated.assigned_to)
-                        const closerName = closer?.user?.full_name ?? 'un closer'
-                        if (autoAssignTimer.current) clearTimeout(autoAssignTimer.current)
-                        setAutoAssignMsg(`Lead assigné automatiquement à ${closerName}`)
-                        autoAssignTimer.current = setTimeout(() => setAutoAssignMsg(null), 3000)
-                      }
-                    }} style={{
-                      padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer',
-                      border: active ? `2px solid ${cfg.color}` : '1px solid var(--border-primary)',
-                      background: active ? cfg.bg : 'transparent', color: active ? cfg.color : 'var(--text-muted)',
-                    }}>
-                      {cfg.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
 
             {/* Auto-assign notification */}
             {autoAssignMsg && (
@@ -430,148 +434,167 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             )}
 
-            {/* Assigné à */}
+            {/* ─── BLOC 1 : Statut + Assigné + Tags (en 1 carte compacte) ─── */}
             <div style={card}>
-              <div style={sectionTitle}>Assigné à</div>
-              <MemberAssignDropdown
-                assignedTo={lead.assigned_to}
-                members={members}
-                onAssign={(userId) => patchLead({ assigned_to: userId })}
-                canEdit={currentRole === 'admin'}
-              />
-            </div>
-
-            {/* ─── COORDONNÉES ─── */}
-            <SectionHeader>Coordonnées</SectionHeader>
-
-            {/* Contact editable */}
-            <div style={card}>
-              <div style={sectionTitle}>Contact</div>
-              {[
-                { field: 'phone', label: 'Téléphone', icon: Phone, value: lead.phone },
-                { field: 'email', label: 'Email', icon: Mail, value: lead.email || '' },
-              ].map((f) => {
-                const Icon = f.icon
-                const editing = editingField === f.field
-                return (
-                  <div key={f.field} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <Icon size={14} color="#555" style={{ flexShrink: 0 }} />
-                    {editing ? (
-                      <>
-                        <input value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveEdit(f.field)} style={{ ...inputS, flex: 1 }} autoFocus />
-                        <button onClick={() => saveEdit(f.field)} style={smallBtn}><Check size={12} color="var(--color-primary)" /></button>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ flex: 1, fontSize: 13, color: f.value ? '#ccc' : '#555' }}>{f.value || '—'}</span>
-                        <button onClick={() => startEdit(f.field, f.value)} style={smallBtn}><Edit3 size={11} color="#666" /></button>
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-              {lead.instagram_handle && (
-                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                  <a
-                    href={`https://instagram.com/${lead.instagram_handle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      background: 'rgba(225,48,108,0.10)', border: '1px solid rgba(225,48,108,0.20)',
-                      color: '#E1306C', cursor: 'pointer', textDecoration: 'none',
-                    }}
-                  >
-                    <InstagramIcon size={13} /> @{lead.instagram_handle}
-                  </a>
+              {/* Statut en dropdown */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ ...sectionTitle, marginBottom: 6 }}>Statut</div>
+                <div style={{ position: 'relative' }}>
+                  <button onClick={() => setStatusDropdownOpen(o => !o)} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    width: '100%',
+                    padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+                    background: 'var(--bg-subtle)', border: '1px solid var(--border-primary)',
+                    color: 'var(--text-primary)', cursor: 'pointer',
+                  }}>
+                    <StatusBadge status={lead.status} />
+                    <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span>
+                  </button>
+                  {statusDropdownOpen && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 10,
+                      background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+                      borderRadius: 10, padding: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                    }}>
+                      {statusConfig.filter((e) => e.visible).map((e) => (
+                        <button key={e.key} onClick={async () => {
+                          setStatusDropdownOpen(false)
+                          if (e.key === 'clos') { setShowClosingModal(true); return }
+                          const previousAssignedTo = lead.assigned_to
+                          const updated = await patchLead({ status: e.key })
+                          if (
+                            e.key === 'closing_planifie' &&
+                            currentRole === 'setter' &&
+                            updated?.assigned_to &&
+                            updated.assigned_to !== previousAssignedTo
+                          ) {
+                            const closer = members.find((m) => m.user_id === updated.assigned_to)
+                            const closerName = closer?.user?.full_name ?? 'un closer'
+                            if (autoAssignTimer.current) clearTimeout(autoAssignTimer.current)
+                            setAutoAssignMsg(`Lead assigné automatiquement à ${closerName}`)
+                            autoAssignTimer.current = setTimeout(() => setAutoAssignMsg(null), 3000)
+                          }
+                        }} style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '7px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                          border: 'none',
+                          background: lead.status === e.key ? 'var(--bg-hover)' : 'transparent',
+                          color: e.color, cursor: 'pointer',
+                        }}>
+                          {e.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+
+              {/* Assigné à */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ ...sectionTitle, marginBottom: 6 }}>Assigné à</div>
+                <MemberAssignDropdown
+                  assignedTo={lead.assigned_to}
+                  members={members}
+                  onAssign={(userId) => patchLead({ assigned_to: userId })}
+                  canEdit={currentRole === 'admin'}
+                />
+              </div>
+
+              {/* Tags */}
+              <div>
+                <div style={{ ...sectionTitle, marginBottom: 6 }}>Tags</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: lead.tags.length > 0 ? 8 : 0 }}>
+                  {lead.tags.map((tag) => (
+                    <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, fontSize: 11, background: 'var(--bg-hover)', color: '#ccc', border: '1px solid var(--border-primary)' }}>
+                      {tag}
+                      <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}><X size={10} /></button>
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTag()} placeholder="Ajouter un tag" style={{ ...inputS, flex: 1 }} />
+                  <button onClick={addTag} style={{ ...smallBtn, width: 32 }}><Plus size={12} color="var(--color-primary)" /></button>
+                </div>
+              </div>
             </div>
 
-            {/* Tags editable */}
-            <div style={card}>
-              <div style={sectionTitle}>Tags</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: lead.tags.length > 0 ? 10 : 0 }}>
-                {lead.tags.map((tag) => (
-                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, fontSize: 11, background: 'var(--bg-hover)', color: '#ccc', border: '1px solid var(--border-primary)' }}>
-                    {tag}
-                    <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}><X size={10} /></button>
-                  </span>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTag()} placeholder="Ajouter un tag" style={{ ...inputS, flex: 1 }} />
-                <button onClick={addTag} style={{ ...smallBtn, width: 32 }}><Plus size={12} color="var(--color-primary)" /></button>
-              </div>
-            </div>
-
-            {/* ─── ACTIVITÉ COMMERCIALE ─── */}
-            <SectionHeader>Activité commerciale</SectionHeader>
-
-            {/* Calls — editable dates */}
-            <div style={card}>
-              <div style={sectionTitle}>Appels ({lead.calls.length})</div>
-              {lead.calls.length === 0 ? (
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun appel</p>
-              ) : (
+            {/* ─── BLOC 2 : Appels ─── */}
+            {lead.calls.length > 0 && (
+              <div style={card}>
+                <div style={sectionTitle}>Appels ({lead.calls.length})</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {lead.calls.map((call) => (
                     <CallRow key={call.id} call={call} onPatch={(patch) => patchCall(call.id, patch)} />
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Follow-ups — editable dates */}
-            <div style={card}>
-              <div style={sectionTitle}>Relances ({lead.follow_ups.length})</div>
-              {lead.follow_ups.length === 0 ? (
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucune relance</p>
-              ) : (
+            {/* ─── BLOC 3 : Relances ─── */}
+            {lead.follow_ups.length > 0 && (
+              <div style={card}>
+                <div style={sectionTitle}>Relances ({lead.follow_ups.length})</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {lead.follow_ups.map((fu) => (
                     <FollowUpRow key={fu.id} followUp={fu} onPatch={(patch) => patchFollowUp(fu.id, patch)} />
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Paiements / Deals */}
+            {/* ─── BLOC 4 : Paiements (toujours visible — c'est le revenu) ─── */}
             <div style={card}>
               <div style={sectionTitle}>Paiements</div>
               <LeadDealsWidget leadId={leadId} />
             </div>
 
-            {/* ─── ENRICHISSEMENT ─── */}
-            <SectionHeader>Enrichissement</SectionHeader>
-
-            {/* Notes multiples */}
+            {/* ─── BLOC 5 : Notes ─── */}
             <div style={card}>
               <div style={sectionTitle}>Notes</div>
               <LeadNotesWidget leadId={leadId} />
             </div>
 
-            {/* AI Assistant */}
-            <div style={card}>
-              <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={12} color="#E53E3E" />
-                Assistant IA
-              </div>
-              <AiSuggestionPanel
-                leadId={leadId}
-                instagramHandle={lead.instagram_handle}
-              />
-            </div>
+            {/* ─── BLOC PLUS : sections secondaires (Assistant IA, Lead Magnets, Acquisition) ─── */}
+            <button
+              onClick={() => setShowMoreDetails(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                width: '100%',
+                padding: '10px 14px',
+                marginTop: 8, marginBottom: showMoreDetails ? 14 : 0,
+                borderRadius: 10,
+                border: '1px solid var(--border-primary)',
+                background: 'transparent',
+                color: 'var(--text-tertiary)',
+                fontSize: 12, fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              {showMoreDetails ? '▴ Masquer les détails complémentaires' : '▾ Voir les détails complémentaires'}
+            </button>
 
-            {/* Lead Magnets — le widget gère son propre card + title (cohérence avec LeadDetail) */}
-            <LeadMagnetsWidget leadId={leadId} />
+            {showMoreDetails && (
+              <>
+                {/* Assistant IA */}
+                <div style={card}>
+                  <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Sparkles size={12} color="#E53E3E" />
+                    Assistant IA
+                  </div>
+                  <AiSuggestionPanel
+                    leadId={leadId}
+                    instagramHandle={lead.instagram_handle}
+                  />
+                </div>
 
-            {/* Parcours du lead — inclut Première/Dernière pub + Lead Form
-                + bookings + activité. Affiche rien si vide. Mode compact pour
-                économiser la verticale dans le side panel. */}
-            <SectionHeader>Acquisition</SectionHeader>
-            <LeadJourneyBlock leadId={leadId} compact />
+                {/* Lead Magnets — le widget gère son propre card + title */}
+                <LeadMagnetsWidget leadId={leadId} />
+
+                {/* Parcours du lead */}
+                <SectionHeader>Parcours du lead</SectionHeader>
+                <LeadJourneyBlock leadId={leadId} compact />
+              </>
+            )}
 
 
             {/* Supprimer */}
