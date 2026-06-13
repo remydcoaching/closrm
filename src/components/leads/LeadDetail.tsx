@@ -117,32 +117,34 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
     borderRadius: 12, padding: 20, marginBottom: 14,
   }
 
+  const [showMoreDetails, setShowMoreDetails] = useState(false)
+
   return (
     <div>
       {/* Message de confirmation pré-rendu pour les RDV planifiés */}
       <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
 
-      {/* ─── ÉTAT DU LEAD ─── */}
-      <SectionHeader>État du lead</SectionHeader>
-
-      {/* Statut */}
+      {/* ─── BLOC 1 : Statut + Coordonnées + Tags (en 1 carte compacte) ─── */}
       <div style={card}>
-        <p style={sectionTitle}>Statut du pipeline</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <StatusBadge status={lead.status} />
+        {/* Statut en dropdown */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ ...sectionTitle, marginBottom: 8 }}>Statut</p>
           <div style={{ position: 'relative' }}>
             <button onClick={() => setStatusOpen(o => !o)} style={{
-              padding: '5px 12px', borderRadius: 7, fontSize: 12,
-              border: '1px solid var(--border-primary)', background: 'transparent',
-              color: 'var(--text-tertiary)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              width: '100%',
+              padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+              background: 'var(--bg-subtle)', border: '1px solid var(--border-primary)',
+              color: 'var(--text-primary)', cursor: 'pointer',
             }}>
-              Changer ↓
+              <StatusBadge status={lead.status} />
+              <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span>
             </button>
             {statusOpen && (
               <div style={{
-                position: 'absolute', top: '100%', left: 0, zIndex: 10, marginTop: 4,
+                position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 10,
                 background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-                borderRadius: 10, padding: 6, minWidth: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                borderRadius: 10, padding: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
               }}>
                 {statusConfig.filter((e) => e.visible).map((e) => (
                   <button key={e.key} onClick={() => changeStatus(e.key)} style={{
@@ -158,81 +160,80 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
             )}
           </div>
         </div>
-      </div>
 
-      {/* ─── COORDONNÉES ─── */}
-      <SectionHeader>Coordonnées</SectionHeader>
-
-      {/* Infos contact */}
-      <div style={card}>
-        <p style={sectionTitle}>Informations de contact</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Téléphone</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
-              <Phone size={13} color="var(--text-muted)" />
-              {lead.phone || <span style={{ color: 'var(--text-label)' }}>Non renseigné</span>}
-            </div>
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Email</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
-              <Mail size={13} color="var(--text-muted)" />
-              {lead.email || <span style={{ color: 'var(--text-label)' }}>Non renseigné</span>}
-            </div>
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Tentatives d&apos;appel</label>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}</div>
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Joint</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
-              {lead.reached
-                ? <><CheckCircle size={13} color="var(--color-primary)" /><span style={{ color: 'var(--color-primary)' }}>Oui</span></>
-                : <><XCircle size={13} color="var(--text-muted)" /><span style={{ color: 'var(--text-muted)' }}>Non</span></>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tags */}
-      <div style={card}>
-        <p style={sectionTitle}><Tag size={11} style={{ marginRight: 5 }} />Tags</p>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {tags.map(tag => (
-            <span key={tag} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-              background: 'rgba(0,200,83,0.08)', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.15)',
+        {/* Coordonnées compactes */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ ...sectionTitle, marginBottom: 8 }}>Coordonnées</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <a href={lead.phone ? `tel:${lead.phone}` : undefined} style={{
+              display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+              color: lead.phone ? 'var(--text-primary)' : 'var(--text-label)',
+              textDecoration: 'none',
             }}>
-              {tag}
-              <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: 0 }}>
-                <X size={10} />
-              </button>
-            </span>
-          ))}
-          {tags.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-label)' }}>Aucun tag</span>}
+              <Phone size={13} color="var(--text-muted)" />
+              {lead.phone || 'Non renseigné'}
+            </a>
+            <a href={lead.email ? `mailto:${lead.email}` : undefined} style={{
+              display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+              color: lead.email ? 'var(--text-primary)' : 'var(--text-label)',
+              textDecoration: 'none',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              <Mail size={13} color="var(--text-muted)" />
+              {lead.email || 'Non renseigné'}
+            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
+              <span style={{ color: 'var(--text-muted)' }}>
+                <Phone size={11} style={{ verticalAlign: '-1px', marginRight: 4 }} color="var(--text-label)" />
+                {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
+              </span>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 8px', borderRadius: 99,
+                background: lead.reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
+                color: lead.reached ? '#38A169' : '#ef4444',
+                fontSize: 11, fontWeight: 600,
+              }}>
+                {lead.reached ? 'Joint' : 'Non joint'}
+              </span>
+            </div>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <input style={{ ...inputStyle, flex: 1 }} value={tagInput}
-            onChange={e => setTagInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-            placeholder="Ajouter un tag..." />
-          <button onClick={addTag} style={{
-            padding: '7px 10px', background: 'var(--bg-hover)',
-            border: '1px solid var(--border-primary)', borderRadius: 7, color: 'var(--text-tertiary)', cursor: 'pointer',
-          }}>
-            <Plus size={13} />
-          </button>
+
+        {/* Tags */}
+        <div>
+          <p style={{ ...sectionTitle, marginBottom: 8 }}><Tag size={11} style={{ marginRight: 5 }} />Tags</p>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {tags.map(tag => (
+              <span key={tag} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 600,
+                background: 'rgba(0,200,83,0.08)', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.15)',
+              }}>
+                {tag}
+                <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: 0 }}>
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+            {tags.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-label)' }}>Aucun tag</span>}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input style={{ ...inputStyle, flex: 1 }} value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+              placeholder="Ajouter un tag..." />
+            <button onClick={addTag} style={{
+              padding: '7px 10px', background: 'var(--bg-hover)',
+              border: '1px solid var(--border-primary)', borderRadius: 7, color: 'var(--text-tertiary)', cursor: 'pointer',
+            }}>
+              <Plus size={13} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ─── ACTIVITÉ COMMERCIALE ─── */}
-      <SectionHeader>Activité commerciale</SectionHeader>
-
-      {/* Timeline */}
+      {/* ─── BLOC 2 : Historique des interactions ─── */}
       <div style={card}>
         <p style={sectionTitle}><Clock size={11} style={{ marginRight: 5 }} />Historique des interactions</p>
         {timeline.length === 0 ? (
@@ -246,7 +247,6 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
                 display: 'flex', gap: 12, paddingBottom: i < timeline.length - 1 ? 10 : 0,
                 borderBottom: i < timeline.length - 1 ? '1px solid var(--bg-hover)' : 'none',
               }}>
-                {/* Dot */}
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 4,
                   background: item.type === 'call'
@@ -285,22 +285,37 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
         )}
       </div>
 
-      {/* ─── ENRICHISSEMENT ─── */}
-      <SectionHeader>Enrichissement</SectionHeader>
-
-      {/* Notes — widget multi-notes timestampées, partagé avec le side panel.
-          Avant : un simple textarea sur `leads.notes` qui divergeait du widget
-          (table `lead_notes`) utilisé côté side panel. Source de vérité unifiée. */}
+      {/* ─── BLOC 3 : Notes (toujours visible — c'est central pour le coach) ─── */}
       <div style={card}>
         <p style={sectionTitle}><FileText size={11} style={{ marginRight: 5 }} />Notes</p>
         <LeadNotesWidget leadId={lead.id} />
       </div>
 
-      {/* Lead Magnets — wrappé en card pour spacing cohérent */}
-      <div style={card}>
-        <p style={sectionTitle}>Lead Magnets</p>
-        <LeadMagnetsWidget leadId={lead.id} />
-      </div>
+      {/* ─── BLOC PLUS : Lead Magnets (collapsible) ─── */}
+      <button
+        onClick={() => setShowMoreDetails(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          width: '100%',
+          padding: '10px 14px',
+          marginTop: 4, marginBottom: showMoreDetails ? 14 : 0,
+          borderRadius: 10,
+          border: '1px solid var(--border-primary)',
+          background: 'transparent',
+          color: 'var(--text-tertiary)',
+          fontSize: 12, fontWeight: 500,
+          cursor: 'pointer',
+        }}
+      >
+        {showMoreDetails ? '▴ Masquer les détails complémentaires' : '▾ Voir les détails complémentaires'}
+      </button>
+
+      {showMoreDetails && (
+        <div style={card}>
+          <p style={sectionTitle}>Lead Magnets</p>
+          <LeadMagnetsWidget leadId={lead.id} />
+        </div>
+      )}
     </div>
   )
 }
