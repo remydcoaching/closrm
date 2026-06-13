@@ -30,6 +30,7 @@ import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
 import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
+import ConfirmationMessageBlock from '@/components/leads/ConfirmationMessageBlock'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
@@ -369,6 +370,9 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                 </div>
               </div>
             </div>
+
+            {/* Message de confirmation pré-rendu pour les RDV planifiés */}
+            <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
 
             {/* ─── ÉTAT DU LEAD ─── */}
             <SectionHeader>État du lead</SectionHeader>
