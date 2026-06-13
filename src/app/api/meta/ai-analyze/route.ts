@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { callClaude } from '@/lib/ai/client'
+import { getApiKey } from '@/lib/ai/brief'
 
 /**
  * Analyse IA d'une campagne, ad set ou ad Meta.
@@ -78,11 +79,14 @@ Sois direct, parle "tu" au coach, pas de blabla générique, base-toi UNIQUEMENT
 
 export async function POST(request: NextRequest) {
   try {
-    await getWorkspaceId()
+    const { workspaceId } = await getWorkspaceId()
 
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = await getApiKey(workspaceId)
     if (!apiKey) {
-      return NextResponse.json({ error: 'ANTHROPIC_API_KEY non configurée côté serveur' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Clé API IA non configurée. Va dans Paramètres > Assistant IA pour la définir.' },
+        { status: 400 },
+      )
     }
 
     const body = await request.json() as AnalyzeBody
