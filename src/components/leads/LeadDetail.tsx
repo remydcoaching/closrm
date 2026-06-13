@@ -7,6 +7,7 @@ import StatusBadge from '@/components/leads/StatusBadge'
 import { useStatusConfig } from '@/lib/workspace/config-context'
 import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
+import ConfirmationMessageBlock from '@/components/leads/ConfirmationMessageBlock'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -118,6 +119,9 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
 
   return (
     <div>
+      {/* Message de confirmation pré-rendu pour les RDV planifiés */}
+      <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
+
       {/* ─── ÉTAT DU LEAD ─── */}
       <SectionHeader>État du lead</SectionHeader>
 
