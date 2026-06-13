@@ -360,61 +360,6 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
             {/* Infos tab */}
             {activeTab === 'infos' && (
           <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
-            {/* ─── HEADER : Identité + contact direct inline ─── */}
-            <div style={{
-              display: 'flex', alignItems: 'flex-start', gap: 14,
-              padding: 16, marginBottom: 16,
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-primary)',
-              borderRadius: 14,
-            }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: 12,
-                background: 'rgba(0,200,83,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 19, fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0,
-              }}>
-                {lead.first_name[0]}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
-                  {lead.first_name} {lead.last_name}
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <SourceBadge source={lead.source} />
-                  <StatusBadge status={lead.status} />
-                </div>
-                {/* Contact inline */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12 }}>
-                  {lead.phone && (
-                    <a href={`tel:${lead.phone}`} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      color: 'var(--text-tertiary)', textDecoration: 'none',
-                    }}>
-                      <Phone size={11} color="var(--text-label)" /> {lead.phone}
-                    </a>
-                  )}
-                  {lead.email && (
-                    <a href={`mailto:${lead.email}`} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      color: 'var(--text-tertiary)', textDecoration: 'none',
-                      maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      <Mail size={11} color="var(--text-label)" /> {lead.email}
-                    </a>
-                  )}
-                  {lead.instagram_handle && (
-                    <a href={`https://instagram.com/${lead.instagram_handle}`} target="_blank" rel="noopener noreferrer" style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      color: '#E1306C', textDecoration: 'none',
-                    }}>
-                      <InstagramIcon size={11} /> @{lead.instagram_handle}
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Auto-assign notification */}
             {autoAssignMsg && (
               <div style={{
@@ -431,16 +376,71 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             )}
 
-            {/* ─── BLOC 1 : Statut + Assigné + Tags (en 1 carte compacte) ─── */}
-            <div style={card}>
-              {/* Statut en dropdown */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ ...sectionTitle, marginBottom: 6 }}>Statut</div>
+            {/* ─── BLOC 1 : Header unique (même que fiche) — Nom + Grille 2×3 ─── */}
+            <div style={{ ...card, padding: 20 }}>
+              {/* Nom + Source */}
+              <div style={{ marginBottom: 18 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: 8, lineHeight: 1.2 }}>
+                  {lead.first_name} {lead.last_name}
+                </h2>
+                <SourceBadge source={lead.source} />
+              </div>
+
+              {/* Grille 2×3 : Téléphone/Email · Tentatives/Joint · Statut/Tags */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 14 }}>
+                {/* Rangée 1 */}
+                <div>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Téléphone</div>
+                  <a href={lead.phone ? `tel:${lead.phone}` : undefined} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
+                    color: lead.phone ? 'var(--text-primary)' : 'var(--text-label)',
+                    textDecoration: 'none', fontWeight: 500,
+                  }}>
+                    <Phone size={13} color="var(--text-muted)" />
+                    {lead.phone || 'Non renseigné'}
+                  </a>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Email</div>
+                  <a href={lead.email ? `mailto:${lead.email}` : undefined} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
+                    color: lead.email ? 'var(--text-primary)' : 'var(--text-label)',
+                    textDecoration: 'none', fontWeight: 500,
+                    maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    <Mail size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email || 'Non renseigné'}</span>
+                  </a>
+                </div>
+
+                {/* Rangée 2 */}
+                <div>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Tentatives d&apos;appel</div>
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+                    {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Joint</div>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 10px', borderRadius: 99,
+                    background: lead.reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
+                    color: lead.reached ? '#38A169' : '#ef4444',
+                    fontSize: 11, fontWeight: 600,
+                  }}>
+                    {lead.reached ? 'Joint' : 'Non joint'}
+                  </span>
+                </div>
+
+                {/* Rangée 3 : Statut + Tags */}
                 <div style={{ position: 'relative' }}>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Statut</div>
                   <button onClick={() => setStatusDropdownOpen(o => !o)} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                     width: '100%',
-                    padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+                    height: 38, boxSizing: 'border-box',
+                    padding: '0 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
                     background: 'var(--bg-subtle)', border: '1px solid var(--border-primary)',
                     color: 'var(--text-primary)', cursor: 'pointer',
                   }}>
@@ -484,10 +484,47 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                     </div>
                   )}
                 </div>
+                <div>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Tags</div>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
+                    height: 38, boxSizing: 'border-box',
+                    padding: '0 6px',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: 8,
+                    background: 'var(--bg-subtle)',
+                    overflow: 'hidden',
+                  }}>
+                    {lead.tags.map((tag) => (
+                      <span key={tag} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        padding: '2px 8px', borderRadius: 99, fontSize: 10, fontWeight: 600,
+                        background: 'rgba(0,200,83,0.12)', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.20)',
+                      }}>
+                        {tag}
+                        <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: 0, display: 'flex' }}>
+                          <X size={9} />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                      placeholder={lead.tags.length === 0 ? 'Ajouter un tag…' : '+ Tag'}
+                      style={{
+                        flex: 1, minWidth: 80,
+                        background: 'transparent', border: 'none', outline: 'none',
+                        fontSize: 12, color: 'var(--text-primary)',
+                        padding: '0 6px', height: '100%',
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Assigné à */}
-              <div style={{ marginBottom: 14 }}>
+              {/* Assigné à (full width sous la grille — pas dans la fiche mais utile ici) */}
+              <div>
                 <div style={{ ...sectionTitle, marginBottom: 6 }}>Assigné à</div>
                 <MemberAssignDropdown
                   assignedTo={lead.assigned_to}
@@ -495,23 +532,6 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   onAssign={(userId) => patchLead({ assigned_to: userId })}
                   canEdit={currentRole === 'admin'}
                 />
-              </div>
-
-              {/* Tags */}
-              <div>
-                <div style={{ ...sectionTitle, marginBottom: 6 }}>Tags</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: lead.tags.length > 0 ? 8 : 0 }}>
-                  {lead.tags.map((tag) => (
-                    <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, fontSize: 11, background: 'var(--bg-hover)', color: '#ccc', border: '1px solid var(--border-primary)' }}>
-                      {tag}
-                      <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}><X size={10} /></button>
-                    </span>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTag()} placeholder="Ajouter un tag" style={{ ...inputS, flex: 1 }} />
-                  <button onClick={addTag} style={{ ...smallBtn, width: 32 }}><Plus size={12} color="var(--color-primary)" /></button>
-                </div>
               </div>
             </div>
 
