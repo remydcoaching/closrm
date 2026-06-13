@@ -124,24 +124,24 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
 
   return (
     <div>
-      {/* ─── BLOC 1 : Header unique — Identité + Statut + Coordonnées + Tags ─── */}
-      <div style={card}>
-        {/* Nom + Prénom en grand titre */}
-        <div style={{ marginBottom: 16 }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: 6 }}>
-            {lead.first_name} {lead.last_name}
-          </h2>
-          <SourceBadge source={lead.source} />
-        </div>
-
-        {/* Statut en dropdown */}
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ ...sectionTitle, marginBottom: 8 }}>Statut</p>
-          <div style={{ position: 'relative' }}>
+      {/* ─── BLOC 1 : Header unique — tout en un, mise en page aérée ─── */}
+      <div style={{ ...card, padding: 24 }}>
+        {/* Ligne 1 : Nom + Statut dropdown alignés */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+          gap: 16, flexWrap: 'wrap', marginBottom: 18,
+        }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: 8, lineHeight: 1.2 }}>
+              {lead.first_name} {lead.last_name}
+            </h2>
+            <SourceBadge source={lead.source} />
+          </div>
+          <div style={{ minWidth: 200, position: 'relative' }}>
             <button onClick={() => setStatusOpen(o => !o)} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
               width: '100%',
-              padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+              padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 500,
               background: 'var(--bg-subtle)', border: '1px solid var(--border-primary)',
               color: 'var(--text-primary)', cursor: 'pointer',
             }}>
@@ -169,48 +169,60 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
           </div>
         </div>
 
-        {/* Coordonnées compactes */}
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ ...sectionTitle, marginBottom: 8 }}>Coordonnées</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Séparateur */}
+        <div style={{ height: 1, background: 'var(--border-primary)', marginBottom: 18 }} />
+
+        {/* Ligne 2 : Coordonnées en grille 2 colonnes */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+          <div>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>Téléphone</p>
             <a href={lead.phone ? `tel:${lead.phone}` : undefined} style={{
-              display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
               color: lead.phone ? 'var(--text-primary)' : 'var(--text-label)',
-              textDecoration: 'none',
+              textDecoration: 'none', fontWeight: 500,
             }}>
               <Phone size={13} color="var(--text-muted)" />
               {lead.phone || 'Non renseigné'}
             </a>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>Email</p>
             <a href={lead.email ? `mailto:${lead.email}` : undefined} style={{
-              display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
+              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
               color: lead.email ? 'var(--text-primary)' : 'var(--text-label)',
-              textDecoration: 'none',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              textDecoration: 'none', fontWeight: 500,
+              maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-              <Mail size={13} color="var(--text-muted)" />
-              {lead.email || 'Non renseigné'}
+              <Mail size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email || 'Non renseigné'}</span>
             </a>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12 }}>
-              <span style={{ color: 'var(--text-muted)' }}>
-                <Phone size={11} style={{ verticalAlign: '-1px', marginRight: 4 }} color="var(--text-label)" />
-                {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
-              </span>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '2px 8px', borderRadius: 99,
-                background: lead.reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
-                color: lead.reached ? '#38A169' : '#ef4444',
-                fontSize: 11, fontWeight: 600,
-              }}>
-                {lead.reached ? 'Joint' : 'Non joint'}
-              </span>
-            </div>
+          </div>
+          <div>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>Tentatives d&apos;appel</p>
+            <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+              {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>Joint</p>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '3px 10px', borderRadius: 99,
+              background: lead.reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
+              color: lead.reached ? '#38A169' : '#ef4444',
+              fontSize: 11, fontWeight: 600,
+            }}>
+              {lead.reached ? 'Joint' : 'Non joint'}
+            </span>
           </div>
         </div>
 
-        {/* Tags */}
+        {/* Séparateur */}
+        <div style={{ height: 1, background: 'var(--border-primary)', marginBottom: 18 }} />
+
+        {/* Ligne 3 : Tags */}
         <div>
-          <p style={{ ...sectionTitle, marginBottom: 8 }}><Tag size={11} style={{ marginRight: 5 }} />Tags</p>
+          <p style={{ ...sectionTitle, marginBottom: 8 }}><Tag size={11} style={{ marginRight: 5, verticalAlign: '-1px' }} />Tags</p>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
             {tags.map(tag => (
               <span key={tag} style={{

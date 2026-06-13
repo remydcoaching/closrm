@@ -83,48 +83,29 @@ export default function LeadDetailPage() {
         <ArrowLeft size={14} /> Leads
       </button>
 
-      {/* Header */}
+      {/* Barre d'actions flottante (les boutons restent au-dessus pour rester accessibles) */}
       <div style={{
-        background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-        borderRadius: 14, padding: 24, marginBottom: 20,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16,
+        display: 'flex', justifyContent: 'flex-end', gap: 8,
+        marginBottom: 20, flexWrap: 'wrap',
       }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
-            {lead.first_name} {lead.last_name}
-          </h1>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <StatusBadge status={lead.status} />
-            <SourceBadge source={lead.source} />
-            {lead.phone && (
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Phone size={11} /> {lead.phone}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setShowLogCall(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.25)',
-            color: '#3b82f6', cursor: 'pointer',
-          }}>
-            <Phone size={13} />
-            Logger un appel
-          </button>
-          <button onClick={() => setShowCallModal(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.25)',
-            color: '#a855f7', cursor: 'pointer',
-          }}>
-            <Phone size={13} /> Planifier un appel
-          </button>
-          <LeadAddBookingButton lead={lead} variant="large" onCreated={fetchLead} />
-        </div>
+        <button onClick={() => setShowLogCall(true)} style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+          background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.25)',
+          color: '#3b82f6', cursor: 'pointer',
+        }}>
+          <Phone size={13} />
+          Logger un appel
+        </button>
+        <button onClick={() => setShowCallModal(true)} style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+          background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.25)',
+          color: '#a855f7', cursor: 'pointer',
+        }}>
+          <Phone size={13} /> Planifier un appel
+        </button>
+        <LeadAddBookingButton lead={lead} variant="large" onCreated={fetchLead} />
       </div>
 
       {/* Tabs */}
