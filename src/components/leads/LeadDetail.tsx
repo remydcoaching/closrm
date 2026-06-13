@@ -215,12 +215,19 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
           </div>
           <div>
             <p style={{ ...sectionTitle, marginBottom: 6 }}><Tag size={11} style={{ marginRight: 4, verticalAlign: '-1px' }} />Tags</p>
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
+              padding: '4px 6px',
+              border: '1px solid var(--border-primary)',
+              borderRadius: 8,
+              background: 'var(--bg-subtle)',
+              minHeight: 38, boxSizing: 'border-box',
+            }}>
               {tags.map(tag => (
                 <span key={tag} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 3,
                   padding: '2px 8px', borderRadius: 99, fontSize: 10, fontWeight: 600,
-                  background: 'rgba(0,200,83,0.08)', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.15)',
+                  background: 'rgba(0,200,83,0.12)', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.20)',
                 }}>
                   {tag}
                   <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: 0, display: 'flex' }}>
@@ -228,19 +235,18 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
                   </button>
                 </span>
               ))}
-              {tags.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-label)' }}>Aucun tag</span>}
-            </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <input style={{ ...inputStyle, flex: 1, padding: '6px 10px', fontSize: 12 }} value={tagInput}
+              <input
+                value={tagInput}
                 onChange={e => setTagInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-                placeholder="Ajouter..." />
-              <button onClick={addTag} style={{
-                padding: '6px 8px', background: 'var(--bg-hover)',
-                border: '1px solid var(--border-primary)', borderRadius: 7, color: 'var(--text-tertiary)', cursor: 'pointer',
-              }}>
-                <Plus size={12} />
-              </button>
+                placeholder={tags.length === 0 ? 'Ajouter un tag…' : '+ Tag'}
+                style={{
+                  flex: 1, minWidth: 80,
+                  background: 'transparent', border: 'none', outline: 'none',
+                  fontSize: 12, color: 'var(--text-primary)',
+                  padding: '4px 6px',
+                }}
+              />
             </div>
           </div>
         </div>
