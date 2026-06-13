@@ -11,6 +11,7 @@ import AdsTableTab from './ads-table-tab'
 import AdsCampaignTypeToggle, { type CampaignTypeFilter } from './ads-campaign-type-toggle'
 import AdsPerformanceTab from './ads-performance-tab'
 import AdCreativePanel from '@/components/ads/AdCreativePanel'
+import AnalysisPanel, { type AnalysisTarget } from '@/components/publicites/AnalysisPanel'
 import ThresholdsConfigModal from './ThresholdsConfigModal'
 import { SlidersHorizontal } from 'lucide-react'
 
@@ -66,6 +67,7 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
     kpis: { spend: number; impressions: number; clicks: number; ctr: number; leads: number; cpl: number | null }
   } | null>(null)
   const [crmByLevel, setCrmByLevel] = useState<Record<string, Map<string, AdPerformanceRow>>>({})
+  const [analysisTarget, setAnalysisTarget] = useState<AnalysisTarget | null>(null)
 
   const fetchInsights = useCallback(async () => {
     if (connectionState !== 'connected') return
@@ -408,6 +410,14 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
                 }
               : undefined
           }
+          onAnalyzeAll={(rows) => {
+            setAnalysisTarget({
+              level: level as AnalysisTarget['level'],
+              rows,
+              dateFrom,
+              dateTo,
+            })
+          }}
         />
         )
       })()}
@@ -418,6 +428,12 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
           adName={selectedAd.name}
           adKpis={selectedAd.kpis}
           onClose={() => setSelectedAd(null)}
+        />
+      )}
+      {analysisTarget && (
+        <AnalysisPanel
+          target={analysisTarget}
+          onClose={() => setAnalysisTarget(null)}
         />
       )}
     </div>
