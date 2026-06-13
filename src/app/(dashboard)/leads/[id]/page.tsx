@@ -10,9 +10,7 @@ import LeadDetail from '@/components/leads/LeadDetail'
 import LeadMessagesTab from '@/components/leads/LeadMessagesTab'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import LogCallModal from '@/components/leads/LogCallModal'
-import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
-import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
 
 interface LeadWithRelations extends Lead {
   calls: Call[]
@@ -146,51 +144,9 @@ export default function LeadDetailPage() {
           <LeadMessagesTab leadId={lead.id} instagramHandle={lead.instagram_handle} />
         </div>
       ) : (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
-        {/* Colonne gauche — detail + parcours + paiements */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <LeadDetail lead={lead} onUpdate={handleUpdate} />
-          <LeadJourneyBlock leadId={lead.id} />
-          <div style={{
-            background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-            borderRadius: 14, padding: 20,
-          }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>
-              Paiements
-            </p>
-            <LeadDealsWidget leadId={lead.id} />
-          </div>
-        </div>
-
-        {/* Colonne droite — infos rapides */}
-        <div style={{
-          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-          borderRadius: 14, padding: 20, position: 'sticky', top: 24,
-        }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>
-            Résumé
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Tentatives d&apos;appel</p>
-              <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{lead.call_attempts}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Appels planifiés</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {lead.calls.filter(c => c.outcome === 'pending').length}
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Follow-ups en attente</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {lead.follow_ups.filter(f => f.status === 'en_attente').length}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+        // Une seule colonne pleine largeur — toute l'info est dans LeadDetail.
+        // Le right sidebar "Résumé" était redondant avec le bloc 1.
+        <LeadDetail lead={lead} onUpdate={handleUpdate} />
       )}
 
       {/* Modale planifier appel */}

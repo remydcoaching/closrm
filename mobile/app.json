@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "fr.closrm.mobile",
-      "buildNumber": "5",
+      "buildNumber": "7",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -41,7 +41,9 @@
         "expo-notifications",
         {
           "color": "#00C853",
-          "sounds": ["./assets/sounds/alarm.wav"]
+          "sounds": [
+            "./assets/sounds/alarm.wav"
+          ]
         }
       ],
       "expo-video"

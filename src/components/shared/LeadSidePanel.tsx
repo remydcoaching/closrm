@@ -30,7 +30,7 @@ import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
 import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
-import ConfirmationMessageBlock from '@/components/leads/ConfirmationMessageBlock'
+import CallConfirmationToggle from '@/components/leads/CallConfirmationToggle'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
@@ -527,7 +527,15 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {lead.calls.map((call) => (
-                      <CallRow key={call.id} call={call} onPatch={(patch) => patchCall(call.id, patch)} />
+                      <div key={call.id}>
+                        <CallRow call={call} onPatch={(patch) => patchCall(call.id, patch)} />
+                        {call.outcome === 'pending' && (
+                          <CallConfirmationToggle
+                            lead={{ first_name: lead.first_name, last_name: lead.last_name }}
+                            call={call}
+                          />
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -562,10 +570,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               <LeadJourneyBlock leadId={leadId} compact />
             </div>
 
-            {/* ─── BLOC 4 : Message de confirmation (si RDV) ─── */}
-            <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
-
-            {/* ─── BLOC 5 : Paiements (en bas) ─── */}
+            {/* ─── BLOC 4 : Paiements (en bas) ─── */}
             <div style={card}>
               <div style={sectionTitle}>Paiements</div>
               <LeadDealsWidget leadId={leadId} />

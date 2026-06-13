@@ -10,7 +10,7 @@ import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
-import ConfirmationMessageBlock from '@/components/leads/ConfirmationMessageBlock'
+import CallConfirmationToggle from '@/components/leads/CallConfirmationToggle'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -124,24 +124,70 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
 
   return (
     <div>
-      {/* ─── BLOC 1 : Header unique — tout en un, mise en page aérée ─── */}
+      {/* ─── BLOC 1 : Header unique — Nom en haut + Grille 3 lignes ─── */}
       <div style={{ ...card, padding: 24 }}>
-        {/* Ligne 1 : Nom + Statut dropdown alignés */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-          gap: 16, flexWrap: 'wrap', marginBottom: 18,
-        }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: 8, lineHeight: 1.2 }}>
-              {lead.first_name} {lead.last_name}
-            </h2>
-            <SourceBadge source={lead.source} />
+        {/* En-tête : Nom + Source */}
+        <div style={{ marginBottom: 20 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: 8, lineHeight: 1.2 }}>
+            {lead.first_name} {lead.last_name}
+          </h2>
+          <SourceBadge source={lead.source} />
+        </div>
+
+        {/* Grille 2 colonnes × 3 lignes : Téléphone/Email · Tentatives/Joint · Statut/Tags */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+          {/* Rangée 1 */}
+          <div>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>Téléphone</p>
+            <a href={lead.phone ? `tel:${lead.phone}` : undefined} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
+              color: lead.phone ? 'var(--text-primary)' : 'var(--text-label)',
+              textDecoration: 'none', fontWeight: 500,
+            }}>
+              <Phone size={13} color="var(--text-muted)" />
+              {lead.phone || 'Non renseigné'}
+            </a>
           </div>
-          <div style={{ minWidth: 200, position: 'relative' }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>Email</p>
+            <a href={lead.email ? `mailto:${lead.email}` : undefined} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
+              color: lead.email ? 'var(--text-primary)' : 'var(--text-label)',
+              textDecoration: 'none', fontWeight: 500,
+              maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              <Mail size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email || 'Non renseigné'}</span>
+            </a>
+          </div>
+
+          {/* Rangée 2 */}
+          <div>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>Tentatives d&apos;appel</p>
+            <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+              {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>Joint</p>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '3px 10px', borderRadius: 99,
+              background: lead.reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
+              color: lead.reached ? '#38A169' : '#ef4444',
+              fontSize: 11, fontWeight: 600,
+            }}>
+              {lead.reached ? 'Joint' : 'Non joint'}
+            </span>
+          </div>
+
+          {/* Rangée 3 : Statut (modifiable) + Tags (modifiable) */}
+          <div style={{ position: 'relative' }}>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>Statut</p>
             <button onClick={() => setStatusOpen(o => !o)} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
               width: '100%',
-              padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 500,
+              padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
               background: 'var(--bg-subtle)', border: '1px solid var(--border-primary)',
               color: 'var(--text-primary)', cursor: 'pointer',
             }}>
@@ -167,88 +213,35 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Séparateur */}
-        <div style={{ height: 1, background: 'var(--border-primary)', marginBottom: 18 }} />
-
-        {/* Ligne 2 : Coordonnées en grille 2 colonnes */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
           <div>
-            <p style={{ ...sectionTitle, marginBottom: 6 }}>Téléphone</p>
-            <a href={lead.phone ? `tel:${lead.phone}` : undefined} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
-              color: lead.phone ? 'var(--text-primary)' : 'var(--text-label)',
-              textDecoration: 'none', fontWeight: 500,
-            }}>
-              <Phone size={13} color="var(--text-muted)" />
-              {lead.phone || 'Non renseigné'}
-            </a>
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ ...sectionTitle, marginBottom: 6 }}>Email</p>
-            <a href={lead.email ? `mailto:${lead.email}` : undefined} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
-              color: lead.email ? 'var(--text-primary)' : 'var(--text-label)',
-              textDecoration: 'none', fontWeight: 500,
-              maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              <Mail size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email || 'Non renseigné'}</span>
-            </a>
-          </div>
-          <div>
-            <p style={{ ...sectionTitle, marginBottom: 6 }}>Tentatives d&apos;appel</p>
-            <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
-              {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
-            </span>
-          </div>
-          <div>
-            <p style={{ ...sectionTitle, marginBottom: 6 }}>Joint</p>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '3px 10px', borderRadius: 99,
-              background: lead.reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
-              color: lead.reached ? '#38A169' : '#ef4444',
-              fontSize: 11, fontWeight: 600,
-            }}>
-              {lead.reached ? 'Joint' : 'Non joint'}
-            </span>
-          </div>
-        </div>
-
-        {/* Séparateur */}
-        <div style={{ height: 1, background: 'var(--border-primary)', marginBottom: 18 }} />
-
-        {/* Ligne 3 : Tags */}
-        <div>
-          <p style={{ ...sectionTitle, marginBottom: 8 }}><Tag size={11} style={{ marginRight: 5, verticalAlign: '-1px' }} />Tags</p>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-            {tags.map(tag => (
-              <span key={tag} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 600,
-                background: 'rgba(0,200,83,0.08)', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.15)',
+            <p style={{ ...sectionTitle, marginBottom: 6 }}><Tag size={11} style={{ marginRight: 4, verticalAlign: '-1px' }} />Tags</p>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+              {tags.map(tag => (
+                <span key={tag} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  padding: '2px 8px', borderRadius: 99, fontSize: 10, fontWeight: 600,
+                  background: 'rgba(0,200,83,0.08)', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.15)',
+                }}>
+                  {tag}
+                  <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: 0, display: 'flex' }}>
+                    <X size={9} />
+                  </button>
+                </span>
+              ))}
+              {tags.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-label)' }}>Aucun tag</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <input style={{ ...inputStyle, flex: 1, padding: '6px 10px', fontSize: 12 }} value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+                placeholder="Ajouter..." />
+              <button onClick={addTag} style={{
+                padding: '6px 8px', background: 'var(--bg-hover)',
+                border: '1px solid var(--border-primary)', borderRadius: 7, color: 'var(--text-tertiary)', cursor: 'pointer',
               }}>
-                {tag}
-                <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: 0 }}>
-                  <X size={10} />
-                </button>
-              </span>
-            ))}
-            {tags.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-label)' }}>Aucun tag</span>}
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input style={{ ...inputStyle, flex: 1 }} value={tagInput}
-              onChange={e => setTagInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-              placeholder="Ajouter un tag..." />
-            <button onClick={addTag} style={{
-              padding: '7px 10px', background: 'var(--bg-hover)',
-              border: '1px solid var(--border-primary)', borderRadius: 7, color: 'var(--text-tertiary)', cursor: 'pointer',
-            }}>
-              <Plus size={13} />
-            </button>
+                <Plus size={12} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -285,6 +278,13 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
                       {(item.data as Call).notes && (
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{(item.data as Call).notes}</div>
                       )}
+                      {/* Message de confirmation collapsible — seulement pour les appels planifiés (outcome='pending') */}
+                      {(item.data as Call).outcome === 'pending' && (
+                        <CallConfirmationToggle
+                          lead={lead}
+                          call={item.data as Call}
+                        />
+                      )}
                     </>
                   ) : (
                     <>
@@ -317,10 +317,7 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
         <LeadJourneyBlock leadId={lead.id} />
       </div>
 
-      {/* ─── BLOC 5 : Message de confirmation (si RDV) — à la fin ─── */}
-      <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
-
-      {/* ─── BLOC 6 : Paiements ─── */}
+      {/* ─── BLOC 5 : Paiements (en bas) ─── */}
       <div style={card}>
         <p style={sectionTitle}>Paiements</p>
         <LeadDealsWidget leadId={lead.id} />
@@ -354,3 +351,4 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
     </div>
   )
 }
+
