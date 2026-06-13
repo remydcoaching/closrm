@@ -208,21 +208,20 @@ function LeadsListViewInner(props: LeadsListViewProps) {
                       <ChevronDown size={10} color="var(--text-label)" />
                     </button>
                   </td>
-                  <td style={{ padding: '10px 8px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                  <td style={{ padding: '10px 8px' }} onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => toggleReached(lead)}
+                      title={lead.reached ? 'Cliquer pour marquer Non joint' : 'Cliquer pour marquer Joint'}
                       style={{
-                        width: 36, height: 20, borderRadius: 99, border: 'none', cursor: 'pointer',
-                        background: lead.reached ? 'var(--color-primary)' : 'var(--border-primary)',
-                        position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '2px 8px', borderRadius: 99,
+                        background: lead.reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
+                        color: lead.reached ? '#38A169' : '#ef4444',
+                        fontSize: 11, fontWeight: 600,
+                        border: 'none', cursor: 'pointer',
                       }}
-                      title={lead.reached ? 'Joint' : 'Non joint'}
                     >
-                      <span style={{
-                        position: 'absolute', top: 2, width: 16, height: 16, borderRadius: '50%',
-                        background: '#fff', transition: 'left 0.2s',
-                        left: lead.reached ? 18 : 2,
-                      }} />
+                      {lead.reached ? 'Joint' : 'Non'}
                     </button>
                   </td>
                   <td style={{ padding: '10px 8px' }} onClick={e => e.stopPropagation()}>
