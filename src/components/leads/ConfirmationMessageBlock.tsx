@@ -14,7 +14,7 @@ interface Props {
 const STORAGE_KEY = 'closrm.confirmation-message-template'
 
 const DEFAULT_TEMPLATE = `Salut {{first_name}},
-C'est Pierre Rebmann, merci d'avoir pris rendez-vous 😃
+C'est {{coach_name}}, merci d'avoir pris rendez-vous 😃
 
 
 Le but est de faire un point sur ta situation, comprendre où tu en es actuellement et voir si on peut t'aider.
