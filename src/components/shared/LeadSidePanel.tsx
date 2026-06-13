@@ -15,7 +15,9 @@ function InstagramIcon({ size = 13 }: { size?: number }) {
 import { Lead, Call, FollowUp, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import ClosingModal from '@/components/leads/ClosingModal'
-import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
+import LeadActionModal, { type LeadAction } from '@/components/leads/LeadActionModal'
+import LogCallModal from '@/components/leads/LogCallModal'
+import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import StatusBadge from '@/components/leads/StatusBadge'
 import { useStatusConfig } from '@/lib/workspace/config-context'
 import SourceBadge from '@/components/leads/SourceBadge'
@@ -64,6 +66,9 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   const [editValue, setEditValue] = useState('')
   const [newTag, setNewTag] = useState('')
   const [showClosingModal, setShowClosingModal] = useState(false)
+  const [showActionModal, setShowActionModal] = useState(false)
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [showLogCallModal, setShowLogCallModal] = useState(false)
 
   // Team members state
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -139,6 +144,44 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   async function patchFollowUp(fuId: string, patch: Partial<FollowUp>) {
     await fetch(`/api/follow-ups/${fuId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
     fetchLead({ silent: true })
+  }
+
+  // Unifie le menu d'actions (planifier RDV / relance / won / pas qualifié /
+  // dead / logger un appel) avec celui de la liste leads. Ouvert depuis le
+  // bouton "Traiter" en haut du panel.
+  async function handleAction(action: LeadAction) {
+    if (!lead) return
+    if (action.type === 'schedule_call') {
+      setShowScheduleModal(true)
+    } else if (action.type === 'log_call') {
+      setShowLogCallModal(true)
+    } else if (action.type === 'follow_up') {
+      await fetch('/api/follow-ups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: lead.id, reason: action.reason, scheduled_at: action.date, channel: action.channel }),
+      })
+      fetchLead({ silent: true })
+    } else if (action.type === 'won') {
+      await fetch('/api/deals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          amount: action.amount,
+          cash_collected: action.cash_collected,
+          installments: action.installments,
+          duration_months: action.duration_months,
+          closer_id: action.closer_id,
+          setter_id: action.setter_id,
+        }),
+      })
+      fetchLead({ silent: true })
+    } else if (action.type === 'pas_qualifie') {
+      patchLead({ status: 'pas_qualifie' })
+    } else if (action.type === 'dead') {
+      patchLead({ status: 'dead' })
+    }
   }
 
   function startEdit(field: string, value: string) {
@@ -259,7 +302,24 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
         <div style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Profil du lead</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {lead && <LeadAddBookingButton lead={lead} variant="small" />}
+            {lead && (
+              <button
+                onClick={() => setShowActionModal(true)}
+                title="Traiter ce lead"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 7,
+                  background: 'rgba(0,200,83,0.12)',
+                  border: '1px solid rgba(0,200,83,0.25)',
+                  color: 'var(--color-primary)',
+                  fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Sparkles size={12} />
+                Traiter
+              </button>
+            )}
             {lead && <Link href={`/leads/${lead.id}`} style={{ fontSize: 11, color: 'var(--text-tertiary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}><ExternalLink size={12} />Page complète</Link>}
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
           </div>
@@ -569,6 +629,30 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               closed_at: new Date().toISOString(),
             } as Partial<Lead>)
           }}
+        />
+      )}
+
+      {showActionModal && lead && (
+        <LeadActionModal
+          lead={lead}
+          onClose={() => setShowActionModal(false)}
+          onAction={(action) => handleAction(action)}
+        />
+      )}
+
+      {showScheduleModal && lead && (
+        <CallScheduleModal
+          lead={lead}
+          onClose={() => setShowScheduleModal(false)}
+          onScheduled={() => { setShowScheduleModal(false); fetchLead({ silent: true }) }}
+        />
+      )}
+
+      {showLogCallModal && lead && (
+        <LogCallModal
+          lead={{ id: lead.id, first_name: lead.first_name, last_name: lead.last_name }}
+          onClose={() => setShowLogCallModal(false)}
+          onLogged={() => { fetchLead({ silent: true }) }}
         />
       )}
     </div>
