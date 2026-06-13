@@ -87,6 +87,10 @@ export interface MetaInsightRow {
   spend: string
   impressions: string
   clicks: string
+  /** Clics sur le lien sortant uniquement (correspond à "Clics sur un lien"
+   *  dans l'UI Meta Ads Manager). Distingué de `clicks` qui agrège like /
+   *  comment / profile / share / link / photo views. */
+  inline_link_clicks?: string
   ctr: string
   actions?: MetaInsightAction[]
   cost_per_action_type?: MetaInsightAction[]
@@ -309,7 +313,7 @@ export async function getInsights(
   const timeRange = JSON.stringify({ since: params.dateFrom, until: params.dateTo })
 
   const baseFields = [
-    'spend', 'impressions', 'clicks', 'ctr',
+    'spend', 'impressions', 'clicks', 'inline_link_clicks', 'ctr',
     'actions', 'cost_per_action_type',
     'video_play_actions', 'video_p25_watched_actions',
     'video_p50_watched_actions', 'video_p75_watched_actions',
