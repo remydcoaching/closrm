@@ -3,12 +3,15 @@
 import { useEffect, useState } from 'react'
 import { X, Sparkles, Loader2, RefreshCw } from 'lucide-react'
 
-export interface AnalysisTarget {
-  level: 'campaign' | 'adset' | 'ad'
+export interface AnalysisRow {
   id: string
   name: string
-  kpis: Record<string, unknown>
-  crm?: Record<string, unknown> | null
+  data: Record<string, unknown>
+}
+
+export interface AnalysisTarget {
+  level: 'campaign' | 'adset' | 'ad'
+  rows: AnalysisRow[]
   dateFrom?: string
   dateTo?: string
 }
@@ -18,16 +21,13 @@ interface Props {
   onClose: () => void
 }
 
-const LEVEL_LABEL: Record<AnalysisTarget['level'], string> = {
-  campaign: 'Campagne',
-  adset: 'Ad set',
-  ad: 'Ad',
+const LEVEL_LABEL_PLURAL: Record<AnalysisTarget['level'], string> = {
+  campaign: 'campagnes',
+  adset: 'ad sets',
+  ad: 'ads',
 }
 
-/**
- * Rendu markdown ultra-simple : titres `###`, **bold**, listes `-`.
- * Pas besoin de tirer une lib markdown lourde pour ce qu'on rend ici.
- */
+/** Rendu markdown minimaliste : titres `###`, **bold**, listes `-`. */
 function renderMarkdown(text: string): React.ReactNode {
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
@@ -49,7 +49,6 @@ function renderMarkdown(text: string): React.ReactNode {
   }
 
   function renderInline(s: string): React.ReactNode {
-    // Bold
     const parts = s.split(/(\*\*[^*]+\*\*)/g)
     return parts.map((p, i) => {
       if (p.startsWith('**') && p.endsWith('**')) {
@@ -104,6 +103,7 @@ function renderMarkdown(text: string): React.ReactNode {
 export default function AnalysisPanel({ target, onClose }: Props) {
   const [loading, setLoading] = useState(true)
   const [analysis, setAnalysis] = useState<string | null>(null)
+  const [analyzedCount, setAnalyzedCount] = useState<number>(target.rows.length)
   const [error, setError] = useState<string | null>(null)
 
   async function fetchAnalysis() {
@@ -116,9 +116,7 @@ export default function AnalysisPanel({ target, onClose }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           level: target.level,
-          name: target.name,
-          kpis: target.kpis,
-          crm: target.crm ?? null,
+          rows: target.rows,
           dateFrom: target.dateFrom,
           dateTo: target.dateTo,
         }),
@@ -126,6 +124,7 @@ export default function AnalysisPanel({ target, onClose }: Props) {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Erreur')
       setAnalysis(json.analysis ?? '')
+      setAnalyzedCount(json.analyzedCount ?? target.rows.length)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur réseau')
     } finally {
@@ -136,12 +135,15 @@ export default function AnalysisPanel({ target, onClose }: Props) {
   useEffect(() => {
     fetchAnalysis()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target.id, target.level])
+  }, [target.level, target.rows.length, target.dateFrom, target.dateTo])
+
+  const truncated = analyzedCount < target.rows.length
+  const label = LEVEL_LABEL_PLURAL[target.level]
 
   return (
     <div style={{
       position: 'fixed', top: 0, right: 0, bottom: 0,
-      width: '100%', maxWidth: 540,
+      width: '100%', maxWidth: 560,
       background: 'var(--bg-elevated)',
       borderLeft: '1px solid var(--border-primary)',
       boxShadow: '-8px 0 32px rgba(0,0,0,0.4)',
@@ -158,17 +160,26 @@ export default function AnalysisPanel({ target, onClose }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <Sparkles size={14} color="#a855f7" />
             <span style={{ fontSize: 11, fontWeight: 700, color: '#a855f7', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              Analyse IA · {LEVEL_LABEL[target.level]}
+              Analyse IA globale
             </span>
           </div>
           <h3 style={{
-            fontSize: 16, fontWeight: 600, color: 'var(--text-primary)',
-            margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0,
           }}>
-            {target.name}
+            {target.rows.length} {label}
+            {target.dateFrom && target.dateTo && (
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 8 }}>
+                · {target.dateFrom} → {target.dateTo}
+              </span>
+            )}
           </h3>
+          {truncated && (
+            <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 4 }}>
+              Analyse limitée aux {analyzedCount} premières lignes (sur {target.rows.length}) pour optimiser le coût IA.
+            </div>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           <button
             onClick={fetchAnalysis}
             disabled={loading}
@@ -214,8 +225,8 @@ export default function AnalysisPanel({ target, onClose }: Props) {
           }}>
             <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: '#a855f7' }} />
             <div style={{ fontSize: 13, textAlign: 'center' }}>
-              Claude analyse les chiffres…<br />
-              <span style={{ fontSize: 11, color: 'var(--text-label)' }}>~10-20s</span>
+              Claude analyse les {target.rows.length} {label}…<br />
+              <span style={{ fontSize: 11, color: 'var(--text-label)' }}>~15-30s</span>
             </div>
           </div>
         )}
@@ -232,9 +243,7 @@ export default function AnalysisPanel({ target, onClose }: Props) {
         )}
 
         {analysis && !loading && (
-          <div>
-            {renderMarkdown(analysis)}
-          </div>
+          <div>{renderMarkdown(analysis)}</div>
         )}
       </div>
     </div>

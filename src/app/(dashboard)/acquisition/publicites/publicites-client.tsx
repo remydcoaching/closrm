@@ -410,16 +410,10 @@ export default function PublicitesClient({ connectionState }: PublicitesClientPr
                 }
               : undefined
           }
-          onAnalyze={(id, name) => {
-            const row = data?.breakdown.find(r => r.id === id)
-            if (!row) return
-            const crm = crmMap?.get(id) as unknown as Record<string, unknown> | undefined
+          onAnalyzeAll={(rows) => {
             setAnalysisTarget({
               level: level as AnalysisTarget['level'],
-              id,
-              name,
-              kpis: row as unknown as Record<string, unknown>,
-              crm: crm ?? null,
+              rows,
               dateFrom,
               dateTo,
             })
