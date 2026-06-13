@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Phone, Mail, Tag, FileText, CheckCircle, XCircle, Clock, X, Plus } from 'lucide-react'
+import { Phone, Mail, Tag, FileText, Clock, X, Plus } from 'lucide-react'
 import { Lead, Call, FollowUp, LeadStatus } from '@/types'
 import StatusBadge from '@/components/leads/StatusBadge'
+import SourceBadge from '@/components/leads/SourceBadge'
 import { useStatusConfig } from '@/lib/workspace/config-context'
 import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
+import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
+import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
 import ConfirmationMessageBlock from '@/components/leads/ConfirmationMessageBlock'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -121,11 +124,16 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
 
   return (
     <div>
-      {/* Message de confirmation pré-rendu pour les RDV planifiés */}
-      <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
-
-      {/* ─── BLOC 1 : Statut + Coordonnées + Tags (en 1 carte compacte) ─── */}
+      {/* ─── BLOC 1 : Header unique — Identité + Statut + Coordonnées + Tags ─── */}
       <div style={card}>
+        {/* Nom + Prénom en grand titre */}
+        <div style={{ marginBottom: 16 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: 6 }}>
+            {lead.first_name} {lead.last_name}
+          </h2>
+          <SourceBadge source={lead.source} />
+        </div>
+
         {/* Statut en dropdown */}
         <div style={{ marginBottom: 16 }}>
           <p style={{ ...sectionTitle, marginBottom: 8 }}>Statut</p>
@@ -285,10 +293,25 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
         )}
       </div>
 
-      {/* ─── BLOC 3 : Notes (toujours visible — c'est central pour le coach) ─── */}
+      {/* ─── BLOC 3 : Notes ─── */}
       <div style={card}>
         <p style={sectionTitle}><FileText size={11} style={{ marginRight: 5 }} />Notes</p>
         <LeadNotesWidget leadId={lead.id} />
+      </div>
+
+      {/* ─── BLOC 4 : Parcours du lead ─── */}
+      <div style={card}>
+        <p style={sectionTitle}>Parcours du lead</p>
+        <LeadJourneyBlock leadId={lead.id} />
+      </div>
+
+      {/* ─── BLOC 5 : Message de confirmation (si RDV) — à la fin ─── */}
+      <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
+
+      {/* ─── BLOC 6 : Paiements ─── */}
+      <div style={card}>
+        <p style={sectionTitle}>Paiements</p>
+        <LeadDealsWidget leadId={lead.id} />
       </div>
 
       {/* ─── BLOC PLUS : Lead Magnets (collapsible) ─── */}
@@ -307,7 +330,7 @@ export default function LeadDetail({ lead, onUpdate }: LeadDetailProps) {
           cursor: 'pointer',
         }}
       >
-        {showMoreDetails ? '▴ Masquer les détails complémentaires' : '▾ Voir les détails complémentaires'}
+        {showMoreDetails ? '▴ Masquer Lead Magnets' : '▾ Voir Lead Magnets'}
       </button>
 
       {showMoreDetails && (

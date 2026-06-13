@@ -415,9 +415,6 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             </div>
 
-            {/* Message de confirmation pré-rendu pour les RDV planifiés */}
-            <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
-
             {/* Auto-assign notification */}
             {autoAssignMsg && (
               <div style={{
@@ -518,43 +515,63 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             </div>
 
-            {/* ─── BLOC 2 : Appels ─── */}
-            {lead.calls.length > 0 && (
-              <div style={card}>
-                <div style={sectionTitle}>Appels ({lead.calls.length})</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {lead.calls.map((call) => (
-                    <CallRow key={call.id} call={call} onPatch={(patch) => patchCall(call.id, patch)} />
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* ─── BLOC 2 : Historique des interactions (Appels + Relances + Notes) ─── */}
+            <div style={card}>
+              <div style={sectionTitle}>Historique des interactions</div>
 
-            {/* ─── BLOC 3 : Relances ─── */}
-            {lead.follow_ups.length > 0 && (
-              <div style={card}>
-                <div style={sectionTitle}>Relances ({lead.follow_ups.length})</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {lead.follow_ups.map((fu) => (
-                    <FollowUpRow key={fu.id} followUp={fu} onPatch={(patch) => patchFollowUp(fu.id, patch)} />
-                  ))}
+              {/* Appels */}
+              {lead.calls.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>
+                    Appels ({lead.calls.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {lead.calls.map((call) => (
+                      <CallRow key={call.id} call={call} onPatch={(patch) => patchCall(call.id, patch)} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ─── BLOC 4 : Paiements (toujours visible — c'est le revenu) ─── */}
+              {/* Relances */}
+              {lead.follow_ups.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>
+                    Relances ({lead.follow_ups.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {lead.follow_ups.map((fu) => (
+                      <FollowUpRow key={fu.id} followUp={fu} onPatch={(patch) => patchFollowUp(fu.id, patch)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>
+                  Notes
+                </div>
+                <LeadNotesWidget leadId={leadId} />
+              </div>
+            </div>
+
+            {/* ─── BLOC 3 : Parcours du lead ─── */}
+            <div style={card}>
+              <div style={sectionTitle}>Parcours du lead</div>
+              <LeadJourneyBlock leadId={leadId} compact />
+            </div>
+
+            {/* ─── BLOC 4 : Message de confirmation (si RDV) ─── */}
+            <ConfirmationMessageBlock lead={lead} calls={lead.calls} />
+
+            {/* ─── BLOC 5 : Paiements (en bas) ─── */}
             <div style={card}>
               <div style={sectionTitle}>Paiements</div>
               <LeadDealsWidget leadId={leadId} />
             </div>
 
-            {/* ─── BLOC 5 : Notes ─── */}
-            <div style={card}>
-              <div style={sectionTitle}>Notes</div>
-              <LeadNotesWidget leadId={leadId} />
-            </div>
-
-            {/* ─── BLOC PLUS : sections secondaires (Assistant IA, Lead Magnets, Acquisition) ─── */}
+            {/* ─── BLOC PLUS : Assistant IA + Lead Magnets (collapsible) ─── */}
             <button
               onClick={() => setShowMoreDetails(o => !o)}
               style={{
@@ -575,7 +592,6 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
 
             {showMoreDetails && (
               <>
-                {/* Assistant IA */}
                 <div style={card}>
                   <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Sparkles size={12} color="#E53E3E" />
@@ -587,12 +603,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                   />
                 </div>
 
-                {/* Lead Magnets — le widget gère son propre card + title */}
                 <LeadMagnetsWidget leadId={leadId} />
-
-                {/* Parcours du lead */}
-                <SectionHeader>Parcours du lead</SectionHeader>
-                <LeadJourneyBlock leadId={leadId} compact />
               </>
             )}
 
