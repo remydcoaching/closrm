@@ -151,6 +151,32 @@ export function NotificationSettingsScreen() {
     await reschedule()
   }
 
+  // Diagnostic push serveur : appelle /api/push/test qui renvoie la liste
+  // des tokens enregistrés pour l'user + le retour Expo détaillé. Permet
+  // de comprendre POURQUOI les notifs n'arrivent pas (token absent, token
+  // expiré DeviceNotRegistered, etc.).
+  const triggerTestPush = async () => {
+    try {
+      const res = await api.post<{
+        ok: boolean
+        tokensFound: number
+        tokens?: Array<{ device_name: string | null; platform: string; token_preview: string }>
+        diagnosis: string
+      }>('/api/push/test', {})
+
+      const tokensInfo = res.tokens
+        ? res.tokens.map((tk) => `• ${tk.device_name ?? '?'} (${tk.platform})`).join('\n')
+        : ''
+
+      Alert.alert(
+        res.ok ? '✅ Push envoyé' : '⚠️ Diagnostic push',
+        `${res.diagnosis}\n\n${res.tokensFound} token${res.tokensFound > 1 ? 's' : ''} en DB${tokensInfo ? `:\n${tokensInfo}` : ''}`,
+      )
+    } catch (e) {
+      Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec test push')
+    }
+  }
+
   // Test : schedule une notif dans 5s pour vérifier que l'alarme fonctionne
   // sur le device. Indispensable parce que sinon il faut attendre un vrai
   // event pour vérifier.
@@ -393,6 +419,20 @@ export function NotificationSettingsScreen() {
             >
               <Text style={{ ...t.subheadline, color: '#fff', fontWeight: '700' }}>
                 Tester l&apos;alarme (dans 5s)
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={triggerTestPush}
+              style={({ pressed }) => ({
+                paddingVertical: 10,
+                borderRadius: radius.md,
+                alignItems: 'center',
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={{ ...t.subheadline, color: '#fff', fontWeight: '700' }}>
+                Tester push serveur
               </Text>
             </Pressable>
           </View>
