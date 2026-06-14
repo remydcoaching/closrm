@@ -113,6 +113,9 @@ export default function ConfirmationMessageBlock({ lead }: Props) {
 
   if (!visible) return null
 
+  const dateLabel = scheduledAt ? formatDate(scheduledAt) : null
+  const timeLabel = scheduledAt ? formatTime(scheduledAt) : null
+
   const message = fillTemplate(DEFAULT_TEMPLATE, {
     first_name: lead.first_name || '',
     last_name: lead.last_name || '',
@@ -132,7 +135,46 @@ export default function ConfirmationMessageBlock({ lead }: Props) {
   }
 
   return (
-    <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
+    <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl, gap: 10 }}>
+      {/* Badge RDV visible direct — date/heure du prochain call planifié.
+          Le coach n'a plus à ouvrir l'agenda pour savoir quand c'est. */}
+      {dateLabel && timeLabel ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+            borderRadius: radius.lg,
+            backgroundColor: colors.primary + '14',
+            borderWidth: 1,
+            borderColor: colors.primary + '40',
+          }}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: colors.primary + '33',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="calendar" size={18} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ ...t.caption1, color: colors.textTertiary, marginBottom: 2 }}>
+              Prochain rendez-vous
+            </Text>
+            <Text style={{ ...t.bodyEmphasis, color: colors.textPrimary }}>
+              {dateLabel} à {timeLabel}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       <Pressable
         onPress={() => setExpanded((e) => !e)}
         style={{
@@ -146,7 +188,6 @@ export default function ConfirmationMessageBlock({ lead }: Props) {
           borderWidth: 1,
           borderColor: '#a855f7' + '40',
           backgroundColor: '#a855f7' + '14',
-          marginBottom: expanded ? 12 : 0,
         }}
       >
         <Ionicons
