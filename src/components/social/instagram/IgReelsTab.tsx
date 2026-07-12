@@ -63,6 +63,7 @@ export default function IgReelsTab() {
   const [selectedReel, setSelectedReel] = useState<IgReel | null>(null)
   const [reelNotes, setReelNotes] = useState('')
   const [notesSaved, setNotesSaved] = useState(false)
+  const [mediaError, setMediaError] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
   // Load notes from localStorage when selecting a reel
@@ -71,6 +72,7 @@ export default function IgReelsTab() {
       const saved = localStorage.getItem(`reel-notes-${selectedReel.ig_media_id}`)
       setReelNotes(saved ?? '')
       setNotesSaved(false)
+      setMediaError(false)
     }
   }, [selectedReel])
 
@@ -397,7 +399,7 @@ export default function IgReelsTab() {
                 background: '#000', marginBottom: 20, position: 'relative',
                 aspectRatio: '9 / 16',
               }}>
-                {reel.video_url ? (
+                {reel.video_url && !mediaError ? (
                   // preload="none" : ne télécharge la vidéo qu'au premier play
                   // utilisateur. Sans cette directive, Safari/Chrome chargent
                   // les premiers MB à l'ouverture du panel (gros lag réseau).
@@ -406,14 +408,16 @@ export default function IgReelsTab() {
                     poster={reel.thumbnail_url ?? undefined}
                     controls
                     preload="none"
+                    onError={() => setMediaError(true)}
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
-                ) : reel.thumbnail_url ? (
+                ) : reel.thumbnail_url && !mediaError ? (
                   <img
                     src={reel.thumbnail_url}
                     alt={reel.caption?.slice(0, 60) ?? 'Reel'}
                     loading="lazy"
                     decoding="async"
+                    onError={() => setMediaError(true)}
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : (
@@ -422,7 +426,7 @@ export default function IgReelsTab() {
                     color: 'var(--text-tertiary)', flexDirection: 'column', gap: 8,
                   }}>
                     <Play size={40} />
-                    <span style={{ fontSize: 12 }}>Pas de preview disponible</span>
+                    <span style={{ fontSize: 12 }}>Preview expirée — relancer une sync</span>
                   </div>
                 )}
               </div>

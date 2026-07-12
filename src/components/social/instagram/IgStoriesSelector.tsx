@@ -4,6 +4,16 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { IgStory, StorySequenceItem } from '@/types'
 
+function StoryThumbSmall({ story }: { story: IgStory }) {
+  const [err, setErr] = useState(false)
+  const src = !err ? (story.thumbnail_url || story.ig_media_url || '') : ''
+  return (
+    <div style={{ width: 36, height: 64, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-elevated)', flexShrink: 0 }}>
+      {src && <img src={src} alt="" onError={() => setErr(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+    </div>
+  )
+}
+
 interface Props {
   sequenceId: string
   currentItems: StorySequenceItem[]
@@ -13,7 +23,8 @@ interface Props {
 
 export default function IgStoriesSelector({ sequenceId, currentItems, onClose, onSaved }: Props) {
   const [stories, setStories] = useState<IgStory[]>([])
-  const [selected, setSelected] = useState<Set<string>>(new Set(currentItems.map(i => i.story_id)))
+  const originalIds = new Set(currentItems.map(i => i.story_id))
+  const [selected, setSelected] = useState<Set<string>>(new Set(originalIds))
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +73,10 @@ export default function IgStoriesSelector({ sequenceId, currentItems, onClose, o
     }
   }
 
-  const hasChanges = selected.size > 0
+  const hasChanges =
+    selected.size !== originalIds.size ||
+    [...selected].some(id => !originalIds.has(id)) ||
+    [...originalIds].some(id => !selected.has(id))
 
   return (
     <div
@@ -92,6 +106,14 @@ export default function IgStoriesSelector({ sequenceId, currentItems, onClose, o
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)', fontSize: 13 }}>Chargement...</div>
+        ) : stories.length === 0 ? (
+          <div style={{
+            textAlign: 'center', padding: 40, color: 'var(--text-tertiary)', fontSize: 13,
+            background: 'var(--bg-primary)', borderRadius: 8, marginBottom: 20,
+            border: '1px dashed var(--border-primary)',
+          }}>
+            Aucune story disponible — faites une sync Instagram pour importer les dernières stories.
+          </div>
         ) : (
           <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
             {stories.map(s => (
@@ -106,11 +128,7 @@ export default function IgStoriesSelector({ sequenceId, currentItems, onClose, o
                   onChange={() => toggle(s.id)}
                   style={{ flexShrink: 0, marginTop: 0 }}
                 />
-                <div style={{ width: 36, height: 64, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-elevated)', flexShrink: 0 }}>
-                  {(s.thumbnail_url || s.ig_media_url) && (
-                    <img src={s.thumbnail_url || s.ig_media_url || ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  )}
-                </div>
+                <StoryThumbSmall story={s} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {s.caption?.slice(0, 40) || 'Story'}

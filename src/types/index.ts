@@ -1155,6 +1155,10 @@ export interface IgStory {
   exits: number
   taps_forward: number
   taps_back: number
+  profile_visits: number
+  follows: number
+  link_clicks: number
+  shares: number
   published_at: string
   expires_at: string
 }

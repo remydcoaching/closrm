@@ -6,6 +6,20 @@ import { IG_SEQ_TYPES } from './constants'
 import dynamic from 'next/dynamic'
 import type { StorySequence, StorySequenceItem } from '@/types'
 
+function StoryThumb({ item }: { item: StorySequenceItem }) {
+  const [imgError, setImgError] = useState(false)
+  const src = !imgError ? (item.story?.thumbnail_url || item.story?.ig_media_url || '') : ''
+  return (
+    <div style={{ width: 110, height: 196, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-elevated)' }}>
+      {src ? (
+        <img src={src} alt="" onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text-tertiary)' }}>Story {item.position}</div>
+      )}
+    </div>
+  )
+}
+
 const IgStoriesSelector = dynamic(() => import('./IgStoriesSelector'), { ssr: false })
 
 interface Props {
@@ -147,13 +161,7 @@ export default function IgSequenceDetail({ sequence, onBack, onRefresh }: Props)
           {/* Story thumbnails grid — consistent 110x196 */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {items.map(item => (
-              <div key={item.id} style={{ width: 110, height: 196, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-elevated)' }}>
-                {(item.story?.thumbnail_url || item.story?.ig_media_url) ? (
-                  <img src={item.story.thumbnail_url || item.story.ig_media_url || ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text-tertiary)' }}>Story {item.position}</div>
-                )}
-              </div>
+              <StoryThumb key={item.id} item={item} />
             ))}
           </div>
         </>

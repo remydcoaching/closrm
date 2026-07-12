@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Eye, Users, MessageCircle, LogOut, TrendingDown, ChevronDown, UserPlus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Eye, Users, MessageCircle, LogOut, TrendingDown, ChevronDown, UserPlus, Link, Share2, SkipForward, RotateCcw } from 'lucide-react'
 import { IG_SEQ_TYPES } from './constants'
 import dynamic from 'next/dynamic'
 import type { IgStory, StorySequence, StorySequenceItem } from '@/types'
@@ -60,23 +60,30 @@ function StoryCard({
   width: number
   height: number
 }) {
-  const impressions = story?.impressions ?? 0
-  const reach = story?.reach ?? 0
-  const replies = story?.replies ?? 0
-  const follows = story?.taps_back ?? 0
-  const profileVisits = story?.taps_forward ?? 0
-  const imgSrc = story?.thumbnail_url || story?.ig_media_url || ''
-
-  const exits = story?.exits ?? 0
+  const [imgError, setImgError] = useState(false)
+  const impressions   = story?.impressions   ?? 0
+  const reach         = story?.reach         ?? 0
+  const replies       = story?.replies       ?? 0
+  const exits         = story?.exits         ?? 0
+  const tapsForward   = story?.taps_forward  ?? 0
+  const tapsBack      = story?.taps_back     ?? 0
+  const profileVisits = story?.profile_visits ?? 0
+  const follows       = story?.follows       ?? 0
+  const linkClicks    = story?.link_clicks   ?? 0
+  const shares        = story?.shares        ?? 0
+  const imgSrc = (!imgError && (story?.thumbnail_url || story?.ig_media_url)) || ''
 
   const statRow = (icon: React.ReactNode, label: string, value: number | string, color?: string) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-secondary)' }}>
         {icon} {label}
       </div>
-      <span style={{ fontSize: 13, fontWeight: 700, color: color || 'var(--text-primary)' }}>{value}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, color: color || 'var(--text-primary)' }}>{value}</span>
     </div>
   )
+
+  const hasInteractions = profileVisits > 0 || follows > 0 || linkClicks > 0 || shares > 0
+  const hasNavigation   = tapsForward > 0 || tapsBack > 0
 
   return (
     <div style={{ width, flexShrink: 0 }}>
@@ -89,7 +96,7 @@ function StoryCard({
         border: '1px solid var(--border-primary)',
       }}>
         {imgSrc ? (
-          <img src={imgSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={imgSrc} alt="" onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{
             width: '100%', height: '100%',
@@ -117,18 +124,35 @@ function StoryCard({
         marginTop: 8, padding: 12, borderRadius: 12,
         background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
       }}>
-        {/* Big view count */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid var(--border-primary)' }}>
-          <Eye size={16} style={{ color: 'var(--color-primary)' }} />
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{impressions.toLocaleString()}</span>
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>vues</span>
+        {/* Primary: Reach (vues uniques) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid var(--border-primary)' }}>
+          <Users size={15} style={{ color: 'var(--color-primary)' }} />
+          <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>{reach.toLocaleString()}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>vues</span>
         </div>
 
-        {statRow(<Users size={13} />, 'Reach', reach.toLocaleString())}
-        {statRow(<MessageCircle size={13} />, 'Réponses', replies)}
-        {statRow(<LogOut size={13} />, 'Sorties', exits)}
-        {statRow(<Users size={13} />, 'Visites profil', profileVisits, profileVisits > 0 ? '#60a5fa' : undefined)}
-        {statRow(<UserPlus size={13} />, 'Abonnés', follows > 0 ? `+${follows}` : '0', follows > 0 ? '#22c55e' : undefined)}
+        {/* Core metrics */}
+        {statRow(<Eye size={12} />, 'Impressions', impressions.toLocaleString())}
+        {statRow(<MessageCircle size={12} />, 'Réponses', replies, replies > 0 ? '#60a5fa' : undefined)}
+        {statRow(<LogOut size={12} />, 'Sorties', exits, exits > (reach * 0.3) ? '#f97316' : undefined)}
+
+        {/* Interactions bloc */}
+        {hasInteractions && (
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-primary)' }}>
+            {profileVisits > 0 && statRow(<Users size={12} />, 'Visites profil', profileVisits, '#60a5fa')}
+            {follows > 0       && statRow(<UserPlus size={12} />, 'Abonnés',       `+${follows}`, '#22c55e')}
+            {linkClicks > 0    && statRow(<Link size={12} />, 'Clics lien',        linkClicks, '#a78bfa')}
+            {shares > 0        && statRow(<Share2 size={12} />, 'Partages',        shares)}
+          </div>
+        )}
+
+        {/* Navigation bloc */}
+        {hasNavigation && (
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border-primary)' }}>
+            {tapsBack    > 0 && statRow(<RotateCcw size={12} />, 'Replay', tapsBack, '#22c55e')}
+            {tapsForward > 0 && statRow(<SkipForward size={12} />, 'Skip',  tapsForward, exits > 0 ? '#f97316' : undefined)}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -166,63 +190,56 @@ function DropOffArrow({ percentage }: { percentage: number }) {
 /** Retention funnel bar for a sequence */
 function RetentionFunnel({ items }: { items: StorySequenceItem[] }) {
   if (items.length === 0) return null
-  const firstImpressions = items[0].story?.impressions ?? 0
-  if (firstImpressions === 0) return null
+  const firstReach = items[0].story?.reach ?? items[0].story?.impressions ?? 0
+  if (firstReach === 0) return null
 
   return (
-    <div style={{ marginTop: 16 }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
-      }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Retention
-        </span>
-      </div>
-      <div style={{
-        display: 'flex', gap: 3, alignItems: 'flex-end',
-        height: 36, borderRadius: 8, overflow: 'hidden',
-        background: 'var(--bg-elevated)',
-        padding: 3,
-      }}>
+    <div style={{ marginTop: 20, padding: '14px 0 2px' }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+        Rétention
+      </span>
+      <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
         {items.map((item, idx) => {
-          const imp = item.story?.impressions ?? 0
-          const pct = firstImpressions > 0 ? (imp / firstImpressions) * 100 : 0
-          const clampedPct = Math.min(100, Math.max(4, pct))
-          // Color gradient from green to red
-          const hue = (pct / 100) * 120 // 120=green, 0=red
-          const barColor = `hsl(${hue}, 70%, 50%)`
+          const reach = item.story?.reach ?? item.story?.impressions ?? 0
+          const pct = (reach / firstReach) * 100
+          const prevReach = idx > 0 ? (items[idx - 1].story?.reach ?? items[idx - 1].story?.impressions ?? 0) : firstReach
+          const stepDrop = idx > 0 && prevReach > 0 ? Math.round((prevReach - reach) / prevReach * 100) : 0
+          const hue = Math.round((pct / 100) * 120)
+          const barColor = `hsl(${hue}, 65%, 48%)`
+
           return (
-            <div
-              key={item.id}
-              style={{
-                flex: 1,
-                height: `${clampedPct}%`,
-                background: barColor,
-                borderRadius: 4,
-                position: 'relative',
-                minWidth: 0,
-                transition: 'height 0.3s ease',
-              }}
-              title={`Story ${idx + 1}: ${imp.toLocaleString()} vues (${Math.round(pct)}%)`}
-            >
-              {items.length <= 8 && (
+            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Story number */}
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', minWidth: 14, textAlign: 'right' }}>
+                {idx + 1}
+              </span>
+              {/* Bar */}
+              <div style={{ flex: 1, height: 16, background: 'var(--bg-elevated)', borderRadius: 4, overflow: 'hidden' }}>
                 <div style={{
-                  position: 'absolute', top: -16, left: '50%', transform: 'translateX(-50%)',
-                  fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap',
+                  height: '100%',
+                  width: `${Math.max(1, pct)}%`,
+                  background: barColor,
+                  borderRadius: 4,
+                  transition: 'width 0.4s ease',
+                }} />
+              </div>
+              {/* Percentage */}
+              <span style={{ fontSize: 11, fontWeight: 700, color: barColor, minWidth: 36, textAlign: 'right' }}>
+                {Math.round(pct)}%
+              </span>
+              {/* Step drop */}
+              {idx > 0 && stepDrop > 0 && (
+                <span style={{
+                  fontSize: 10, fontWeight: 600, minWidth: 32,
+                  color: stepDrop > 30 ? '#ef4444' : stepDrop > 15 ? '#f97316' : '#6b7280',
                 }}>
-                  {Math.round(pct)}%
-                </div>
+                  -{stepDrop}%
+                </span>
               )}
+              {idx === 0 && <span style={{ minWidth: 32 }} />}
             </div>
           )
         })}
-      </div>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', marginTop: 4,
-        fontSize: 10, color: 'var(--text-tertiary)',
-      }}>
-        <span>{firstImpressions.toLocaleString()} vues</span>
-        <span>{(items[items.length - 1].story?.impressions ?? 0).toLocaleString()} vues</span>
       </div>
     </div>
   )
