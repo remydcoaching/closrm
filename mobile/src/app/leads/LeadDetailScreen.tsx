@@ -24,6 +24,7 @@ import { useLead } from '../../hooks/useLead'
 import { useLeadNotes, type LeadNote } from '../../hooks/useLeadNotes'
 import { Avatar, Button } from '../../components/ui'
 import LeadJourneyBlock from '../../components/leads/LeadJourneyBlock'
+import ConfirmationMessageBlock from '../../components/leads/ConfirmationMessageBlock'
 import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
 import { api } from '../../services/api'
 import { colors } from '../../theme/colors'
@@ -39,6 +40,7 @@ const STATUS_ORDER: LeadStatus[] = [
   'closing_planifie',
   'no_show_closing',
   'clos',
+  'pas_qualifie',
   'dead',
 ]
 
@@ -660,6 +662,9 @@ export function LeadDetailScreen() {
           ) : null}
         </View>
 
+        {/* Message de confirmation — si setting_planifie / closing_planifie */}
+        <ConfirmationMessageBlock lead={lead} />
+
         {/* Section ACTIVITÉ — tentatives + joint, cliquables */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl, gap: 10 }}>
           <Text
@@ -939,18 +944,21 @@ export function LeadDetailScreen() {
         leadName={fullName}
         currentAttempts={lead.call_attempts}
         currentReached={lead.reached}
-        onConfirm={async (reached) => {
+        onConfirm={async (reached, notes) => {
           setCallTrackingOpen(false)
           const newAttempts = lead.call_attempts + 1
-          mutate({ call_attempts: newAttempts, reached })
+          mutate({ call_attempts: newAttempts, reached: reached || lead.reached })
           try {
-            await api.patch(`/api/leads/${lead.id}`, {
-              call_attempts: newAttempts,
+            // Switch vers /api/calls/log-attempt qui crée une vraie ligne
+            // dans `calls` (avec reached + notes), incrémente call_attempts
+            // côté serveur, et fait remonter dans l'historique des
+            // interactions de la fiche.
+            await api.post('/api/calls/log-attempt', {
+              lead_id: lead.id,
               reached,
+              notes: notes || null,
             })
-            await leadNotes.addNote(
-              `📞 Appel le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} — ${reached ? 'Joint' : 'Non joint'}`,
-            )
+            void refetch()
           } catch (e) {
             Alert.alert('Erreur', e instanceof Error ? e.message : 'Échec')
             void refetch()
@@ -1365,13 +1373,19 @@ function CallTrackingModal({
   leadName: string
   currentAttempts: number
   currentReached: boolean
-  onConfirm: (reached: boolean) => void
+  onConfirm: (reached: boolean, notes: string | null) => void
   onDismiss: () => void
 }) {
-  const [step, setStep] = useState<'ask' | 'reached'>('ask')
+  const [step, setStep] = useState<'ask' | 'reached' | 'notes'>('ask')
+  const [reached, setReached] = useState<boolean | null>(null)
+  const [notes, setNotes] = useState('')
 
   React.useEffect(() => {
-    if (visible) setStep('ask')
+    if (visible) {
+      setStep('ask')
+      setReached(null)
+      setNotes('')
+    }
   }, [visible])
 
   return (
@@ -1451,9 +1465,9 @@ function CallTrackingModal({
                 )}
               </Pressable>
             </View>
-          ) : (
+          ) : step === 'reached' ? (
             <View style={{ gap: 10 }}>
-              <Pressable onPress={() => onConfirm(true)}>
+              <Pressable onPress={() => { setReached(true); setStep('notes') }}>
                 {({ pressed }) => (
                   <View
                     style={{
@@ -1474,7 +1488,7 @@ function CallTrackingModal({
                   </View>
                 )}
               </Pressable>
-              <Pressable onPress={() => onConfirm(false)}>
+              <Pressable onPress={() => { setReached(false); setStep('notes') }}>
                 {({ pressed }) => (
                   <View
                     style={{
@@ -1492,6 +1506,90 @@ function CallTrackingModal({
                   >
                     <Ionicons name="close-circle" size={20} color={colors.danger} />
                     <Text style={{ ...t.bodyEmphasis, color: colors.danger }}>Non joint</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable onPress={onDismiss}>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      paddingVertical: 10,
+                      alignItems: 'center',
+                      opacity: pressed ? 0.5 : 1,
+                    }}
+                  >
+                    <Text style={{ ...t.footnote, color: colors.textTertiary }}>Annuler</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            // step === 'notes'
+            <View style={{ gap: 10 }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: radius.md,
+                  backgroundColor: reached ? colors.primary + '14' : colors.danger + '14',
+                }}
+              >
+                <Ionicons
+                  name={reached ? 'checkmark-circle' : 'close-circle'}
+                  size={16}
+                  color={reached ? colors.primary : colors.danger}
+                />
+                <Text
+                  style={{
+                    ...t.footnote,
+                    fontWeight: '600',
+                    color: reached ? colors.primary : colors.danger,
+                    flex: 1,
+                  }}
+                >
+                  {reached ? 'Joint' : 'Non joint'}
+                </Text>
+                <Pressable onPress={() => setStep('reached')}>
+                  <Text style={{ ...t.footnote, color: colors.textTertiary, textDecorationLine: 'underline' }}>
+                    Modifier
+                  </Text>
+                </Pressable>
+              </View>
+
+              <TextInput
+                value={notes}
+                onChangeText={setNotes}
+                placeholder={reached ? 'Notes (optionnel) — ce qui a été dit…' : 'Notes (optionnel) — répondeur, sonné…'}
+                placeholderTextColor={colors.textTertiary}
+                multiline
+                style={{
+                  ...t.body,
+                  color: colors.textPrimary,
+                  backgroundColor: colors.bgSecondary,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: 12,
+                  minHeight: 80,
+                  textAlignVertical: 'top',
+                }}
+              />
+
+              <Pressable onPress={() => onConfirm(reached ?? false, notes.trim() || null)}>
+                {({ pressed }) => (
+                  <View
+                    style={{
+                      backgroundColor: colors.primary,
+                      borderRadius: radius.md,
+                      paddingVertical: 14,
+                      alignItems: 'center',
+                      opacity: pressed ? 0.8 : 1,
+                    }}
+                  >
+                    <Text style={{ ...t.bodyEmphasis, color: '#fff' }}>Enregistrer</Text>
                   </View>
                 )}
               </Pressable>

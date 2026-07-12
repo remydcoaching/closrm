@@ -48,6 +48,15 @@ interface CalendarRow {
   color: string
   duration_minutes: number
   purpose: string | null
+  location_ids: string[] | null
+}
+
+interface BookingLocation {
+  id: string
+  name: string
+  address: string | null
+  location_type: 'in_person' | 'online' | 'phone' | string
+  is_active: boolean
 }
 
 interface Props {
@@ -76,23 +85,51 @@ export function BookingFormSheet({ mode, initial, defaultDate, onClose, onSaved 
   // Sélection calendrier — perso par défaut, ou un des booking_calendars du workspace.
   const [calendars, setCalendars] = useState<CalendarRow[]>([])
   const [calendarId, setCalendarId] = useState<string | null>(null)
+  // Lieux disponibles (workspace) + sélection (filtré par le calendrier choisi).
+  const [allLocations, setAllLocations] = useState<BookingLocation[]>([])
+  const [locationId, setLocationId] = useState<string | null>(null)
 
-  // Fetch des calendriers à l'ouverture (1 fois).
+  // Fetch calendars + locations à l'ouverture (1 fois).
   useEffect(() => {
     if (!open) return
     let cancelled = false
     void (async () => {
       try {
-        const res = await api.get<{ data: CalendarRow[] }>('/api/booking-calendars')
-        if (!cancelled) setCalendars(res.data ?? [])
+        const [cals, locs] = await Promise.all([
+          api.get<{ data: CalendarRow[] }>('/api/booking-calendars'),
+          api.get<{ data: BookingLocation[] }>('/api/booking-locations'),
+        ])
+        if (cancelled) return
+        setCalendars(cals.data ?? [])
+        setAllLocations(locs.data ?? [])
       } catch {
-        if (!cancelled) setCalendars([])
+        if (!cancelled) {
+          setCalendars([])
+          setAllLocations([])
+        }
       }
     })()
     return () => {
       cancelled = true
     }
   }, [open])
+
+  // Filtre les lieux selon le calendrier sélectionné (un calendrier
+  // restreint à un sous-ensemble de lieux via location_ids).
+  const availableLocations = useMemo(() => {
+    if (!calendarId) return []
+    const cal = calendars.find((c) => c.id === calendarId)
+    if (!cal?.location_ids?.length) return []
+    return allLocations.filter((l) => l.is_active && cal.location_ids!.includes(l.id))
+  }, [calendarId, calendars, allLocations])
+
+  // Reset locationId quand le calendrier change ou que le lieu choisi
+  // n'est plus dans la liste filtrée.
+  useEffect(() => {
+    if (locationId && !availableLocations.some((l) => l.id === locationId)) {
+      setLocationId(null)
+    }
+  }, [availableLocations, locationId])
 
   // Init depuis `initial` quand on ouvre.
   useEffect(() => {
@@ -103,6 +140,7 @@ export function BookingFormSheet({ mode, initial, defaultDate, onClose, onSaved 
     setColor(initial.color ?? '#6b7280')
     setNotes(initial.notes ?? '')
     setCalendarId(initial.calendar_id ?? null)
+    setLocationId((initial as { location_id?: string | null }).location_id ?? null)
   }, [initial, defaultDate])
 
   useEffect(() => {
@@ -151,9 +189,10 @@ export function BookingFormSheet({ mode, initial, defaultDate, onClose, onSaved 
           ...payload,
           is_personal: isPerso,
           calendar_id: calendarId,
+          location_id: locationId,
         })
       } else if (initial?.id) {
-        await api.patch(`/api/bookings/${initial.id}`, payload)
+        await api.patch(`/api/bookings/${initial.id}`, { ...payload, location_id: locationId })
       }
       onSaved()
       onClose()
@@ -250,6 +289,57 @@ export function BookingFormSheet({ mode, initial, defaultDate, onClose, onSaved 
                     />
                   ))}
                 </View>
+              </View>
+            ) : null}
+
+            {/* Lieu — affiché seulement si le calendrier sélectionné a des
+                lieux associés (sinon ça veut dire RDV en ligne ou non
+                applicable, ex: appel téléphonique). */}
+            {availableLocations.length > 0 ? (
+              <View style={{ gap: 6 }}>
+                <SectionLabel>Lieu</SectionLabel>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {availableLocations.map((loc) => {
+                    const isActive = locationId === loc.id
+                    const isOnline = loc.location_type === 'online'
+                    const tint = isOnline ? '#a855f7' : isActive ? colors.primary : colors.textSecondary
+                    return (
+                      <Pressable
+                        key={loc.id}
+                        onPress={() => setLocationId(isActive ? null : loc.id)}
+                        style={({ pressed }) => ({
+                          flexDirection: 'row', alignItems: 'center', gap: 6,
+                          paddingVertical: 8, paddingHorizontal: 12,
+                          borderRadius: radius.md,
+                          borderWidth: 1,
+                          borderColor: isActive ? tint : colors.border,
+                          backgroundColor: isActive ? tint + '22' : colors.bgSecondary,
+                          opacity: pressed ? 0.7 : 1,
+                        })}
+                      >
+                        <Ionicons
+                          name={isOnline ? 'videocam-outline' : loc.location_type === 'phone' ? 'call-outline' : 'location-outline'}
+                          size={14}
+                          color={tint}
+                        />
+                        <Text style={{ ...t.footnote, color: isActive ? tint : colors.textPrimary, fontWeight: '600' }}>
+                          {loc.name}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+                {locationId ? (
+                  (() => {
+                    const sel = availableLocations.find((l) => l.id === locationId)
+                    if (!sel?.address) return null
+                    return (
+                      <Text style={{ ...t.caption1, color: colors.textTertiary, marginTop: 2 }}>
+                        📍 {sel.address}
+                      </Text>
+                    )
+                  })()
+                ) : null}
               </View>
             ) : null}
 

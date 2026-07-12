@@ -57,6 +57,7 @@ export type LeadStatus =
   | 'closing_planifie'
   | 'no_show_closing'
   | 'clos'
+  | 'pas_qualifie'
   | 'dead'
 
 export type LeadSource =

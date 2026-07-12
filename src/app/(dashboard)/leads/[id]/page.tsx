@@ -10,9 +10,7 @@ import LeadDetail from '@/components/leads/LeadDetail'
 import LeadMessagesTab from '@/components/leads/LeadMessagesTab'
 import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import LogCallModal from '@/components/leads/LogCallModal'
-import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
-import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
 
 interface LeadWithRelations extends Lead {
   calls: Call[]
@@ -83,48 +81,29 @@ export default function LeadDetailPage() {
         <ArrowLeft size={14} /> Leads
       </button>
 
-      {/* Header */}
+      {/* Barre d'actions flottante (les boutons restent au-dessus pour rester accessibles) */}
       <div style={{
-        background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-        borderRadius: 14, padding: 24, marginBottom: 20,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16,
+        display: 'flex', justifyContent: 'flex-end', gap: 8,
+        marginBottom: 20, flexWrap: 'wrap',
       }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
-            {lead.first_name} {lead.last_name}
-          </h1>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <StatusBadge status={lead.status} />
-            <SourceBadge source={lead.source} />
-            {lead.phone && (
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Phone size={11} /> {lead.phone}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setShowLogCall(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.25)',
-            color: '#3b82f6', cursor: 'pointer',
-          }}>
-            <Phone size={13} />
-            Logger un appel
-          </button>
-          <button onClick={() => setShowCallModal(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.25)',
-            color: '#a855f7', cursor: 'pointer',
-          }}>
-            <Phone size={13} /> Planifier un appel
-          </button>
-          <LeadAddBookingButton lead={lead} variant="large" onCreated={fetchLead} />
-        </div>
+        <button onClick={() => setShowLogCall(true)} style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+          background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.25)',
+          color: '#3b82f6', cursor: 'pointer',
+        }}>
+          <Phone size={13} />
+          Logger un appel
+        </button>
+        <button onClick={() => setShowCallModal(true)} style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+          background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.25)',
+          color: '#a855f7', cursor: 'pointer',
+        }}>
+          <Phone size={13} /> Planifier un appel
+        </button>
+        <LeadAddBookingButton lead={lead} variant="large" onCreated={fetchLead} />
       </div>
 
       {/* Tabs */}
@@ -165,51 +144,9 @@ export default function LeadDetailPage() {
           <LeadMessagesTab leadId={lead.id} instagramHandle={lead.instagram_handle} />
         </div>
       ) : (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
-        {/* Colonne gauche — detail + parcours + paiements */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <LeadDetail lead={lead} onUpdate={handleUpdate} />
-          <LeadJourneyBlock leadId={lead.id} />
-          <div style={{
-            background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-            borderRadius: 14, padding: 20,
-          }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>
-              Paiements
-            </p>
-            <LeadDealsWidget leadId={lead.id} />
-          </div>
-        </div>
-
-        {/* Colonne droite — infos rapides */}
-        <div style={{
-          background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
-          borderRadius: 14, padding: 20, position: 'sticky', top: 24,
-        }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-label)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 16 }}>
-            Résumé
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Tentatives d&apos;appel</p>
-              <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>{lead.call_attempts}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Appels planifiés</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {lead.calls.filter(c => c.outcome === 'pending').length}
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 3 }}>Follow-ups en attente</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {lead.follow_ups.filter(f => f.status === 'en_attente').length}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+        // Une seule colonne pleine largeur — toute l'info est dans LeadDetail.
+        // Le right sidebar "Résumé" était redondant avec le bloc 1.
+        <LeadDetail lead={lead} onUpdate={handleUpdate} />
       )}
 
       {/* Modale planifier appel */}

@@ -72,6 +72,10 @@ export async function syncStories(ctx: SyncContext) {
       exits: insights.exits ?? 0,
       taps_forward: insights.taps_forward ?? 0,
       taps_back: insights.taps_back ?? 0,
+      profile_visits: insights.profile_visits ?? 0,
+      follows: insights.follows ?? 0,
+      link_clicks: insights.link_clicks ?? 0,
+      shares: insights.shares ?? 0,
       published_at: publishedAt,
       expires_at: expiresAt,
     }, { onConflict: 'ig_story_id' })

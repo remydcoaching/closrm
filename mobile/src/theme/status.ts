@@ -11,6 +11,7 @@ export const statusConfig: Record<
   closing_planifie: { label: 'Closing planifié', color: '#a855f7', bg: '#581c87' },
   no_show_closing: { label: 'No-show Closing', color: '#f97316', bg: '#7c2d12' },
   clos: { label: 'Closé', color: '#00C853', bg: '#14532d' },
+  pas_qualifie: { label: 'Pas qualifié', color: '#94a3b8', bg: '#334155' },
   dead: { label: 'Dead', color: '#ef4444', bg: '#7f1d1d' },
 }
 

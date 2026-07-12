@@ -42,7 +42,7 @@ const MS_PER_MIN = 60_000
 // event card pour voir IN SITU si le top/height calculé matche la position
 // visuelle. À retirer une fois le bug 06:00-au-lieu-de-07:00 confirmé fixé.
 // Mis à true par défaut pour ce ship — flip à false ensuite.
-const SHOW_DEBUG_BADGE = true
+const SHOW_DEBUG_BADGE = false
 
 interface Props {
   items: AgendaItem[]
@@ -266,9 +266,13 @@ export function AgendaTimeline({ items, date, onPressItem }: Props) {
       if (nowH < minH) minH = nowH
       if (nowH > maxH) maxH = nowH
     }
+    // Toujours afficher au minimum DEFAULT_START_HOUR → DEFAULT_END_HOUR
+    // pour que le coach puisse scroller toute la journée même s'il n'y a
+    // qu'un seul event au milieu. On EXPAND la plage seulement si les
+    // events débordent en dehors (très tôt < 6h ou très tard > 23h).
     return {
-      startHour: Math.max(0, Math.floor(minH) - 1),
-      endHour: Math.min(23, Math.ceil(maxH) + 1),
+      startHour: Math.max(0, Math.min(DEFAULT_START_HOUR, Math.floor(minH) - 1)),
+      endHour: Math.min(23, Math.max(DEFAULT_END_HOUR, Math.ceil(maxH) + 1)),
     }
   }, [gridItems, date])
   const totalHeight = (endHour - startHour + 1) * HOUR_HEIGHT

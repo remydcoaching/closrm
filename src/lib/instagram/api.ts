@@ -100,22 +100,31 @@ interface IgStoryInsights {
   exits?: number
   taps_forward?: number
   taps_back?: number
+  profile_visits?: number
+  follows?: number
+  link_clicks?: number
+  shares?: number
 }
 
 export async function fetchStoryInsights(token: string, storyId: string): Promise<IgStoryInsights> {
-  // Note: 'impressions' was removed in Meta API v22.0+, use 'views' instead
-  const url = `${FB_BASE}/${storyId}/insights?metric=views,reach,replies,shares,navigation,follows,profile_visits&access_token=${token}`
+  // 'impressions' removed in Meta API v22.0+, use 'views' instead
+  const url = `${FB_BASE}/${storyId}/insights?metric=views,reach,replies,exits,taps_forward,taps_back,follows,profile_visits,shares,link_clicks&access_token=${token}`
   const res = await fetch(url)
   if (!res.ok) return {}
   const json = await res.json()
   const result: IgStoryInsights = {}
   for (const item of json.data ?? []) {
-    if (item.name === 'views') result.impressions = item.values?.[0]?.value ?? 0
-    if (item.name === 'reach') result.reach = item.values?.[0]?.value ?? 0
-    if (item.name === 'replies') result.replies = item.values?.[0]?.value ?? 0
-    if (item.name === 'navigation') result.exits = item.values?.[0]?.value ?? 0
-    if (item.name === 'profile_visits') result.taps_forward = item.values?.[0]?.value ?? 0  // taps_forward = profile visits
-    if (item.name === 'follows') result.taps_back = item.values?.[0]?.value ?? 0  // taps_back = follows count
+    const val = item.values?.[0]?.value ?? item.value ?? 0
+    if (item.name === 'views')          result.impressions    = val
+    if (item.name === 'reach')          result.reach          = val
+    if (item.name === 'replies')        result.replies        = val
+    if (item.name === 'exits')          result.exits          = val
+    if (item.name === 'taps_forward')   result.taps_forward   = val
+    if (item.name === 'taps_back')      result.taps_back      = val
+    if (item.name === 'profile_visits') result.profile_visits = val
+    if (item.name === 'follows')        result.follows        = val
+    if (item.name === 'shares')         result.shares         = val
+    if (item.name === 'link_clicks')    result.link_clicks    = val
   }
   return result
 }

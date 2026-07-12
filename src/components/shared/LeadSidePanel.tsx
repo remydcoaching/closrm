@@ -15,7 +15,9 @@ function InstagramIcon({ size = 13 }: { size?: number }) {
 import { Lead, Call, FollowUp, IgConversation, IgMessage, WorkspaceMemberWithUser, WorkspaceRole } from '@/types'
 import AiSuggestionPanel from '@/components/ai/AiSuggestionPanel'
 import ClosingModal from '@/components/leads/ClosingModal'
-import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
+import LeadActionModal, { type LeadAction } from '@/components/leads/LeadActionModal'
+import LogCallModal from '@/components/leads/LogCallModal'
+import CallScheduleModal from '@/components/leads/CallScheduleModal'
 import StatusBadge from '@/components/leads/StatusBadge'
 import { useStatusConfig } from '@/lib/workspace/config-context'
 import SourceBadge from '@/components/leads/SourceBadge'
@@ -28,6 +30,7 @@ import LeadMagnetsWidget from '@/components/leads/LeadMagnetsWidget'
 import LeadNotesWidget from '@/components/leads/LeadNotesWidget'
 import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
+import CallConfirmationToggle from '@/components/leads/CallConfirmationToggle'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import Link from 'next/link'
@@ -64,6 +67,11 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   const [editValue, setEditValue] = useState('')
   const [newTag, setNewTag] = useState('')
   const [showClosingModal, setShowClosingModal] = useState(false)
+  const [showActionModal, setShowActionModal] = useState(false)
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [showLogCallModal, setShowLogCallModal] = useState(false)
+  const [showMoreDetails, setShowMoreDetails] = useState(false)
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false)
 
   // Team members state
   const [members, setMembers] = useState<WorkspaceMemberWithUser[]>([])
@@ -139,6 +147,44 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
   async function patchFollowUp(fuId: string, patch: Partial<FollowUp>) {
     await fetch(`/api/follow-ups/${fuId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
     fetchLead({ silent: true })
+  }
+
+  // Unifie le menu d'actions (planifier RDV / relance / won / pas qualifié /
+  // dead / logger un appel) avec celui de la liste leads. Ouvert depuis le
+  // bouton "Traiter" en haut du panel.
+  async function handleAction(action: LeadAction) {
+    if (!lead) return
+    if (action.type === 'schedule_call') {
+      setShowScheduleModal(true)
+    } else if (action.type === 'log_call') {
+      setShowLogCallModal(true)
+    } else if (action.type === 'follow_up') {
+      await fetch('/api/follow-ups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: lead.id, reason: action.reason, scheduled_at: action.date, channel: action.channel }),
+      })
+      fetchLead({ silent: true })
+    } else if (action.type === 'won') {
+      await fetch('/api/deals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          amount: action.amount,
+          cash_collected: action.cash_collected,
+          installments: action.installments,
+          duration_months: action.duration_months,
+          closer_id: action.closer_id,
+          setter_id: action.setter_id,
+        }),
+      })
+      fetchLead({ silent: true })
+    } else if (action.type === 'pas_qualifie') {
+      patchLead({ status: 'pas_qualifie' })
+    } else if (action.type === 'dead') {
+      patchLead({ status: 'dead' })
+    }
   }
 
   function startEdit(field: string, value: string) {
@@ -259,7 +305,24 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
         <div style={{ background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-primary)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Profil du lead</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {lead && <LeadAddBookingButton lead={lead} variant="small" />}
+            {lead && (
+              <button
+                onClick={() => setShowActionModal(true)}
+                title="Traiter ce lead"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 7,
+                  background: 'rgba(0,200,83,0.12)',
+                  border: '1px solid rgba(0,200,83,0.25)',
+                  color: 'var(--color-primary)',
+                  fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Sparkles size={12} />
+                Traiter
+              </button>
+            )}
             {lead && <Link href={`/leads/${lead.id}`} style={{ fontSize: 11, color: 'var(--text-tertiary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}><ExternalLink size={12} />Page complète</Link>}
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
           </div>
@@ -297,59 +360,6 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
             {/* Infos tab */}
             {activeTab === 'infos' && (
           <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
-            {/* Identity */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(0,200,83,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0 }}>
-                {lead.first_name[0]}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>{lead.first_name} {lead.last_name}</div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                  <SourceBadge source={lead.source} />
-                </div>
-              </div>
-            </div>
-
-            {/* ─── ÉTAT DU LEAD ─── */}
-            <SectionHeader>État du lead</SectionHeader>
-
-            {/* Status */}
-            <div style={card}>
-              <div style={sectionTitle}>Statut</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {statusConfig.filter((e) => e.visible).map((e) => {
-                  const active = lead.status === e.key
-                  const cfg = e
-                  return (
-                    <button key={e.key} onClick={async () => {
-                      if (e.key === 'clos') { setShowClosingModal(true); return }
-                      const previousAssignedTo = lead.assigned_to
-                      const updated = await patchLead({ status: e.key })
-                      // Show auto-assign notification for setters
-                      if (
-                        e.key === 'closing_planifie' &&
-                        currentRole === 'setter' &&
-                        updated?.assigned_to &&
-                        updated.assigned_to !== previousAssignedTo
-                      ) {
-                        const closer = members.find((m) => m.user_id === updated.assigned_to)
-                        const closerName = closer?.user?.full_name ?? 'un closer'
-                        if (autoAssignTimer.current) clearTimeout(autoAssignTimer.current)
-                        setAutoAssignMsg(`Lead assigné automatiquement à ${closerName}`)
-                        autoAssignTimer.current = setTimeout(() => setAutoAssignMsg(null), 3000)
-                      }
-                    }} style={{
-                      padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, cursor: 'pointer',
-                      border: active ? `2px solid ${cfg.color}` : '1px solid var(--border-primary)',
-                      background: active ? cfg.bg : 'transparent', color: active ? cfg.color : 'var(--text-muted)',
-                    }}>
-                      {cfg.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
             {/* Auto-assign notification */}
             {autoAssignMsg && (
               <div style={{
@@ -366,148 +376,261 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               </div>
             )}
 
-            {/* Assigné à */}
-            <div style={card}>
-              <div style={sectionTitle}>Assigné à</div>
-              <MemberAssignDropdown
-                assignedTo={lead.assigned_to}
-                members={members}
-                onAssign={(userId) => patchLead({ assigned_to: userId })}
-                canEdit={currentRole === 'admin'}
-              />
-            </div>
+            {/* ─── BLOC 1 : Header unique (même que fiche) — Nom + Grille 2×3 ─── */}
+            <div style={{ ...card, padding: 20 }}>
+              {/* Nom + Source */}
+              <div style={{ marginBottom: 18 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: 8, lineHeight: 1.2 }}>
+                  {lead.first_name} {lead.last_name}
+                </h2>
+                <SourceBadge source={lead.source} />
+              </div>
 
-            {/* ─── COORDONNÉES ─── */}
-            <SectionHeader>Coordonnées</SectionHeader>
-
-            {/* Contact editable */}
-            <div style={card}>
-              <div style={sectionTitle}>Contact</div>
-              {[
-                { field: 'phone', label: 'Téléphone', icon: Phone, value: lead.phone },
-                { field: 'email', label: 'Email', icon: Mail, value: lead.email || '' },
-              ].map((f) => {
-                const Icon = f.icon
-                const editing = editingField === f.field
-                return (
-                  <div key={f.field} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <Icon size={14} color="#555" style={{ flexShrink: 0 }} />
-                    {editing ? (
-                      <>
-                        <input value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveEdit(f.field)} style={{ ...inputS, flex: 1 }} autoFocus />
-                        <button onClick={() => saveEdit(f.field)} style={smallBtn}><Check size={12} color="var(--color-primary)" /></button>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ flex: 1, fontSize: 13, color: f.value ? '#ccc' : '#555' }}>{f.value || '—'}</span>
-                        <button onClick={() => startEdit(f.field, f.value)} style={smallBtn}><Edit3 size={11} color="#666" /></button>
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-              {lead.instagram_handle && (
-                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                  <a
-                    href={`https://instagram.com/${lead.instagram_handle}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      background: 'rgba(225,48,108,0.10)', border: '1px solid rgba(225,48,108,0.20)',
-                      color: '#E1306C', cursor: 'pointer', textDecoration: 'none',
-                    }}
-                  >
-                    <InstagramIcon size={13} /> @{lead.instagram_handle}
+              {/* Grille 2×3 : Téléphone/Email · Tentatives/Joint · Statut/Tags */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 14 }}>
+                {/* Rangée 1 */}
+                <div>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Téléphone</div>
+                  <a href={lead.phone ? `tel:${lead.phone}` : undefined} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
+                    color: lead.phone ? 'var(--text-primary)' : 'var(--text-label)',
+                    textDecoration: 'none', fontWeight: 500,
+                  }}>
+                    <Phone size={13} color="var(--text-muted)" />
+                    {lead.phone || 'Non renseigné'}
                   </a>
                 </div>
-              )}
-            </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Email</div>
+                  <a href={lead.email ? `mailto:${lead.email}` : undefined} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13,
+                    color: lead.email ? 'var(--text-primary)' : 'var(--text-label)',
+                    textDecoration: 'none', fontWeight: 500,
+                    maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    <Mail size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.email || 'Non renseigné'}</span>
+                  </a>
+                </div>
 
-            {/* Tags editable */}
-            <div style={card}>
-              <div style={sectionTitle}>Tags</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: lead.tags.length > 0 ? 10 : 0 }}>
-                {lead.tags.map((tag) => (
-                  <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99, fontSize: 11, background: 'var(--bg-hover)', color: '#ccc', border: '1px solid var(--border-primary)' }}>
-                    {tag}
-                    <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}><X size={10} /></button>
+                {/* Rangée 2 */}
+                <div>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Tentatives d&apos;appel</div>
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>
+                    {lead.call_attempts} tentative{lead.call_attempts > 1 ? 's' : ''}
                   </span>
-                ))}
+                </div>
+                <div>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Joint</div>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 10px', borderRadius: 99,
+                    background: lead.reached ? 'rgba(56,161,105,0.12)' : 'rgba(239,68,68,0.12)',
+                    color: lead.reached ? '#38A169' : '#ef4444',
+                    fontSize: 11, fontWeight: 600,
+                  }}>
+                    {lead.reached ? 'Joint' : 'Non joint'}
+                  </span>
+                </div>
+
+                {/* Rangée 3 : Statut + Tags */}
+                <div style={{ position: 'relative' }}>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Statut</div>
+                  <button onClick={() => setStatusDropdownOpen(o => !o)} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    width: '100%',
+                    height: 38, boxSizing: 'border-box',
+                    padding: '0 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+                    background: 'var(--bg-subtle)', border: '1px solid var(--border-primary)',
+                    color: 'var(--text-primary)', cursor: 'pointer',
+                  }}>
+                    <StatusBadge status={lead.status} />
+                    <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span>
+                  </button>
+                  {statusDropdownOpen && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 10,
+                      background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',
+                      borderRadius: 10, padding: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                    }}>
+                      {statusConfig.filter((e) => e.visible).map((e) => (
+                        <button key={e.key} onClick={async () => {
+                          setStatusDropdownOpen(false)
+                          if (e.key === 'clos') { setShowClosingModal(true); return }
+                          const previousAssignedTo = lead.assigned_to
+                          const updated = await patchLead({ status: e.key })
+                          if (
+                            e.key === 'closing_planifie' &&
+                            currentRole === 'setter' &&
+                            updated?.assigned_to &&
+                            updated.assigned_to !== previousAssignedTo
+                          ) {
+                            const closer = members.find((m) => m.user_id === updated.assigned_to)
+                            const closerName = closer?.user?.full_name ?? 'un closer'
+                            if (autoAssignTimer.current) clearTimeout(autoAssignTimer.current)
+                            setAutoAssignMsg(`Lead assigné automatiquement à ${closerName}`)
+                            autoAssignTimer.current = setTimeout(() => setAutoAssignMsg(null), 3000)
+                          }
+                        }} style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '7px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                          border: 'none',
+                          background: lead.status === e.key ? 'var(--bg-hover)' : 'transparent',
+                          color: e.color, cursor: 'pointer',
+                        }}>
+                          {e.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div style={{ ...sectionTitle, marginBottom: 6, height: 14, lineHeight: '14px' }}>Tags</div>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
+                    height: 38, boxSizing: 'border-box',
+                    padding: '0 6px',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: 8,
+                    background: 'var(--bg-subtle)',
+                    overflow: 'hidden',
+                  }}>
+                    {lead.tags.map((tag) => (
+                      <span key={tag} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        padding: '2px 8px', borderRadius: 99, fontSize: 10, fontWeight: 600,
+                        background: 'rgba(0,200,83,0.12)', color: 'var(--color-primary)', border: '1px solid rgba(0,200,83,0.20)',
+                      }}>
+                        {tag}
+                        <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: 0, display: 'flex' }}>
+                          <X size={9} />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                      placeholder={lead.tags.length === 0 ? 'Ajouter un tag…' : '+ Tag'}
+                      style={{
+                        flex: 1, minWidth: 80,
+                        background: 'transparent', border: 'none', outline: 'none',
+                        fontSize: 12, color: 'var(--text-primary)',
+                        padding: '0 6px', height: '100%',
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTag()} placeholder="Ajouter un tag" style={{ ...inputS, flex: 1 }} />
-                <button onClick={addTag} style={{ ...smallBtn, width: 32 }}><Plus size={12} color="var(--color-primary)" /></button>
+
+              {/* Assigné à (full width sous la grille — pas dans la fiche mais utile ici) */}
+              <div>
+                <div style={{ ...sectionTitle, marginBottom: 6 }}>Assigné à</div>
+                <MemberAssignDropdown
+                  assignedTo={lead.assigned_to}
+                  members={members}
+                  onAssign={(userId) => patchLead({ assigned_to: userId })}
+                  canEdit={currentRole === 'admin'}
+                />
               </div>
             </div>
 
-            {/* ─── ACTIVITÉ COMMERCIALE ─── */}
-            <SectionHeader>Activité commerciale</SectionHeader>
-
-            {/* Calls — editable dates */}
+            {/* ─── BLOC 2 : Historique des interactions (Appels + Relances + Notes) ─── */}
             <div style={card}>
-              <div style={sectionTitle}>Appels ({lead.calls.length})</div>
-              {lead.calls.length === 0 ? (
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucun appel</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {lead.calls.map((call) => (
-                    <CallRow key={call.id} call={call} onPatch={(patch) => patchCall(call.id, patch)} />
-                  ))}
+              <div style={sectionTitle}>Historique des interactions</div>
+
+              {/* Appels */}
+              {lead.calls.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>
+                    Appels ({lead.calls.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {lead.calls.map((call) => (
+                      <div key={call.id}>
+                        <CallRow call={call} onPatch={(patch) => patchCall(call.id, patch)} />
+                        {call.outcome === 'pending' && (
+                          <CallConfirmationToggle
+                            lead={{ first_name: lead.first_name, last_name: lead.last_name }}
+                            call={call}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-            </div>
 
-            {/* Follow-ups — editable dates */}
-            <div style={card}>
-              <div style={sectionTitle}>Relances ({lead.follow_ups.length})</div>
-              {lead.follow_ups.length === 0 ? (
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Aucune relance</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {lead.follow_ups.map((fu) => (
-                    <FollowUpRow key={fu.id} followUp={fu} onPatch={(patch) => patchFollowUp(fu.id, patch)} />
-                  ))}
+              {/* Relances */}
+              {lead.follow_ups.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>
+                    Relances ({lead.follow_ups.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {lead.follow_ups.map((fu) => (
+                      <FollowUpRow key={fu.id} followUp={fu} onPatch={(patch) => patchFollowUp(fu.id, patch)} />
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Notes */}
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, fontWeight: 600 }}>
+                  Notes
+                </div>
+                <LeadNotesWidget leadId={leadId} />
+              </div>
             </div>
 
-            {/* Paiements / Deals */}
+            {/* ─── BLOC 3 : Parcours du lead ─── */}
+            <div style={card}>
+              <div style={sectionTitle}>Parcours du lead</div>
+              <LeadJourneyBlock leadId={leadId} compact />
+            </div>
+
+            {/* ─── BLOC 4 : Paiements (en bas) ─── */}
             <div style={card}>
               <div style={sectionTitle}>Paiements</div>
               <LeadDealsWidget leadId={leadId} />
             </div>
 
-            {/* ─── ENRICHISSEMENT ─── */}
-            <SectionHeader>Enrichissement</SectionHeader>
+            {/* ─── BLOC PLUS : Assistant IA + Lead Magnets (collapsible) ─── */}
+            <button
+              onClick={() => setShowMoreDetails(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                width: '100%',
+                padding: '10px 14px',
+                marginTop: 8, marginBottom: showMoreDetails ? 14 : 0,
+                borderRadius: 10,
+                border: '1px solid var(--border-primary)',
+                background: 'transparent',
+                color: 'var(--text-tertiary)',
+                fontSize: 12, fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              {showMoreDetails ? '▴ Masquer les détails complémentaires' : '▾ Voir les détails complémentaires'}
+            </button>
 
-            {/* Notes multiples */}
-            <div style={card}>
-              <div style={sectionTitle}>Notes</div>
-              <LeadNotesWidget leadId={leadId} />
-            </div>
+            {showMoreDetails && (
+              <>
+                <div style={card}>
+                  <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Sparkles size={12} color="#E53E3E" />
+                    Assistant IA
+                  </div>
+                  <AiSuggestionPanel
+                    leadId={leadId}
+                    instagramHandle={lead.instagram_handle}
+                  />
+                </div>
 
-            {/* AI Assistant */}
-            <div style={card}>
-              <div style={{ ...sectionTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={12} color="#E53E3E" />
-                Assistant IA
-              </div>
-              <AiSuggestionPanel
-                leadId={leadId}
-                instagramHandle={lead.instagram_handle}
-              />
-            </div>
-
-            {/* Lead Magnets — le widget gère son propre card + title (cohérence avec LeadDetail) */}
-            <LeadMagnetsWidget leadId={leadId} />
-
-            {/* Parcours du lead — inclut Première/Dernière pub + Lead Form
-                + bookings + activité. Affiche rien si vide. Mode compact pour
-                économiser la verticale dans le side panel. */}
-            <SectionHeader>Acquisition</SectionHeader>
-            <LeadJourneyBlock leadId={leadId} compact />
+                <LeadMagnetsWidget leadId={leadId} />
+              </>
+            )}
 
 
             {/* Supprimer */}
@@ -569,6 +692,30 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
               closed_at: new Date().toISOString(),
             } as Partial<Lead>)
           }}
+        />
+      )}
+
+      {showActionModal && lead && (
+        <LeadActionModal
+          lead={lead}
+          onClose={() => setShowActionModal(false)}
+          onAction={(action) => handleAction(action)}
+        />
+      )}
+
+      {showScheduleModal && lead && (
+        <CallScheduleModal
+          lead={lead}
+          onClose={() => setShowScheduleModal(false)}
+          onScheduled={() => { setShowScheduleModal(false); fetchLead({ silent: true }) }}
+        />
+      )}
+
+      {showLogCallModal && lead && (
+        <LogCallModal
+          lead={{ id: lead.id, first_name: lead.first_name, last_name: lead.last_name }}
+          onClose={() => setShowLogCallModal(false)}
+          onLogged={() => { fetchLead({ silent: true }) }}
         />
       )}
     </div>
