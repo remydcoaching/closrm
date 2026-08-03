@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import type { TabParamList } from './types'
 import LeadsStack from './stacks/LeadsStack'
 import AgendaStack from './stacks/AgendaStack'
-import MessagesStack from './stacks/MessagesStack'
+import FollowUpsStack from './stacks/FollowUpsStack'
 import MoreStack from './stacks/MoreStack'
 import { PulseScreen } from '../app/pulse/PulseScreen'
 import { useUnreadCounts } from '../hooks/useUnreadCounts'
@@ -29,8 +29,8 @@ const iconFor = (route: keyof TabParamList, focused: boolean): IoniconName => {
       return focused ? 'people' : 'people-outline'
     case 'AgendaTab':
       return focused ? 'calendar' : 'calendar-outline'
-    case 'MessagesTab':
-      return focused ? 'chatbubbles' : 'chatbubbles-outline'
+    case 'FollowUpsTab':
+      return focused ? 'time' : 'time-outline'
     case 'PulseTab':
       return focused ? 'pulse' : 'pulse-outline'
     case 'MoreTab':
@@ -39,7 +39,7 @@ const iconFor = (route: keyof TabParamList, focused: boolean): IoniconName => {
 }
 
 export default function TabNavigator() {
-  const { unreadMessages, unreadNotifications } = useUnreadCounts()
+  const { unreadNotifications } = useUnreadCounts()
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -65,15 +65,7 @@ export default function TabNavigator() {
     >
       <Tab.Screen name="LeadsTab" component={LeadsStack} options={{ title: 'Leads' }} />
       <Tab.Screen name="AgendaTab" component={AgendaStack} options={{ title: 'Agenda' }} />
-      <Tab.Screen
-        name="MessagesTab"
-        component={MessagesStack}
-        options={{
-          title: 'Messages',
-          tabBarBadge: unreadMessages > 0 ? unreadMessages : undefined,
-          tabBarBadgeStyle: BADGE_STYLE,
-        }}
-      />
+      <Tab.Screen name="FollowUpsTab" component={FollowUpsStack} options={{ title: 'Relances' }} />
       <Tab.Screen name="PulseTab" component={PulseScreen} options={{ title: 'Pulse' }} />
       <Tab.Screen
         name="MoreTab"

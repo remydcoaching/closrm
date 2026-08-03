@@ -1,0 +1,18 @@
+diff --git a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+index 2a67797..1b61d33 100644
+--- a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
++++ b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+@@ -371,7 +371,12 @@ id convertJSIValueToObjCObject(
+         // See https://github.com/reactwg/react-native-new-architecture/discussions/276#discussioncomment-12567155
+         throw convertNSExceptionToJSError(runtime, exception, std::string{moduleName}, methodNameStr);
+       } else {
+-        @throw exception;
++        // PATCH: do not re-throw on the void async path. Re-throwing inside a
++        // GCD block causes std::__terminate -> SIGABRT because nothing on the
++        // background queue catches it. Log instead and let the void method
++        // appear to "succeed" silently to the JS caller.
++        // Reference: facebook/react-native#54859
++        RCTLogError(@"NSException in TurboModule %s.%s: %@", moduleName, methodNameStr.c_str(), exception);
+       }
+     } @finally {
+       [retainedObjectsForInvocation removeAllObjects];

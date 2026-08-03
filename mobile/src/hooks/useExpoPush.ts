@@ -87,9 +87,10 @@ export function useExpoPush(
           })
           break
         case 'conversation':
+          // Plus d'onglet Messages visible — fallback sur notifications.
           ref.navigate('Main', {
-            screen: 'MessagesTab',
-            params: { screen: 'Conversation', params: { conversationId: data.entity_id } },
+            screen: 'MoreTab',
+            params: { screen: 'Notifications' },
           })
           break
         case 'deal':
