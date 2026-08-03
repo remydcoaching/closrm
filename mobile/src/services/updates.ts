@@ -18,7 +18,11 @@ export async function checkAndApplyUpdate(): Promise<void> {
       // reloadAsync() relance l'app avec le nouveau bundle.
       await Updates.reloadAsync()
     }
-  } catch {
-    // Silent — pas d'update appliquée, on continue avec le bundle actuel.
+  } catch (error) {
+    // Pas d'update appliquée, on continue avec le bundle actuel — mais on
+    // logue pour pouvoir diagnostiquer (cf. env vars manquantes du bundle
+    // OTA qui ont fait crash l'app en silence : toujours publier avec
+    // `eas update --environment preview`, jamais sans --environment).
+    console.warn('[updates] checkAndApplyUpdate failed:', error)
   }
 }

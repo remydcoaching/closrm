@@ -81,9 +81,17 @@ export async function PATCH(
       .eq('workspace_id', workspaceId)
       .single()
 
+    // Seuls les admins peuvent réassigner un lead — un setter/closer ne
+    // touche pas assigned_to, même s'il le passe explicitement dans le body.
+    const isAdmin = role === 'admin' || role === 'monteur'
+    const updatePayload = { ...parsed.data }
+    if (!isAdmin) {
+      delete updatePayload.assigned_to
+    }
+
     const { data, error } = await supabase
       .from('leads')
-      .update(parsed.data)
+      .update(updatePayload)
       .eq('id', id)
       .eq('workspace_id', workspaceId)
       .select()

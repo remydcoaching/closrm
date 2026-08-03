@@ -373,7 +373,7 @@ export default function LeadSidePanel({ leadId, onClose }: Props) {
                 assignedTo={lead.assigned_to}
                 members={members}
                 onAssign={(userId) => patchLead({ assigned_to: userId })}
-                canEdit={currentRole === 'admin'}
+                canEdit={currentRole === 'admin' || currentRole === 'monteur'}
               />
             </div>
 

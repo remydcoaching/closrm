@@ -23,6 +23,11 @@ export type MessagesStackParamList = {
   Conversation: { conversationId: string; leadId?: string }
 }
 
+export type FollowUpsStackParamList = {
+  FollowUpsList: undefined
+  LeadDetail: { leadId: string }
+}
+
 export type MoreStackParamList = {
   MoreMenu: undefined
   Notifications: undefined
@@ -39,7 +44,7 @@ export type MoreStackParamList = {
 export type TabParamList = {
   LeadsTab: NavigatorScreenParams<LeadsStackParamList>
   AgendaTab: NavigatorScreenParams<AgendaStackParamList>
-  MessagesTab: NavigatorScreenParams<MessagesStackParamList>
+  FollowUpsTab: NavigatorScreenParams<FollowUpsStackParamList>
   PulseTab: undefined
   MoreTab: NavigatorScreenParams<MoreStackParamList>
 }

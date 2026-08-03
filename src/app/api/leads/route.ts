@@ -134,7 +134,7 @@ interface InlineWorkflow {
 
 export async function POST(request: NextRequest) {
   try {
-    const { workspaceId } = await getWorkspaceId()
+    const { userId, workspaceId, role } = await getWorkspaceId()
     const supabase = await createClient()
 
     const body = await request.json()
@@ -153,6 +153,12 @@ export async function POST(request: NextRequest) {
     // Use instagram handle as first_name fallback if not provided
     const firstName = parsed.data.first_name || instagramHandle || 'Inconnu'
 
+    // Attribution : par défaut le créateur du lead. Seuls les admins peuvent
+    // assigner à quelqu'un d'autre — un setter qui forcerait assigned_to via
+    // l'API se retrouve écrasé sur son propre id.
+    const isAdmin = role === 'admin' || role === 'monteur'
+    const assignedTo = isAdmin && parsed.data.assigned_to ? parsed.data.assigned_to : userId
+
     const { data, error } = await supabase
       .from('leads')
       .insert({
@@ -165,6 +171,7 @@ export async function POST(request: NextRequest) {
         email: parsed.data.email || null,
         notes: parsed.data.notes || null,
         instagram_handle: instagramHandle || null,
+        assigned_to: assignedTo,
       })
       .select()
       .single()

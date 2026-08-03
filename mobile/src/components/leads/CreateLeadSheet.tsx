@@ -48,6 +48,16 @@ const SOURCES: SourceMeta[] = [
   { key: 'formulaire', label: 'Formulaire', icon: 'document-text-outline', tint: '#06b6d4' },
 ]
 
+/** Accepte un lien Instagram complet, un @handle ou un handle brut, et
+ *  renvoie le handle nu (ce que l'API attend, regex ^[a-zA-Z0-9._]{1,30}$). */
+function extractInstagramHandle(input: string): string {
+  const raw = input.trim()
+  if (!raw) return ''
+  const urlMatch = raw.match(/instagram\.com\/([a-zA-Z0-9._]{1,30})/i)
+  const candidate = urlMatch ? urlMatch[1] : raw.replace(/^@/, '')
+  return candidate.replace(/\/+$/, '')
+}
+
 /** Row d'input dans une grouped list iOS Settings. Hairline en bas
  *  géré par la grouped View parent (gap 0 + hairlines). */
 function InputRow({
@@ -124,8 +134,12 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [instagramHandle, setInstagramHandle] = useState('')
   const [sourceIdx, setSourceIdx] = useState(0)
   const [notes, setNotes] = useState('')
+  const [addFollowUp, setAddFollowUp] = useState(false)
+  const [followUpReason, setFollowUpReason] = useState('')
+  const [followUpDate, setFollowUpDate] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const reset = () => {
@@ -133,8 +147,12 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
     setLastName('')
     setPhone('')
     setEmail('')
+    setInstagramHandle('')
     setSourceIdx(0)
     setNotes('')
+    setAddFollowUp(false)
+    setFollowUpReason('')
+    setFollowUpDate('')
     setSubmitting(false)
   }
 
@@ -153,20 +171,34 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
     const ln = lastName.trim()
     const ph = phone.trim()
     const em = email.trim()
-    if (!fn && !ln && !ph && !em) {
-      Alert.alert('Lead vide', 'Renseigne au moins un nom, un téléphone ou un email.')
+    const ig = extractInstagramHandle(instagramHandle)
+    if (!fn && !ln && !ph && !em && !ig) {
+      Alert.alert('Lead vide', 'Renseigne au moins un nom, un téléphone, un email ou un Instagram.')
+      return
+    }
+    if (addFollowUp && !followUpDate) {
+      Alert.alert('Relance incomplète', 'Choisis une échéance pour la relance.')
       return
     }
     setSubmitting(true)
     try {
-      await api.post('/api/leads', {
+      const created = await api.post<{ data: { id: string } }>('/api/leads', {
         first_name: fn,
         last_name: ln,
         phone: ph,
         email: em || undefined,
+        instagram_handle: ig || undefined,
         source: SOURCES[sourceIdx].key,
         notes: notes.trim() || undefined,
       })
+      if (addFollowUp && followUpDate) {
+        await api.post('/api/follow-ups', {
+          lead_id: created.data.id,
+          reason: followUpReason.trim() || 'Relance',
+          scheduled_at: followUpDate,
+          channel: 'manuel',
+        })
+      }
       onCreatedRef.current?.()
       close()
     } catch (e) {
@@ -174,6 +206,19 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const followUpPresets = [
+    { label: 'Demain', days: 1 },
+    { label: 'Dans 3 jours', days: 3 },
+    { label: 'Dans 1 semaine', days: 7 },
+  ]
+
+  const pickFollowUpPreset = (days: number) => {
+    const d = new Date()
+    d.setDate(d.getDate() + days)
+    d.setHours(10, 0, 0, 0)
+    setFollowUpDate(d.toISOString())
   }
 
   const renderBackdrop = useCallback(
@@ -328,6 +373,14 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+              />
+              <InputRow
+                icon="logo-instagram"
+                iconTint="#ec4899"
+                placeholder="Instagram (sans @)"
+                value={instagramHandle}
+                onChangeText={setInstagramHandle}
+                autoCapitalize="none"
                 separator={false}
               />
             </View>
@@ -434,6 +487,94 @@ export function CreateLeadSheetProvider({ children }: ProviderProps) {
                 }}
               />
             </View>
+          </View>
+
+          {/* Relance — toggle + reason + preset dates */}
+          <View>
+            <Pressable onPress={() => setAddFollowUp((v) => !v)}>
+              {({ pressed }) => (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    borderRadius: radius.lg,
+                    backgroundColor: colors.bgSecondary,
+                    opacity: pressed ? 0.85 : 1,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Ionicons name="time" size={18} color={colors.primary} />
+                    <Text style={{ ...t.body, color: colors.textPrimary, fontWeight: '600' }}>
+                      Planifier une relance
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={addFollowUp ? 'checkbox' : 'square-outline'}
+                    size={22}
+                    color={addFollowUp ? colors.primary : colors.textTertiary}
+                  />
+                </View>
+              )}
+            </Pressable>
+
+            {addFollowUp && (
+              <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
+                <View
+                  style={{
+                    backgroundColor: colors.bgSecondary,
+                    borderRadius: radius.lg,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <InputRow
+                    icon="chatbox-ellipses-outline"
+                    iconTint="#8e8e93"
+                    placeholder="Raison (ex: rappeler après réflexion)"
+                    value={followUpReason}
+                    onChangeText={setFollowUpReason}
+                    separator={false}
+                  />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {followUpPresets.map((p) => {
+                    const d = new Date()
+                    d.setDate(d.getDate() + p.days)
+                    d.setHours(10, 0, 0, 0)
+                    const active = followUpDate === d.toISOString()
+                    return (
+                      <Pressable key={p.label} onPress={() => pickFollowUpPreset(p.days)} style={{ flex: 1 }}>
+                        {({ pressed }) => (
+                          <View
+                            style={{
+                              paddingVertical: 10,
+                              borderRadius: radius.md,
+                              alignItems: 'center',
+                              backgroundColor: active ? colors.primary + '22' : colors.bgSecondary,
+                              borderWidth: 1,
+                              borderColor: active ? colors.primary + '88' : 'transparent',
+                              opacity: pressed ? 0.7 : 1,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                ...t.footnote,
+                                color: active ? colors.primary : colors.textSecondary,
+                                fontWeight: active ? '700' : '500',
+                              }}
+                            >
+                              {p.label}
+                            </Text>
+                          </View>
+                        )}
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              </View>
+            )}
           </View>
 
           {/* CTA principal — gros bouton primary */}
