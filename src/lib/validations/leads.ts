@@ -9,6 +9,7 @@ export const createLeadSchema = z.object({
   instagram_handle: z.string().regex(/^[a-zA-Z0-9._]{1,30}$/, 'Handle Instagram invalide').optional().or(z.literal('')).default(''),
   tags: z.array(z.string()).optional().default([]),
   notes: z.string().max(5000).optional().default(''),
+  assigned_to: z.string().uuid().nullable().optional(),
 })
 
 export const updateLeadSchema = z.object({
