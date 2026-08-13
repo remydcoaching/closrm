@@ -1,13 +1,12 @@
 import { z } from 'zod'
 
 const INSTAGRAM_HANDLE_REGEX = /^[a-zA-Z0-9._]{1,30}$/
-const DATA_URL_REGEX = /^data:image\/(jpeg|png|webp);base64,/
 
-export const extractImagesSchema = z.object({
-  images: z
-    .array(z.string().regex(DATA_URL_REGEX, 'Format image invalide (attendu: data URL base64)'))
-    .min(1, 'Au moins une image requise')
-    .max(10, 'Maximum 10 images par import'),
+export const extractTextSchema = z.object({
+  texts: z
+    .array(z.string().max(20000))
+    .min(1, 'Au moins un texte requis')
+    .max(10, 'Maximum 10 captures par import'),
 })
 
 export const confirmImportSchema = z.object({
@@ -19,5 +18,5 @@ export const confirmImportSchema = z.object({
   follow_up_reason: z.string().max(500).optional().default('Nouveau follower — premier contact'),
 })
 
-export type ExtractImagesInput = z.infer<typeof extractImagesSchema>
+export type ExtractTextInput = z.infer<typeof extractTextSchema>
 export type ConfirmImportInput = z.infer<typeof confirmImportSchema>

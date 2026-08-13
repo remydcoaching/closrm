@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
+import { ImageManipulator } from 'expo-image-manipulator'
+import TextRecognition from '@react-native-ml-kit/text-recognition'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
@@ -26,10 +27,11 @@ type Step = 'upload' | 'extracting' | 'review' | 'creating' | 'done'
 
 const MAX_WIDTH = 1280
 
-async function uriToDataUrl(uri: string): Promise<string> {
+async function recognizeText(uri: string): Promise<string> {
   const rendered = await ImageManipulator.manipulate(uri).resize({ width: MAX_WIDTH }).renderAsync()
-  const saved = await rendered.saveAsync({ compress: 0.6, format: SaveFormat.JPEG, base64: true })
-  return `data:image/jpeg;base64,${saved.base64}`
+  const saved = await rendered.saveAsync()
+  const result = await TextRecognition.recognize(saved.uri)
+  return result.text
 }
 
 export function ImportScreenshotsScreen() {
@@ -65,9 +67,9 @@ export function ImportScreenshotsScreen() {
   const analyze = async () => {
     setStep('extracting')
     try {
-      const dataUrls = await Promise.all(previews.map(uriToDataUrl))
+      const texts = await Promise.all(previews.map(recognizeText))
       const res = await api.post<{ results: ImportResult[] }>('/api/leads/import-from-screenshots', {
-        images: dataUrls,
+        texts,
       })
       setResults(res.results ?? [])
       setSelected(new Set(res.results.filter((r) => !r.already_exists).map((r) => r.handle)))
