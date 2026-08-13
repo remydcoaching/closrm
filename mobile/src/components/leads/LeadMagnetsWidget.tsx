@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, Pressable, ActivityIndicator } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
 import { Ionicons } from '@expo/vector-icons'
-import { api } from '../../services/api'
+import { api, API_BASE_URL } from '../../services/api'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
 
@@ -98,8 +98,9 @@ export default function LeadMagnetsWidget({ leadId }: { leadId: string }) {
 
   const handleCopy = async (magnetId: string) => {
     const track = tracks.find((tk) => tk.lead_magnet_id === magnetId)
-    if (!track?.full_url) return
-    await Clipboard.setStringAsync(track.full_url)
+    if (!track) return
+    const url = track.full_url ?? `${API_BASE_URL}/c/${track.short_code}`
+    await Clipboard.setStringAsync(url)
     setCopiedId(magnetId)
     setTimeout(() => setCopiedId(null), 1500)
   }
