@@ -3,6 +3,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native'
 export type LeadsStackParamList = {
   LeadsList: undefined
   LeadDetail: { leadId: string }
+  ImportScreenshots: undefined
 }
 
 export type CallsStackParamList = {
