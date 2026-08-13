@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
     console.error('[API /leads/import-from-screenshots] Error:', err)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    // DEBUG TEMPORAIRE: expose le message d'erreur réel pour diagnostiquer le 500 en prod. À retirer une fois la cause identifiée.
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Erreur serveur' }, { status: 500 })
   }
 }
