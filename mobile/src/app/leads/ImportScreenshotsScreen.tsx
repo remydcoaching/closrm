@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
-import * as FileSystem from 'expo-file-system'
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
@@ -24,11 +24,12 @@ interface ImportResult {
 
 type Step = 'upload' | 'extracting' | 'review' | 'creating' | 'done'
 
+const MAX_WIDTH = 1280
+
 async function uriToDataUrl(uri: string): Promise<string> {
-  const base64 = await new FileSystem.File(uri).base64()
-  const ext = uri.split('.').pop()?.toLowerCase()
-  const mediaType = ext === 'png' ? 'image/png' : 'image/jpeg'
-  return `data:${mediaType};base64,${base64}`
+  const rendered = await ImageManipulator.manipulate(uri).resize({ width: MAX_WIDTH }).renderAsync()
+  const saved = await rendered.saveAsync({ compress: 0.6, format: SaveFormat.JPEG, base64: true })
+  return `data:image/jpeg;base64,${saved.base64}`
 }
 
 export function ImportScreenshotsScreen() {
