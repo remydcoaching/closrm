@@ -292,6 +292,7 @@ export default function LeadsClient({ initialLeads, initialTotal }: LeadsClientP
                 {[
                   { icon: <Plus size={15} />, label: 'Ajouter un lead', onClick: () => { setShowForm(true); setShowActionsMenu(false) } },
                   { icon: <Upload size={15} />, label: 'Importer des leads', onClick: () => { router.push('/leads/import'); setShowActionsMenu(false) } },
+                  { icon: <Upload size={15} />, label: 'Importer depuis screenshots', onClick: () => { router.push('/leads/import-screenshots'); setShowActionsMenu(false) } },
                   { icon: <Download size={15} />, label: 'Exporter des leads', onClick: () => { router.push('/base-de-donnees'); setShowActionsMenu(false) } },
                   { icon: <Clock size={15} />, label: 'Historique des imports', onClick: () => { router.push('/leads/import/history'); setShowActionsMenu(false) } },
                 ].map((item) => (
