@@ -1,21 +1,23 @@
 const INSTAGRAM_HANDLE_REGEX = /^[a-zA-Z0-9._]{1,30}$/
 
-// ML Kit OCR renvoie le texte ligne par ligne, dans l'ordre visuel. Le handle
-// Instagram est toujours le premier "mot" de la ligne de notification, suivi
-// du texte descriptif. On tolère espaces multiples / retours OCR bruités.
-const FOLLOW_LINE_REGEX =
-  /^@?([a-zA-Z0-9._]{1,30})\s+(?:a commencé à vous suivre|a accepté votre demande de suivi)/i
+// ML Kit OCR renvoie le texte notification par bloc, mais le rendu Instagram
+// coupe le texte sur plusieurs lignes ("a commencé à vous" / "suivre.") et
+// colle parfois le handle directement au verbe sans espace visible
+// ("maximemum_a commencé..."). On travaille donc sur le texte complet
+// (espaces normalisés, retours à la ligne compressés en un seul espace) avec
+// un séparateur optionnel entre le handle et le verbe.
+const FOLLOW_REGEX =
+  /([a-zA-Z0-9._]{2,30}?)\s*a (?:commencé à vous suivre|accepté votre demande de suivi)/gi
 
 /** Pure function: parses raw OCR text (one screenshot) into a filtered handle
  *  list. No network call — testable directly against sample OCR output. */
 export function parseHandlesFromOcrText(text: string): string[] {
-  const lines = text.split('\n')
+  const normalized = text.replace(/\s+/g, ' ').trim()
   const handles: string[] = []
-  for (const rawLine of lines) {
-    const line = rawLine.trim().replace(/\s+/g, ' ')
-    const match = line.match(FOLLOW_LINE_REGEX)
-    if (match && INSTAGRAM_HANDLE_REGEX.test(match[1])) {
-      handles.push(match[1])
+  for (const match of normalized.matchAll(FOLLOW_REGEX)) {
+    const handle = match[1].replace(/^@/, '')
+    if (INSTAGRAM_HANDLE_REGEX.test(handle)) {
+      handles.push(handle)
     }
   }
   return handles

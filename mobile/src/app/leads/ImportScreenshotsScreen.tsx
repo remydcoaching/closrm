@@ -68,8 +68,6 @@ export function ImportScreenshotsScreen() {
     setStep('extracting')
     try {
       const texts = await Promise.all(previews.map(recognizeText))
-      // DEBUG TEMPORAIRE: affiche le texte OCR brut pour calibrer le parsing regex. À retirer une fois validé.
-      Alert.alert('Texte OCR détecté', texts.join('\n---\n').slice(0, 3000))
       const res = await api.post<{ results: ImportResult[] }>('/api/leads/import-from-screenshots', {
         texts,
       })
