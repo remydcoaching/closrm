@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import { ImageManipulator } from 'expo-image-manipulator'
 import TextRecognition from '@react-native-ml-kit/text-recognition'
+import * as Clipboard from 'expo-clipboard'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Ionicons } from '@expo/vector-icons'
@@ -68,6 +69,12 @@ export function ImportScreenshotsScreen() {
     setStep('extracting')
     try {
       const texts = await Promise.all(previews.map(recognizeText))
+      // DEBUG TEMPORAIRE
+      const fullOcrText = texts.join('\n---\n')
+      Alert.alert('Texte OCR détecté', fullOcrText.slice(0, 500) + (fullOcrText.length > 500 ? '…' : ''), [
+        { text: 'Copier tout', onPress: () => { void Clipboard.setStringAsync(fullOcrText) } },
+        { text: 'OK', style: 'cancel' },
+      ])
       const res = await api.post<{ results: ImportResult[] }>('/api/leads/import-from-screenshots', {
         texts,
       })
