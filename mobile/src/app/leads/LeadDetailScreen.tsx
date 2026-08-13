@@ -24,6 +24,7 @@ import { useLead } from '../../hooks/useLead'
 import { useLeadNotes, type LeadNote } from '../../hooks/useLeadNotes'
 import { Avatar, Button } from '../../components/ui'
 import LeadJourneyBlock from '../../components/leads/LeadJourneyBlock'
+import LeadMagnetsWidget from '../../components/leads/LeadMagnetsWidget'
 import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
 import { api } from '../../services/api'
 import { colors } from '../../theme/colors'
@@ -813,6 +814,9 @@ export function LeadDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Lead Magnets — liens traçables par lead (clics + dernier clic) */}
+        <LeadMagnetsWidget leadId={lead.id} />
 
         {/* Parcours du lead — Première/Dernière pub, Lead Form Meta,
             réponses booking, activité. Vide → ne rend rien. */}
