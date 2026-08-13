@@ -96,6 +96,20 @@ export function LeadsListScreen() {
         rightSlot={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <Pressable
+              onPress={() => navigation.navigate('ImportScreenshots')}
+              hitSlop={8}
+              style={{
+                width: 36,
+                height: 32,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.bgSecondary,
+                borderRadius: 8,
+              }}
+            >
+              <Ionicons name="camera-outline" size={15} color={colors.textSecondary} />
+            </Pressable>
+            <Pressable
               onPress={() => {
                 if (searchOpen) {
                   setSearch('')
