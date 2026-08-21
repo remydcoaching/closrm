@@ -24,7 +24,5 @@ alter table apify_watched_posts enable row level security;
 
 create policy "Workspace apify_watched_posts" on apify_watched_posts
   for all using (
-    workspace_id in (
-      select id from workspaces where owner_id = auth.uid()
-    )
+    workspace_id in (select user_workspace_ids())
   );
