@@ -14,6 +14,8 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
+  Heart,
+  MessageCircle,
 } from 'lucide-react'
 
 interface AttributionTouch {
@@ -91,6 +93,8 @@ const EVENT_LABEL: Record<string, string> = {
   button_click: 'A cliqué',
   video_play: 'A regardé',
   form_submit: 'A rempli le formulaire',
+  instagram_like: 'A liké un de tes reels',
+  instagram_comment: 'A commenté un de tes reels',
 }
 
 function EventIcon({ type }: { type: string }) {
@@ -104,6 +108,10 @@ function EventIcon({ type }: { type: string }) {
       return <PlayCircle size={size} />
     case 'form_submit':
       return <Send size={size} />
+    case 'instagram_like':
+      return <Heart size={size} />
+    case 'instagram_comment':
+      return <MessageCircle size={size} />
     default:
       return <Activity size={size} />
   }
@@ -134,6 +142,11 @@ function describeEvent(e: JourneyEvent): string {
     }
     case 'form_submit':
       return e.funnel_page_name ? `sur « ${e.funnel_page_name} »` : ''
+    case 'instagram_like':
+    case 'instagram_comment': {
+      const username = e.metadata?.instagram_username
+      return typeof username === 'string' ? `@${username}` : ''
+    }
     default:
       return ''
   }

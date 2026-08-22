@@ -107,7 +107,33 @@ export async function GET(
       })
     }
 
-    // 4. Derive first / last attribution touches
+    // 4. Instagram engagement events (likes/comments) for this lead
+    const { data: igInteractions } = await supabase
+      .from('instagram_interactions')
+      .select('id, interaction_type, instagram_username, profile_url, source_post_url, metadata, last_seen_at')
+      .eq('workspace_id', workspaceId)
+      .eq('lead_id', lead.id)
+      .order('last_seen_at', { ascending: true })
+      .limit(200)
+
+    const igEvents: JourneyEvent[] = (igInteractions ?? []).map((ig) => ({
+      id: ig.id as string,
+      event_type: ig.interaction_type === 'like' ? 'instagram_like' : 'instagram_comment',
+      metadata: {
+        ...(ig.metadata as Record<string, unknown> ?? {}),
+        instagram_username: ig.instagram_username,
+        source_post_url: ig.source_post_url,
+      },
+      funnel_page_id: null,
+      funnel_page_name: null,
+      created_at: ig.last_seen_at as string,
+    }))
+
+    events = [...events, ...igEvents].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+
+    // 5. Derive first / last attribution touches
     const firstTouchEvent = events.find((e) => pickTouch(e.metadata))
     const lastTouchEvent = [...events].reverse().find((e) => pickTouch(e.metadata))
 
