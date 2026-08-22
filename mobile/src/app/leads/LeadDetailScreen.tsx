@@ -26,6 +26,7 @@ import { Avatar, Button } from '../../components/ui'
 import LeadJourneyBlock from '../../components/leads/LeadJourneyBlock'
 import LeadMagnetsWidget from '../../components/leads/LeadMagnetsWidget'
 import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
+import { useFollowUpSheet } from '../../components/schedule/FollowUpSheetProvider'
 import { api } from '../../services/api'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
@@ -252,6 +253,7 @@ export function LeadDetailScreen() {
   const { lead, loading, refetch, mutate } = useLead(route.params.leadId)
   const leadNotes = useLeadNotes(route.params.leadId)
   const scheduleSheet = useScheduleSheet()
+  const followUpSheet = useFollowUpSheet()
   const [statusModalOpen, setStatusModalOpen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<LeadNote | null>(null)
@@ -548,12 +550,20 @@ export function LeadDetailScreen() {
         </View>
 
         {/* CTA principal */}
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl }}>
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm, gap: spacing.sm }}>
           <Button
             label={ctaLabel(lead.status)}
             fullWidth
             size="lg"
             onPress={() => scheduleSheet.open({ lead })}
+          />
+          <Button
+            label="Planifier une relance"
+            variant="outline"
+            fullWidth
+            size="md"
+            iconLeft={<Ionicons name="time-outline" size={16} color={colors.textPrimary} />}
+            onPress={() => followUpSheet.open({ lead })}
           />
         </View>
 

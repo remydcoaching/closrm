@@ -5,6 +5,7 @@ import { NavigationContainer, type NavigationContainerRef } from '@react-navigat
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import RootNavigator from './src/navigation/RootNavigator'
 import { ScheduleSheetProvider } from './src/components/schedule/ScheduleSheetProvider'
+import { FollowUpSheetProvider } from './src/components/schedule/FollowUpSheetProvider'
 import { CreateLeadSheetProvider } from './src/components/leads/CreateLeadSheet'
 import { useExpoPush } from './src/hooks/useExpoPush'
 import { useAgendaReminders } from './src/hooks/useAgendaReminders'
@@ -70,10 +71,12 @@ export default function App() {
               theme={buildNavTheme(theme)}
             >
               <ScheduleSheetProvider>
-                <CreateLeadSheetProvider>
-                  <PushHandler navRef={navRef} />
-                  <RootNavigator />
-                </CreateLeadSheetProvider>
+                <FollowUpSheetProvider>
+                  <CreateLeadSheetProvider>
+                    <PushHandler navRef={navRef} />
+                    <RootNavigator />
+                  </CreateLeadSheetProvider>
+                </FollowUpSheetProvider>
               </ScheduleSheetProvider>
             </NavigationContainer>
           )}
