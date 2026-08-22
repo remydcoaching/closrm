@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { startLikersRun } from '@/lib/apify/client'
+import { startLikersRun, type ApifyCredentials } from '@/lib/apify/client'
+import { decrypt } from '@/lib/crypto'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
   for (const post of watchedPosts ?? []) {
     const { data: activeIntegration } = await supabase
       .from('integrations')
-      .select('is_active')
+      .select('is_active, credentials_encrypted')
       .eq('workspace_id', post.workspace_id)
       .eq('type', 'apify')
       .eq('is_active', true)
@@ -42,7 +43,17 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const { runId, datasetId } = await startLikersRun([post.instagram_post_url])
+      let credentials: ApifyCredentials
+      try {
+        const decrypted = decrypt(activeIntegration.credentials_encrypted)
+        credentials = JSON.parse(decrypted)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to decrypt credentials'
+        results.errors.push(`Post ${post.id}: Invalid credentials: ${message}`)
+        continue
+      }
+
+      const { runId, datasetId } = await startLikersRun([post.instagram_post_url], credentials)
 
       await supabase.from('apify_runs').insert({
         workspace_id: post.workspace_id,
