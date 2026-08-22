@@ -10,6 +10,7 @@ import { NavLarge, FilterChips, Avatar } from '../../components/ui'
 import { colors, getAvatarColor } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
 import { supabase } from '../../services/supabase'
+import { useFollowUpSheet } from '../../components/schedule/FollowUpSheetProvider'
 
 type Nav = NativeStackNavigationProp<FollowUpsStackParamList, 'FollowUpsList'>
 
@@ -82,10 +83,12 @@ export function FollowUpsScreen() {
   const [tabIdx, setTabIdx] = useState(0)
   const tab = TABS[tabIdx].key
   const { followUps, loading, refetch } = useFollowUps(tab)
+  const followUpSheet = useFollowUpSheet()
 
-  const markDone = async (id: string) => {
-    await supabase.from('follow_ups').update({ status: 'fait' }).eq('id', id)
+  const markDone = async (item: FollowUpWithLead) => {
+    await supabase.from('follow_ups').update({ status: 'fait' }).eq('id', item.id)
     void refetch()
+    if (item.lead) followUpSheet.open({ lead: item.lead })
   }
 
   return (
@@ -121,7 +124,7 @@ export function FollowUpsScreen() {
               item={fu}
               overdue={tab === 'overdue'}
               onPress={() => navigation.navigate('LeadDetail', { leadId: fu.lead_id })}
-              onMarkDone={() => void markDone(fu.id)}
+              onMarkDone={() => void markDone(fu)}
             />
           ))}
         </ScrollView>

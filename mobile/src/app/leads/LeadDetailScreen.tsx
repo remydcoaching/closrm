@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons'
 import type { LeadsStackParamList } from '../../navigation/types'
 import { useLead } from '../../hooks/useLead'
 import { useLeadNotes, type LeadNote } from '../../hooks/useLeadNotes'
+import { useLeadFollowUps } from '../../hooks/useLeadFollowUps'
 import { Avatar, Button } from '../../components/ui'
 import LeadJourneyBlock from '../../components/leads/LeadJourneyBlock'
 import LeadMagnetsWidget from '../../components/leads/LeadMagnetsWidget'
@@ -231,6 +232,7 @@ export function LeadDetailScreen() {
   const navigation = useNavigation()
   const { lead, loading, refetch, mutate } = useLead(route.params.leadId)
   const leadNotes = useLeadNotes(route.params.leadId)
+  const leadFollowUps = useLeadFollowUps(route.params.leadId)
   const scheduleSheet = useScheduleSheet()
   const followUpSheet = useFollowUpSheet()
   const [statusModalOpen, setStatusModalOpen] = useState(false)
@@ -793,6 +795,91 @@ export function LeadDetailScreen() {
                   onDelete={() => handleDeleteNote(note)}
                 />
               ))}
+            </View>
+          )}
+        </View>
+
+        {/* Section RELANCES — historique des follow-ups pour ce lead */}
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.xl, gap: spacing.sm }}>
+          <Text
+            style={{
+              ...t.footnote,
+              color: colors.textSecondary,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              marginLeft: 8,
+              marginBottom: 4,
+            }}
+          >
+            Relances {leadFollowUps.followUps.length > 0 ? `(${leadFollowUps.followUps.length})` : ''}
+          </Text>
+
+          {leadFollowUps.loading && leadFollowUps.followUps.length === 0 ? (
+            <View style={{ paddingVertical: spacing.md }}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : leadFollowUps.followUps.length === 0 ? (
+            <Text
+              style={{
+                ...t.caption1,
+                color: colors.textTertiary,
+                fontStyle: 'italic',
+                textAlign: 'center',
+                paddingVertical: spacing.md,
+              }}
+            >
+              Aucune relance pour ce lead.
+            </Text>
+          ) : (
+            <View
+              style={{
+                backgroundColor: colors.primary + '0d',
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: colors.primary + '30',
+                overflow: 'hidden',
+              }}
+            >
+              {leadFollowUps.followUps.map((fu, idx) => {
+                const isDone = fu.status === 'fait'
+                const isOverdue = !isDone && new Date(fu.scheduled_at).getTime() < Date.now()
+                return (
+                  <View
+                    key={fu.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: 12,
+                      borderTopWidth: idx > 0 ? 1 : 0,
+                      borderTopColor: colors.primary + '20',
+                    }}
+                  >
+                    <Ionicons
+                      name={isDone ? 'checkmark-circle' : isOverdue ? 'alert-circle' : 'time-outline'}
+                      size={18}
+                      color={isDone ? colors.primary : isOverdue ? colors.danger : colors.textSecondary}
+                    />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ ...t.footnote, color: colors.textPrimary, fontWeight: '600' }} numberOfLines={1}>
+                        {fu.reason}
+                      </Text>
+                      <Text
+                        style={{
+                          ...t.caption2,
+                          color: isOverdue ? colors.danger : colors.textTertiary,
+                          fontWeight: isOverdue ? '700' : '400',
+                          marginTop: 2,
+                        }}
+                      >
+                        {isDone ? 'Fait · ' : isOverdue ? 'En retard · ' : ''}
+                        {formatFollowUpDate(fu.scheduled_at)}
+                      </Text>
+                    </View>
+                  </View>
+                )
+              })}
             </View>
           )}
         </View>
@@ -1499,6 +1586,15 @@ function CallTrackingModal({
         </View>
       </View>
     </Modal>
+  )
+}
+
+function formatFollowUpDate(iso: string): string {
+  const d = new Date(iso)
+  return (
+    d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) +
+    ' · ' +
+    d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   )
 }
 

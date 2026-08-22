@@ -12,7 +12,7 @@ export interface FollowUpWithLead {
   channel: string
   status: string
   notes: string | null
-  lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email'>
+  lead: Pick<Lead, 'id' | 'first_name' | 'last_name' | 'phone' | 'email' | 'status'>
 }
 
 export function useFollowUps(tab: FollowUpTab) {
@@ -31,7 +31,7 @@ export function useFollowUps(tab: FollowUpTab) {
 
     let query = supabase
       .from('follow_ups')
-      .select('id, lead_id, reason, scheduled_at, channel, status, notes, lead:leads(id, first_name, last_name, phone, email)')
+      .select('id, lead_id, reason, scheduled_at, channel, status, notes, lead:leads(id, first_name, last_name, phone, email, status)')
       .order('scheduled_at', { ascending: true })
 
     if (tab === 'done') {

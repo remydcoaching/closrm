@@ -11,8 +11,10 @@ import { Avatar, StatusBadge, Button, Segmented } from '../ui'
 import { colors } from '../../theme/colors'
 import { api } from '../../services/api'
 
+type FollowUpLead = Pick<Lead, 'id' | 'first_name' | 'last_name' | 'status'>
+
 interface FollowUpParams {
-  lead: Lead
+  lead: FollowUpLead
 }
 
 interface FollowUpSheetContextValue {
@@ -38,7 +40,7 @@ const DELAYS = [
 ] as const
 
 interface SheetState {
-  lead: Lead
+  lead: FollowUpLead
   delayIdx: number
   notes: string
   submitting: boolean
