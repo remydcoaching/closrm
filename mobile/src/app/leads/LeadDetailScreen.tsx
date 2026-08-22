@@ -46,27 +46,6 @@ const STATUS_ORDER: LeadStatus[] = [
 
 type R = RouteProp<LeadsStackParamList, 'LeadDetail'>
 
-const ctaLabel = (status: string): string => {
-  switch (status) {
-    case 'closing_planifie':
-      return 'Rejoindre le closing'
-    case 'setting_planifie':
-      return 'Rejoindre le setting'
-    case 'no_show_setting':
-    case 'no_show_closing':
-      return 'Reprogrammer'
-    case 'nouveau':
-    case 'scripte':
-      return 'Planifier un setting'
-    case 'clos':
-      return 'Voir le deal'
-    case 'dead':
-      return 'Réactiver le lead'
-    default:
-      return 'Planifier un appel'
-  }
-}
-
 const formatAmount = (n: number | null): string =>
   n == null
     ? '—'
@@ -552,17 +531,10 @@ export function LeadDetailScreen() {
         {/* CTA principal */}
         <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.sm, gap: spacing.sm }}>
           <Button
-            label={ctaLabel(lead.status)}
+            label="Planifier une relance"
             fullWidth
             size="lg"
-            onPress={() => scheduleSheet.open({ lead })}
-          />
-          <Button
-            label="Planifier une relance"
-            variant="outline"
-            fullWidth
-            size="md"
-            iconLeft={<Ionicons name="time-outline" size={16} color={colors.textPrimary} />}
+            iconLeft={<Ionicons name="time-outline" size={18} color="#fff" />}
             onPress={() => followUpSheet.open({ lead })}
           />
         </View>
