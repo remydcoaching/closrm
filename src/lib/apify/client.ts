@@ -13,25 +13,19 @@ export interface ApifyLikerItem {
 
 export type ApifyRunStatus = 'READY' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'ABORTED' | 'TIMED-OUT'
 
-function getToken(): string {
-  const token = process.env.APIFY_API_TOKEN
-  if (!token) throw new Error('APIFY_API_TOKEN is not set')
-  return token
-}
-
-function getActorId(): string {
-  const actorId = process.env.APIFY_ACTOR_ID
-  if (!actorId) throw new Error('APIFY_ACTOR_ID is not set')
-  return actorId
+export interface ApifyCredentials {
+  apiToken: string
+  actorId: string
 }
 
 export async function startLikersRun(
   postUrls: string[],
+  credentials: ApifyCredentials,
 ): Promise<{ runId: string; datasetId: string | null }> {
-  const response = await fetch(`${APIFY_BASE_URL}/actors/${getActorId()}/runs`, {
+  const response = await fetch(`${APIFY_BASE_URL}/actors/${credentials.actorId}/runs`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${getToken()}`,
+      Authorization: `Bearer ${credentials.apiToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ postUrls }),
@@ -50,9 +44,10 @@ export async function startLikersRun(
 
 export async function getRunStatus(
   runId: string,
+  credentials: ApifyCredentials,
 ): Promise<{ status: ApifyRunStatus; defaultDatasetId: string | null }> {
-  const response = await fetch(`${APIFY_BASE_URL}/actors/${getActorId()}/runs/${runId}`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
+  const response = await fetch(`${APIFY_BASE_URL}/actors/${credentials.actorId}/runs/${runId}`, {
+    headers: { Authorization: `Bearer ${credentials.apiToken}` },
   })
 
   if (!response.ok) {
@@ -66,9 +61,12 @@ export async function getRunStatus(
   }
 }
 
-export async function getDatasetItems(datasetId: string): Promise<ApifyLikerItem[]> {
+export async function getDatasetItems(
+  datasetId: string,
+  credentials: ApifyCredentials,
+): Promise<ApifyLikerItem[]> {
   const response = await fetch(`${APIFY_BASE_URL}/datasets/${datasetId}/items`, {
-    headers: { Authorization: `Bearer ${getToken()}` },
+    headers: { Authorization: `Bearer ${credentials.apiToken}` },
   })
 
   if (!response.ok) {

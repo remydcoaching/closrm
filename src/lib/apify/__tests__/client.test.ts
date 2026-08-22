@@ -1,14 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { startLikersRun, getRunStatus, getDatasetItems } from '../client'
 
 const originalFetch = global.fetch
 
-describe('apify client', () => {
-  beforeEach(() => {
-    process.env.APIFY_API_TOKEN = 'test-token'
-    process.env.APIFY_ACTOR_ID = 'test-actor-id'
-  })
+const testCredentials = { apiToken: 'test-token', actorId: 'test-actor-id' }
 
+describe('apify client', () => {
   afterEach(() => {
     global.fetch = originalFetch
     vi.restoreAllMocks()
@@ -21,7 +18,7 @@ describe('apify client', () => {
     })
     global.fetch = mockFetch as unknown as typeof fetch
 
-    const result = await startLikersRun(['https://www.instagram.com/reel/abc/'])
+    const result = await startLikersRun(['https://www.instagram.com/reel/abc/'], testCredentials)
 
     expect(result).toEqual({ runId: 'run-123', datasetId: 'dataset-456' })
     expect(mockFetch).toHaveBeenCalledWith(
@@ -43,7 +40,7 @@ describe('apify client', () => {
       text: async () => 'Unauthorized',
     }) as unknown as typeof fetch
 
-    await expect(startLikersRun(['https://www.instagram.com/reel/abc/'])).rejects.toThrow(
+    await expect(startLikersRun(['https://www.instagram.com/reel/abc/'], testCredentials)).rejects.toThrow(
       'Apify run start failed: 401',
     )
   })
@@ -54,7 +51,7 @@ describe('apify client', () => {
       json: async () => ({ data: { status: 'SUCCEEDED', defaultDatasetId: 'dataset-456' } }),
     }) as unknown as typeof fetch
 
-    const result = await getRunStatus('run-123')
+    const result = await getRunStatus('run-123', testCredentials)
 
     expect(result).toEqual({ status: 'SUCCEEDED', defaultDatasetId: 'dataset-456' })
   })
@@ -68,7 +65,7 @@ describe('apify client', () => {
       json: async () => ({ items }),
     }) as unknown as typeof fetch
 
-    const result = await getDatasetItems('dataset-456')
+    const result = await getDatasetItems('dataset-456', testCredentials)
 
     expect(result).toEqual(items)
   })
