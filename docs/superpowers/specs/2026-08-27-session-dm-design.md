@@ -61,8 +61,8 @@ Pour chaque lead affiché :
 - **Note optionnelle** : champ texte court, enregistré sur le follow-up créé/mis à jour (`follow_ups.notes`).
 
 **Actions de fin de traitement (bas d'écran, fixe) :**
-- **Relancé** → ouvre le sélecteur de délai de prochaine relance (2j/3j/7j/14j/30j/personnalisé), crée ou met à jour un `follow_ups` (réutilise le système existant, pas de nouveau concept), avance le statut du lead dans le pipeline (`leads.status`), passe au profil suivant.
-- **À archiver** → marque le lead comme sorti du cycle de relance (à définir précisément avec l'équipe : nouveau statut ou flag distinct du pipeline existant — investiguer avant migration), passe au suivant.
+- **Relancé** → ouvre le sélecteur de délai de prochaine relance (2j/3j/7j/14j/30j/personnalisé), crée ou met à jour un `follow_ups` (réutilise le système existant, pas de nouveau concept). Ne modifie PAS `leads.status` : le lead reste dans son statut pipeline actuel. Passe au profil suivant.
+- **À archiver** → `leads.status = 'dead'` via la route `PATCH /api/leads/[id]` existante (réutilise `updateLeadSchema`, triggers et side-effects déjà en place). Décision validée : `dead` est déjà le statut sémantiquement correct ("sorti du cycle de relance"), pas de nouveau statut ni migration nécessaire. Passe au suivant.
 - **Passer pour l'instant** → aucune écriture, le lead reste dans la file, passe au suivant ; en fin de session, les leads "passés" sans autre action restent visibles comme non traités (pas retirés silencieusement).
 
 ## Templates de message (sans IA)
@@ -97,10 +97,8 @@ Une session (config choisie, liste ordonnée de leads, position courante, leads 
 - `instagram_interactions` et le pipeline Apify existant (`process-likers.ts`, crons `apify-instagram-likes`, `apify-poll-results`) pour le signal d'engagement — rien à construire ici, uniquement consommer.
 - `LeadJourneyBlock` / route journey pour la timeline (à porter/exposer côté mobile si l'équivalent mobile n'existe pas déjà en détail).
 - `openInstagram` de `LeadDetailScreen.tsx` pour l'ouverture du profil.
-- Le pipeline de statuts `leads.status` existant (`nouveau`, `setting_planifie`, `no_show_setting`, `closing_planifie`, `no_show_closing`, `clos`, `dead`) — la transition exacte déclenchée par "Relancé"/"À archiver" est à confirmer avec Pierre au moment du plan (aujourd'hui aucune route ne fait de update direct de statut ; à investiguer avant migration).
+- Le pipeline de statuts `leads.status` existant et la route `PATCH /api/leads/[id]` (`src/app/api/leads/[id]/route.ts`, schéma `updateLeadSchema` dans `src/lib/validations/leads.ts`) pour la transition "À archiver" → `dead`.
 
 ## Points à trancher pendant l'implémentation (pas bloquants pour la spec, mais à ne pas deviner)
 
-- Mapping exact "Relancé" / "À archiver" → quelle valeur de `leads.status` (ou nouveau champ dédié si le pipeline actuel ne couvre pas "archivé hors cycle de relance").
 - Schéma minimal des tables de persistance de session.
-- Emplacement exact du bouton d'entrée dans l'écran Messages mobile actuel (au-dessus de la liste, dans un header, etc.) — à caler sur la structure réelle du composant.
