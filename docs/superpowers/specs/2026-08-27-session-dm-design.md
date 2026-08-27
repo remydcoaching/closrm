@@ -8,6 +8,14 @@ ClosRM Mobile a aujourd'hui un écran "Relances" (`mobile/src/app/follow-ups/Fol
 
 Objectif produit : réduire la charge mentale et le temps de décision du setter (aujourd'hui : "qui je relance, avec quel message, où j'en étais"), sans dupliquer la logique de données déjà existante (leads, follow_ups, instagram_interactions, pipeline de statuts).
 
+## Scope plateforme : mobile-only pour cette itération
+
+L'usage réel (ouvrir Instagram, taper un DM, revenir) est un geste mobile — le web ClosRM sert au pilotage (dashboard, config), pas à l'exécution répétitive terrain. Construire les deux UIs en parallèle doublerait la surface de ce plan pour un besoin qui, dans son usage, est mobile d'abord.
+
+**Décision : l'écran de session (config, lead-par-lead, fin de session) est mobile-only dans ce plan.** Le web recevra sa propre UI Session DM dans une itération séparée, une fois le mobile validé en usage réel.
+
+**Contrainte de cohérence (non négociable) :** toute la logique métier — sélection/priorisation des leads, templates, transition de statut, création de follow-up, persistance de session — vit dans des **routes API Next.js** (`src/app/api/dm-sessions/...`), pas dans le client React Native. Le mobile n'est qu'un consommateur de cette API. Ainsi le futur écran web réutilisera l'API telle quelle sans dupliquer la logique ni risquer une divergence de comportement entre plateformes.
+
 ## Hors scope (explicitement exclu de cette itération)
 
 - **Génération de message par IA.** Le message recommandé vient de templates statiques choisis par règle (voir section Templates), pas d'un modèle de langage. Motif : simplicité, prévisibilité, pas de coût/latence IA récurrents sur un usage quotidien (~40 leads/jour).
