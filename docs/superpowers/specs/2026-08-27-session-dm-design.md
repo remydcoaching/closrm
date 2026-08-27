@@ -18,7 +18,11 @@ Objectif produit : réduire la charge mentale et le temps de décision du setter
 
 ## Point d'entrée
 
-Bouton **"Lancer une session DM"** dans l'écran Messages/conversations mobile existant (pas un nouvel onglet séparé), affichant le nombre de leads actuellement éligibles (badge). Si une session est déjà en cours (non terminée), le bouton affiche "Reprendre la session (12/30)" à la place de la configuration initiale.
+Bouton **"Lancer une session DM"** dans l'écran **Relances** mobile existant (`mobile/src/app/follow-ups/FollowUpsScreen.tsx`, tab `FollowUpsTab`), pas un nouvel onglet séparé.
+
+Note de correction (post-brainstorming initial) : l'app a un écran `InboxScreen`/`MessagesStack` (conversations Instagram) dans le code, mais il n'est monté dans aucun tab actuellement — feature laissée de côté au profit du tab Relance. Le point d'entrée retenu est donc l'écran Relance, le seul réellement accessible aujourd'hui.
+
+Le bouton affiche le nombre de leads actuellement éligibles (badge). Si une session est déjà en cours (non terminée), il affiche "Reprendre la session (12/30)" à la place de la configuration initiale.
 
 ## Sélection et priorisation des leads
 
