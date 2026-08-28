@@ -37,12 +37,27 @@ export async function buildPriorityQueue(
     .order('scheduled_at', { ascending: true })
   byCategory.set('relance_en_retard', (overdueFollowUps ?? []).map((r) => r.lead_id as string))
 
+  // Leads with a pending follow-up (any date) must not also surface under
+  // engagement_instagram / jamais_recontacte — they're already queued, either
+  // waiting to become overdue or already captured by relance_en_retard above.
+  const { data: pendingFollowUps } = await supabase
+    .from('follow_ups')
+    .select('lead_id')
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'en_attente')
+  const pendingFollowUpLeadIds = new Set((pendingFollowUps ?? []).map((r) => r.lead_id as string))
+
   const { data: engagedLeads } = await supabase
     .from('instagram_interactions')
     .select('lead_id, last_seen_at')
     .eq('workspace_id', workspaceId)
     .order('last_seen_at', { ascending: true })
-  byCategory.set('engagement_instagram', (engagedLeads ?? []).map((r) => r.lead_id as string))
+  byCategory.set(
+    'engagement_instagram',
+    (engagedLeads ?? [])
+      .map((r) => r.lead_id as string)
+      .filter((leadId) => !pendingFollowUpLeadIds.has(leadId))
+  )
 
   const { data: staleLeads } = await supabase
     .from('leads')
@@ -50,15 +65,38 @@ export async function buildPriorityQueue(
     .eq('workspace_id', workspaceId)
     .lt('last_activity_at', staleBefore)
     .order('last_activity_at', { ascending: true })
-  byCategory.set('jamais_recontacte', (staleLeads ?? []).map((r) => r.id as string))
+  byCategory.set(
+    'jamais_recontacte',
+    (staleLeads ?? [])
+      .filter((r) => typeof r.last_activity_at === 'string' && r.last_activity_at < staleBefore)
+      .map((r) => r.id as string)
+      .filter((leadId) => !pendingFollowUpLeadIds.has(leadId))
+  )
 
-  const { data: newLeads } = await supabase
+  // "Never contacted" means no outbound contact has ever been logged for the
+  // lead — there is no reliable NULL marker on leads.last_activity_at (it
+  // defaults to now() and is only ever advanced forward), so the real signal
+  // is the absence of any follow_ups or calls row for that lead.
+  const [{ data: followUpLeadRows }, { data: callLeadRows }] = await Promise.all([
+    supabase.from('follow_ups').select('lead_id').eq('workspace_id', workspaceId),
+    supabase.from('calls').select('lead_id').eq('workspace_id', workspaceId),
+  ])
+  const contactedLeadIds = new Set([
+    ...(followUpLeadRows ?? []).map((r) => r.lead_id as string),
+    ...(callLeadRows ?? []).map((r) => r.lead_id as string),
+  ])
+
+  const { data: allLeads } = await supabase
     .from('leads')
-    .select('id, last_activity_at')
+    .select('id, created_at')
     .eq('workspace_id', workspaceId)
-    .is('last_activity_at', null)
     .order('created_at', { ascending: true })
-  byCategory.set('premier_message', (newLeads ?? []).map((r) => r.id as string))
+  byCategory.set(
+    'premier_message',
+    (allLeads ?? [])
+      .map((r) => r.id as string)
+      .filter((leadId) => !contactedLeadIds.has(leadId))
+  )
 
   const seen = new Set<string>()
   const queue: PriorityLead[] = []
