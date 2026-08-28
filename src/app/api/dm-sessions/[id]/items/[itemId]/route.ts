@@ -8,7 +8,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
-    const { itemId } = await params
+    const { id, itemId } = await params
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
@@ -22,6 +22,7 @@ export async function PATCH(
       .from('dm_session_items')
       .select('lead_id')
       .eq('id', itemId)
+      .eq('session_id', id)
       .single()
 
     if (!item) {
@@ -29,19 +30,26 @@ export async function PATCH(
     }
 
     if (parsed.data.outcome === 'archived') {
-      await supabase.from('leads').update({ status: 'dead' }).eq('id', item.lead_id)
+      const { error: leadError } = await supabase.from('leads').update({ status: 'dead' }).eq('id', item.lead_id)
+      if (leadError) {
+        return NextResponse.json({ error: 'Impossible d\'archiver le lead' }, { status: 500 })
+      }
     }
 
     if (parsed.data.outcome === 'relaunched' && parsed.data.delay_days) {
       const scheduledAt = new Date(Date.now() + parsed.data.delay_days * 86_400_000).toISOString()
-      await supabase.from('follow_ups').insert({
+      const { error: followUpError } = await supabase.from('follow_ups').insert({
         workspace_id: workspaceId,
         lead_id: item.lead_id,
         reason: 'Relance session DM',
         scheduled_at: scheduledAt,
         channel: 'instagram_dm',
         status: 'en_attente',
+        notes: parsed.data.note ?? '',
       })
+      if (followUpError) {
+        return NextResponse.json({ error: 'Impossible de créer la relance' }, { status: 500 })
+      }
     }
 
     const { data: updated, error } = await supabase
