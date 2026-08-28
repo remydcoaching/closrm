@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { FollowUpsStackParamList } from '../../navigation/types'
 import { useFollowUps, type FollowUpTab, type FollowUpWithLead } from '../../hooks/useFollowUps'
+import { useDmSessionEntry } from '../../hooks/useDmSession'
 import { NavLarge, FilterChips, Avatar } from '../../components/ui'
 import { colors, getAvatarColor } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
@@ -82,6 +83,7 @@ export function FollowUpsScreen() {
   const [tabIdx, setTabIdx] = useState(0)
   const tab = TABS[tabIdx].key
   const { followUps, loading, refetch } = useFollowUps(tab)
+  const { eligibleCount, activeSession } = useDmSessionEntry()
 
   const markDone = async (id: string) => {
     await supabase.from('follow_ups').update({ status: 'fait' }).eq('id', id)
@@ -91,6 +93,29 @@ export function FollowUpsScreen() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <NavLarge title="Relances" />
+      <Pressable
+        onPress={() =>
+          navigation.navigate(activeSession ? 'DmSessionLead' : 'DmSessionConfig', activeSession ? { sessionId: activeSession.id } : undefined)
+        }
+        style={{
+          marginHorizontal: spacing.lg,
+          marginBottom: spacing.md,
+          backgroundColor: colors.bgSecondary,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: spacing.md,
+        }}
+      >
+        <Text style={{ ...t.subheadline, color: colors.textPrimary, fontWeight: '700' }}>
+          {activeSession ? `Reprendre la session (${activeSession.doneCount}/${activeSession.targetCount})` : 'Lancer une session DM'}
+        </Text>
+        {!activeSession && (
+          <Text style={{ ...t.footnote, color: colors.textSecondary, marginTop: 4 }}>
+            {eligibleCount} profils à traiter
+          </Text>
+        )}
+      </Pressable>
       <View style={{ marginBottom: spacing.sm }}>
         <FilterChips
           items={TABS.map((tb) => ({ label: tb.label }))}
