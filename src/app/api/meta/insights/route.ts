@@ -89,7 +89,7 @@ function aggregateKpis(rows: MetaInsightRow[]): KpisData {
   for (const row of rows) {
     spend += parseFloat(row.spend || '0')
     impressions += parseInt(row.impressions || '0', 10)
-    clicks += parseInt(row.clicks || '0', 10)
+    clicks += parseInt(row.inline_link_clicks || row.clicks || '0', 10)
     leads += extractLeadCount(row)
     videoPlays += extractVideoPlays(row)
     videoP25 += extractVideoP25(row)
@@ -130,7 +130,7 @@ function aggregateDaily(rows: MetaInsightRow[]): DailyRow[] {
       spend: parseFloat(row.spend || '0'),
       leads: extractLeadCount(row),
       impressions: parseInt(row.impressions || '0', 10),
-      clicks: parseInt(row.clicks || '0', 10),
+      clicks: parseInt(row.inline_link_clicks || row.clicks || '0', 10),
     })
   }
   return daily.sort((a, b) => a.date.localeCompare(b.date))
@@ -353,10 +353,12 @@ export async function GET(request: NextRequest) {
     for (const row of rows) {
       const spend = parseFloat(row.spend || '0')
       const impressions = parseInt(row.impressions || '0', 10)
-      const clicks = parseInt(row.clicks || '0', 10)
+      const clicks = parseInt(row.inline_link_clicks || row.clicks || '0', 10)
       const leads = extractLeadCount(row)
       const cpl = extractCostPerLead(row)
-      const rowCtr = parseFloat(row.ctr || '0')
+      // CTR recalculé sur les link clicks (CTR Link de l'UI Meta) plutôt
+      // que sur tous les clics — sinon il ne matchait pas Meta non plus.
+      const rowCtr = impressions > 0 ? (clicks / impressions) * 100 : parseFloat(row.ctr || '0')
       const videoPlays = extractVideoPlays(row)
       const videoP25 = extractVideoP25(row)
       const videoP50 = extractVideoP50(row)
