@@ -35,6 +35,7 @@ import type {
   SpacerBlockConfig,
   FunnelFooterBlockConfig,
   ProblemsBlockConfig,
+  ProgramBlockConfig,
 } from '@/types'
 
 import HeroBlock from '@/components/funnels/blocks/HeroBlock'
@@ -52,6 +53,7 @@ import ImageBlock from '@/components/funnels/blocks/ImageBlock'
 import SpacerBlock from '@/components/funnels/blocks/SpacerBlock'
 import FooterBlock from '@/components/funnels/blocks/FooterBlock'
 import ProblemsBlock from '@/components/funnels/blocks/ProblemsBlock'
+import ProgramBlock from '@/components/funnels/blocks/ProgramBlock'
 import FunnelTracker from '@/components/funnels/FunnelTracker'
 import { FunnelRenderProvider } from '@/components/funnels/FunnelRenderContext'
 import { loadFunnelDesign } from '@/lib/funnels/load-funnel-design'
@@ -197,6 +199,8 @@ function renderBlock(block: FunnelBlock) {
       content = <FooterBlock config={block.config as FunnelFooterBlockConfig} />; break
     case 'problems':
       content = <ProblemsBlock config={block.config as ProblemsBlockConfig} />; break
+    case 'program':
+      content = <ProgramBlock config={block.config as ProgramBlockConfig} />; break
     default:
       return null
   }

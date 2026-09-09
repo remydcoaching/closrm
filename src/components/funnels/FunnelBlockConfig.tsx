@@ -16,6 +16,7 @@ import ImageConfig from './config/ImageConfig'
 import SpacerConfig from './config/SpacerConfig'
 import FooterConfig from './config/FooterConfig'
 import ProblemsConfig from './config/ProblemsConfig'
+import ProgramConfig from './config/ProgramConfig'
 
 interface Props {
   block: FunnelBlock
@@ -48,6 +49,7 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks, funn
     spacer: 'Espacement',
     footer: 'Footer',
     problems: 'Problèmes',
+    program: 'Programme / Méthode',
   }
 
   return (
@@ -117,6 +119,13 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks, funn
       {block.type === 'problems' && (
         <ProblemsConfig
           config={block.config as Parameters<typeof ProblemsConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
+          funnelId={funnelId}
+        />
+      )}
+      {block.type === 'program' && (
+        <ProgramConfig
+          config={block.config as Parameters<typeof ProgramConfig>[0]['config']}
           onChange={c => handleConfigChange(c)}
           funnelId={funnelId}
         />

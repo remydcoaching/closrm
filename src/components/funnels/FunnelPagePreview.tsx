@@ -65,6 +65,7 @@ import ImageBlock from './blocks/ImageBlock'
 import SpacerBlock from './blocks/SpacerBlock'
 import FooterBlock from './blocks/FooterBlock'
 import ProblemsBlock from './blocks/ProblemsBlock'
+import ProgramBlock from './blocks/ProgramBlock'
 
 /**
  * Modes de prévisualisation du builder. T-028b Phase 4 ajoute `tablet`
@@ -127,6 +128,7 @@ function renderBlockContent(block: FunnelBlock): React.ReactNode {
     case 'spacer': return <SpacerBlock config={block.config as Parameters<typeof SpacerBlock>[0]['config']} />
     case 'footer': return <FooterBlock config={block.config as Parameters<typeof FooterBlock>[0]['config']} />
     case 'problems': return <ProblemsBlock config={block.config as Parameters<typeof ProblemsBlock>[0]['config']} />
+    case 'program': return <ProgramBlock config={block.config as Parameters<typeof ProgramBlock>[0]['config']} />
     default: return <div style={{ padding: 20, color: '#999' }}>Bloc inconnu</div>
   }
 }
