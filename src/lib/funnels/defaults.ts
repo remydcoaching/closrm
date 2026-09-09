@@ -19,6 +19,15 @@ import type {
 } from '@/types'
 
 /**
+ * Génère un ID unique pour un item à l'intérieur d'une liste de bloc
+ * (cartes Problèmes, étapes Programme, points Qualifier, stats Coach).
+ * Même pattern que `generateBlockId` ci-dessous.
+ */
+function generateItemId(): string {
+  return `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+}
+
+/**
  * Retourne la config initiale d'un bloc selon son type. Tous les champs
  * obligatoires sont remplis avec des valeurs "lambda" que le coach remplacera,
  * et les effets par-bloc sont activés par défaut pour que le rendu soit
@@ -167,6 +176,116 @@ export function getDefaultBlockConfig(type: FunnelBlockType): FunnelBlockConfig 
         brand: 'Ma marque',
         year: new Date().getFullYear(),
         copyrightText: 'Tous droits réservés.',
+      }
+    case 'problems':
+      return {
+        title: 'Tu fais tout ça, mais rien ne change ?',
+        subtitle: "Voici pourquoi tu n'avances pas malgré tes efforts.",
+        items: [
+          {
+            id: generateItemId(),
+            title: 'Tu t\'entraînes sans réelle stratégie',
+            description: 'Tu enchaînes les séances sans progression mesurable, sans savoir si tu avances vraiment.',
+            showNumber: true,
+            icon: { name: 'Dumbbell' },
+            imageUrl: null,
+          },
+          {
+            id: generateItemId(),
+            title: 'Tu ne sais pas quoi manger',
+            description: 'Tu changes de régime toutes les semaines sans jamais obtenir de résultat durable.',
+            showNumber: true,
+            icon: { name: 'Utensils' },
+            imageUrl: null,
+          },
+          {
+            id: generateItemId(),
+            title: 'Tu manques de constance',
+            description: 'Motivé quelques semaines, puis tu abandonnes — le cycle recommence.',
+            showNumber: true,
+            icon: { name: 'Flame' },
+            imageUrl: null,
+          },
+        ],
+        columns: 3,
+        numberLabel: 'PROBLÈME',
+      }
+    case 'program':
+      return {
+        title: 'Comment fonctionne l\'accompagnement',
+        subtitle: 'Une méthode structurée en 4 étapes, du diagnostic aux résultats.',
+        items: [
+          {
+            id: generateItemId(),
+            number: '01',
+            title: 'Analyse',
+            description: 'On fait le point sur ton niveau, ton objectif, ton alimentation et ta situation actuelle.',
+            icon: { name: 'Compass' },
+            imageUrl: null,
+          },
+          {
+            id: generateItemId(),
+            number: '02',
+            title: 'Plan personnalisé',
+            description: 'Tu reçois un plan d\'entraînement et une stratégie nutritionnelle adaptés à ton objectif.',
+            icon: { name: 'Target' },
+            imageUrl: null,
+          },
+          {
+            id: generateItemId(),
+            number: '03',
+            title: 'Suivi',
+            description: 'On analyse tes données chaque semaine et on ajuste ton plan en conséquence.',
+            icon: { name: 'BarChart3' },
+            imageUrl: null,
+          },
+          {
+            id: generateItemId(),
+            number: '04',
+            title: 'Progression',
+            description: 'Tu avances avec une méthode structurée plutôt que de fonctionner au hasard.',
+            icon: { name: 'TrendingUp' },
+            imageUrl: null,
+          },
+        ],
+        columns: 4,
+      }
+    case 'qualifier':
+      return {
+        yes: {
+          title: 'C\'est pour toi si',
+          icon: { name: 'CheckCircle2' },
+          items: [
+            { id: generateItemId(), text: 'Tu veux réellement transformer ton physique' },
+            { id: generateItemId(), text: 'Tu es prêt à t\'investir' },
+            { id: generateItemId(), text: 'Tu acceptes de suivre un cadre' },
+            { id: generateItemId(), text: 'Tu veux être accompagné' },
+          ],
+        },
+        no: {
+          title: 'Ce n\'est pas pour toi si',
+          icon: { name: 'XCircle' },
+          items: [
+            { id: generateItemId(), text: 'Tu cherches une solution miracle' },
+            { id: generateItemId(), text: 'Tu ne veux rien changer à tes habitudes' },
+            { id: generateItemId(), text: 'Tu n\'es pas prêt à t\'investir' },
+            { id: generateItemId(), text: 'Tu veux des résultats sans effort' },
+          ],
+        },
+      }
+    case 'about_coach':
+      return {
+        imageUrl: null,
+        title: 'Qui suis-je ?',
+        subtitle: 'Coach certifié, 5 ans d\'expérience',
+        text: 'Depuis 5 ans, j\'accompagne des dizaines de personnes à transformer leur physique et leur discipline grâce à une méthode structurée, sans injonction ni solution miracle.',
+        ctaText: 'Réserve ton appel',
+        ctaUrl: '#',
+        stats: [
+          { id: generateItemId(), value: '100+', label: 'Clients accompagnés' },
+          { id: generateItemId(), value: '5+', label: 'Années d\'expérience' },
+        ],
+        layout: 'image-left',
       }
   }
 }

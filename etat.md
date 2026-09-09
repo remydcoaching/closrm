@@ -358,4 +358,28 @@ Les tunnels de vente de ClosRM sont liés aux campagnes Meta Ads. Sans pixel, Me
 
 ---
 
-*Mis a jour le 2026-06-09 par Claude Code — ClosRM*
+## Session 2026-09-09 — 4 nouveaux modules landing page (Rémy)
+
+### T-048 · Problèmes / Programme / Qualifier / Présentation du coach
+
+**Statut :** Implémenté. PR à ouvrir depuis `feature/remy-landing-page-modules`.
+
+**Pourquoi :**
+Le builder de funnels ne couvrait pas les sections marketing essentielles
+d'une landing page de coaching : présenter les problèmes de la cible, la
+méthode, qualifier le prospect, présenter le coach. Ces 4 modules
+complètent les 13 blocs existants sans les dupliquer.
+
+**Ce qui a été livré :**
+- 4 nouveaux types de blocs (`problems`, `program`, `qualifier`, `about_coach`), intégrés au menu "+ Ajouter une section" existant
+- 2 composants partagés nouveaux : `ReorderableItemList` (drag & drop d'items en config, gap identifié à l'audit) et `IconPicker` (sélecteur d'icônes Lucide, inexistant avant)
+- Contenu 100% personnalisable, sans limite de nombre d'éléments par section
+- Responsive géré via `grid-template-columns: repeat(auto-fit, ...)` / `flex-wrap`, cohérent avec les blocs existants (pas de nouvelle media query)
+- Aucune migration DB (colonne JSONB déjà générique)
+
+> Detail complet : `taches/tache-048-landing-page-4-modules.md`
+> Spec : `docs/superpowers/specs/2026-09-09-landing-page-4-modules-design.md`
+
+---
+
+*Mis a jour le 2026-09-09 par Claude Code — ClosRM*

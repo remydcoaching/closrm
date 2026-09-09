@@ -15,6 +15,10 @@ import TextConfig from './config/TextConfig'
 import ImageConfig from './config/ImageConfig'
 import SpacerConfig from './config/SpacerConfig'
 import FooterConfig from './config/FooterConfig'
+import ProblemsConfig from './config/ProblemsConfig'
+import ProgramConfig from './config/ProgramConfig'
+import QualifierConfig from './config/QualifierConfig'
+import AboutCoachConfig from './config/AboutCoachConfig'
 
 interface Props {
   block: FunnelBlock
@@ -46,6 +50,10 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks, funn
     image: 'Image',
     spacer: 'Espacement',
     footer: 'Footer',
+    problems: 'Problèmes',
+    program: 'Programme / Méthode',
+    qualifier: 'C\'est pour toi / Pas pour toi',
+    about_coach: 'Présentation du coach',
   }
 
   return (
@@ -111,6 +119,35 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks, funn
       )}
       {block.type === 'footer' && (
         <FooterConfig config={block.config as Parameters<typeof FooterConfig>[0]['config']} onChange={c => handleConfigChange(c)} />
+      )}
+      {block.type === 'problems' && (
+        <ProblemsConfig
+          config={block.config as Parameters<typeof ProblemsConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
+          funnelId={funnelId}
+        />
+      )}
+      {block.type === 'program' && (
+        <ProgramConfig
+          config={block.config as Parameters<typeof ProgramConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
+          funnelId={funnelId}
+        />
+      )}
+      {block.type === 'qualifier' && (
+        <QualifierConfig
+          config={block.config as Parameters<typeof QualifierConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
+        />
+      )}
+      {block.type === 'about_coach' && (
+        <AboutCoachConfig
+          config={block.config as Parameters<typeof AboutCoachConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
+          pages={pages}
+          blocks={blocks}
+          funnelId={funnelId}
+        />
       )}
     </div>
   )
