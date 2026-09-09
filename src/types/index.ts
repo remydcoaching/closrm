@@ -593,6 +593,10 @@ export type FunnelBlockType =
   | 'image'
   | 'spacer'
   | 'footer'
+  | 'problems'
+  | 'program'
+  | 'qualifier'
+  | 'about_coach'
 
 /**
  * Config des effets visuels activables au niveau d'un bloc spécifique.
@@ -797,6 +801,72 @@ export interface FunnelFooterBlockConfig {
   copyrightText: string
 }
 
+export interface ProblemItem {
+  id: string
+  title: string
+  description: string
+  showNumber: boolean
+  icon?: { name: string } | null
+  imageUrl?: string | null
+}
+
+export interface ProblemsBlockConfig {
+  title: string
+  subtitle?: string
+  items: ProblemItem[]
+  columns: 1 | 2 | 3
+}
+
+export interface ProgramStep {
+  id: string
+  number: string
+  title: string
+  description: string
+  icon?: { name: string } | null
+  imageUrl?: string | null
+}
+
+export interface ProgramBlockConfig {
+  title: string
+  subtitle?: string
+  items: ProgramStep[]
+  columns: 2 | 3 | 4
+}
+
+export interface QualifierPoint {
+  id: string
+  text: string
+}
+
+export interface QualifierColumn {
+  title: string
+  subtitle?: string
+  icon?: { name: string } | null
+  items: QualifierPoint[]
+}
+
+export interface QualifierBlockConfig {
+  yes: QualifierColumn
+  no: QualifierColumn
+}
+
+export interface CoachStat {
+  id: string
+  value: string
+  label: string
+}
+
+export interface AboutCoachBlockConfig {
+  imageUrl: string | null
+  title: string
+  subtitle?: string
+  text: string
+  ctaText?: string
+  ctaUrl?: string
+  stats: CoachStat[]
+  layout: 'image-left' | 'image-right'
+}
+
 export type FunnelBlockConfig =
   | HeroBlockConfig
   | VideoBlockConfig
@@ -812,6 +882,10 @@ export type FunnelBlockConfig =
   | FunnelImageBlockConfig
   | SpacerBlockConfig
   | FunnelFooterBlockConfig
+  | ProblemsBlockConfig
+  | ProgramBlockConfig
+  | QualifierBlockConfig
+  | AboutCoachBlockConfig
 
 export interface FunnelBlock {
   id: string
