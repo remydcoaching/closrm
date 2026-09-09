@@ -905,4 +905,27 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
-*Mis à jour le 2026-06-01 par Claude Code — ClosRM*
+### A-FUN-04 · Registry central des types de blocs de funnel
+- **Contexte :** Tâche 048 — ajouter un type de bloc touche aujourd'hui 7 fichiers différents à chaque fois (aucun registry factorisé, pattern répété pour les 17 types désormais). Décision prise avec Rémy de garder le pattern existant pour cette tâche plutôt que de refactorer.
+- **Description :** Factoriser l'enregistrement d'un bloc (type, config par défaut, label, icône, composant config, composant rendu public, composant rendu preview) dans un unique fichier registry, pour qu'ajouter un futur type de bloc ne touche qu'un seul endroit.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Élevé (touche les 17 blocs existants, gros diff, risque de régression sur de l'existant qui fonctionne)
+- **Statut :** En attente de validation
+
+### A-FUN-05 · Layouts alternatifs pour le bloc Programme / Méthode
+- **Contexte :** Tâche 048 — la demande initiale mentionnait plusieurs dispositions possibles (vertical, horizontal, timeline, cartes). V1 livrée avec cartes uniquement (décision validée avec Rémy).
+- **Description :** Ajouter un sélecteur de layout dans `ProgramConfig` (vertical/horizontal/timeline en plus de cartes), en réutilisant `config.items` tel quel.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation (V2 si besoin)
+
+### A-FUN-06 · Vérification tactile du drag & drop intra-liste sur mobile
+- **Contexte :** Tâche 048 — `ReorderableItemList` utilise `PointerSensor` de dnd-kit (supporte en théorie souris + tactile), mais le builder est surtout utilisé desktop. Pas de test manuel effectué sur device tactile réel pour le reorder de cartes/étapes/points en config.
+- **Description :** Tester sur un vrai device tactile (tablette/mobile) que le drag & drop des items en config fonctionne correctement ; ajuster `activationConstraint` si besoin.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+---
+
+*Mis à jour le 2026-09-09 par Claude Code — ClosRM*
