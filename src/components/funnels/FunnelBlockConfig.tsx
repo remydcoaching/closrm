@@ -17,6 +17,7 @@ import SpacerConfig from './config/SpacerConfig'
 import FooterConfig from './config/FooterConfig'
 import ProblemsConfig from './config/ProblemsConfig'
 import ProgramConfig from './config/ProgramConfig'
+import QualifierConfig from './config/QualifierConfig'
 
 interface Props {
   block: FunnelBlock
@@ -50,6 +51,7 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks, funn
     footer: 'Footer',
     problems: 'Problèmes',
     program: 'Programme / Méthode',
+    qualifier: 'C\'est pour toi / Pas pour toi',
   }
 
   return (
@@ -128,6 +130,12 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks, funn
           config={block.config as Parameters<typeof ProgramConfig>[0]['config']}
           onChange={c => handleConfigChange(c)}
           funnelId={funnelId}
+        />
+      )}
+      {block.type === 'qualifier' && (
+        <QualifierConfig
+          config={block.config as Parameters<typeof QualifierConfig>[0]['config']}
+          onChange={c => handleConfigChange(c)}
         />
       )}
     </div>
