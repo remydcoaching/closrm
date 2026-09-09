@@ -31,8 +31,9 @@ interface Props {
 }
 
 // Marge au-dessus du CTA selon la position choisie par le coach.
-// Avec sous-titre : `.fnl-hook` apporte déjà sa margin-bottom, donc top/middle
-// = 0. Sans sous-titre : on compense par une marge directe sur le bouton.
+// Avec sous-titre : `.fnl-hook` apporte déjà sa margin-bottom, donc top = 0.
+// `middle` doit rester visuellement distinct de `top` même avec un sous-titre
+// (bug précédent : les deux valaient 0 et semblaient identiques).
 function ctaMarginTop(
   position: HeroBlockConfig['ctaPosition'] | undefined,
   hasSubtitle: boolean,
@@ -44,7 +45,7 @@ function ctaMarginTop(
       return hasSubtitle ? 60 : 80
     case 'middle':
     default:
-      return hasSubtitle ? 0 : 22
+      return hasSubtitle ? 24 : 22
   }
 }
 
