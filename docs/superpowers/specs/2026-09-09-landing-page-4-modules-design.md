@@ -21,7 +21,8 @@ Audit du système de funnels existant (lecture seule, aucun fichier modifié) :
 - **Aucun reorder à l'intérieur d'une liste d'items** : les blocs FAQ, Testimonials et Image (galerie) n'ont que add/remove sur leurs items, pas de drag & drop interne.
 - **Aucun sélecteur d'icônes** : les icônes visibles dans le menu du builder sont des imports `lucide-react` codés en dur par les devs, pas un choix utilisateur.
 - Stockage : colonne `funnel_pages.blocks JSONB`, aucune validation de schéma (ni Zod, ni contrainte DB) — la route `PUT /api/funnels/[id]/pages/[pageId]` écrit `body.blocks` tel quel. Les nouveaux blocs suivent ce même pattern (pas de nouvelle validation à ajouter, cohérence avec l'existant).
-- Design tokens réutilisables : classes `.fnl-section`, `.fnl-section-inner`, `.fnl-headline`, `.fnl-hook`, `.fnl-btn` et variables CSS `--fnl-primary(-light/-dark)`, `--fnl-text`, `--fnl-text-secondary` (`src/styles/funnels/{tokens,base}.css`), un seul breakpoint `@media (min-width: 768px)`. Les grilles responsives existantes (ex. `TestimonialsBlock`) utilisent `grid-template-columns: repeat(auto-fit, minmax(Npx, 1fr))` — dégrade nativement sur mobile sans media query dédiée.
+- Design tokens réutilisables : **correction post-lecture du code réel** — les blocs de contenu (`FaqBlock`, `TestimonialsBlock`, `PricingBlock`, etc.) n'utilisent PAS les classes `.fnl-section`/`.fnl-headline`/`.fnl-hook` (réservées à Hero/Footer qui ont un fond de section spécifique). Le pattern réel et dominant : styles inline (`padding: '60px 20px'`, `maxWidth: N`, `margin: '0 auto'`) + variables CSS `--fnl-text`, `--fnl-text-secondary`, `--fnl-primary`, `--fnl-primary-rgb`, `--fnl-section-bg`. Seule `.fnl-btn` (classe partagée, gradient + ombre + hover) est réellement réutilisée pour les CTA (`CtaBlock`, `PricingBlock`, `HeroBlock`). Les 4 nouveaux blocs suivent ce pattern inline + vars — pas de nouvelles classes CSS globales à créer.
+- Grilles responsives existantes (ex. `TestimonialsBlock`) : `grid-template-columns: repeat(auto-fit, minmax(Npx, 1fr))` — dégrade nativement sur mobile sans media query dédiée. Même technique réutilisée pour les 4 nouveaux blocs (y compris pour les 2 colonnes du Qualifier : avec exactement 2 enfants dans la grille, l'auto-fit donne naturellement 2 colonnes sur desktop et 1 colonne empilée sur mobile).
 - `ImageUploadField` (`config/ImageUploadField.tsx`) + `useImageUpload` (upload R2 présigné, compression client) sont directement réutilisables pour toute image (Coach, illustrations de cartes).
 - `getDefaultBlockConfig()` (`src/lib/funnels/defaults.ts`) pré-remplit chaque nouveau bloc avec du contenu réaliste éditable — pattern validé par Rémy le 2026-04-07 ("le coach n'a jamais une page vide"). Ça ne contredit pas la consigne "ne pas hardcoder de texte d'exemple" : cette dernière vise le composant de **rendu**, pas les valeurs par défaut à la création, qui sont éditables immédiatement.
 
@@ -198,9 +199,9 @@ Pas de section "Responsive" dédiée dans l'éditeur — comportement mobile aut
 
 Aucun texte codé en dur — tout vient de `block.config`.
 
-### 8. CSS
+### 8. Style des 4 nouveaux blocs
 
-Classes ajoutées à `src/styles/funnels/base.css` (pas de nouveau fichier, cohérence avec l'existant) : `.fnl-problems-grid/.fnl-problems-card`, `.fnl-program-grid/.fnl-program-card`, `.fnl-qualifier-cols/.fnl-qualifier-col(--yes|--no)`, `.fnl-coach/.fnl-coach-stat`. Grilles en `repeat(auto-fit, minmax(Npx, 1fr))` (même technique que `TestimonialsBlock`) — pas de media query dédiée nécessaire, dégrade nativement à 1 colonne sur mobile. Qualifier passe de 2 colonnes à 1 sous 768px via le breakpoint existant `@media (min-width: 768px)`. Couleurs : `--fnl-primary` pour les accents, vert/rouge sémantiques uniquement sur les colonnes Qualifier (cohérent avec l'exemple ✓/✕ de la demande, pas une couleur SaaS générique).
+Pas de nouvelles classes CSS globales — chaque bloc suit le pattern réel de `PricingBlock`/`FaqBlock`/`TestimonialsBlock` : styles inline dans le composant, couleurs via `var(--fnl-text)`, `var(--fnl-text-secondary)`, `var(--fnl-primary)`, `rgba(var(--fnl-primary-rgb), N)`, fond via `var(--fnl-section-bg)`. Cartes (Problèmes/Programme) : même look que les cards `PricingBlock` (`borderRadius: 20`, `border` + `boxShadow` teintés `--fnl-primary-rgb`). Grilles en `repeat(auto-fit, minmax(Npx, 1fr))`, dégradent nativement sur mobile sans media query (y compris le Qualifier à 2 colonnes). CTA optionnel du bloc Coach via la classe partagée `.fnl-btn`. Couleurs vert/rouge des colonnes Qualifier : valeurs sémantiques fixes (cohérentes avec l'exemple ✓/✕ de la demande), pas liées au thème primary qui peut changer.
 
 ## Compatibilité / non-régression
 
@@ -234,7 +235,6 @@ Pour chacun des 4 modules : ajout depuis le menu, édition du contenu, add/remov
 | `src/components/funnels/blocks/AboutCoachBlock.tsx` | Nouveau |
 | `src/app/f/[workspaceSlug]/[funnelSlug]/[pageSlug]/page.tsx` | Modifié |
 | `src/components/funnels/FunnelPagePreview.tsx` | Modifié |
-| `src/styles/funnels/base.css` | Modifié |
 
 ## Tâche associée
 
