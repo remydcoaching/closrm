@@ -14,7 +14,20 @@ const MINMAX_BY_COLUMNS: Record<2 | 3 | 4, number> = { 2: 380, 3: 280, 4: 220 }
 
 export default function ProgramBlock({ config }: Props) {
   const items = config.items || []
-  if (items.length === 0) return null
+  if (items.length === 0) {
+    return (
+      <div
+        style={{
+          padding: '40px 20px',
+          textAlign: 'center',
+          color: 'var(--fnl-text-secondary)',
+          fontSize: 14,
+        }}
+      >
+        Aucune étape configurée
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: '60px 20px', maxWidth: 1100, margin: '0 auto' }}>

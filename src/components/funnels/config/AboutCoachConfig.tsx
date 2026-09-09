@@ -2,17 +2,20 @@
 
 // T-048 — Panneau de config du bloc "Présentation du coach".
 
-import type { AboutCoachBlockConfig, CoachStat } from '@/types'
+import type { AboutCoachBlockConfig, CoachStat, FunnelPage, FunnelBlock } from '@/types'
 import ReorderableItemList from './ReorderableItemList'
 import ImageUploadField from './ImageUploadField'
+import RedirectPicker from './RedirectPicker'
 
 interface Props {
   config: AboutCoachBlockConfig
   onChange: (config: AboutCoachBlockConfig) => void
+  pages?: FunnelPage[]
+  blocks?: FunnelBlock[]
   funnelId: string
 }
 
-export default function AboutCoachConfig({ config, onChange, funnelId }: Props) {
+export default function AboutCoachConfig({ config, onChange, pages, blocks, funnelId }: Props) {
   const stats = config.stats || []
 
   const updateStat = (index: number, patch: Partial<CoachStat>) => {
@@ -69,27 +72,22 @@ export default function AboutCoachConfig({ config, onChange, funnelId }: Props) 
           <option value="image-right">Image à droite</option>
         </select>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Texte du bouton (optionnel)</label>
-          <input
-            type="text"
-            value={config.ctaText || ''}
-            onChange={e => onChange({ ...config, ctaText: e.target.value || undefined })}
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle}>Lien du bouton</label>
-          <input
-            type="text"
-            value={config.ctaUrl || ''}
-            onChange={e => onChange({ ...config, ctaUrl: e.target.value || undefined })}
-            placeholder="#, page:slug ou URL"
-            style={inputStyle}
-          />
-        </div>
+      <div>
+        <label style={labelStyle}>Texte du bouton (optionnel)</label>
+        <input
+          type="text"
+          value={config.ctaText || ''}
+          onChange={e => onChange({ ...config, ctaText: e.target.value || undefined })}
+          style={inputStyle}
+        />
       </div>
+      <RedirectPicker
+        value={config.ctaUrl ?? null}
+        onChange={url => onChange({ ...config, ctaUrl: url ?? undefined })}
+        pages={pages}
+        blocks={blocks}
+        label="Lien du bouton"
+      />
 
       <div>
         <label style={labelStyle}>Statistiques</label>

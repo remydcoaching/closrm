@@ -52,6 +52,15 @@ export default function ProblemsConfig({ config, onChange, funnelId }: Props) {
         />
       </div>
       <div>
+        <label style={labelStyle}>Libellé du numéro (optionnel)</label>
+        <input
+          type="text"
+          value={config.numberLabel || ''}
+          onChange={e => onChange({ ...config, numberLabel: e.target.value || undefined })}
+          style={inputStyle}
+        />
+      </div>
+      <div>
         <label style={labelStyle}>Colonnes (desktop)</label>
         <select
           value={config.columns}

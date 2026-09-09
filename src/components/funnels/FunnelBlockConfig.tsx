@@ -144,6 +144,8 @@ export default function FunnelBlockConfig({ block, onChange, pages, blocks, funn
         <AboutCoachConfig
           config={block.config as Parameters<typeof AboutCoachConfig>[0]['config']}
           onChange={c => handleConfigChange(c)}
+          pages={pages}
+          blocks={blocks}
           funnelId={funnelId}
         />
       )}

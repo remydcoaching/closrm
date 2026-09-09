@@ -208,6 +208,7 @@ export function getDefaultBlockConfig(type: FunnelBlockType): FunnelBlockConfig 
           },
         ],
         columns: 3,
+        numberLabel: 'PROBLÈME',
       }
     case 'program':
       return {

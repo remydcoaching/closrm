@@ -14,7 +14,20 @@ const MINMAX_BY_COLUMNS: Record<1 | 2 | 3, number> = { 1: 480, 2: 320, 3: 260 }
 
 export default function ProblemsBlock({ config }: Props) {
   const items = config.items || []
-  if (items.length === 0) return null
+  if (items.length === 0) {
+    return (
+      <div
+        style={{
+          padding: '40px 20px',
+          textAlign: 'center',
+          color: 'var(--fnl-text-secondary)',
+          fontSize: 14,
+        }}
+      >
+        Aucun problème configuré
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: '60px 20px', maxWidth: 1100, margin: '0 auto' }}>
@@ -59,7 +72,7 @@ export default function ProblemsBlock({ config }: Props) {
               ) : null}
               {item.showNumber && (
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fnl-primary)', letterSpacing: '0.05em', marginBottom: 6 }}>
-                  PROBLÈME {String(i + 1).padStart(2, '0')}
+                  {config.numberLabel || 'PROBLÈME'} {String(i + 1).padStart(2, '0')}
                 </div>
               )}
               <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--fnl-text)', margin: '0 0 8px' }}>

@@ -815,6 +815,7 @@ export interface ProblemsBlockConfig {
   subtitle?: string
   items: ProblemItem[]
   columns: 1 | 2 | 3
+  numberLabel?: string
 }
 
 export interface ProgramStep {
