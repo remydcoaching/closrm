@@ -37,6 +37,7 @@ import type {
   ProblemsBlockConfig,
   ProgramBlockConfig,
   QualifierBlockConfig,
+  AboutCoachBlockConfig,
 } from '@/types'
 
 import HeroBlock from '@/components/funnels/blocks/HeroBlock'
@@ -56,6 +57,7 @@ import FooterBlock from '@/components/funnels/blocks/FooterBlock'
 import ProblemsBlock from '@/components/funnels/blocks/ProblemsBlock'
 import ProgramBlock from '@/components/funnels/blocks/ProgramBlock'
 import QualifierBlock from '@/components/funnels/blocks/QualifierBlock'
+import AboutCoachBlock from '@/components/funnels/blocks/AboutCoachBlock'
 import FunnelTracker from '@/components/funnels/FunnelTracker'
 import { FunnelRenderProvider } from '@/components/funnels/FunnelRenderContext'
 import { loadFunnelDesign } from '@/lib/funnels/load-funnel-design'
@@ -205,6 +207,8 @@ function renderBlock(block: FunnelBlock) {
       content = <ProgramBlock config={block.config as ProgramBlockConfig} />; break
     case 'qualifier':
       content = <QualifierBlock config={block.config as QualifierBlockConfig} />; break
+    case 'about_coach':
+      content = <AboutCoachBlock config={block.config as AboutCoachBlockConfig} />; break
     default:
       return null
   }

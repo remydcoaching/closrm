@@ -32,7 +32,7 @@ import {
   // Icônes pour chaque type de bloc (remplacent les emojis)
   Crosshair, Video, Type, ImageIcon, MousePointerClick, DollarSign,
   MessageSquareQuote, HelpCircle, Timer, ArrowUpDown, PanelBottom,
-  Calendar, FileText, CalendarPlus, AlertCircle, ListChecks, CheckCheck,
+  Calendar, FileText, CalendarPlus, AlertCircle, ListChecks, CheckCheck, UserCircle,
 } from 'lucide-react'
 import type { FunnelBlock, FunnelBlockType } from '@/types'
 
@@ -66,6 +66,7 @@ const BLOCK_TYPES: BlockTypeMeta[] = [
   { type: 'problems', label: 'Problèmes', icon: <AlertCircle size={ICON_SIZE} /> },
   { type: 'program', label: 'Programme / Méthode', icon: <ListChecks size={ICON_SIZE} /> },
   { type: 'qualifier', label: 'C\'est pour toi / Pas pour toi', icon: <CheckCheck size={ICON_SIZE} /> },
+  { type: 'about_coach', label: 'Présentation du coach', icon: <UserCircle size={ICON_SIZE} /> },
   { type: 'faq', label: 'FAQ', icon: <HelpCircle size={ICON_SIZE} /> },
   { type: 'countdown', label: 'Compte à rebours', icon: <Timer size={ICON_SIZE} /> },
   { type: 'spacer', label: 'Espacement', icon: <ArrowUpDown size={ICON_SIZE} /> },
