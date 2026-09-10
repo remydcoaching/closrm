@@ -72,6 +72,14 @@ export default function AboutCoachConfig({ config, onChange, pages, blocks, funn
           <option value="image-right">Image à droite</option>
         </select>
       </div>
+      <label style={toggleRowStyle}>
+        <input
+          type="checkbox"
+          checked={config.showButton !== false}
+          onChange={e => onChange({ ...config, showButton: e.target.checked })}
+        />
+        <span>Afficher le bouton</span>
+      </label>
       <div>
         <label style={labelStyle}>Texte du bouton (optionnel)</label>
         <input
@@ -132,4 +140,9 @@ const inputStyle: React.CSSProperties = {
   width: '100%', padding: '7px 10px', fontSize: 13,
   background: '#0a0a0a', border: '1px solid #333', borderRadius: 8,
   color: '#fff', outline: 'none',
+}
+
+const toggleRowStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8,
+  fontSize: 12, color: '#aaa', cursor: 'pointer',
 }

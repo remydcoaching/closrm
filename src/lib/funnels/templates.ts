@@ -186,6 +186,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = (() => {
 
   // ─── 3. Funnel complet (4 pages, liées entre elles) ───────────────────
   const fcVideo = block('video', { url: '', autoplay: false, controls: true, aspectRatio: '16:9' })
+  const fcBooking = block('booking', { calendarId: null, title: 'Choisissez votre créneau', subtitle: 'Appel stratégique gratuit de 30 minutes.' })
   const tplFunnelComplet: FunnelTemplate = {
     id: 'tpl-funnel-complet',
     name: 'Funnel complet',
@@ -267,13 +268,13 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = (() => {
           block('hero', {
             title: 'Réservez votre appel stratégique',
             subtitle: 'Choisissez un créneau qui vous convient pour un appel de 30 minutes.',
-            ctaText: '',
-            ctaUrl: '',
+            ctaText: 'Réserver un appel',
+            ctaUrl: `#block-${fcBooking.id}`,
             backgroundImage: null,
             alignment: 'center',
             effects: { shimmer: true },
           }),
-          block('booking', { calendarId: null, title: 'Choisissez votre créneau', subtitle: 'Appel stratégique gratuit de 30 minutes.' }),
+          fcBooking,
           footerBlock(),
         ],
       },
@@ -335,6 +336,7 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = (() => {
   }
 
   // ─── 5. Page de réservation ─────────────────────────────────────────
+  const reservationBooking = block('booking', { calendarId: null, title: 'Choisissez votre créneau', subtitle: 'Appel stratégique gratuit de 30 minutes.' })
   const tplReservation: FunnelTemplate = {
     id: 'tpl-page-reservation',
     name: 'Réservation',
@@ -349,11 +351,11 @@ export const FUNNEL_TEMPLATES: FunnelTemplate[] = (() => {
         block('hero', {
           title: 'Réservez votre appel découverte',
           subtitle: '30 minutes pour faire le point sur votre situation et voir comment on peut vous aider.',
-          ctaText: '', ctaUrl: '', backgroundImage: null, alignment: 'center',
+          ctaText: 'Réserver un appel', ctaUrl: `#block-${reservationBooking.id}`, backgroundImage: null, alignment: 'center',
           badgeText: 'Appel Offert',
           effects: { shimmer: true },
         }),
-        block('booking', { calendarId: null, title: 'Choisissez votre créneau', subtitle: 'Appel stratégique gratuit de 30 minutes.' }),
+        reservationBooking,
         footerBlock(),
       ],
     }],

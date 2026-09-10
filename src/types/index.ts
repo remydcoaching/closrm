@@ -631,6 +631,8 @@ export interface HeroBlockConfig {
    * 'bottom' = poussé vers le bas du hero avec un grand margin-top
    */
   ctaPosition?: 'top' | 'middle' | 'bottom'
+  /** Affiche le bouton CTA. true par défaut (undefined = affiché, rétrocompat). */
+  showButton?: boolean
 }
 
 export interface VideoBlockConfig {
@@ -722,12 +724,18 @@ export interface BookingActionsBlockConfig {
 export interface PricingBlockConfig {
   title: string
   price: string
+  /** Prix barré affiché au-dessus du prix actuel (offre spéciale). Vide = pas d'offre spéciale. */
+  originalPrice?: string
   currency: string
   period: string
   features: string[]
   ctaText: string
   ctaUrl: string
   highlighted: boolean
+  /** Affiche le bouton CTA. true par défaut (undefined = affiché, rétrocompat). */
+  showButton?: boolean
+  /** Texte de précisions affiché en italique sous le bouton (ex: "Sans engagement"). Vide = rien affiché. */
+  footnote?: string
 }
 
 export interface FaqItem {
@@ -866,6 +874,8 @@ export interface AboutCoachBlockConfig {
   ctaUrl?: string
   stats: CoachStat[]
   layout: 'image-left' | 'image-right'
+  /** Affiche le bouton CTA. true par défaut (undefined = affiché, rétrocompat). */
+  showButton?: boolean
 }
 
 export type FunnelBlockConfig =

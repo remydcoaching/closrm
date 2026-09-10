@@ -101,7 +101,7 @@ export default function HeroBlock({ config }: Props) {
           <span className="fnl-shimmer">{config.title || 'Titre principal'}</span>
         </h1>
         {config.subtitle && <p className="fnl-hook">{config.subtitle}</p>}
-        {config.ctaText && (
+        {config.showButton !== false && config.ctaText && (
           <a
             href={resolveFunnelUrl(config.ctaUrl)}
             className="fnl-btn"

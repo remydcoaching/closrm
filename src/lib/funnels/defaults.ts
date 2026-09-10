@@ -445,14 +445,17 @@ export function getDefaultPageBlocksForTemplate(
         title: string
         subtitle: string
         ctaText: string
+        ctaUrl: string
         badgeText: string
       }
+      const booking = createDefaultBlock('booking')
       heroConfig.title = 'Réserve ton appel découverte'
       heroConfig.subtitle =
         "30 minutes pour qu'on fasse le point sur ta situation et comment on peut t'aider."
-      heroConfig.ctaText = ''
+      heroConfig.ctaText = 'Réserver un appel'
+      heroConfig.ctaUrl = `#block-${booking.id}`
       heroConfig.badgeText = 'Appel Offert'
-      return [hero, createDefaultBlock('booking'), createDefaultBlock('footer')]
+      return [hero, booking, createDefaultBlock('footer')]
     }
   }
 }

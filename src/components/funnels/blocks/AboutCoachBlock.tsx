@@ -54,7 +54,7 @@ export default function AboutCoachBlock({ config }: Props) {
           ))}
         </div>
       )}
-      {config.ctaText && (
+      {config.showButton !== false && config.ctaText && (
         <a href={resolveFunnelUrl(config.ctaUrl)} className="fnl-btn">
           {config.ctaText}
         </a>
