@@ -8,7 +8,7 @@
       "@shared/*": ["../shared/*"],
       "zod": ["node_modules/zod"]
     },
-    "types": ["nativewind/types"]
+    "types": ["nativewind/types", "jest"]
   },
   "include": [
     "**/*.ts",

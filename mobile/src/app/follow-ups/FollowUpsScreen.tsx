@@ -94,9 +94,13 @@ export function FollowUpsScreen() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <NavLarge title="Relances" />
       <Pressable
-        onPress={() =>
-          navigation.navigate(activeSession ? 'DmSessionLead' : 'DmSessionConfig', activeSession ? { sessionId: activeSession.id } : undefined)
-        }
+        onPress={() => {
+          if (activeSession) {
+            navigation.navigate('DmSessionLead', { sessionId: activeSession.id })
+          } else {
+            navigation.navigate('DmSessionConfig')
+          }
+        }}
         style={{
           marginHorizontal: spacing.lg,
           marginBottom: spacing.md,
