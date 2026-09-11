@@ -28,6 +28,16 @@ export async function buildPriorityQueue(
 
   const byCategory = new Map<PriorityCategory, string[]>()
 
+  // Un lead marqué "a répondu" (dm_conversation_active_at non-null) ne doit
+  // jamais réapparaître dans une file de session — le setter continue la
+  // conversation manuellement, ClosRM ne doit pas lui proposer une relance.
+  const { data: activeConversationLeads } = await supabase
+    .from('leads')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .not('dm_conversation_active_at', 'is', null)
+  const activeConversationLeadIds = new Set((activeConversationLeads ?? []).map((r) => r.id as string))
+
   const { data: overdueFollowUps } = await supabase
     .from('follow_ups')
     .select('lead_id, scheduled_at')
@@ -35,7 +45,12 @@ export async function buildPriorityQueue(
     .eq('status', 'en_attente')
     .lt('scheduled_at', now.toISOString())
     .order('scheduled_at', { ascending: true })
-  byCategory.set('relance_en_retard', (overdueFollowUps ?? []).map((r) => r.lead_id as string))
+  byCategory.set(
+    'relance_en_retard',
+    (overdueFollowUps ?? [])
+      .map((r) => r.lead_id as string)
+      .filter((leadId) => !activeConversationLeadIds.has(leadId))
+  )
 
   // Leads with a pending follow-up (any date) must not also surface under
   // engagement_instagram / jamais_recontacte — they're already queued, either
@@ -57,6 +72,7 @@ export async function buildPriorityQueue(
     (engagedLeads ?? [])
       .map((r) => r.lead_id as string)
       .filter((leadId) => !pendingFollowUpLeadIds.has(leadId))
+      .filter((leadId) => !activeConversationLeadIds.has(leadId))
   )
 
   const { data: staleLeads } = await supabase
@@ -71,6 +87,7 @@ export async function buildPriorityQueue(
       .filter((r) => typeof r.last_activity_at === 'string' && r.last_activity_at < staleBefore)
       .map((r) => r.id as string)
       .filter((leadId) => !pendingFollowUpLeadIds.has(leadId))
+      .filter((leadId) => !activeConversationLeadIds.has(leadId))
   )
 
   // "Never contacted" means no outbound contact has ever been logged for the
@@ -96,6 +113,7 @@ export async function buildPriorityQueue(
     (allLeads ?? [])
       .map((r) => r.id as string)
       .filter((leadId) => !contactedLeadIds.has(leadId))
+      .filter((leadId) => !activeConversationLeadIds.has(leadId))
   )
 
   const seen = new Set<string>()

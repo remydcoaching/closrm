@@ -12,6 +12,18 @@ function makeSupabaseStub(responses: Record<string, unknown[]>) {
       builder.lt = chain
       builder.is = chain
       builder.order = chain
+      // The real query filters leads to those with a non-null
+      // dm_conversation_active_at; the stub can't evaluate PostgREST
+      // filter semantics, so it approximates by only returning rows that
+      // actually carry that field, keeping the "active conversation" leads
+      // query distinct from the plain `leads` fixture used everywhere else.
+      builder.not = (column: string) => {
+        if (column === 'dm_conversation_active_at') {
+          builder.then = (resolve: (v: { data: unknown[]; error: null }) => void) =>
+            resolve({ data: rows.filter((r) => (r as Record<string, unknown>).dm_conversation_active_at != null), error: null })
+        }
+        return builder
+      }
       builder.then = (resolve: (v: { data: unknown[]; error: null }) => void) =>
         resolve({ data: rows, error: null })
       return builder
@@ -92,5 +104,20 @@ describe('buildPriorityQueue', () => {
 
     expect(queue.some((q) => q.lead_id === 'lead-pending' && q.category === 'jamais_recontacte')).toBe(false)
     expect(queue.some((q) => q.lead_id === 'lead-pending' && q.category === 'engagement_instagram')).toBe(false)
+  })
+
+  it('excludes a lead with an active dm conversation from every category', async () => {
+    const supabase = makeSupabaseStub({
+      follow_ups: [{ lead_id: 'lead-replied', scheduled_at: '2020-01-01T00:00:00Z', status: 'en_attente' }],
+      calls: [],
+      instagram_interactions: [{ lead_id: 'lead-replied', last_seen_at: '2026-01-02T00:00:00Z' }],
+      leads: [
+        { id: 'lead-replied', last_activity_at: '2025-01-01T00:00:00Z', created_at: '2026-01-01T00:00:00Z', dm_conversation_active_at: '2026-01-03T00:00:00Z' },
+      ],
+    })
+
+    const queue = await buildPriorityQueue(supabase as never, 'ws-1', 30)
+
+    expect(queue.some((q) => q.lead_id === 'lead-replied')).toBe(false)
   })
 })

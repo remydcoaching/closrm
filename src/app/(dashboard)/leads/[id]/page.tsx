@@ -13,6 +13,7 @@ import LogCallModal from '@/components/leads/LogCallModal'
 import LeadDealsWidget from '@/components/leads/LeadDealsWidget'
 import LeadAddBookingButton from '@/components/leads/LeadAddBookingButton'
 import LeadJourneyBlock from '@/components/leads/LeadJourneyBlock'
+import DmReplyButton from '@/components/leads/DmReplyButton'
 
 interface LeadWithRelations extends Lead {
   calls: Call[]
@@ -169,6 +170,13 @@ export default function LeadDetailPage() {
         {/* Colonne gauche — detail + parcours + paiements */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <LeadDetail lead={lead} onUpdate={handleUpdate} />
+          {lead.instagram_handle && (
+            <DmReplyButton
+              leadId={lead.id}
+              dmConversationActiveAt={lead.dm_conversation_active_at}
+              onMarked={() => handleUpdate({ dm_conversation_active_at: new Date().toISOString() })}
+            />
+          )}
           <LeadJourneyBlock leadId={lead.id} />
           <div style={{
             background: 'var(--bg-elevated)', border: '1px solid var(--border-primary)',

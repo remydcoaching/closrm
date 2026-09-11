@@ -439,6 +439,18 @@ export function LeadDetailScreen() {
       })
     }
   }
+  const [markingReplied, setMarkingReplied] = useState(false)
+  const markReplied = async () => {
+    setMarkingReplied(true)
+    mutate({ dm_conversation_active_at: new Date().toISOString() })
+    try {
+      await api.post(`/api/leads/${lead.id}/dm-reply`, {})
+    } catch {
+      void refetch()
+    } finally {
+      setMarkingReplied(false)
+    }
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
@@ -555,6 +567,49 @@ export function LeadDetailScreen() {
             size="lg"
             onPress={() => scheduleSheet.open({ lead })}
           />
+          {lead.instagram_handle && (
+            lead.dm_conversation_active_at ? (
+              <View
+                style={{
+                  marginTop: spacing.sm,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 10,
+                  backgroundColor: '#38A169' + '22',
+                }}
+              >
+                <Ionicons name="checkmark-circle" size={16} color={'#38A169'} />
+                <Text style={{ ...t.footnote, color: '#38A169', fontWeight: '600' }}>
+                  Conversation en cours — relances désactivées
+                </Text>
+              </View>
+            ) : (
+              <Pressable
+                onPress={markReplied}
+                disabled={markingReplied}
+                style={({ pressed }) => ({
+                  marginTop: spacing.sm,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  opacity: markingReplied ? 0.6 : pressed ? 0.7 : 1,
+                })}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.textPrimary} />
+                <Text style={{ ...t.footnote, color: colors.textPrimary, fontWeight: '600' }}>
+                  {markingReplied ? 'Mise à jour…' : 'Prospect a répondu'}
+                </Text>
+              </Pressable>
+            )
+          )}
         </View>
 
         {/* Deal featured (si deal exists) — gradient card avec amount XL */}
