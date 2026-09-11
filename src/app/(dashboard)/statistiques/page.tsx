@@ -6,6 +6,7 @@ import {
   fetchSourceData,
   fetchMetaStats,
 } from '@/lib/stats/queries'
+import { fetchSettingKpis } from '@/lib/stats/setting-kpis'
 import StatsClient from '@/components/stats/stats-client'
 
 const VALID_PERIODS = [0, 7, 30, 90] as const
@@ -22,12 +23,13 @@ export default async function StatistiquesPage({ searchParams }: Props) {
 
   const { workspaceId } = await getWorkspaceId()
 
-  const [kpis, leadsPerDay, funnelData, sourceData, meta] = await Promise.all([
+  const [kpis, leadsPerDay, funnelData, sourceData, meta, settingKpis] = await Promise.all([
     fetchStatsKpis(workspaceId, period),
     fetchLeadsPerDay(workspaceId, period),
     fetchFunnelData(workspaceId, period),
     fetchSourceData(workspaceId, period),
     fetchMetaStats(workspaceId),
+    fetchSettingKpis(workspaceId, period),
   ])
 
   return (
@@ -38,6 +40,7 @@ export default async function StatistiquesPage({ searchParams }: Props) {
       funnelData={funnelData}
       sourceData={sourceData}
       meta={meta}
+      settingKpis={settingKpis}
     />
   )
 }
