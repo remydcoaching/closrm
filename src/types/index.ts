@@ -1773,6 +1773,8 @@ export interface SettingProcessStepTransition {
   created_at: string
 }
 
+export type SettingProcessStepCategory = 'premier_contact' | 'relance_en_retard' | 'jamais_recontacte' | 'any'
+
 export interface SettingProcessStep {
   id: string
   process_id: string
@@ -1782,6 +1784,7 @@ export interface SettingProcessStep {
   content: string
   delay_days: number | null
   next_step_id: string | null
+  applies_to_category: SettingProcessStepCategory | null
   created_at: string
   updated_at: string
   transitions?: SettingProcessStepTransition[]

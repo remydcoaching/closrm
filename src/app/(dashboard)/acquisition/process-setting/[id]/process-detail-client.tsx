@@ -2,7 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Trash2, GripVertical } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, GripVertical, Check, Loader2 } from 'lucide-react'
+import {
+  DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter,
+} from '@dnd-kit/core'
+import {
+  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import type { SettingProcessWithSteps, SettingProcessStep } from '@/types'
 
 interface ProcessDetailClientProps {
@@ -32,11 +39,18 @@ function StepCard({
   const [transitionLabel, setTransitionLabel] = useState('')
   const [transitionTarget, setTransitionTarget] = useState('')
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: step.id, disabled: !canManage })
+
   const otherSteps = allSteps.filter((s) => s.id !== step.id)
 
   return (
     <div
+      ref={setNodeRef}
       style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
         border: '1px solid var(--border-primary)',
         borderRadius: 10,
         background: 'var(--bg-secondary)',
@@ -44,7 +58,23 @@ function StepCard({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <GripVertical size={16} color="var(--text-secondary)" />
+        <button
+          type="button"
+          {...(canManage ? attributes : {})}
+          {...(canManage ? listeners : {})}
+          disabled={!canManage}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: canManage ? 'grab' : 'default',
+            color: 'var(--text-secondary)',
+            display: 'flex',
+          }}
+          aria-label="Réordonner l'étape"
+        >
+          <GripVertical size={16} />
+        </button>
         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>ÉTAPE {index + 1}</span>
         {canManage ? (
           <input
@@ -90,8 +120,35 @@ function StepCard({
         )}
       </div>
 
+      <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <label style={{ fontSize: 11, color: 'var(--text-secondary)', marginRight: 8 }}>S&apos;applique à :</label>
+          <select
+            value={step.applies_to_category ?? 'any'}
+            disabled={!canManage}
+            onChange={(e) =>
+              onUpdate(step.id, {
+                applies_to_category: e.target.value === 'any' ? null : (e.target.value as SettingProcessStep['applies_to_category']),
+              })
+            }
+            style={{
+              fontSize: 12,
+              padding: '4px 8px',
+              borderRadius: 6,
+              border: '1px solid var(--border-primary)',
+              background: 'var(--bg-primary)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            <option value="any">Toutes situations (par défaut)</option>
+            <option value="premier_contact">Premier contact</option>
+            <option value="relance_en_retard">Relance en retard</option>
+            <option value="jamais_recontacte">Ancien lead (longue absence)</option>
+          </select>
+        </div>
+
       {step.step_type === 'relance' && (
-        <div style={{ marginBottom: 10 }}>
+        <div>
           <label style={{ fontSize: 11, color: 'var(--text-secondary)', marginRight: 8 }}>Délai (jours) :</label>
           <input
             type="number"
@@ -111,6 +168,7 @@ function StepCard({
           />
         </div>
       )}
+      </div>
 
       {canManage ? (
         <textarea
@@ -234,9 +292,52 @@ function StepCard({
   )
 }
 
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
 export default function ProcessDetailClient({ process: initialProcess, canManage }: ProcessDetailClientProps) {
   const router = useRouter()
   const [process, setProcess] = useState(initialProcess)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [reordering, setReordering] = useState(false)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  async function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id || reordering) return
+
+    const oldIndex = process.steps.findIndex((s) => s.id === active.id)
+    const newIndex = process.steps.findIndex((s) => s.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    // Optimistic reorder: update the visible order immediately, persist in
+    // the background. Step ids never change — only `position` — so
+    // next_step_id and transitions (which reference ids) stay valid.
+    const reordered = arrayMove(process.steps, oldIndex, newIndex)
+    setProcess((prev) => ({ ...prev, steps: reordered }))
+
+    setReordering(true)
+    setSaveState('saving')
+    try {
+      const res = await fetch(`/api/setting-processes/${process.id}/steps/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reordered.map((step, index) => ({ id: step.id, position: index }))),
+      })
+      if (!res.ok) throw new Error('reorder failed')
+      const { data } = await res.json()
+      setProcess((prev) => ({ ...prev, steps: data }))
+      setSaveState('saved')
+      setTimeout(() => setSaveState('idle'), 1500)
+    } catch {
+      // Revert to the server's last known order rather than leaving a
+      // visible order that silently didn't persist.
+      await refetchSteps()
+      setSaveState('error')
+      setTimeout(() => setSaveState('idle'), 3000)
+    } finally {
+      setReordering(false)
+    }
+  }
 
   async function refetchSteps() {
     const res = await fetch(`/api/setting-processes/${process.id}`)
@@ -312,39 +413,61 @@ export default function ProcessDetailClient({ process: initialProcess, canManage
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0' }}>{process.description}</p>
           )}
         </div>
-        {canManage && (
-          <button
-            onClick={handleToggleStatus}
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              padding: '6px 14px',
-              borderRadius: 20,
-              border: '1px solid var(--border-primary)',
-              cursor: 'pointer',
-              color: process.status === 'active' ? '#38A169' : 'var(--text-secondary)',
-              background: process.status === 'active' ? 'rgba(56,161,105,0.12)' : 'var(--bg-secondary)',
-            }}
-          >
-            {process.status === 'active' ? 'Actif — désactiver' : 'Inactif — activer'}
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {saveState !== 'idle' && (
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                color:
+                  saveState === 'error' ? '#E53E3E' : saveState === 'saved' ? '#38A169' : 'var(--text-secondary)',
+              }}
+            >
+              {saveState === 'saving' && <Loader2 size={13} className="animate-spin" />}
+              {saveState === 'saved' && <Check size={13} />}
+              {saveState === 'saving' ? 'Enregistrement…' : saveState === 'saved' ? 'Enregistré' : "Échec de l'enregistrement"}
+            </span>
+          )}
+          {canManage && (
+            <button
+              onClick={handleToggleStatus}
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                padding: '6px 14px',
+                borderRadius: 20,
+                border: '1px solid var(--border-primary)',
+                cursor: 'pointer',
+                color: process.status === 'active' ? '#38A169' : 'var(--text-secondary)',
+                background: process.status === 'active' ? 'rgba(56,161,105,0.12)' : 'var(--bg-secondary)',
+              }}
+            >
+              {process.status === 'active' ? 'Actif — désactiver' : 'Inactif — activer'}
+            </button>
+          )}
+        </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {process.steps.map((step, index) => (
-          <StepCard
-            key={step.id}
-            step={step}
-            index={index}
-            allSteps={process.steps}
-            canManage={canManage}
-            onUpdate={handleUpdateStep}
-            onDelete={handleDeleteStep}
-            onAddTransition={handleAddTransition}
-          />
-        ))}
-      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={process.steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {process.steps.map((step, index) => (
+              <StepCard
+                key={step.id}
+                step={step}
+                index={index}
+                allSteps={process.steps}
+                canManage={canManage}
+                onUpdate={handleUpdateStep}
+                onDelete={handleDeleteStep}
+                onAddTransition={handleAddTransition}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {canManage && (
         <button
