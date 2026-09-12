@@ -6,7 +6,7 @@ export const createDmSessionSchema = z.object({
 })
 
 export const updateDmSessionItemSchema = z.object({
-  outcome: z.enum(['relaunched', 'archived', 'skipped']),
+  outcome: z.enum(['relaunched', 'archived', 'skipped', 'replied']),
   note: z.string().max(2000).optional(),
   delay_days: z.number().int().min(1).max(365).optional(),
 })

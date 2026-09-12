@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
+import { markConversationActive } from '@/lib/dm-sessions/mark-conversation-active'
 
 /**
  * "PROSPECT A RÉPONDU" — ClosRM ne lit pas Instagram automatiquement, donc
@@ -30,24 +31,9 @@ export async function POST(
       return NextResponse.json({ error: 'Lead introuvable' }, { status: 404 })
     }
 
-    const { error: leadError } = await supabase
-      .from('leads')
-      .update({ dm_conversation_active_at: new Date().toISOString() })
-      .eq('id', leadId)
-
-    if (leadError) {
-      return NextResponse.json({ error: 'Impossible de mettre à jour le lead' }, { status: 500 })
-    }
-
-    const { error: followUpError } = await supabase
-      .from('follow_ups')
-      .update({ status: 'annule' })
-      .eq('lead_id', leadId)
-      .eq('workspace_id', workspaceId)
-      .eq('status', 'en_attente')
-
-    if (followUpError) {
-      return NextResponse.json({ error: "Impossible d'annuler les relances en attente" }, { status: 500 })
+    const { error } = await markConversationActive(supabase, workspaceId, leadId)
+    if (error) {
+      return NextResponse.json({ error }, { status: 500 })
     }
 
     return NextResponse.json({ data: { lead_id: leadId, dm_conversation_active_at: new Date().toISOString() } })

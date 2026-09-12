@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateDmSessionItemSchema } from '@/lib/validations/dm-sessions'
+import { markConversationActive } from '@/lib/dm-sessions/mark-conversation-active'
 
 export async function PATCH(
   request: NextRequest,
@@ -33,6 +34,13 @@ export async function PATCH(
       const { error: leadError } = await supabase.from('leads').update({ status: 'dead' }).eq('id', item.lead_id)
       if (leadError) {
         return NextResponse.json({ error: 'Impossible d\'archiver le lead' }, { status: 500 })
+      }
+    }
+
+    if (parsed.data.outcome === 'replied') {
+      const { error: replyError } = await markConversationActive(supabase, workspaceId, item.lead_id)
+      if (replyError) {
+        return NextResponse.json({ error: replyError }, { status: 500 })
       }
     }
 

@@ -23,6 +23,11 @@ describe('updateDmSessionItemSchema', () => {
   })
 
   it('rejects an unknown outcome value', () => {
-    expect(() => updateDmSessionItemSchema.parse({ outcome: 'replied' })).toThrow()
+    expect(() => updateDmSessionItemSchema.parse({ outcome: 'ghosted' })).toThrow()
+  })
+
+  it('accepts the replied outcome', () => {
+    const result = updateDmSessionItemSchema.parse({ outcome: 'replied' })
+    expect(result.outcome).toBe('replied')
   })
 })

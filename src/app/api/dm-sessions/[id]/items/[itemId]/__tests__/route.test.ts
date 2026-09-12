@@ -11,6 +11,10 @@ let followUpInsertResult: { error: unknown }
 let itemUpdateResult: { data: unknown; error: unknown }
 
 const followUpInsert = vi.fn(() => Promise.resolve(followUpInsertResult))
+const followUpUpdateEq3 = vi.fn(() => Promise.resolve({ error: null }))
+const followUpUpdate = vi.fn(() => ({
+  eq: () => ({ eq: () => ({ eq: followUpUpdateEq3 }) }),
+}))
 const leadUpdateEq = vi.fn(() => Promise.resolve(leadUpdateResult))
 const updateLead = vi.fn(() => ({ eq: leadUpdateEq }))
 const itemLookupSingle = vi.fn(() => Promise.resolve(itemLookupResult))
@@ -43,7 +47,7 @@ vi.mock('@/lib/supabase/server', () => ({
         return { update: updateLead }
       }
       if (table === 'follow_ups') {
-        return { insert: followUpInsert }
+        return { insert: followUpInsert, update: followUpUpdate }
       }
       throw new Error(`unexpected table ${table}`)
     },
@@ -123,6 +127,38 @@ describe('PATCH /api/dm-sessions/[id]/items/[itemId]', () => {
     followUpInsertResult = { error: { message: 'insert failed' } }
 
     const res = await PATCH(makeRequest({ outcome: 'relaunched', delay_days: 7 }), {
+      params: Promise.resolve({ id: 'session-1', itemId: 'item-1' }),
+    })
+    const body = await res.json()
+
+    expect(res.status).toBe(500)
+    expect(body.data).toBeUndefined()
+    expect(itemUpdateSingle).not.toHaveBeenCalled()
+  })
+
+  it('marks the conversation active and cancels pending follow-ups when outcome is replied', async () => {
+    itemUpdateResult = {
+      data: { id: 'item-1', outcome: 'replied', note: null, updated_at: '2026-08-27T00:00:00Z' },
+      error: null,
+    }
+
+    const res = await PATCH(makeRequest({ outcome: 'replied' }), {
+      params: Promise.resolve({ id: 'session-1', itemId: 'item-1' }),
+    })
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.data.outcome).toBe('replied')
+    expect(updateLead).toHaveBeenCalledWith(
+      expect.objectContaining({ dm_conversation_active_at: expect.any(String) })
+    )
+    expect(followUpUpdate).toHaveBeenCalledWith({ status: 'annule' })
+  })
+
+  it('returns 500 and does not report success when marking the conversation active fails', async () => {
+    leadUpdateResult = { error: { message: 'RLS denied' } }
+
+    const res = await PATCH(makeRequest({ outcome: 'replied' }), {
       params: Promise.resolve({ id: 'session-1', itemId: 'item-1' }),
     })
     const body = await res.json()
