@@ -1,13 +1,44 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../services/api'
 
+export interface DmSessionLead {
+  id: string
+  first_name: string
+  last_name: string
+  instagram_handle: string | null
+  instagram_user_id: string | null
+  status: string
+  last_activity_at: string | null
+}
+
+export interface DmSessionStepTransition {
+  outcome_label: string
+  target_step_id: string
+}
+
+export interface DmSessionTemplate {
+  label: string
+  text: string
+  process_id: string | null
+  step_id: string | null
+  next_step_id: string | null
+  delay_days: number | null
+  transitions: DmSessionStepTransition[]
+}
+
+export type DmSessionItemOutcome = 'relaunched' | 'archived' | 'skipped' | 'replied'
+
 export interface DmSessionItem {
   id: string
   lead_id: string
   position: number
   category: string
-  outcome: 'relaunched' | 'archived' | 'skipped' | null
+  outcome: DmSessionItemOutcome | null
   note: string | null
+  lead: DmSessionLead
+  // Le backend ne calcule le template que pour les items non traités
+  // (outcome === null) — absent une fois l'item clos.
+  template?: DmSessionTemplate
 }
 
 export interface DmSessionDetail {
@@ -58,12 +89,19 @@ export function useStartDmSession() {
 export function useDmSession(sessionId: string | null) {
   const [session, setSession] = useState<DmSessionDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
     if (!sessionId) return
-    const { data } = await api.get<{ data: DmSessionDetail }>(`/api/dm-sessions/${sessionId}`)
-    setSession(data)
-    setLoading(false)
+    setError(null)
+    try {
+      const { data } = await api.get<{ data: DmSessionDetail }>(`/api/dm-sessions/${sessionId}`)
+      setSession(data)
+    } catch {
+      setError('Impossible de charger la session.')
+    } finally {
+      setLoading(false)
+    }
   }, [sessionId])
 
   useEffect(() => {
@@ -73,7 +111,7 @@ export function useDmSession(sessionId: string | null) {
   const currentItem = session?.items.find((i) => i.outcome === null) ?? null
 
   const submitOutcome = useCallback(
-    async (itemId: string, outcome: 'relaunched' | 'archived' | 'skipped', opts?: { note?: string; delayDays?: number }) => {
+    async (itemId: string, outcome: DmSessionItemOutcome, opts?: { note?: string; delayDays?: number }) => {
       await api.patch(`/api/dm-sessions/${sessionId}/items/${itemId}`, {
         outcome,
         ...(opts?.note ? { note: opts.note } : {}),
@@ -84,5 +122,5 @@ export function useDmSession(sessionId: string | null) {
     [sessionId, refetch]
   )
 
-  return { session, currentItem, loading, submitOutcome }
+  return { session, currentItem, loading, error, submitOutcome, refetch }
 }

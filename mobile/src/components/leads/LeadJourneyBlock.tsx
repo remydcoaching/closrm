@@ -69,6 +69,8 @@ const EVENT_LABEL: Record<string, string> = {
   button_click: 'A cliqué',
   video_play: 'A regardé',
   form_submit: 'A rempli le formulaire',
+  instagram_like: 'A liké un de tes reels',
+  instagram_comment: 'A commenté un de tes reels',
 }
 
 const EVENT_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -76,6 +78,8 @@ const EVENT_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   button_click: 'finger-print-outline',
   video_play: 'play-circle-outline',
   form_submit: 'send-outline',
+  instagram_like: 'heart-outline',
+  instagram_comment: 'chatbubble-outline',
 }
 
 function formatDateTimeFR(iso: string): string {
