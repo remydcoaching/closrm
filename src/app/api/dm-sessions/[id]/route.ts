@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { resolveSessionStep } from '@/lib/dm-sessions/resolve-step'
+import { updateDmSessionSchema } from '@/lib/validations/dm-sessions'
 import type { PriorityCategory } from '@/lib/dm-sessions/priority'
 
 interface SessionItemLead {
@@ -56,6 +57,43 @@ export async function GET(
     )
 
     return NextResponse.json({ data: { ...session, items } })
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Not authenticated') {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const { workspaceId } = await getWorkspaceId()
+    const supabase = await createClient()
+
+    const body = await request.json()
+    const parsed = updateDmSessionSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    }
+
+    const { data: session, error } = await supabase
+      .from('dm_sessions')
+      .update({ status: parsed.data.status })
+      .eq('id', id)
+      .eq('workspace_id', workspaceId)
+      .eq('status', 'active')
+      .select()
+      .single()
+
+    if (error || !session) {
+      return NextResponse.json({ error: 'Session introuvable ou déjà terminée' }, { status: 404 })
+    }
+
+    return NextResponse.json({ data: session })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

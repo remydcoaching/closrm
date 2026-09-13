@@ -16,6 +16,17 @@ export interface DmSessionStepTransition {
   target_step_id: string
 }
 
+export interface DmSessionNextStepPreview {
+  title: string
+  delay_days: number | null
+}
+
+export interface DmSessionRelanceStepOption {
+  step_id: string
+  title: string
+  delay_days: number | null
+}
+
 export interface DmSessionTemplate {
   label: string
   text: string
@@ -24,6 +35,8 @@ export interface DmSessionTemplate {
   next_step_id: string | null
   delay_days: number | null
   transitions: DmSessionStepTransition[]
+  next_step: DmSessionNextStepPreview | null
+  relance_step_options: DmSessionRelanceStepOption[]
 }
 
 export type DmSessionItemOutcome = 'relaunched' | 'archived' | 'skipped' | 'replied'
@@ -77,13 +90,25 @@ export function useDmSessionEntry() {
 }
 
 export function useStartDmSession() {
-  return useCallback(async (config: { targetCount: number; staleThresholdDays: number }) => {
-    const { data } = await api.post<{ data: { id: string } }>('/api/dm-sessions', {
-      target_count: config.targetCount,
-      stale_threshold_days: config.staleThresholdDays,
-    })
-    return data
-  }, [])
+  return useCallback(
+    async (config: {
+      targetCount: number
+      staleThresholdDays: number
+      relanceEnRetard: boolean
+      premierContact: boolean
+      jamaisRecontacte: boolean
+    }) => {
+      const { data } = await api.post<{ data: { id: string } }>('/api/dm-sessions', {
+        target_count: config.targetCount,
+        stale_threshold_days: config.staleThresholdDays,
+        relance_en_retard: config.relanceEnRetard,
+        premier_contact: config.premierContact,
+        jamais_recontacte: config.jamaisRecontacte,
+      })
+      return data
+    },
+    []
+  )
 }
 
 export function useDmSession(sessionId: string | null) {
@@ -122,5 +147,10 @@ export function useDmSession(sessionId: string | null) {
     [sessionId, refetch]
   )
 
-  return { session, currentItem, loading, error, submitOutcome, refetch }
+  const abandon = useCallback(async () => {
+    if (!sessionId) return
+    await api.patch(`/api/dm-sessions/${sessionId}`, { status: 'abandoned' })
+  }, [sessionId])
+
+  return { session, currentItem, loading, error, submitOutcome, refetch, abandon }
 }

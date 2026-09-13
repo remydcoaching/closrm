@@ -19,6 +19,9 @@ export function DmSessionConfigScreen() {
   const startSession = useStartDmSession()
   const [targetCount, setTargetCount] = useState(30)
   const [staleThresholdDays, setStaleThresholdDays] = useState(30)
+  const [relanceEnRetard, setRelanceEnRetard] = useState(true)
+  const [premierContact, setPremierContact] = useState(true)
+  const [jamaisRecontacte, setJamaisRecontacte] = useState(true)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,7 +29,13 @@ export function DmSessionConfigScreen() {
     setError(null)
     setStarting(true)
     try {
-      const data = await startSession({ targetCount, staleThresholdDays })
+      const data = await startSession({
+        targetCount,
+        staleThresholdDays,
+        relanceEnRetard,
+        premierContact,
+        jamaisRecontacte,
+      })
       navigation.replace('DmSessionLead', { sessionId: data.id })
     } catch {
       setError("Impossible de démarrer la session. Vérifie ta connexion et réessaie.")
@@ -39,6 +48,30 @@ export function DmSessionConfigScreen() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
       <NavLarge title="Nouvelle session" />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
+        <View>
+          <Text style={{ ...t.footnote, color: colors.textSecondary, marginBottom: spacing.sm }}>
+            Types de leads à travailler
+          </Text>
+          <View style={{ gap: spacing.sm }}>
+            <CategoryCheckbox label="Relance du jour" checked disabled />
+            <CategoryCheckbox
+              label="Relance en retard"
+              checked={relanceEnRetard}
+              onPress={() => setRelanceEnRetard((v) => !v)}
+            />
+            <CategoryCheckbox
+              label="Premier contact"
+              checked={premierContact}
+              onPress={() => setPremierContact((v) => !v)}
+            />
+            <CategoryCheckbox
+              label="Reprise après une longue absence"
+              checked={jamaisRecontacte}
+              onPress={() => setJamaisRecontacte((v) => !v)}
+            />
+          </View>
+        </View>
+
         <View>
           <Text style={{ ...t.footnote, color: colors.textSecondary, marginBottom: spacing.sm }}>
             Nombre de profils
@@ -114,5 +147,51 @@ export function DmSessionConfigScreen() {
         </Pressable>
       </ScrollView>
     </SafeAreaView>
+  )
+}
+
+function CategoryCheckbox({
+  label,
+  checked,
+  onPress,
+  disabled,
+}: {
+  label: string
+  checked: boolean
+  onPress?: () => void
+  disabled?: boolean
+}) {
+  return (
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+        borderRadius: radius.md,
+        backgroundColor: colors.bgSecondary,
+        borderWidth: 1,
+        borderColor: checked ? colors.primary : colors.border,
+        opacity: disabled ? 0.7 : 1,
+      }}
+    >
+      <View
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: radius.sm,
+          borderWidth: 1.5,
+          borderColor: checked ? colors.primary : colors.border,
+          backgroundColor: checked ? colors.primary : 'transparent',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {checked && <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>✓</Text>}
+      </View>
+      <Text style={{ ...t.subheadline, color: colors.textPrimary, fontWeight: '600' }}>{label}</Text>
+    </Pressable>
   )
 }

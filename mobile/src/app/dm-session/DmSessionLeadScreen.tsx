@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { View, Text, ScrollView, Pressable, TextInput, Linking, Platform, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, Pressable, TextInput, Linking, Platform, ActivityIndicator, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -76,10 +76,15 @@ function LeadScreenBody({
   }
 
   function handleRelaunched() {
-    // Le délai par défaut de l'étape résolue préremplit le choix, mais le
-    // setter peut toujours en choisir un autre depuis le sheet.
+    // Le sheet propose toutes les étapes de relance du process (ex: "Relance"
+    // vs "Reprise après une longue absence") — celle déduite par
+    // resolve-step.ts (next_step_id) est pré-sélectionnée, mais le setter
+    // peut basculer manuellement sur une autre s'il juge que c'est le bon
+    // moment de passer en nurturing plus tôt que prévu.
     delaySheet.open({
       leadName: fullName,
+      relanceStepOptions: template?.relance_step_options ?? [],
+      suggestedStepId: template?.next_step_id ?? null,
       onConfirm: (delayDays) => runSubmit('relaunched', { delayDays }),
     })
   }
@@ -334,7 +339,41 @@ function LeadScreenBody({
 export function DmSessionLeadScreen() {
   const navigation = useNavigation<Nav>()
   const { params } = useRoute<R>()
-  const { session, currentItem, loading, error, submitOutcome, refetch } = useDmSession(params.sessionId)
+  const { session, currentItem, loading, error, submitOutcome, refetch, abandon } = useDmSession(params.sessionId)
+  const [abandoning, setAbandoning] = useState(false)
+
+  function confirmAbandon() {
+    Alert.alert(
+      'Arrêter la session ?',
+      'Les profils déjà traités restent enregistrés. Les profils restants ne seront pas relancés.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Arrêter',
+          style: 'destructive',
+          onPress: async () => {
+            setAbandoning(true)
+            try {
+              await abandon()
+              navigation.replace('FollowUpsList')
+            } catch {
+              setAbandoning(false)
+            }
+          },
+        },
+      ]
+    )
+  }
+
+  const stopButton = (
+    <Pressable onPress={confirmAbandon} disabled={abandoning} hitSlop={8}>
+      {abandoning ? (
+        <ActivityIndicator color={colors.danger} size="small" />
+      ) : (
+        <Text style={{ ...t.subheadline, color: colors.danger, fontWeight: '600' }}>Arrêter</Text>
+      )}
+    </Pressable>
+  )
 
   if (loading) {
     return (
@@ -381,7 +420,7 @@ export function DmSessionLeadScreen() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bgPrimary }}>
-      <NavLarge title="Session DM" />
+      <NavLarge title="Session DM" rightSlot={stopButton} />
       <LeadScreenBody
         key={currentItem.id}
         item={currentItem}

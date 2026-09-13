@@ -12,12 +12,34 @@ export interface StepTransition {
   target_step_id: string
 }
 
+export interface NextStepPreview {
+  title: string
+  delay_days: number | null
+}
+
+export interface RelanceStepOption {
+  step_id: string
+  title: string
+  delay_days: number | null
+}
+
 export interface ResolvedStep extends RenderedTemplate {
   process_id: string | null
   step_id: string | null
   next_step_id: string | null
   delay_days: number | null
   transitions: StepTransition[]
+  // Aperçu de l'étape suivante du process (titre + délai par défaut) — permet
+  // au setter de voir concrètement "Reprise après une longue absence (30j)"
+  // plutôt qu'un simple chiffre de jours sans contexte au moment de valider
+  // une relance. Absent si l'étape courante n'a pas de next_step_id (fin de
+  // process) ou si aucun process n'est actif.
+  next_step: NextStepPreview | null
+  // Toutes les étapes de type "relance" du process (ex: Relance J+3, Reprise
+  // après une longue absence J+30) — permet au setter de choisir manuellement
+  // laquelle programmer plutôt que de subir uniquement l'enchaînement déduit
+  // par next_step_id. Vide si aucun process actif.
+  relance_step_options: RelanceStepOption[]
 }
 
 /**
@@ -50,7 +72,10 @@ export async function resolveSessionStep(
     const isFirstContact = category === 'premier_message' || category === 'engagement_instagram'
     // Regroupement identique à templates.ts::pickTemplate — premier_message et
     // engagement_instagram partagent toujours le même message ("premier
-    // contact"), donc une seule catégorie d'étape leur correspond.
+    // contact"), donc une seule catégorie d'étape leur correspond. Idem pour
+    // relance_du_jour/relance_en_retard : la distinction ne sert qu'à la
+    // priorisation temporelle de la file, le message de relance affiché est
+    // identique dans les deux cas.
     const stepCategory: 'premier_contact' | 'relance_en_retard' | 'jamais_recontacte' = isFirstContact
       ? 'premier_contact'
       : category === 'jamais_recontacte'
@@ -84,6 +109,10 @@ export async function resolveSessionStep(
         .select('outcome_label, target_step_id')
         .eq('step_id', step.id)
 
+      const nextStep = step.next_step_id
+        ? (steps.find((s) => s.id === step.next_step_id) ?? null)
+        : null
+
       const name = ctx.firstName || 'là'
       return {
         label: step.title,
@@ -93,6 +122,12 @@ export async function resolveSessionStep(
         next_step_id: step.next_step_id,
         delay_days: step.delay_days,
         transitions: transitions ?? [],
+        next_step: nextStep ? { title: nextStep.title, delay_days: nextStep.delay_days } : null,
+        relance_step_options: relanceSteps.map((s) => ({
+          step_id: s.id,
+          title: s.title,
+          delay_days: s.delay_days,
+        })),
       }
     }
   }
@@ -104,5 +139,7 @@ export async function resolveSessionStep(
     next_step_id: null,
     delay_days: null,
     transitions: [],
+    next_step: null,
+    relance_step_options: [],
   }
 }

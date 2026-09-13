@@ -183,4 +183,48 @@ describe('resolveSessionStep', () => {
     expect(result.step_id).toBe('step-1')
     expect(result.transitions).toEqual([{ outcome_label: 'repondu', target_step_id: 'step-3' }])
   })
+
+  it('exposes a preview of the next step (title + delay) via next_step_id', async () => {
+    const supabase = makeSupabaseStub({
+      activeProcess: { id: 'process-1' },
+      steps: [
+        { id: 'step-1', title: 'Ice breaker', step_type: 'message', content: 'Salut {{prenom}}', delay_days: null, next_step_id: 'step-2' },
+        { id: 'step-2', title: 'Relance', step_type: 'relance', content: 'On se recontacte {{prenom}} ?', delay_days: 3, next_step_id: 'step-3' },
+        { id: 'step-3', title: 'Reprise longue absence', step_type: 'relance', content: 'Ça fait longtemps {{prenom}}', delay_days: 30, next_step_id: null },
+      ],
+    })
+
+    const first = await resolveSessionStep(supabase as never, 'ws-1', 'premier_message', {
+      firstName: 'Karim',
+      daysSinceLastContact: null,
+    })
+    expect(first.next_step).toEqual({ title: 'Relance', delay_days: 3 })
+
+    const last = await resolveSessionStep(supabase as never, 'ws-1', 'jamais_recontacte', {
+      firstName: 'Karim',
+      daysSinceLastContact: 61,
+    })
+    expect(last.next_step).toBeNull()
+  })
+
+  it('lists every relance step of the process as a manual override option', async () => {
+    const supabase = makeSupabaseStub({
+      activeProcess: { id: 'process-1' },
+      steps: [
+        { id: 'step-1', title: 'Ice breaker', step_type: 'message', content: 'Salut {{prenom}}', delay_days: null, next_step_id: 'step-2' },
+        { id: 'step-2', title: 'Relance', step_type: 'relance', content: 'On se recontacte {{prenom}} ?', delay_days: 3, next_step_id: 'step-3' },
+        { id: 'step-3', title: 'Reprise longue absence', step_type: 'relance', content: 'Ça fait longtemps {{prenom}}', delay_days: 30, next_step_id: null },
+      ],
+    })
+
+    const result = await resolveSessionStep(supabase as never, 'ws-1', 'premier_message', {
+      firstName: 'Karim',
+      daysSinceLastContact: null,
+    })
+
+    expect(result.relance_step_options).toEqual([
+      { step_id: 'step-2', title: 'Relance', delay_days: 3 },
+      { step_id: 'step-3', title: 'Reprise longue absence', delay_days: 30 },
+    ])
+  })
 })

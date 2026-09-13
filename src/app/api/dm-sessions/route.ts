@@ -15,7 +15,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
 
-    const queue = await buildPriorityQueue(supabase, workspaceId, parsed.data.stale_threshold_days)
+    const queue = await buildPriorityQueue(supabase, workspaceId, parsed.data.stale_threshold_days, {
+      relanceEnRetard: parsed.data.relance_en_retard,
+      premierContact: parsed.data.premier_contact,
+      jamaisRecontacte: parsed.data.jamais_recontacte,
+    })
     const truncated = queue.slice(0, parsed.data.target_count)
 
     const { data: session, error: sessionError } = await supabase
