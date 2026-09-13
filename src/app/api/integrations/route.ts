@@ -4,7 +4,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { connectIntegrationSchema } from '@/lib/validations/integrations'
 import { encrypt } from '@/lib/crypto'
 
-const ALL_TYPES = ['google_calendar', 'meta', 'whatsapp', 'stripe', 'telegram'] as const
+const ALL_TYPES = ['google_calendar', 'meta', 'whatsapp', 'stripe', 'telegram', 'apify'] as const
 
 export async function GET() {
   try {

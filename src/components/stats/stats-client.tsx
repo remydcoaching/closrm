@@ -2,11 +2,13 @@
 
 import StatsPeriodSelector from '@/components/stats/stats-period-selector'
 import KpiCards from '@/components/stats/kpi-cards'
+import SettingKpiCards from '@/components/stats/setting-kpi-cards'
 import LeadsChart from '@/components/stats/leads-chart'
 import FunnelChart from '@/components/stats/funnel-chart'
 import SourceChart from '@/components/stats/source-chart'
 import MetaSection from '@/components/stats/meta-section'
 import type { StatsKpis, LeadsPerDay, FunnelData, SourceData, MetaStats } from '@/lib/stats/queries'
+import type { SettingKpis } from '@/lib/stats/setting-kpis'
 
 interface StatsClientProps {
   period: number
@@ -15,6 +17,7 @@ interface StatsClientProps {
   funnelData: FunnelData[]
   sourceData: SourceData[]
   meta: MetaStats
+  settingKpis: SettingKpis
 }
 
 const CARD_STYLE = {
@@ -34,7 +37,7 @@ const CARD_TITLE_STYLE = {
 }
 
 export default function StatsClient({
-  period, kpis, leadsPerDay, funnelData, sourceData, meta,
+  period, kpis, leadsPerDay, funnelData, sourceData, meta, settingKpis,
 }: StatsClientProps) {
   return (
     <div style={{ padding: 32 }}>
@@ -65,6 +68,12 @@ export default function StatsClient({
 
       {/* Section Meta */}
       <MetaSection meta={meta} />
+
+      {/* KPI Setting — remplace le suivi manuel Google Sheet */}
+      <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '24px 0 12px' }}>
+        Setting
+      </h2>
+      <SettingKpiCards kpis={settingKpis} />
     </div>
   )
 }

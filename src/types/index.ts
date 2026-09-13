@@ -83,6 +83,7 @@ export interface Lead {
   email_unsubscribed: boolean
   email_unsubscribed_at: string | null
   last_activity_at: string | null
+  dm_conversation_active_at: string | null
   deal_amount: number | null
   deal_installments: number
   cash_collected: number
@@ -1834,3 +1835,46 @@ export interface SourceConfigEntry {
 // Ordered array — position = display order
 export type StatusConfig = StatusConfigEntry[]
 export type SourceConfig = SourceConfigEntry[]
+
+// Process de setting : remplace progressivement les templates statiques de
+// src/lib/dm-sessions/templates.ts par des étapes éditables en base.
+export interface SettingProcess {
+  id: string
+  workspace_id: string
+  name: string
+  description: string | null
+  status: 'active' | 'inactive'
+  created_at: string
+  updated_at: string
+}
+
+export type SettingProcessStepType = 'message' | 'relance'
+
+export interface SettingProcessStepTransition {
+  id: string
+  step_id: string
+  outcome_label: string
+  target_step_id: string
+  created_at: string
+}
+
+export type SettingProcessStepCategory = 'premier_contact' | 'relance_en_retard' | 'jamais_recontacte' | 'any'
+
+export interface SettingProcessStep {
+  id: string
+  process_id: string
+  position: number
+  title: string
+  step_type: SettingProcessStepType
+  content: string
+  delay_days: number | null
+  next_step_id: string | null
+  applies_to_category: SettingProcessStepCategory | null
+  created_at: string
+  updated_at: string
+  transitions?: SettingProcessStepTransition[]
+}
+
+export interface SettingProcessWithSteps extends SettingProcess {
+  steps: SettingProcessStep[]
+}
