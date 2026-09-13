@@ -26,7 +26,7 @@ export async function GET(
 
     const { data: steps } = await supabase
       .from('setting_process_steps')
-      .select('*, transitions:setting_process_step_transitions(*)')
+      .select('*, transitions:setting_process_step_transitions!setting_process_step_transitions_step_id_fkey(*)')
       .eq('process_id', id)
       .order('position', { ascending: true })
 
