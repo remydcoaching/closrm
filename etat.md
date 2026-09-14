@@ -382,4 +382,35 @@ complètent les 13 blocs existants sans les dupliquer.
 
 ---
 
-*Mis a jour le 2026-09-09 par Claude Code — ClosRM*
+## Session 2026-09-14 — Fix incident prod : rafale de prefetch sidebar (Rémy)
+
+### T-049 · App prod extrêmement lente + liens qui ne répondent plus
+
+**Statut :** Corrigé sur `feature/remy-fix-sidebar-prefetch-storm` (basée sur `develop` à jour). PR à ouvrir + merger pour que le fix atteigne closrm.vercel.app.
+
+**Root cause (investigation systématique, pas de correctif à l'aveugle) :**
+La sidebar affiche désormais ~13 liens simultanément visibles (Montage,
+Dashboard, Agenda, Leads, Statistiques, Publicités, Funnels, Lead Magnets,
+Réseaux sociaux, Messages, Emails, Automations, Process de setting, Équipe,
+Paramètres). Le prefetch automatique par défaut de `<Link>` (App Router)
+déclenche donc ~13 requêtes RSC simultanées à chaque navigation. Chacune
+repasse par `src/middleware.ts` → `updateSession()`, qui fait un appel
+Supabase (`auth.getUser()` + requête `workspace_members`) — d'où une rafale
+de requêtes Supabase concurrentes. Confirmé en direct sur closrm.vercel.app :
+`503` intermittents sur `/leads`, `/acquisition/funnels`,
+`/acquisition/messages`, `/acquisition/lead-magnets`, `/acquisition/publicites`,
+`/acquisition/process-setting`, `/login`, qui repassaient en 200 juste après
+(signature d'une surcharge transitoire, pas d'une panne de build/config).
+Aucun changement de code récent en cause : c'est la croissance organique du
+nombre de modules dans la sidebar qui a fait dépasser le seuil de rafale
+supportable.
+
+**Correctif :** `prefetch={false}` sur les `<Link>` de navigation de
+`src/components/layout/Sidebar.tsx`. Supprime la rafale à la source, sans
+toucher au middleware ni à l'auth.
+
+> Detail complet : `taches/tache-049-fix-sidebar-prefetch-storm.md`
+
+---
+
+*Mis a jour le 2026-09-14 par Claude Code — ClosRM*

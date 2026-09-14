@@ -926,6 +926,20 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible
 - **Statut :** En attente de validation
 
+### A-049-1 · Alléger le coût du middleware sur les requêtes de prefetch
+- **Contexte :** T-049 — incident prod : rafale de prefetch de la sidebar × appel Supabase (`auth.getUser()` + `workspace_members`) dans `updateSession()` à chaque requête, y compris les prefetch RSC. Le fix `prefetch={false}` supprime la rafale automatique, mais le middleware reste coûteux par requête (2 appels Supabase) et rien n'empêche une future rafale similaire (ex : hover sur plusieurs liens, `router.prefetch()` manuel ailleurs).
+- **Description :** Mettre en cache le résultat de `getUser()`/`workspace_members` sur la durée d'une requête (déjà fait ?) et/ou sur une courte fenêtre (ex: cookie de session déjà décodé côté edge sans round-trip Supabase), pour rendre le middleware résilient à des rafales de requêtes plutôt que de compter uniquement sur l'absence de prefetch.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### A-049-2 · Corriger la doc obsolète sur la branche de déploiement Vercel
+- **Contexte :** T-049 — `docs/passage-sur-vercel.md` et `CLAUDE.md` indiquent que Vercel déploie depuis `main`, alors que `etat.md` (à jour) et la prod observée confirment que c'est `develop` qui est déployée. Source de confusion potentielle pour un futur diagnostic d'incident.
+- **Description :** Mettre à jour `docs/passage-sur-vercel.md` (et la section Workflow GitHub de `CLAUDE.md`) pour refléter que `develop` est la branche de prod actuelle.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
 ---
 
-*Mis à jour le 2026-09-09 par Claude Code — ClosRM*
+*Mis à jour le 2026-09-14 par Claude Code — ClosRM*

@@ -161,7 +161,7 @@ export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: b
               const matchPaths = (item as { matchPaths?: string[] }).matchPaths ?? [item.href]
               const active = matchPaths.some((p) => pathname === p || pathname.startsWith(p + '/'))
               return (
-                <Link key={item.href} href={item.href} title={collapsed ? item.label : undefined} style={{
+                <Link key={item.href} href={item.href} prefetch={false} title={collapsed ? item.label : undefined} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '8px 0' : '7px 10px',
                   justifyContent: collapsed ? 'center' : 'flex-start',
                   borderRadius: 8, fontSize: 13, textDecoration: 'none', marginBottom: 2,
