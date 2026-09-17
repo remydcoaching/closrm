@@ -70,7 +70,11 @@ export function useFollowUps(tab: FollowUpTab) {
       .subscribe()
 
     return () => {
-      void supabase.removeChannel(channel)
+      // channel.unsubscribe() plutôt que supabase.removeChannel() : ce
+      // dernier crashe natif (Hermes SIGSEGV) quand l'écran est démonté
+      // juste après un remplacement de navigation rapide (ex: "Arrêter
+      // la session DM" → navigation.replace('FollowUpsList')).
+      void channel.unsubscribe()
     }
   }, [fetchFollowUps])
 

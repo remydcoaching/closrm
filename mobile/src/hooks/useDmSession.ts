@@ -68,19 +68,24 @@ export function useDmSessionEntry() {
 
   useEffect(() => {
     let cancelled = false
-    api.get<{ data: DmSessionDetail | null }>('/api/dm-sessions').then(({ data }) => {
-      if (cancelled) return
-      if (data) {
-        setActiveSession({
-          id: data.id,
-          doneCount: data.items.filter((i) => i.outcome !== null).length,
-          targetCount: data.target_count,
-        })
-      } else {
-        setActiveSession(null)
-      }
-      setLoading(false)
-    })
+    api
+      .get<{ data: DmSessionDetail | null }>('/api/dm-sessions')
+      .then(({ data }) => {
+        if (cancelled) return
+        if (data) {
+          setActiveSession({
+            id: data.id,
+            doneCount: data.items.filter((i) => i.outcome !== null).length,
+            targetCount: data.target_count,
+          })
+        } else {
+          setActiveSession(null)
+        }
+        setLoading(false)
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false)
+      })
     return () => {
       cancelled = true
     }

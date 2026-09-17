@@ -45,7 +45,9 @@ export function useCall(callId: string | null) {
       )
       .subscribe()
     return () => {
-      void supabase.removeChannel(channel)
+      // channel.unsubscribe() plutôt que supabase.removeChannel() : ce
+      // dernier peut crasher natif (Hermes SIGSEGV) au démontage rapide.
+      void channel.unsubscribe()
     }
   }, [callId, fetch])
 

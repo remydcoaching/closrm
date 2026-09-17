@@ -182,7 +182,9 @@ export function useAgenda(date: Date) {
       })
       .subscribe()
     return () => {
-      void supabase.removeChannel(channel)
+      // channel.unsubscribe() plutôt que supabase.removeChannel() : ce
+      // dernier peut crasher natif (Hermes SIGSEGV) au démontage rapide.
+      void channel.unsubscribe()
     }
   }, [fetchAll])
 
