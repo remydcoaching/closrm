@@ -96,6 +96,23 @@ export async function PATCH(
       return NextResponse.json({ error: 'Impossible de mettre à jour le profil' }, { status: 500 })
     }
 
+    // Dernier item de la session traité : la clore ici, sinon elle reste
+    // 'active' indéfiniment et bloque silencieusement toute nouvelle session
+    // (GET /api/dm-sessions la renvoie encore comme session en cours).
+    const { count: remaining } = await supabase
+      .from('dm_session_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', id)
+      .is('outcome', null)
+
+    if (remaining === 0) {
+      await supabase
+        .from('dm_sessions')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('status', 'active')
+    }
+
     return NextResponse.json({ data: updated })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') {
