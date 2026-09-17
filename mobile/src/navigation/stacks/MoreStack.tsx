@@ -5,6 +5,7 @@ import { MoreMenuScreen } from '../../app/more/MoreMenuScreen'
 import { NotificationsScreen } from '../../app/more/NotificationsScreen'
 import { NotificationSettingsScreen } from '../../app/more/NotificationSettingsScreen'
 import { BrandingScreen } from '../../app/more/BrandingScreen'
+import { DebugLogScreen } from '../../app/more/DebugLogScreen'
 import { SocialPostsScreen } from '../../app/social/SocialPostsScreen'
 import { SocialPostDetailScreen } from '../../app/social/SocialPostDetailScreen'
 import { SocialPostFormScreen } from '../../app/social/SocialPostFormScreen'
@@ -21,6 +22,7 @@ export default function MoreStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
       <Stack.Screen name="Branding" component={BrandingScreen} />
+      <Stack.Screen name="DebugLog" component={DebugLogScreen} />
       <Stack.Screen name="SocialPosts" component={SocialPostsScreen} />
       <Stack.Screen name="SocialPostDetail" component={SocialPostDetailScreen} />
       <Stack.Screen name="SocialPostForm" component={SocialPostFormScreen} />
