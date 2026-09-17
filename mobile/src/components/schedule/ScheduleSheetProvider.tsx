@@ -11,8 +11,12 @@ import { colors } from '../../theme/colors'
 import { supabase } from '../../services/supabase'
 import { api } from '../../services/api'
 
+// Lead minimal : le sheet n'a besoin que de ces champs pour s'ouvrir sans
+// fetch réseau supplémentaire (ex: juste après avoir validé une relance).
+type ScheduleSheetLead = Pick<Lead, 'id' | 'first_name' | 'last_name' | 'status'>
+
 interface ScheduleParams {
-  lead: Lead
+  lead: ScheduleSheetLead
 }
 
 interface ScheduleSheetContextValue {
@@ -54,7 +58,7 @@ const dayShort = (d: Date) =>
   d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '').toUpperCase()
 
 interface SheetState {
-  lead: Lead
+  lead: ScheduleSheetLead
   typeIdx: 0 | 1 | 2
   selectedDate: Date
   hour: number

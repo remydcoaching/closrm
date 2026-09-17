@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, Text, ScrollView, Pressable, TextInput, Linking, Platform, ActivityIndicator, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
@@ -336,6 +336,18 @@ function LeadScreenBody({
   )
 }
 
+// Naviguer pendant le render (dans le corps de DmSessionLeadScreen) casse
+// React Navigation — on isole la redirection dans un effet.
+function DmSessionRedirectToComplete({ sessionId }: { sessionId: string }) {
+  const navigation = useNavigation<Nav>()
+
+  useEffect(() => {
+    navigation.replace('DmSessionComplete', { sessionId })
+  }, [navigation, sessionId])
+
+  return null
+}
+
 export function DmSessionLeadScreen() {
   const navigation = useNavigation<Nav>()
   const { params } = useRoute<R>()
@@ -411,8 +423,7 @@ export function DmSessionLeadScreen() {
   }
 
   if (!currentItem) {
-    navigation.replace('DmSessionComplete', { sessionId: session.id })
-    return null
+    return <DmSessionRedirectToComplete sessionId={session.id} />
   }
 
   const doneCount = session.items.filter((i) => i.outcome !== null).length

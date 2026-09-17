@@ -35,6 +35,17 @@ export async function PATCH(
       if (leadError) {
         return NextResponse.json({ error: 'Impossible d\'archiver le lead' }, { status: 500 })
       }
+      // Sans ça la relance en attente reste 'en_attente' malgré le lead mort,
+      // et refait surface en relance du jour / en retard dans les sessions suivantes.
+      const { error: closeError } = await supabase
+        .from('follow_ups')
+        .update({ status: 'annule' })
+        .eq('lead_id', item.lead_id)
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'en_attente')
+      if (closeError) {
+        return NextResponse.json({ error: 'Impossible de clore la relance en cours' }, { status: 500 })
+      }
     }
 
     if (parsed.data.outcome === 'replied') {
@@ -45,6 +56,20 @@ export async function PATCH(
     }
 
     if (parsed.data.outcome === 'relaunched' && parsed.data.delay_days) {
+      // La relance en attente qui a rendu ce lead éligible à la session doit
+      // être close ici, sinon elle reste 'en_attente' pour toujours et le
+      // lead réapparaît indéfiniment en relance du jour / en retard alors
+      // qu'on vient justement de le relancer.
+      const { error: closeError } = await supabase
+        .from('follow_ups')
+        .update({ status: 'fait' })
+        .eq('lead_id', item.lead_id)
+        .eq('workspace_id', workspaceId)
+        .eq('status', 'en_attente')
+      if (closeError) {
+        return NextResponse.json({ error: 'Impossible de clore la relance en cours' }, { status: 500 })
+      }
+
       const scheduledAt = new Date(Date.now() + parsed.data.delay_days * 86_400_000).toISOString()
       const { error: followUpError } = await supabase.from('follow_ups').insert({
         workspace_id: workspaceId,

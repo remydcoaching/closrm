@@ -84,6 +84,7 @@ describe('PATCH /api/dm-sessions/[id]/items/[itemId]', () => {
     expect(res.status).toBe(200)
     expect(body.data.outcome).toBe('archived')
     expect(updateLead).toHaveBeenCalledWith({ status: 'dead' })
+    expect(followUpUpdate).toHaveBeenCalledWith({ status: 'annule' })
   })
 
   it('creates a follow-up carrying the setter note when outcome is relaunched with a delay', async () => {
@@ -108,6 +109,9 @@ describe('PATCH /api/dm-sessions/[id]/items/[itemId]', () => {
         notes: 'Recontacter après vacances',
       })
     )
+    // La relance en attente qui a rendu ce lead éligible à la session doit
+    // être close, sinon il réapparaît indéfiniment en relance du jour / en retard.
+    expect(followUpUpdate).toHaveBeenCalledWith({ status: 'fait' })
   })
 
   it('returns 500 and does not report success when the lead archive write fails', async () => {

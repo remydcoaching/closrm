@@ -258,6 +258,7 @@ export function LeadDetailScreen() {
   const [attemptsPickerOpen, setAttemptsPickerOpen] = useState(false)
   const [nameModalOpen, setNameModalOpen] = useState(false)
   const [callTrackingOpen, setCallTrackingOpen] = useState(false)
+  const [markingReplied, setMarkingReplied] = useState(false)
 
   const toastOpacity = useRef(new Animated.Value(0)).current
   const [toastMessage, setToastMessage] = useState('')
@@ -439,7 +440,6 @@ export function LeadDetailScreen() {
       })
     }
   }
-  const [markingReplied, setMarkingReplied] = useState(false)
   const markReplied = async () => {
     setMarkingReplied(true)
     mutate({ dm_conversation_active_at: new Date().toISOString() })
