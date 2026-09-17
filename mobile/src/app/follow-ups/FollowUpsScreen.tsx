@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { FollowUpsStackParamList } from '../../navigation/types'
 import { useFollowUps, type FollowUpTab, type FollowUpWithLead } from '../../hooks/useFollowUps'
 import { useDmSessionEntry } from '../../hooks/useDmSession'
+import { useScheduleSheet } from '../../components/schedule/ScheduleSheetProvider'
 import { NavLarge, FilterChips, Avatar } from '../../components/ui'
 import { colors, getAvatarColor } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
@@ -84,10 +85,12 @@ export function FollowUpsScreen() {
   const tab = TABS[tabIdx].key
   const { followUps, loading, refetch } = useFollowUps(tab)
   const { eligibleCount, activeSession } = useDmSessionEntry()
+  const scheduleSheet = useScheduleSheet()
 
-  const markDone = async (id: string) => {
-    await supabase.from('follow_ups').update({ status: 'fait' }).eq('id', id)
+  const markDone = async (item: FollowUpWithLead) => {
+    await supabase.from('follow_ups').update({ status: 'fait' }).eq('id', item.id)
     void refetch()
+    if (item.lead) scheduleSheet.open({ lead: item.lead })
   }
 
   return (
@@ -150,7 +153,7 @@ export function FollowUpsScreen() {
               item={fu}
               overdue={tab === 'overdue'}
               onPress={() => navigation.navigate('LeadDetail', { leadId: fu.lead_id })}
-              onMarkDone={() => void markDone(fu.id)}
+              onMarkDone={() => void markDone(fu)}
             />
           ))}
         </ScrollView>
