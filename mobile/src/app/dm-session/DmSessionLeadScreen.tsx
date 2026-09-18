@@ -11,6 +11,7 @@ import LeadJourneyBlock from '../../components/leads/LeadJourneyBlock'
 import { NavLarge, Avatar } from '../../components/ui'
 import { colors } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
+import { logDebug } from '../../services/debugLog'
 
 type Nav = NativeStackNavigationProp<FollowUpsStackParamList, 'DmSessionLead'>
 type R = RouteProp<FollowUpsStackParamList, 'DmSessionLead'>
@@ -354,6 +355,13 @@ export function DmSessionLeadScreen() {
   const { session, currentItem, loading, error, submitOutcome, refetch, abandon } = useDmSession(params.sessionId)
   const [abandoning, setAbandoning] = useState(false)
 
+  useEffect(() => {
+    void logDebug('DmSessionLeadScreen: mounted')
+    return () => {
+      void logDebug('DmSessionLeadScreen: unmounting')
+    }
+  }, [])
+
   function confirmAbandon() {
     Alert.alert(
       'Arrêter la session ?',
@@ -364,11 +372,21 @@ export function DmSessionLeadScreen() {
           text: 'Arrêter',
           style: 'destructive',
           onPress: async () => {
+            void logDebug('confirmAbandon: onPress start')
             setAbandoning(true)
             try {
               await abandon()
-              navigation.replace('FollowUpsList')
-            } catch {
+              void logDebug('confirmAbandon: abandon() OK, calling navigation.popToTop')
+              // popToTop() plutôt que replace('FollowUpsList') : replace()
+              // sur native-stack crashe natif ici (confirmé par crash log +
+              // instrumentation — le crash a lieu pendant l'appel replace()
+              // lui-même, pas après). FollowUpsList est déjà la racine du
+              // stack, donc popToTop revient exactement au même écran par
+              // un mécanisme de pop natif plus stable qu'un remplacement.
+              navigation.popToTop()
+              void logDebug('confirmAbandon: navigation.popToTop call returned')
+            } catch (e) {
+              void logDebug(`confirmAbandon: caught — ${e instanceof Error ? e.message : String(e)}`)
               setAbandoning(false)
             }
           },

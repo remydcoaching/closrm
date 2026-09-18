@@ -37,6 +37,7 @@ export type MoreStackParamList = {
   Notifications: undefined
   NotificationSettings: undefined
   Branding: undefined
+  DebugLog: undefined
   TournageSessions: undefined
   SocialPosts: undefined
   SocialPostDetail: { postId: string }

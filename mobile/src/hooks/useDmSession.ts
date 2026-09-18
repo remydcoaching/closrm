@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useFocusEffect } from '@react-navigation/native'
 import { api } from '../services/api'
 
 export interface DmSessionLead {
@@ -66,25 +67,37 @@ export function useDmSessionEntry() {
   const [activeSession, setActiveSession] = useState<{ id: string; doneCount: number; targetCount: number } | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let cancelled = false
-    api.get<{ data: DmSessionDetail | null }>('/api/dm-sessions').then(({ data }) => {
-      if (cancelled) return
-      if (data) {
-        setActiveSession({
-          id: data.id,
-          doneCount: data.items.filter((i) => i.outcome !== null).length,
-          targetCount: data.target_count,
+  // useFocusEffect plutôt qu'un useEffect([]) : FollowUpsScreen reste monté
+  // en permanence (popToTop() au lieu de replace() sur l'abandon d'une
+  // session — cf. DmSessionLeadScreen), donc un fetch au seul montage
+  // laissait activeSession périmée après un "Arrêter la session" (le bandeau
+  // affichait encore "Reprendre la session" une fois revenu sur l'écran).
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false
+      api
+        .get<{ data: DmSessionDetail | null }>('/api/dm-sessions')
+        .then(({ data }) => {
+          if (cancelled) return
+          if (data) {
+            setActiveSession({
+              id: data.id,
+              doneCount: data.items.filter((i) => i.outcome !== null).length,
+              targetCount: data.target_count,
+            })
+          } else {
+            setActiveSession(null)
+          }
+          setLoading(false)
         })
-      } else {
-        setActiveSession(null)
+        .catch(() => {
+          if (!cancelled) setLoading(false)
+        })
+      return () => {
+        cancelled = true
       }
-      setLoading(false)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    }, [])
+  )
 
   return { eligibleCount, activeSession, loading }
 }

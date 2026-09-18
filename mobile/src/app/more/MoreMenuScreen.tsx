@@ -278,6 +278,12 @@ export function MoreMenuScreen() {
               leading={<DotIcon name="help-circle" tint="#06b6d4" />}
               title="Aide"
               subtitle="Documentation & support"
+            />
+            <ListRow
+              leading={<DotIcon name="bug" tint="#ef4444" />}
+              title="Logs debug"
+              subtitle="Diagnostiquer un bug, copier les logs"
+              onPress={() => navigation.navigate('DebugLog')}
               separator={false}
             />
           </ListSection>
