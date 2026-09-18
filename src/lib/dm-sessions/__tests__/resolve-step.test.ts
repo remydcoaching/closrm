@@ -29,13 +29,14 @@ function makeSupabaseStub(opts: {
       builder.select = chain
       builder.order = chain
       builder.limit = chain
-      let stepIdFilter: string | null = null
-      builder.eq = (column: string, value: string) => {
+      let stepIdsFilter: string[] | null = null
+      builder.in = (column: string, values: string[]) => {
         if (table === 'setting_process_step_transitions' && column === 'step_id') {
-          stepIdFilter = value
+          stepIdsFilter = values
         }
         return builder
       }
+      builder.eq = () => builder
       if (table === 'setting_processes') {
         builder.maybeSingle = () => Promise.resolve({ data: opts.activeProcess ?? null, error: null })
       }
@@ -45,8 +46,8 @@ function makeSupabaseStub(opts: {
         }
         if (table === 'setting_process_step_transitions') {
           const rows = (opts.transitions ?? [])
-            .filter((t) => t.step_id === stepIdFilter)
-            .map(({ outcome_label, target_step_id }) => ({ outcome_label, target_step_id }))
+            .filter((t) => stepIdsFilter?.includes(t.step_id))
+            .map(({ step_id, outcome_label, target_step_id }) => ({ step_id, outcome_label, target_step_id }))
           return resolve({ data: rows, error: null })
         }
         return resolve({ data: [], error: null })

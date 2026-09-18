@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
-import { resolveSessionStep } from '@/lib/dm-sessions/resolve-step'
+import { resolveSessionStep, loadActiveProcessSteps } from '@/lib/dm-sessions/resolve-step'
 import { updateDmSessionSchema } from '@/lib/validations/dm-sessions'
 import type { PriorityCategory } from '@/lib/dm-sessions/priority'
 
@@ -39,6 +39,11 @@ export async function GET(
     // Le template affiché vient du process de setting actif si un existe,
     // sinon de pickTemplate() (fallback pendant la migration). Résolu par
     // item non traité uniquement — inutile de calculer pour un item déjà clos.
+    // Process + steps + transitions préchargés une seule fois (identiques
+    // pour tous les items de la session) plutôt que refetch à chaque item —
+    // c'était la cause principale de la lenteur au chargement d'une session
+    // avec 30-45 items (jusqu'à 3 requêtes Supabase répétées par item).
+    const activeProcessSteps = await loadActiveProcessSteps(supabase, workspaceId)
     const items = await Promise.all(
       (session.items as SessionItemRow[]).map(async (item) => {
         if (item.outcome !== null) return item
@@ -47,10 +52,13 @@ export async function GET(
           ? Math.floor((Date.now() - new Date(item.lead.last_activity_at).getTime()) / 86_400_000)
           : null
 
-        const template = await resolveSessionStep(supabase, workspaceId, item.category, {
-          firstName: item.lead.first_name,
-          daysSinceLastContact,
-        })
+        const template = await resolveSessionStep(
+          supabase,
+          workspaceId,
+          item.category,
+          { firstName: item.lead.first_name, daysSinceLastContact },
+          activeProcessSteps
+        )
 
         return { ...item, template }
       })

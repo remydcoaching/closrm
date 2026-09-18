@@ -7,6 +7,65 @@ interface ResolveStepContext {
   daysSinceLastContact: number | null
 }
 
+interface ProcessStep {
+  id: string
+  title: string
+  step_type: string
+  content: string
+  delay_days: number | null
+  next_step_id: string | null
+  applies_to_category: string | null
+}
+
+// Process actif + ses étapes + toutes leurs transitions, pré-chargés une
+// seule fois par appelant (au lieu de le refaire pour chaque item de
+// session — ces requêtes ne dépendent que de workspaceId, identiques pour
+// tous les items d'une même session). loadActiveProcessSteps() les charge,
+// resolveSessionStep() les réutilise.
+export interface ActiveProcessSteps {
+  processId: string | null
+  steps: ProcessStep[]
+  transitionsByStepId: Map<string, StepTransition[]>
+}
+
+export async function loadActiveProcessSteps(
+  supabase: SupabaseClient,
+  workspaceId: string
+): Promise<ActiveProcessSteps> {
+  const { data: activeProcess } = await supabase
+    .from('setting_processes')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (!activeProcess) return { processId: null, steps: [], transitionsByStepId: new Map() }
+
+  const { data: steps } = await supabase
+    .from('setting_process_steps')
+    .select('id, title, step_type, content, delay_days, next_step_id, applies_to_category')
+    .eq('process_id', activeProcess.id)
+    .order('position', { ascending: true })
+
+  const stepIds = (steps ?? []).map((s) => s.id)
+  const transitionsByStepId = new Map<string, StepTransition[]>()
+  if (stepIds.length > 0) {
+    const { data: transitions } = await supabase
+      .from('setting_process_step_transitions')
+      .select('step_id, outcome_label, target_step_id')
+      .in('step_id', stepIds)
+    for (const t of transitions ?? []) {
+      const list = transitionsByStepId.get(t.step_id) ?? []
+      list.push({ outcome_label: t.outcome_label, target_step_id: t.target_step_id })
+      transitionsByStepId.set(t.step_id, list)
+    }
+  }
+
+  return { processId: activeProcess.id, steps: steps ?? [], transitionsByStepId }
+}
+
 export interface StepTransition {
   outcome_label: string
   target_step_id: string
@@ -57,18 +116,12 @@ export async function resolveSessionStep(
   supabase: SupabaseClient,
   workspaceId: string,
   category: PriorityCategory,
-  ctx: ResolveStepContext
+  ctx: ResolveStepContext,
+  preloaded?: ActiveProcessSteps
 ): Promise<ResolvedStep> {
-  const { data: activeProcess } = await supabase
-    .from('setting_processes')
-    .select('id')
-    .eq('workspace_id', workspaceId)
-    .eq('status', 'active')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  const { processId, steps, transitionsByStepId } = preloaded ?? (await loadActiveProcessSteps(supabase, workspaceId))
 
-  if (activeProcess) {
+  if (processId) {
     const isFirstContact = category === 'premier_message' || category === 'engagement_instagram'
     // Regroupement identique à templates.ts::pickTemplate — premier_message et
     // engagement_instagram partagent toujours le même message ("premier
@@ -82,13 +135,7 @@ export async function resolveSessionStep(
         ? 'jamais_recontacte'
         : 'relance_en_retard'
 
-    const { data: steps } = await supabase
-      .from('setting_process_steps')
-      .select('id, title, step_type, content, delay_days, next_step_id, applies_to_category')
-      .eq('process_id', activeProcess.id)
-      .order('position', { ascending: true })
-
-    if (steps && steps.length > 0) {
+    if (steps.length > 0) {
       // Priorité 1 : une étape a explicitement cette catégorie assignée
       // (colonne applies_to_category) — robuste à l'ordre/au réordonnancement.
       // Priorité 2 (process créé avant que l'UI expose ce champ, ou jamais
@@ -103,11 +150,7 @@ export async function resolveSessionStep(
           ? relanceSteps[relanceSteps.length - 1] ?? steps[steps.length - 1]
           : relanceSteps[0] ?? steps[steps.length - 1]
       const step = byCategory ?? byHeuristic
-
-      const { data: transitions } = await supabase
-        .from('setting_process_step_transitions')
-        .select('outcome_label, target_step_id')
-        .eq('step_id', step.id)
+      const transitions = transitionsByStepId.get(step.id) ?? []
 
       const nextStep = step.next_step_id
         ? (steps.find((s) => s.id === step.next_step_id) ?? null)
@@ -117,11 +160,11 @@ export async function resolveSessionStep(
       return {
         label: step.title,
         text: step.content.replaceAll('{{prenom}}', name),
-        process_id: activeProcess.id,
+        process_id: processId,
         step_id: step.id,
         next_step_id: step.next_step_id,
         delay_days: step.delay_days,
-        transitions: transitions ?? [],
+        transitions,
         next_step: nextStep ? { title: nextStep.title, delay_days: nextStep.delay_days } : null,
         relance_step_options: relanceSteps.map((s) => ({
           step_id: s.id,
