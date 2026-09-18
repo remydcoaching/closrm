@@ -55,56 +55,62 @@ export async function buildPriorityQueue(
   // autres — parallélisées pour éviter 6 aller-retours séquentiels (chacun
   // coûte cher en latence mobile/cold start, c'était la cause principale de
   // la lenteur ressentie au lancement d'une session DM).
+  // "leads" et "follow_ups" étaient chacune lues deux fois avec des colonnes
+  // différentes (une fois filtrée, une fois complète) — fusionné en une seule
+  // lecture par table : 7 requêtes réduites à 5, en plus de la parallélisation.
   const [
-    { data: activeConversationLeads },
-    { data: pendingFollowUps },
+    { data: allLeadsFull },
+    { data: allFollowUps },
     { data: engagedLeads },
-    { data: staleLeads },
-    { data: followUpLeadRows },
     { data: callLeadRows },
-    { data: allLeads },
   ] = await Promise.all([
-    // Un lead marqué "a répondu" (dm_conversation_active_at non-null) ne doit
-    // jamais réapparaître dans une file de session — le setter continue la
-    // conversation manuellement, ClosRM ne doit pas lui proposer une relance.
-    supabase.from('leads').select('id').eq('workspace_id', workspaceId).not('dm_conversation_active_at', 'is', null),
+    supabase
+      .from('leads')
+      .select('id, created_at, last_activity_at, dm_conversation_active_at')
+      .eq('workspace_id', workspaceId),
     supabase
       .from('follow_ups')
-      .select('lead_id, scheduled_at')
-      .eq('workspace_id', workspaceId)
-      .eq('status', 'en_attente')
-      .order('scheduled_at', { ascending: true }),
+      .select('lead_id, scheduled_at, status')
+      .eq('workspace_id', workspaceId),
     supabase
       .from('instagram_interactions')
       .select('lead_id, last_seen_at')
       .eq('workspace_id', workspaceId)
       .order('last_seen_at', { ascending: true }),
-    supabase
-      .from('leads')
-      .select('id, last_activity_at')
-      .eq('workspace_id', workspaceId)
-      .lt('last_activity_at', staleBefore)
-      .order('last_activity_at', { ascending: true }),
-    supabase.from('follow_ups').select('lead_id').eq('workspace_id', workspaceId),
     supabase.from('calls').select('lead_id').eq('workspace_id', workspaceId),
-    supabase.from('leads').select('id, created_at').eq('workspace_id', workspaceId).order('created_at', { ascending: true }),
   ])
 
-  const activeConversationLeadIds = new Set((activeConversationLeads ?? []).map((r) => r.id as string))
-  const pendingFollowUpLeadIds = new Set((pendingFollowUps ?? []).map((r) => r.lead_id as string))
+  // Un lead marqué "a répondu" (dm_conversation_active_at non-null) ne doit
+  // jamais réapparaître dans une file de session — le setter continue la
+  // conversation manuellement, ClosRM ne doit pas lui proposer une relance.
+  const activeConversationLeadIds = new Set(
+    (allLeadsFull ?? []).filter((r) => r.dm_conversation_active_at != null).map((r) => r.id as string)
+  )
+  const pendingFollowUps = (allFollowUps ?? []).filter((r) => r.status === 'en_attente')
+  const pendingFollowUpLeadIds = new Set(pendingFollowUps.map((r) => r.lead_id as string))
+  const staleLeads = (allLeadsFull ?? []).filter(
+    (r) => typeof r.last_activity_at === 'string' && r.last_activity_at < staleBefore
+  )
+  const followUpLeadRows = allFollowUps ?? []
+  const allLeads = allLeadsFull ?? []
 
+  // Tri côté JS (équivalent aux .order() des requêtes séparées d'origine) —
+  // préserve l'ordre de priorité au sein de chaque catégorie malgré la
+  // fusion des lectures.
   byCategory.set(
     'relance_du_jour',
-    (pendingFollowUps ?? [])
+    pendingFollowUps
       .filter((r) => typeof r.scheduled_at === 'string' && r.scheduled_at >= todayStart.toISOString() && r.scheduled_at <= todayEnd.toISOString())
+      .sort((a, b) => (a.scheduled_at as string).localeCompare(b.scheduled_at as string))
       .map((r) => r.lead_id as string)
       .filter((leadId) => !activeConversationLeadIds.has(leadId))
   )
 
   byCategory.set(
     'relance_en_retard',
-    (pendingFollowUps ?? [])
+    pendingFollowUps
       .filter((r) => typeof r.scheduled_at === 'string' && r.scheduled_at < todayStart.toISOString())
+      .sort((a, b) => (a.scheduled_at as string).localeCompare(b.scheduled_at as string))
       .map((r) => r.lead_id as string)
       .filter((leadId) => !activeConversationLeadIds.has(leadId))
   )
@@ -122,8 +128,8 @@ export async function buildPriorityQueue(
 
   byCategory.set(
     'jamais_recontacte',
-    (staleLeads ?? [])
-      .filter((r) => typeof r.last_activity_at === 'string' && r.last_activity_at < staleBefore)
+    [...staleLeads]
+      .sort((a, b) => (a.last_activity_at as string).localeCompare(b.last_activity_at as string))
       .map((r) => r.id as string)
       .filter((leadId) => !pendingFollowUpLeadIds.has(leadId))
       .filter((leadId) => !activeConversationLeadIds.has(leadId))
@@ -134,13 +140,14 @@ export async function buildPriorityQueue(
   // defaults to now() and is only ever advanced forward), so the real signal
   // is the absence of any follow_ups or calls row for that lead.
   const contactedLeadIds = new Set([
-    ...(followUpLeadRows ?? []).map((r) => r.lead_id as string),
+    ...followUpLeadRows.map((r) => r.lead_id as string),
     ...(callLeadRows ?? []).map((r) => r.lead_id as string),
   ])
 
   byCategory.set(
     'premier_message',
-    (allLeads ?? [])
+    [...allLeads]
+      .sort((a, b) => (a.created_at as string).localeCompare(b.created_at as string))
       .map((r) => r.id as string)
       .filter((leadId) => !contactedLeadIds.has(leadId))
       .filter((leadId) => !activeConversationLeadIds.has(leadId))

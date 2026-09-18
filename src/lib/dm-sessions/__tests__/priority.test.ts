@@ -46,8 +46,8 @@ describe('buildPriorityQueue', () => {
 
     const supabase = makeSupabaseStub({
       follow_ups: [
-        { lead_id: 'lead-today', scheduled_at: todayAt9am.toISOString() },
-        { lead_id: 'lead-overdue', scheduled_at: yesterday.toISOString() },
+        { lead_id: 'lead-today', scheduled_at: todayAt9am.toISOString(), status: 'en_attente' },
+        { lead_id: 'lead-overdue', scheduled_at: yesterday.toISOString(), status: 'en_attente' },
       ],
       instagram_interactions: [],
       leads: [],
@@ -70,7 +70,7 @@ describe('buildPriorityQueue', () => {
     if (laterToday.getTime() <= now.getTime()) laterToday.setDate(laterToday.getDate())
 
     const supabase = makeSupabaseStub({
-      follow_ups: [{ lead_id: 'lead-later-today', scheduled_at: laterToday.toISOString() }],
+      follow_ups: [{ lead_id: 'lead-later-today', scheduled_at: laterToday.toISOString(), status: 'en_attente' }],
       instagram_interactions: [],
       leads: [],
     })
@@ -88,8 +88,8 @@ describe('buildPriorityQueue', () => {
 
     const supabase = makeSupabaseStub({
       follow_ups: [
-        { lead_id: 'lead-today', scheduled_at: todayAt9am.toISOString() },
-        { lead_id: 'lead-overdue', scheduled_at: yesterday.toISOString() },
+        { lead_id: 'lead-today', scheduled_at: todayAt9am.toISOString(), status: 'en_attente' },
+        { lead_id: 'lead-overdue', scheduled_at: yesterday.toISOString(), status: 'en_attente' },
       ],
       instagram_interactions: [],
       leads: [
@@ -110,7 +110,7 @@ describe('buildPriorityQueue', () => {
     todayAt9am.setHours(9, 0, 0, 0)
 
     const supabase = makeSupabaseStub({
-      follow_ups: [{ lead_id: 'lead-today', scheduled_at: todayAt9am.toISOString() }],
+      follow_ups: [{ lead_id: 'lead-today', scheduled_at: todayAt9am.toISOString(), status: 'en_attente' }],
       instagram_interactions: [],
       leads: [],
     })
@@ -185,7 +185,7 @@ describe('buildPriorityQueue', () => {
   it('deduplicates a lead present in multiple categories, keeping the highest-priority one', async () => {
     const yesterday = new Date(Date.now() - 2 * 86_400_000)
     const supabase = makeSupabaseStub({
-      follow_ups: [{ lead_id: 'lead-both', scheduled_at: yesterday.toISOString() }],
+      follow_ups: [{ lead_id: 'lead-both', scheduled_at: yesterday.toISOString(), status: 'en_attente' }],
       instagram_interactions: [{ lead_id: 'lead-both', last_seen_at: '2026-01-02T00:00:00Z' }],
       leads: [{ id: 'lead-both', last_activity_at: '2026-01-02T00:00:00Z' }],
     })
