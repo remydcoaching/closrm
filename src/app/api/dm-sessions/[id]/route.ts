@@ -25,25 +25,29 @@ export async function GET(
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
-    const { data: session, error } = await supabase
-      .from('dm_sessions')
-      .select('*, items:dm_session_items(*, lead:leads(id, first_name, last_name, instagram_handle, instagram_user_id, status, last_activity_at))')
-      .eq('id', id)
-      .eq('workspace_id', workspaceId)
-      .single()
+    // session et activeProcessSteps sont indépendants (l'un dépend de id +
+    // workspaceId, l'autre juste de workspaceId) — parallélisés plutôt
+    // qu'attendus séquentiellement.
+    const [{ data: session, error }, activeProcessSteps] = await Promise.all([
+      supabase
+        .from('dm_sessions')
+        .select('*, items:dm_session_items(*, lead:leads(id, first_name, last_name, instagram_handle, instagram_user_id, status, last_activity_at))')
+        .eq('id', id)
+        .eq('workspace_id', workspaceId)
+        .single(),
+      // Le template affiché vient du process de setting actif si un existe,
+      // sinon de pickTemplate() (fallback pendant la migration). Résolu par
+      // item non traité uniquement — inutile de calculer pour un item déjà
+      // clos. Process + steps + transitions préchargés une seule fois
+      // (identiques pour tous les items de la session) plutôt que refetch à
+      // chaque item — c'était la cause principale de la lenteur au
+      // chargement d'une session avec 30-45 items.
+      loadActiveProcessSteps(supabase, workspaceId),
+    ])
 
     if (error || !session) {
       return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
     }
-
-    // Le template affiché vient du process de setting actif si un existe,
-    // sinon de pickTemplate() (fallback pendant la migration). Résolu par
-    // item non traité uniquement — inutile de calculer pour un item déjà clos.
-    // Process + steps + transitions préchargés une seule fois (identiques
-    // pour tous les items de la session) plutôt que refetch à chaque item —
-    // c'était la cause principale de la lenteur au chargement d'une session
-    // avec 30-45 items (jusqu'à 3 requêtes Supabase répétées par item).
-    const activeProcessSteps = await loadActiveProcessSteps(supabase, workspaceId)
     const items = await Promise.all(
       (session.items as SessionItemRow[]).map(async (item) => {
         if (item.outcome !== null) return item

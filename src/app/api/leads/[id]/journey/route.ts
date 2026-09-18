@@ -60,13 +60,35 @@ export async function GET(
       return NextResponse.json({ error: 'Lead introuvable' }, { status: 404 })
     }
 
-    // 2. Bookings for this lead (with calendar name)
-    const { data: bookingsRaw } = await supabase
-      .from('bookings')
-      .select('id, scheduled_at, status, duration_minutes, form_data, calendar_id, booking_calendars(name)')
-      .eq('lead_id', id)
-      .eq('workspace_id', workspaceId)
-      .order('scheduled_at', { ascending: true })
+    // 2-4. Bookings, funnel events et engagement Instagram ne dépendent que
+    // de id/workspaceId/visitor_id déjà connus — parallélisées au lieu
+    // d'être attendues séquentiellement (3 aller-retours réseau évités,
+    // contribuait à la lenteur ressentie pendant une session DM où ce
+    // endpoint est appelé pour chaque lead affiché).
+    const [{ data: bookingsRaw }, { data: eventsRaw }, { data: igInteractions }] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select('id, scheduled_at, status, duration_minutes, form_data, calendar_id, booking_calendars(name)')
+        .eq('lead_id', id)
+        .eq('workspace_id', workspaceId)
+        .order('scheduled_at', { ascending: true }),
+      lead.visitor_id
+        ? supabase
+            .from('funnel_events')
+            .select('id, event_type, metadata, funnel_page_id, created_at, funnel_pages(name)')
+            .eq('workspace_id', workspaceId)
+            .eq('visitor_id', lead.visitor_id)
+            .order('created_at', { ascending: true })
+            .limit(200)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from('instagram_interactions')
+        .select('id, interaction_type, instagram_username, profile_url, source_post_url, metadata, last_seen_at')
+        .eq('workspace_id', workspaceId)
+        .eq('lead_id', lead.id)
+        .order('last_seen_at', { ascending: true })
+        .limit(200),
+    ])
 
     const bookings: JourneyBooking[] = (bookingsRaw ?? []).map((b) => {
       const cal = b.booking_calendars as { name: string } | { name: string }[] | null
@@ -82,39 +104,18 @@ export async function GET(
       }
     })
 
-    // 3. Funnel events for this visitor (if any)
-    let events: JourneyEvent[] = []
-    if (lead.visitor_id) {
-      const { data: eventsRaw } = await supabase
-        .from('funnel_events')
-        .select('id, event_type, metadata, funnel_page_id, created_at, funnel_pages(name)')
-        .eq('workspace_id', workspaceId)
-        .eq('visitor_id', lead.visitor_id)
-        .order('created_at', { ascending: true })
-        .limit(200)
-
-      events = (eventsRaw ?? []).map((e) => {
-        const page = e.funnel_pages as { name: string } | { name: string }[] | null
-        const pageName = Array.isArray(page) ? page[0]?.name ?? null : page?.name ?? null
-        return {
-          id: e.id as string,
-          event_type: e.event_type as string,
-          metadata: (e.metadata ?? {}) as Record<string, unknown>,
-          funnel_page_id: (e.funnel_page_id ?? null) as string | null,
-          funnel_page_name: pageName,
-          created_at: e.created_at as string,
-        }
-      })
-    }
-
-    // 4. Instagram engagement events (likes/comments) for this lead
-    const { data: igInteractions } = await supabase
-      .from('instagram_interactions')
-      .select('id, interaction_type, instagram_username, profile_url, source_post_url, metadata, last_seen_at')
-      .eq('workspace_id', workspaceId)
-      .eq('lead_id', lead.id)
-      .order('last_seen_at', { ascending: true })
-      .limit(200)
+    let events: JourneyEvent[] = (eventsRaw ?? []).map((e) => {
+      const page = e.funnel_pages as { name: string } | { name: string }[] | null
+      const pageName = Array.isArray(page) ? page[0]?.name ?? null : page?.name ?? null
+      return {
+        id: e.id as string,
+        event_type: e.event_type as string,
+        metadata: (e.metadata ?? {}) as Record<string, unknown>,
+        funnel_page_id: (e.funnel_page_id ?? null) as string | null,
+        funnel_page_name: pageName,
+        created_at: e.created_at as string,
+      }
+    })
 
     const igEvents: JourneyEvent[] = (igInteractions ?? []).map((ig) => ({
       id: ig.id as string,
