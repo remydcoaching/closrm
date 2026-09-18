@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
@@ -12,6 +12,7 @@ import { NavLarge, FilterChips, Avatar } from '../../components/ui'
 import { colors, getAvatarColor } from '../../theme/colors'
 import { type as t, spacing, radius } from '../../theme/tokens'
 import { supabase } from '../../services/supabase'
+import { logDebug } from '../../services/debugLog'
 
 type Nav = NativeStackNavigationProp<FollowUpsStackParamList, 'FollowUpsList'>
 
@@ -86,6 +87,13 @@ export function FollowUpsScreen() {
   const { followUps, loading, refetch } = useFollowUps(tab)
   const { eligibleCount, activeSession } = useDmSessionEntry()
   const scheduleSheet = useScheduleSheet()
+
+  useEffect(() => {
+    void logDebug('FollowUpsScreen: mounted')
+    return () => {
+      void logDebug('FollowUpsScreen: unmounting')
+    }
+  }, [])
 
   const markDone = async (item: FollowUpWithLead) => {
     await supabase.from('follow_ups').update({ status: 'fait' }).eq('id', item.id)
