@@ -42,7 +42,11 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
     if (!res.ok) {
       const body = await res.text()
-      void logDebug(`api:${init.method} ${path} — HTTP ${res.status}: ${body.slice(0, 300)}`)
+      // On ne logue jamais le corps de la réponse d'erreur ici : il peut
+      // contenir des données sensibles (détails de lead, fragments issus
+      // de Supabase...) et ce buffer est copiable/partageable depuis
+      // l'écran Logs debug. Juste le statut suffit pour diagnostiquer.
+      void logDebug(`api:${init.method} ${path} — HTTP ${res.status}`)
       throw new ApiError(res.status, body)
     }
     void logDebug(`api:${init.method} ${path} — OK ${res.status}`)
