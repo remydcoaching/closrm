@@ -376,9 +376,15 @@ export function DmSessionLeadScreen() {
             setAbandoning(true)
             try {
               await abandon()
-              void logDebug('confirmAbandon: abandon() OK, calling navigation.replace')
-              navigation.replace('FollowUpsList')
-              void logDebug('confirmAbandon: navigation.replace call returned')
+              void logDebug('confirmAbandon: abandon() OK, calling navigation.popToTop')
+              // popToTop() plutôt que replace('FollowUpsList') : replace()
+              // sur native-stack crashe natif ici (confirmé par crash log +
+              // instrumentation — le crash a lieu pendant l'appel replace()
+              // lui-même, pas après). FollowUpsList est déjà la racine du
+              // stack, donc popToTop revient exactement au même écran par
+              // un mécanisme de pop natif plus stable qu'un remplacement.
+              navigation.popToTop()
+              void logDebug('confirmAbandon: navigation.popToTop call returned')
             } catch (e) {
               void logDebug(`confirmAbandon: caught — ${e instanceof Error ? e.message : String(e)}`)
               setAbandoning(false)
