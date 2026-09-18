@@ -1,4 +1,6 @@
+import React from 'react'
 import { renderHook, waitFor, act } from '@testing-library/react-native'
+import { NavigationContainer } from '@react-navigation/native'
 
 jest.mock('../../services/api', () => ({
   api: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
@@ -11,10 +13,16 @@ const mockGet = api.get as jest.Mock
 const mockPost = api.post as jest.Mock
 const mockPatch = api.patch as jest.Mock
 
+// useDmSessionEntry utilise useFocusEffect (cf. commentaire dans
+// useDmSession.ts) — il exige un NavigationContainer autour pour se
+// déclencher, contrairement à un simple useEffect.
+const navWrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(NavigationContainer, null, children)
+
 describe('useDmSessionEntry', () => {
   it('returns eligibleCount and null activeSession when no session is active', async () => {
     mockGet.mockResolvedValueOnce({ data: null })
-    const { result } = await renderHook(() => useDmSessionEntry())
+    const { result } = await renderHook(() => useDmSessionEntry(), { wrapper: navWrapper })
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.activeSession).toBeNull()
   })
