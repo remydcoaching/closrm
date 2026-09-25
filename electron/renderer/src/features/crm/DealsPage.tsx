@@ -6,6 +6,10 @@ import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api-client'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
 import type { DealWithLead } from './types'
+import { StatCard, StatGrid } from '../../design-system/StatCard'
+import { TableCard, ContactCell } from '../../design-system/TableCard'
+import { Avatar } from '../../design-system/Avatar'
+import { shortDate } from '../leads/status'
 import './crm.css'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -48,49 +52,65 @@ export function DealsPage() {
           <h1>Deals</h1>
           <p>{deals === null ? '…' : `${deals.length} deal${deals.length > 1 ? 's' : ''}`}</p>
         </div>
-        {deals && deals.length > 0 && (
-          <div className="crm-deals-summary">
-            <div>
-              <div className="crm-deals-summary-value font-mono">{formatMoney(totalRevenue)}</div>
-              <div className="crm-deals-summary-label">Revenue total</div>
-            </div>
-            <div>
-              <div className="crm-deals-summary-value font-mono">{formatMoney(totalCollected)}</div>
-              <div className="crm-deals-summary-label">Cash collecté</div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {deals && deals.length > 0 && (
+        <StatGrid>
+          <StatCard label="Revenue total" value={formatMoney(totalRevenue)} caption="montant cumulé des deals" />
+          <StatCard label="Cash collecté" value={formatMoney(totalCollected)} highlight caption="encaissé à ce jour" />
+          <StatCard
+            label="Reste à encaisser"
+            value={formatMoney(Math.max(totalRevenue - totalCollected, 0))}
+            caption="sur les deals en cours"
+          />
+          <StatCard label="Deals" value={deals.length} caption={`dont ${deals.filter((d) => d.status === 'active').length} actifs`} />
+        </StatGrid>
+      )}
 
       {deals === null && !error && <LoadingState label="Chargement des deals…" />}
       {error && <ErrorState message={error} onRetry={load} />}
       {deals && deals.length === 0 && <EmptyState title="Aucun deal" description="Les deals apparaissent ici une fois un lead marqué comme closé." />}
 
       {deals && deals.length > 0 && (
-        <table className="crm-table">
-          <thead>
-            <tr>
-              <th>Lead</th>
-              <th>Montant</th>
-              <th>Cash collecté</th>
-              <th>Échéances</th>
-              <th>Statut</th>
-              <th>Débuté le</th>
-            </tr>
-          </thead>
-          <tbody>
-            {deals.map((deal) => (
-              <tr key={deal.id} className="crm-table-clickable" onClick={() => deal.lead && navigate(`/leads?leadId=${deal.lead.id}`)}>
-                <td>{deal.lead ? `${deal.lead.first_name} ${deal.lead.last_name}`.trim() || '—' : '—'}</td>
-                <td className="font-mono">{formatMoney(deal.amount)}</td>
-                <td className="font-mono">{formatMoney(deal.cash_collected)}</td>
-                <td className="font-mono">{deal.installments}</td>
-                <td>{STATUS_LABELS[deal.status] ?? deal.status}</td>
-                <td>{new Date(deal.started_at).toLocaleDateString('fr-FR')}</td>
+        <TableCard title="Tous les deals" subtitle={`${deals.length} deal${deals.length > 1 ? 's' : ''}`}>
+          <table className="ds-table">
+            <thead>
+              <tr>
+                <th>Contact</th>
+                <th>Statut</th>
+                <th className="ds-num-cell">Montant</th>
+                <th className="ds-num-cell">Cash collecté</th>
+                <th className="ds-num-cell">Échéances</th>
+                <th className="ds-num-cell">Débuté le</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {deals.map((deal) => {
+                const name = deal.lead ? `${deal.lead.first_name} ${deal.lead.last_name}`.trim() || '—' : '—'
+                return (
+                  <tr key={deal.id} className="ds-row-clickable" onClick={() => deal.lead && navigate(`/leads/${deal.lead.id}`)}>
+                    <td>
+                      <ContactCell name={name} avatar={<Avatar name={name} size={40} />} />
+                    </td>
+                    <td>{STATUS_LABELS[deal.status] ?? deal.status}</td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{formatMoney(deal.amount)}</span>
+                    </td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{formatMoney(deal.cash_collected)}</span>
+                    </td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{deal.installments}</span>
+                    </td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{shortDate(deal.started_at)}</span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </TableCard>
       )}
     </div>
   )

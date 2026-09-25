@@ -14,6 +14,8 @@ import { Button } from '../../design-system/Button'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
 import type { DiscoveryRun, DiscoveryResponse } from './types'
 import './instagram.css'
+import { TableCard } from '../../design-system/TableCard'
+import { StatCard } from '../../design-system/StatCard'
 
 function statusLabel(status: DiscoveryRun['status']): string {
   return { RUNNING: 'En cours', SUCCESS: 'Terminé', PARTIAL: 'Partiel', FAILED: 'Échoué' }[status]
@@ -91,7 +93,7 @@ export function DiscoveryPage() {
             {statusLabel(result.status)}
             {result.stoppedReason && result.stoppedReason !== 'completed' && ` — ${result.stoppedReason}`}
           </div>
-          <div className="ig-discovery-stats">
+          <div className="ds-stat-grid">
             <Stat label="Profils observés" value={result.stats.uniqueUsers} />
             <Stat label="Déjà des leads" value={result.persisted.alreadyLeadsCount} />
             <Stat label="Interactions" value={result.stats.totalInteractions} />
@@ -117,7 +119,8 @@ export function DiscoveryPage() {
         {runsError && <ErrorState message={runsError} onRetry={loadRuns} />}
         {runs && runs.length === 0 && <EmptyState title="Aucune analyse" description="Lancez votre première analyse ci-dessus." />}
         {runs && runs.length > 0 && (
-          <table className="ig-table">
+          <TableCard>
+            <table className="ds-table">
             <thead>
               <tr>
                 <th>Compte</th>
@@ -129,18 +132,19 @@ export function DiscoveryPage() {
             </thead>
             <tbody>
               {runs.map((run) => (
-                <tr key={run.id} className="ig-table-row-clickable" onClick={() => navigate(`/instagram/discovery/${run.id}`)}>
+                <tr key={run.id} className="ds-row-clickable" onClick={() => navigate(`/instagram/discovery/${run.id}`)}>
                   <td>@{run.instagram_username}</td>
                   <td>
                     <span className={`ig-discovery-status ig-discovery-status--${statusTone(run.status)}`}>{statusLabel(run.status)}</span>
                   </td>
-                  <td className="font-mono">{run.users_found}</td>
-                  <td className="font-mono">{run.interactions_found}</td>
+                  <td className="ds-num-cell ds-num">{run.users_found}</td>
+                  <td className="ds-num-cell ds-num">{run.interactions_found}</td>
                   <td>{new Date(run.started_at).toLocaleString('fr-FR')}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </TableCard>
         )}
       </div>
     </div>
@@ -148,10 +152,5 @@ export function DiscoveryPage() {
 }
 
 function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="ig-stat">
-      <div className="ig-stat-value font-mono">{value}</div>
-      <div className="ig-stat-label">{label}</div>
-    </div>
-  )
+  return <StatCard label={label} value={value} />
 }

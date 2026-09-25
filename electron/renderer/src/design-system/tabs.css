@@ -1,27 +1,96 @@
+/* In-page switchers — ONE look everywhere (reference: "Interactions | Score"
+   segmented control and "Tout / 30 jours / 7 jours" chips).
+   .ds-tabs      → segmented: grey rounded track, active = black pill.
+   .ds-chips     → separate outlined pills, active = black pill. */
 .ds-tabs {
-  display: flex;
-  gap: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
 }
 
 .ds-tab {
-  background: none;
   border: none;
-  padding: var(--space-2) 0 var(--space-3);
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font: inherit;
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-tertiary);
+  font-weight: 600;
+  color: var(--color-text-secondary);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .ds-tab:hover {
-  color: var(--color-text-primary);
+  color: var(--color-text-strong);
 }
 
-.ds-tab--active {
-  color: var(--color-text-primary);
-  border-bottom-color: var(--color-accent-solid);
+.ds-tab--active,
+.ds-tab--active:hover {
+  background: var(--color-text-strong);
+  color: #fff;
+}
+
+.ds-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ds-chip {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ds-chip:hover {
+  color: var(--color-text-strong);
+}
+
+.ds-chip--active,
+.ds-chip--active:hover {
+  background: var(--color-text-strong);
+  border-color: var(--color-text-strong);
+  color: #fff;
+  font-weight: 600;
+}
+
+.ds-chip-count {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  opacity: 0.7;
+}
+
+/* ─── Tab-group layout (Leads | Pipeline | Closing | …) ─── */
+.ds-tab-group-layout {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ds-page-tabs {
+  margin: var(--space-4) var(--space-6) 0;
+  flex-shrink: 0;
+}
+
+.ds-tab-group-body {
+  flex: 1;
+  min-height: 0;
 }

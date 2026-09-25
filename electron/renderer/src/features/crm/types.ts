@@ -54,3 +54,29 @@ export interface DealWithLead {
   updated_at: string
   lead: { id: string; first_name: string; last_name: string; email: string | null; phone: string } | null
 }
+
+// ─── Call (closing) — mirrors GET /api/calls ───────────────────────────
+export type CallType = 'setting' | 'closing'
+export type CallOutcome = 'pending' | 'done' | 'cancelled' | 'no_show'
+
+export interface CallWithLead {
+  id: string
+  workspace_id: string
+  lead_id: string
+  type: CallType
+  scheduled_at: string
+  outcome: CallOutcome
+  notes: string | null
+  attempt_number: number
+  reached: boolean
+  duration_seconds: number | null
+  closer_id: string | null
+  assigned_to: string | null
+  created_at: string
+  lead: { id: string; first_name: string; last_name: string; phone: string; email: string | null; status: LeadStatus }
+}
+
+export interface CallsListResponse {
+  data: CallWithLead[]
+  meta: { total: number; page: number; per_page: number; total_pages: number }
+}

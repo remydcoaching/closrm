@@ -10,11 +10,14 @@ import { api, ApiError } from '../../lib/api-client'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
 import { relativeTime } from '../leads/status'
 import './instagram.css'
+import { TableCard } from '../../design-system/TableCard'
+import { StatCard } from '../../design-system/StatCard'
 
 interface AudienceCounts {
   actifs: number
   neVousSuiventPas: number
   lurkers: number
+  actifsJamaisContactes: number
   totalEngaged: number
 }
 
@@ -28,10 +31,11 @@ interface AudienceLeadRow {
   last_seen_at: string | null
 }
 
-type Segment = 'actifs' | 'ne_vous_suivent_pas' | 'lurkers'
+type Segment = 'actifs' | 'actifs_jamais_contactes' | 'ne_vous_suivent_pas' | 'lurkers'
 
 const SEGMENT_LABEL: Record<Segment, string> = {
   actifs: 'Actifs (interaction < 7 jours)',
+  actifs_jamais_contactes: 'Actifs, jamais contactés',
   ne_vous_suivent_pas: 'Ne vous suivent pas',
   lurkers: 'Lurkers (jamais contactés)',
 }
@@ -85,23 +89,18 @@ export function AudiencePage() {
       )}
 
       {counts && counts.totalEngaged > 0 && (
-        <div className="ig-discovery-stats">
-          <button className="ig-audience-card" onClick={() => openSegment('actifs')}>
-            <div className="ig-stat-value font-mono">{counts.actifs}</div>
-            <div className="ig-stat-label">Actifs</div>
-          </button>
-          <button className="ig-audience-card" onClick={() => openSegment('ne_vous_suivent_pas')}>
-            <div className="ig-stat-value font-mono">{counts.neVousSuiventPas}</div>
-            <div className="ig-stat-label">Ne vous suivent pas</div>
-          </button>
-          <button className="ig-audience-card" onClick={() => openSegment('lurkers')}>
-            <div className="ig-stat-value font-mono">{counts.lurkers}</div>
-            <div className="ig-stat-label">Lurkers (jamais contactés)</div>
-          </button>
-          <div className="ig-stat">
-            <div className="ig-stat-value font-mono">{counts.totalEngaged}</div>
-            <div className="ig-stat-label">Total engagés</div>
-          </div>
+        <div className="ds-stat-grid">
+          <StatCard label="Leads actifs" value={counts.actifs} caption="interaction sur les 7 derniers jours" onClick={() => openSegment('actifs')} />
+          <StatCard
+            label="Actifs, jamais contactés"
+            value={counts.actifsJamaisContactes}
+            highlight
+            caption="actifs sur la période, personne ne leur a écrit"
+            onClick={() => openSegment('actifs_jamais_contactes')}
+          />
+          <StatCard label="Ne vous suivent pas" value={counts.neVousSuiventPas} caption="au dernier ciblage" onClick={() => openSegment('ne_vous_suivent_pas')} />
+          <StatCard label="Lurkers" value={counts.lurkers} unit="profils" caption="ont interagi, jamais contactés" onClick={() => openSegment('lurkers')} />
+          <StatCard label="Total engagés" value={counts.totalEngaged} caption="au moins une interaction observée" />
         </div>
       )}
 
@@ -111,7 +110,8 @@ export function AudiencePage() {
           {segmentLeads === null && <LoadingState label="Chargement…" />}
           {segmentLeads && segmentLeads.length === 0 && <EmptyState title="Aucun lead dans ce segment" />}
           {segmentLeads && segmentLeads.length > 0 && (
-            <table className="ig-table">
+            <TableCard>
+              <table className="ds-table">
               <thead>
                 <tr>
                   <th>Lead</th>
@@ -122,18 +122,19 @@ export function AudiencePage() {
               </thead>
               <tbody>
                 {segmentLeads.map((l) => (
-                  <tr key={l.id} className="ig-table-row-clickable" onClick={() => navigate(`/leads/${l.id}`)}>
+                  <tr key={l.id} className="ds-row-clickable" onClick={() => navigate(`/leads/${l.id}`)}>
                     <td>
                       <div className="ig-cell-name">{`${l.first_name} ${l.last_name}`.trim() || '—'}</div>
-                      {l.instagram_handle && <div className="ig-cell-muted">@{l.instagram_handle}</div>}
+                      {l.instagram_handle && <div className="ds-muted">@{l.instagram_handle}</div>}
                     </td>
-                    <td className="ig-cell-muted">{l.status}</td>
-                    <td className="font-mono">{l.call_attempts}</td>
-                    <td className="ig-cell-muted">{l.last_seen_at ? relativeTime(l.last_seen_at) : '—'}</td>
+                    <td className="ds-muted">{l.status}</td>
+                    <td className="ds-num-cell ds-num">{l.call_attempts}</td>
+                    <td className="ds-muted">{l.last_seen_at ? relativeTime(l.last_seen_at) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </TableCard>
           )}
         </div>
       )}

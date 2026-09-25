@@ -122,3 +122,11 @@ export function nextFollowUp<T extends { status: string; scheduled_at: string }>
   if (pending.length === 0) return null
   return [...pending].sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0]
 }
+
+/** "17 sept." — the short date used in every table's date column. */
+export function shortDate(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  return d.toLocaleDateString('fr-FR', sameYear ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' })
+}

@@ -10,6 +10,8 @@ import { LoadingState, ErrorState, EmptyState } from '../../design-system/States
 import { PLATFORM_OPTIONS } from './types'
 import type { LeadMagnet, LeadMagnetPlatform, LeadMagnetStats } from './types'
 import './acquisition.css'
+import { TableCard } from '../../design-system/TableCard'
+import { StatCard } from '../../design-system/StatCard'
 
 export function LeadMagnetsPage() {
   const navigate = useNavigate()
@@ -74,7 +76,8 @@ export function LeadMagnetsPage() {
       {magnets && magnets.length === 0 && <EmptyState title="Aucun lead magnet" description="Créez votre premier contenu trackable." />}
 
       {magnets && magnets.length > 0 && (
-        <table className="ig-table">
+        <TableCard>
+          <table className="ds-table">
           <thead>
             <tr>
               <th>Titre</th>
@@ -89,7 +92,7 @@ export function LeadMagnetsPage() {
                 <tr key={m.id}>
                   <td>
                     <div className="ig-cell-name">{m.title}</div>
-                    <div className="ig-cell-muted">{m.url}</div>
+                    <div className="ds-muted">{m.url}</div>
                   </td>
                   <td>
                     {platform?.emoji} {platform?.label}
@@ -117,7 +120,8 @@ export function LeadMagnetsPage() {
               )
             })}
           </tbody>
-        </table>
+          </table>
+        </TableCard>
       )}
 
       {showForm && (
@@ -141,15 +145,9 @@ export function LeadMagnetsPage() {
             <LoadingState label="Chargement des stats…" />
           ) : (
             <>
-              <div className="acq-stats-grid">
-                <div className="acq-stat-card">
-                  <div className="acq-stat-label">Clics totaux</div>
-                  <div className="acq-stat-value font-mono">{stats.total_clicks}</div>
-                </div>
-                <div className="acq-stat-card">
-                  <div className="acq-stat-label">Leads uniques</div>
-                  <div className="acq-stat-value font-mono">{stats.unique_leads}</div>
-                </div>
+              <div className="ds-stat-grid">
+                <StatCard label="Clics totaux" value={stats.total_clicks} />
+                <StatCard label="Leads uniques" value={stats.unique_leads} />
               </div>
               <div className="lead-detail-section-title">Top leads ({stats.top_leads.length})</div>
               {stats.top_leads.length === 0 ? (
@@ -159,7 +157,7 @@ export function LeadMagnetsPage() {
                   <button key={l.lead_id} className="acq-top-lead-row" onClick={() => navigate(`/leads/${l.lead_id}`)}>
                     <div>
                       <div className="ig-cell-name">{l.name}</div>
-                      <div className="ig-cell-muted">
+                      <div className="ds-muted">
                         {l.last_clicked_at ? `Dernier clic : ${new Date(l.last_clicked_at).toLocaleString('fr-FR')}` : '—'}
                       </div>
                     </div>

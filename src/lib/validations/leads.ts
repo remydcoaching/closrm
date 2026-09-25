@@ -45,7 +45,7 @@ export const leadFiltersSchema = z.object({
   date_field: z.enum(['created_at', 'updated_at', 'closed_at']).default('created_at'),
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(100).default(25),
-  sort: z.enum(['created_at', 'updated_at', 'first_name', 'last_name', 'status']).default('created_at'),
+  sort: z.enum(['created_at', 'updated_at', 'first_name', 'last_name', 'status', 'last_activity_at']).default('created_at'),
   order: z.enum(['asc', 'desc']).default('desc'),
 })
 

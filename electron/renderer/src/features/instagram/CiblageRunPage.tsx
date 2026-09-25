@@ -11,6 +11,7 @@ import { Button } from '../../design-system/Button'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
 import type { DiscoveryProfile } from './types'
 import './instagram.css'
+import { TableCard } from '../../design-system/TableCard'
 
 export function CiblageRunPage() {
   const { runId } = useParams<{ runId: string }>()
@@ -66,7 +67,8 @@ export function CiblageRunPage() {
       {profiles && profiles.length === 0 && <EmptyState title="Aucun profil observé" description="Ce scan n'a trouvé aucune interaction publique." />}
 
       {profiles && profiles.length > 0 && (
-        <table className="ig-table">
+        <TableCard>
+          <table className="ds-table">
           <thead>
             <tr>
               <th>Contact</th>
@@ -87,7 +89,7 @@ export function CiblageRunPage() {
                         {profile.full_name || profile.instagram_username}
                         {profile.is_verified && <span className="lead-detail-verified" title="Compte vérifié">✓</span>}
                       </div>
-                      <div className="ig-cell-muted">@{profile.instagram_username}</div>
+                      <div className="ds-muted">@{profile.instagram_username}</div>
                     </div>
                   </div>
                 </td>
@@ -103,7 +105,7 @@ export function CiblageRunPage() {
                         💬 {profile.comments_count}
                       </span>
                     )}
-                    {profile.likes_count === 0 && profile.comments_count === 0 && <span className="ig-cell-muted">—</span>}
+                    {profile.likes_count === 0 && profile.comments_count === 0 && <span className="ds-muted">—</span>}
                   </div>
                 </td>
                 <td>
@@ -124,7 +126,8 @@ export function CiblageRunPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </TableCard>
       )}
     </div>
   )

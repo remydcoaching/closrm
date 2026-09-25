@@ -9,6 +9,7 @@ import { LoadingState, ErrorState, EmptyState } from '../../design-system/States
 import { followUpChannelLabel, followUpStatusLabel } from '../leads/status'
 import type { FollowUpWithLead, FollowUpsListResponse, FollowUpStatus } from './types'
 import './crm.css'
+import { TableCard } from '../../design-system/TableCard'
 
 const STATUS_OPTIONS = [
   { key: 'en_attente', label: 'En attente' },
@@ -75,7 +76,8 @@ export function RelancesPage() {
       {followUps && followUps.length === 0 && <EmptyState title="Aucune relance" description="Rien à traiter pour ce filtre." />}
 
       {followUps && followUps.length > 0 && (
-        <table className="crm-table">
+        <TableCard>
+          <table className="ds-table">
           <thead>
             <tr>
               <th>Lead</th>
@@ -88,8 +90,8 @@ export function RelancesPage() {
           </thead>
           <tbody>
             {followUps.map((fu) => (
-              <tr key={fu.id} className={isOverdue(fu) ? 'crm-row--overdue' : ''}>
-                <td className="crm-table-clickable" onClick={() => fu.lead && navigate(`/leads?leadId=${fu.lead.id}`)}>
+              <tr key={fu.id} className={isOverdue(fu) ? 'ds-row--alert' : ''}>
+                <td className="crm-table-clickable" onClick={() => fu.lead && navigate(`/leads/${fu.lead.id}`)}>
                   {fu.lead ? `${fu.lead.first_name} ${fu.lead.last_name}`.trim() || '—' : '—'}
                 </td>
                 <td>{fu.reason}</td>
@@ -106,7 +108,8 @@ export function RelancesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </TableCard>
       )}
     </div>
   )

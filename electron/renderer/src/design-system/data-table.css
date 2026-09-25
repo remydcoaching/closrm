@@ -1,0 +1,174 @@
+/* ─── Table card ────────────────────────────────────────── */
+.ds-table-card {
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  padding: 22px 26px 10px;
+  min-width: 0;
+}
+
+.ds-table-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.ds-table-card-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.ds-table-card-subtitle {
+  margin: 3px 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.ds-table-card-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.ds-table-scroll {
+  overflow-x: auto;
+}
+
+/* ─── Table ─────────────────────────────────────────────── */
+.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-base);
+}
+
+.ds-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ds-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  vertical-align: middle;
+}
+
+.ds-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ds-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.ds-table tbody tr[data-clickable='true'],
+.ds-table tbody tr.ds-row-clickable {
+  cursor: pointer;
+}
+
+.ds-table tbody tr:hover {
+  background: var(--color-surface-hover);
+}
+
+.ds-row--alert td {
+  background: var(--color-danger-soft);
+}
+
+.ds-th-sortable {
+  cursor: pointer;
+}
+
+.ds-th-sortable:hover {
+  color: var(--color-text-primary);
+}
+
+.ds-sort-indicator {
+  margin-left: 4px;
+  font-size: 9px;
+  color: var(--color-text-faint);
+}
+
+.ds-sort-indicator--active {
+  color: var(--color-accent-solid);
+}
+
+/* Figures: bold mono, right-aligned ("54 sur 61", "17 sept."). */
+.ds-num-cell,
+.ds-table td.ds-num-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ds-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ─── Contact cell ──────────────────────────────────────── */
+.ds-contact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ds-contact-text {
+  min-width: 0;
+}
+
+.ds-contact-name {
+  font-weight: 600;
+  color: var(--color-text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ds-contact-handle {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-solid);
+}
+
+/* ─── Toolbar pills ─────────────────────────────────────── */
+.ds-pill-button {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ds-pill-button--dark {
+  background: var(--color-text-strong);
+  border-color: var(--color-text-strong);
+  color: #fff;
+}
+
+.ds-pill-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

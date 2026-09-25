@@ -1,0 +1,80 @@
+.ds-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.ds-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 132px;
+  padding: 20px 22px;
+  border-radius: 18px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.ds-stat-card--clickable {
+  cursor: pointer;
+}
+
+.ds-stat-card--clickable:hover {
+  box-shadow: 0 10px 30px rgba(20, 20, 30, 0.08);
+}
+
+.ds-stat-card-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.ds-stat-card-chevron {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--color-text-strong);
+}
+
+.ds-stat-card-value {
+  margin-top: 4px;
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-stat-card-value--highlight {
+  background: var(--gradient-accent);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ds-stat-card-unit {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.ds-stat-card-delta {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-solid);
+}
+
+.ds-stat-card-delta--down {
+  color: var(--color-danger);
+}
+
+.ds-stat-card-caption {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}

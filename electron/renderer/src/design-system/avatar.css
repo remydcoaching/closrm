@@ -9,3 +9,8 @@
   flex-shrink: 0;
   user-select: none;
 }
+
+.ds-avatar--photo {
+  object-fit: cover;
+  background: var(--color-bg-muted);
+}

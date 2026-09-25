@@ -4,9 +4,12 @@
 // web's full dashboard also has charts and configurable health thresholds,
 // not reproduced here to keep this landing solid rather than half-built.
 import { useEffect, useState } from 'react'
+import '../../design-system/tabs.css'
 import { api, ApiError } from '../../lib/api-client'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
 import './acquisition.css'
+import { TableCard } from '../../design-system/TableCard'
+import { StatCard } from '../../design-system/StatCard'
 
 type Level = 'campaign' | 'adset' | 'ad'
 
@@ -75,7 +78,7 @@ export function PublicitesPage() {
         </div>
         <div className="ig-page-filters">
           {LEVEL_OPTIONS.map((opt) => (
-            <button key={opt.key} className={`ig-filter-chip ${level === opt.key ? 'ig-filter-chip--active' : ''}`} onClick={() => setLevel(opt.key)}>
+            <button key={opt.key} className={`ds-chip ${level === opt.key ? 'ds-chip--active' : ''}`} onClick={() => setLevel(opt.key)}>
               {opt.label}
             </button>
           ))}
@@ -88,22 +91,14 @@ export function PublicitesPage() {
 
       {rows && rows.length > 0 && (
         <>
-          <div className="acq-stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-            <div className="acq-stat-card">
-              <div className="acq-stat-label">Dépensé</div>
-              <div className="acq-stat-value font-mono">{money(totalSpend)}</div>
-            </div>
-            <div className="acq-stat-card">
-              <div className="acq-stat-label">Leads générés</div>
-              <div className="acq-stat-value font-mono">{totalLeads}</div>
-            </div>
-            <div className="acq-stat-card">
-              <div className="acq-stat-label">Revenue</div>
-              <div className="acq-stat-value font-mono">{money(totalRevenue)}</div>
-            </div>
+          <div className="ds-stat-grid">
+            <StatCard label="Dépensé" value={money(totalSpend)} />
+            <StatCard label="Leads générés" value={totalLeads} />
+            <StatCard label="Revenue" value={money(totalRevenue)} />
           </div>
 
-          <table className="ig-table">
+          <TableCard>
+            <table className="ds-table">
             <thead>
               <tr>
                 <th>Nom</th>
@@ -120,17 +115,18 @@ export function PublicitesPage() {
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td className="ig-cell-name">{row.name}</td>
-                  <td className="ig-cell-muted">{row.status}</td>
-                  <td className="font-mono">{money(row.spend)}</td>
-                  <td className="font-mono">{row.lead_count}</td>
-                  <td className="font-mono">{row.qualified_count}</td>
-                  <td className="font-mono">{row.closed_count}</td>
-                  <td className="font-mono">{row.cpl != null ? money(row.cpl) : '—'}</td>
-                  <td className="font-mono">{row.roas != null ? `${row.roas.toFixed(1)}x` : '—'}</td>
+                  <td className="ds-muted">{row.status}</td>
+                  <td className="ds-num-cell ds-num">{money(row.spend)}</td>
+                  <td className="ds-num-cell ds-num">{row.lead_count}</td>
+                  <td className="ds-num-cell ds-num">{row.qualified_count}</td>
+                  <td className="ds-num-cell ds-num">{row.closed_count}</td>
+                  <td className="ds-num-cell ds-num">{row.cpl != null ? money(row.cpl) : '—'}</td>
+                  <td className="ds-num-cell ds-num">{row.roas != null ? `${row.roas.toFixed(1)}x` : '—'}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </TableCard>
         </>
       )}
 

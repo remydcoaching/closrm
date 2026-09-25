@@ -4,7 +4,7 @@
 // state, tooltip on hover) — no Insyder code, icon asset, or class name is
 // reused, every icon here is a fresh inline SVG built for ClosRM's own
 // navigation (CLOSRM_DESKTOP_FINAL_VISION.md §7).
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import './sidebar.css'
 
 interface SidebarItem {
@@ -13,6 +13,8 @@ interface SidebarItem {
   icon: React.ReactNode
   disabled?: boolean
   badge?: number
+  /** Extra paths that keep this entry highlighted (tab groups). */
+  matchPaths?: string[]
 }
 
 const DashboardIcon = (
@@ -33,27 +35,8 @@ const LeadsIcon = (
   </svg>
 )
 
-const PipelineIcon = (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="5" height="18" rx="1" />
-    <rect x="10" y="3" width="5" height="11" rx="1" />
-    <rect x="17" y="3" width="5" height="15" rx="1" />
-  </svg>
-)
 
-const RelancesIcon = (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M12 6v6l4 2" />
-  </svg>
-)
 
-const DealsIcon = (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v10M9 9.5a2.5 2.5 0 0 1 2.5-2.5h1A2.5 2.5 0 0 1 15 9.5c0 1.5-1.5 2-3 2.5s-3 1-3 2.5a2.5 2.5 0 0 0 2.5 2.5h1a2.5 2.5 0 0 0 2.5-2.5" />
-  </svg>
-)
 
 const DiscoveryIcon = (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -131,14 +114,12 @@ const PublicitesIcon = (
 // badge, not a fake "0", is the honest default per the no-fake-data rule.
 const NAV_ITEMS: SidebarItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon, disabled: true },
-  { to: '/leads', label: 'Leads', icon: LeadsIcon },
-  { to: '/pipeline', label: 'Pipeline', icon: PipelineIcon },
-  { to: '/relances', label: 'Relances', icon: RelancesIcon },
-  { to: '/deals', label: 'Deals', icon: DealsIcon },
+  // Pipeline, Closing, Relances and Deals are tabs of the Leads page.
+  { to: '/leads', label: 'Leads', icon: LeadsIcon, matchPaths: ['/pipeline', '/closing', '/relances', '/deals'] },
 ]
 
 const INSTAGRAM_ITEMS: SidebarItem[] = [
-  { to: '/instagram/discovery', label: 'Discovery', icon: DiscoveryIcon },
+  { to: '/instagram/discovery', label: 'Analyse (ciblage)', icon: DiscoveryIcon },
   { to: '/instagram/interactions', label: 'Interactions', icon: InteractionsIcon },
   { to: '/instagram/content', label: 'Content', icon: ContentIcon },
   { to: '/instagram/audience', label: 'Audience', icon: AudienceIcon },
@@ -197,6 +178,8 @@ export function Sidebar() {
 }
 
 function SidebarButton({ item }: { item: SidebarItem }) {
+  const { pathname } = useLocation()
+  const extraMatch = (item.matchPaths ?? []).some((p) => pathname === p || pathname.startsWith(`${p}/`))
   const badge = item.badge && item.badge > 0 ? <span className="ds-sidebar-badge">{item.badge > 9 ? '9+' : item.badge}</span> : null
 
   if (item.disabled) {
@@ -208,7 +191,11 @@ function SidebarButton({ item }: { item: SidebarItem }) {
     )
   }
   return (
-    <NavLink to={item.to} className={({ isActive }) => `ds-sidebar-item ${isActive ? 'ds-sidebar-item--active' : ''}`} title={item.label}>
+    <NavLink
+      to={item.to}
+      className={({ isActive }) => `ds-sidebar-item ${isActive || extraMatch ? 'ds-sidebar-item--active' : ''}`}
+      title={item.label}
+    >
       {item.icon}
       {badge}
     </NavLink>

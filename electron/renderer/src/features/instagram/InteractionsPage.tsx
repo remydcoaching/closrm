@@ -10,6 +10,7 @@ import { FilterMenu } from '../../design-system/FilterMenu'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
 import type { InstagramInteraction, InteractionType } from './types'
 import './instagram.css'
+import { TableCard } from '../../design-system/TableCard'
 
 const TYPE_OPTIONS: { key: InteractionType; label: string }[] = [
   { key: 'like', label: 'Like' },
@@ -73,7 +74,8 @@ export function InteractionsPage() {
       {interactions && interactions.length === 0 && <EmptyState title="Aucune interaction" description="Lancez une discovery ou attendez le prochain cycle Apify." />}
 
       {interactions && interactions.length > 0 && (
-        <table className="ig-table">
+        <TableCard>
+          <table className="ds-table">
           <thead>
             <tr>
               <th>Profil</th>
@@ -90,12 +92,12 @@ export function InteractionsPage() {
               return (
               <tr
                 key={interaction.id}
-                className="ig-table-row-clickable"
-                onClick={() => interaction.lead_id && navigate(`/leads?leadId=${interaction.lead_id}`)}
+                className="ds-row-clickable"
+                onClick={() => interaction.lead_id && navigate(`/leads/${interaction.lead_id}`)}
               >
                 <td>
                   <div className="ig-cell-name">{interaction.full_name || interaction.instagram_username}</div>
-                  <div className="ig-cell-muted">@{interaction.instagram_username}</div>
+                  <div className="ds-muted">@{interaction.instagram_username}</div>
                 </td>
                 <td>{TYPE_OPTIONS.find((t) => t.key === interaction.interaction_type)?.label ?? interaction.interaction_type}</td>
                 <td>{providerLabel(interaction.source_provider)}</td>
@@ -105,18 +107,19 @@ export function InteractionsPage() {
                       Voir le contenu
                     </a>
                   ) : (
-                    <span className="ig-cell-muted">—</span>
+                    <span className="ds-muted">—</span>
                   )}
                 </td>
                 <td>
-                  {interaction.lead ? `${interaction.lead.first_name} ${interaction.lead.last_name}`.trim() || '—' : <span className="ig-cell-muted">—</span>}
+                  {interaction.lead ? `${interaction.lead.first_name} ${interaction.lead.last_name}`.trim() || '—' : <span className="ds-muted">—</span>}
                 </td>
-                <td className="ig-cell-muted">{new Date(interaction.last_seen_at).toLocaleString('fr-FR')}</td>
+                <td className="ds-muted">{new Date(interaction.last_seen_at).toLocaleString('fr-FR')}</td>
               </tr>
               )
             })}
           </tbody>
-        </table>
+          </table>
+        </TableCard>
       )}
     </div>
   )

@@ -7,6 +7,7 @@
 // Funnel stage is a documented proxy from engagement rate (see
 // funnel-stage.ts) — never derived from fabricated lead-confidence links.
 import { useEffect, useMemo, useState } from 'react'
+import '../../design-system/tabs.css'
 import { api, ApiError } from '../../lib/api-client'
 import { ScatterChart, type ScatterPoint } from '../../design-system/ScatterChart'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
@@ -117,18 +118,18 @@ export function ContentPage() {
 
       <div className="ig-page-filters">
         {PERIOD_OPTIONS.map((opt) => (
-          <button key={opt.key} className={`ig-filter-chip ${period === opt.key ? 'ig-filter-chip--active' : ''}`} onClick={() => setPeriod(opt.key)}>
+          <button key={opt.key} className={`ds-chip ${period === opt.key ? 'ds-chip--active' : ''}`} onClick={() => setPeriod(opt.key)}>
             {opt.label}
           </button>
         ))}
         <span className="ig-filter-divider" />
-        <button className={`ig-filter-chip ${!stageFilter ? 'ig-filter-chip--active' : ''}`} onClick={() => setStageFilter(null)}>
+        <button className={`ds-chip ${!stageFilter ? 'ds-chip--active' : ''}`} onClick={() => setStageFilter(null)}>
           Tous les niveaux
         </button>
         {STAGE_OPTIONS.map((opt) => (
           <button
             key={opt.key}
-            className={`ig-filter-chip ${stageFilter === opt.key ? 'ig-filter-chip--active' : ''}`}
+            className={`ds-chip ${stageFilter === opt.key ? 'ds-chip--active' : ''}`}
             style={stageFilter === opt.key ? { borderColor: FUNNEL_STAGE_COLOR[opt.key], color: FUNNEL_STAGE_COLOR[opt.key] } : undefined}
             onClick={() => setStageFilter(opt.key)}
           >

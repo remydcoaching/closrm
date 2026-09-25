@@ -15,6 +15,9 @@ import { PublicitesPage } from '../features/acquisition/PublicitesPage'
 import { PipelinePage } from '../features/crm/PipelinePage'
 import { RelancesPage } from '../features/crm/RelancesPage'
 import { DealsPage } from '../features/crm/DealsPage'
+import { ClosingPage } from '../features/crm/ClosingPage'
+import { TabGroupLayout } from '../design-system/PageTabs'
+import { TAB_GROUPS } from './tab-groups'
 import { LoadingState } from '../design-system/States'
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
@@ -60,11 +63,16 @@ function AppRoutes() {
             rather than opening a docked side panel — explicit feedback:
             "quand tu cliques sur un lead, ça t'affiche le lead, ça
             t'affiche une page du lead entier". */}
-        <Route path="leads" element={<LeadsListPage />} />
+        {/* Leads, Pipeline, Closing, Relances, Deals = one Leads page with
+            tabs (explicit feedback, mirrors the web's page-tab-groups). */}
+        <Route element={<TabGroupLayout group={TAB_GROUPS.leads} />}>
+          <Route path="leads" element={<LeadsListPage />} />
+          <Route path="pipeline" element={<PipelinePage />} />
+          <Route path="closing" element={<ClosingPage />} />
+          <Route path="relances" element={<RelancesPage />} />
+          <Route path="deals" element={<DealsPage />} />
+        </Route>
         <Route path="leads/:id" element={<LeadDetailPage />} />
-        <Route path="pipeline" element={<PipelinePage />} />
-        <Route path="relances" element={<RelancesPage />} />
-        <Route path="deals" element={<DealsPage />} />
         <Route path="instagram/discovery" element={<DiscoveryPage />} />
         <Route path="instagram/discovery/:runId" element={<CiblageRunPage />} />
         <Route path="instagram/interactions" element={<InteractionsPage />} />

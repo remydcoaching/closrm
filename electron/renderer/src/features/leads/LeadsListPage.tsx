@@ -1,28 +1,44 @@
-// Desktop-first Leads list — reproduces what ClosRM web already does
-// (src/app/(dashboard)/leads/leads-client.tsx + LeadsListView.tsx):
-// search/status/source filters via GET /api/leads query params, server-side
-// sort/pagination (leadFiltersSchema on the backend). Clicking a row
-// navigates to the lead's own full page (/leads/:id, see LeadDetailPage.tsx)
-// rather than opening a docked side panel — explicit feedback. No new
-// business logic: same endpoint, same query params, same status/source
-// vocabulary.
+// Leads — Insyder-style layout on top of ClosRM's existing contracts:
+// 1. KPI row from GET /api/instagram/audience (real segments, see
+//    src/lib/instagram/audience-segments.ts) for the selected period;
+// 2. the leads table from GET /api/leads (same search/status/source
+//    filters, server-side sort/pagination as the web's LeadsListView).
+// Clicking a row opens the lead's own full page (/leads/:id).
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api-client'
+import { downloadCsv } from '../../lib/csv'
 import { SearchInput } from '../../design-system/SearchInput'
 import { FilterMenu } from '../../design-system/FilterMenu'
 import { StatusPill } from '../../design-system/StatusPill'
 import { Avatar } from '../../design-system/Avatar'
-import { Button } from '../../design-system/Button'
+import { StatCard, StatGrid } from '../../design-system/StatCard'
+import { TableCard, SortHeader, ContactCell } from '../../design-system/TableCard'
+import { Chips } from '../../design-system/Tabs'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
-import { STATUS_CONFIG, SOURCE_CONFIG, statusEntry, sourceEntry, displayName, relativeTime } from './status'
+import { STATUS_CONFIG, SOURCE_CONFIG, statusEntry, sourceEntry, displayName, shortDate } from './status'
 import { LeadCreateModal } from './LeadCreateModal'
 import type { Lead, LeadsListResponse } from './types'
 import './leads-list.css'
 
 const PER_PAGE = 50
 
-type SortField = 'created_at' | 'updated_at' | 'first_name' | 'last_name' | 'status'
+type SortField = 'created_at' | 'last_activity_at' | 'first_name' | 'status'
+type Period = '7' | '30' | '90'
+
+const PERIODS: { key: Period; label: string }[] = [
+  { key: '90', label: '90 jours' },
+  { key: '30', label: '30 jours' },
+  { key: '7', label: '7 jours' },
+]
+
+interface AudienceSegments {
+  totalEngaged: number
+  actifs: number
+  actifsJamaisContactes: number
+  neVousSuiventPas: number
+  lurkers: number
+}
 
 export function LeadsListPage() {
   const navigate = useNavigate()
@@ -37,6 +53,9 @@ export function LeadsListPage() {
   const [sort, setSort] = useState<SortField>('created_at')
   const [order, setOrder] = useState<'asc' | 'desc'>('desc')
   const [showCreate, setShowCreate] = useState(false)
+  const [period, setPeriod] = useState<Period>('30')
+  const [segments, setSegments] = useState<AudienceSegments | null>(null)
+  const [exporting, setExporting] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -51,19 +70,30 @@ export function LeadsListPage() {
     setPage(1)
   }, [debouncedSearch, statuses, sources, sort, order])
 
+  useEffect(() => {
+    setSegments(null)
+    api
+      .get<{ data: AudienceSegments }>(`/api/instagram/audience?period_days=${period}`)
+      .then((res) => setSegments(res.data))
+      .catch(() => setSegments(null))
+  }, [period])
+
+  function buildParams(p: number, perPage: number) {
+    const params = new URLSearchParams()
+    params.set('page', String(p))
+    params.set('per_page', String(perPage))
+    params.set('sort', sort)
+    params.set('order', order)
+    if (debouncedSearch) params.set('search', debouncedSearch)
+    if (statuses.length > 0) params.set('status', statuses.join(','))
+    if (sources.length > 0) params.set('source', sources.join(','))
+    return params
+  }
+
   async function load() {
     setError(null)
     try {
-      const params = new URLSearchParams()
-      params.set('page', String(page))
-      params.set('per_page', String(PER_PAGE))
-      params.set('sort', sort)
-      params.set('order', order)
-      if (debouncedSearch) params.set('search', debouncedSearch)
-      if (statuses.length > 0) params.set('status', statuses.join(','))
-      if (sources.length > 0) params.set('source', sources.join(','))
-
-      const res = await api.get<LeadsListResponse>(`/api/leads?${params.toString()}`)
+      const res = await api.get<LeadsListResponse>(`/api/leads?${buildParams(page, PER_PAGE).toString()}`)
       setLeads(res.data)
       setMeta(res.meta)
     } catch (err) {
@@ -85,109 +115,192 @@ export function LeadsListPage() {
     }
   }
 
+  // Exports every lead matching the current filters, not just this page.
+  async function exportCsv() {
+    setExporting(true)
+    try {
+      const all: Lead[] = []
+      for (let p = 1; ; p++) {
+        const res = await api.get<LeadsListResponse>(`/api/leads?${buildParams(p, 100).toString()}`)
+        all.push(...res.data)
+        if (p >= res.meta.total_pages) break
+      }
+      downloadCsv(`leads-${new Date().toISOString().slice(0, 10)}.csv`, [
+        ['Prénom', 'Nom', 'Instagram', 'Téléphone', 'Email', 'Statut', 'Source', 'Tags', 'Créé le', 'Dernière activité'],
+        ...all.map((l) => [
+          l.first_name,
+          l.last_name,
+          l.instagram_handle,
+          l.phone,
+          l.email,
+          statusEntry(l.status).label,
+          sourceEntry(l.source).label,
+          l.tags.join(', '),
+          l.created_at,
+          l.last_activity_at,
+        ]),
+      ])
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Export impossible')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const periodLabel = `${period} j`
+  const activeFilters = statuses.length + sources.length
+
   return (
     <div className="leads-page">
       <div className="leads-page-header">
         <div>
           <h1>Leads</h1>
-          <p>{leads === null ? '…' : `${meta.total} prospect${meta.total > 1 ? 's' : ''}`}</p>
+          <p>{leads === null ? '…' : `${new Intl.NumberFormat('fr-FR').format(meta.total)} prospect${meta.total > 1 ? 's' : ''}`}</p>
         </div>
-        <Button variant="primary" onClick={() => setShowCreate(true)}>
-          + Nouveau lead
-        </Button>
+        <div className="leads-page-header-actions">
+          <Chips items={PERIODS} active={period} onChange={setPeriod} />
+          <button type="button" className="ds-pill-button ds-pill-button--dark" onClick={() => setShowCreate(true)}>
+            + Nouveau lead
+          </button>
+        </div>
       </div>
 
-      <div className="leads-page-filters">
-        <SearchInput value={searchInput} onChange={setSearchInput} placeholder="Rechercher un lead…" />
-        <FilterMenu
-          label="Statut"
-          options={STATUS_CONFIG.map((s) => ({ key: s.key, label: s.label, color: s.color }))}
-          selected={statuses}
-          onChange={setStatuses}
+      <StatGrid>
+        <StatCard
+          label="Leads actifs"
+          value={segments ? segments.actifs : '—'}
+          caption={`vus agir au moins une fois sur ${periodLabel}`}
+          onClick={() => navigate('/instagram/audience')}
         />
-        <FilterMenu
-          label="Source"
-          options={SOURCE_CONFIG.map((s) => ({ key: s.key, label: s.label, color: s.color }))}
-          selected={sources}
-          onChange={setSources}
+        <StatCard
+          label="Actifs, jamais contactés"
+          value={segments ? segments.actifsJamaisContactes : '—'}
+          highlight
+          caption="actifs sur la période, personne ne leur a écrit"
+          onClick={() => navigate('/instagram/audience')}
         />
-      </div>
+        <StatCard
+          label="Lurkers"
+          value={segments ? segments.lurkers : '—'}
+          unit={segments ? 'profils' : undefined}
+          caption="ont interagi, jamais contactés"
+          onClick={() => navigate('/instagram/audience')}
+        />
+        <StatCard
+          label="Ne vous suivent pas"
+          value={segments ? segments.neVousSuiventPas : '—'}
+          caption="au dernier ciblage de votre compte"
+          onClick={() => navigate('/instagram/audience')}
+        />
+      </StatGrid>
 
-      <div className="leads-page-body">
-        <div className="leads-list-pane">
-          {leads === null && !error && <LoadingState label="Chargement des leads…" />}
-          {error && <ErrorState message={error} onRetry={load} />}
-          {leads && leads.length === 0 && <EmptyState title="Aucun lead" description="Créez votre premier lead pour commencer." />}
+      <TableCard
+        title="Tous les leads"
+        subtitle={activeFilters > 0 ? `${activeFilters} filtre${activeFilters > 1 ? 's' : ''} actif${activeFilters > 1 ? 's' : ''}` : 'Aucun filtre'}
+        toolbar={
+          <>
+            <SearchInput value={searchInput} onChange={setSearchInput} placeholder="Rechercher un contact" />
+            <FilterMenu
+              label="Statut"
+              options={STATUS_CONFIG.map((s) => ({ key: s.key, label: s.label, color: s.color }))}
+              selected={statuses}
+              onChange={setStatuses}
+            />
+            <FilterMenu
+              label="Source"
+              options={SOURCE_CONFIG.map((s) => ({ key: s.key, label: s.label, color: s.color }))}
+              selected={sources}
+              onChange={setSources}
+            />
+            <button type="button" className="ds-pill-button" onClick={exportCsv} disabled={exporting || !leads?.length}>
+              {exporting ? 'Export…' : 'Exporter'}
+            </button>
+          </>
+        }
+      >
+        {leads === null && !error && <LoadingState label="Chargement des leads…" />}
+        {error && <ErrorState message={error} onRetry={load} />}
+        {leads && leads.length === 0 && <EmptyState title="Aucun lead" description="Créez votre premier lead pour commencer." />}
 
-          {leads && leads.length > 0 && (
-            <div className="leads-table-wrap">
-              <table className="leads-table">
-                <thead>
-                  <tr>
-                    <th />
-                    <SortableHeader label="Nom / Instagram" field="first_name" sort={sort} order={order} onClick={toggleSort} />
-                    <SortableHeader label="Statut" field="status" sort={sort} order={order} onClick={toggleSort} />
-                    <th>Source</th>
-                    <th>Tags</th>
-                    <th>Activité</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leads.map((lead) => {
-                    const status = statusEntry(lead.status)
-                    const source = sourceEntry(lead.source)
-                    const name = displayName(lead.first_name, lead.last_name, lead.instagram_handle ?? 'Sans nom')
-                    return (
-                      <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}>
-                        <td className="leads-cell-avatar">
-                          <Avatar name={name} size={30} />
-                        </td>
-                        <td>
-                          <div className="leads-cell-name">{name}</div>
-                          {lead.instagram_handle && <div className="leads-cell-handle">@{lead.instagram_handle}</div>}
-                        </td>
-                        <td>
-                          <StatusPill label={status.label} color={status.color} bg={status.bg} />
-                        </td>
-                        <td>
-                          <StatusPill label={source.label} color={source.color} bg={source.bg} />
-                        </td>
-                        <td>
-                          {lead.tags.length > 0 ? (
-                            <span className="leads-cell-tags">
-                              {lead.tags.slice(0, 2).join(', ')}
-                              {lead.tags.length > 2 && ` +${lead.tags.length - 2}`}
-                            </span>
-                          ) : (
-                            <span className="leads-cell-muted">—</span>
-                          )}
-                        </td>
-                        <td className="leads-cell-muted">{relativeTime(lead.last_activity_at)}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+        {leads && leads.length > 0 && (
+          <>
+            <table className="ds-table">
+              <thead>
+                <tr>
+                  <SortHeader label="Contact" active={sort === 'first_name'} order={order} onClick={() => toggleSort('first_name')} />
+                  <SortHeader label="Statut" active={sort === 'status'} order={order} onClick={() => toggleSort('status')} />
+                  <th>Source</th>
+                  <th>Tags</th>
+                  <SortHeader label="Créé le" align="right" active={sort === 'created_at'} order={order} onClick={() => toggleSort('created_at')} />
+                  <SortHeader
+                    label="Dernière activité"
+                    align="right"
+                    active={sort === 'last_activity_at'}
+                    order={order}
+                    onClick={() => toggleSort('last_activity_at')}
+                  />
+                </tr>
+              </thead>
+              <tbody>
+                {leads.map((lead) => {
+                  const status = statusEntry(lead.status)
+                  const source = sourceEntry(lead.source)
+                  const name = displayName(lead.first_name, lead.last_name, lead.instagram_handle ?? 'Sans nom')
+                  return (
+                    <tr key={lead.id} className="ds-row-clickable" onClick={() => navigate(`/leads/${lead.id}`)}>
+                      <td>
+                        <ContactCell
+                          name={name}
+                          handle={lead.instagram_handle}
+                          avatar={<Avatar name={name} size={44} src={lead.instagram_profile_pic_url} />}
+                        />
+                      </td>
+                      <td>
+                        <StatusPill label={status.label} color={status.color} bg={status.bg} />
+                      </td>
+                      <td>
+                        <StatusPill label={source.label} color={source.color} bg={source.bg} />
+                      </td>
+                      <td>
+                        {lead.tags.length > 0 ? (
+                          <span className="ds-muted">
+                            {lead.tags.slice(0, 2).join(', ')}
+                            {lead.tags.length > 2 && ` +${lead.tags.length - 2}`}
+                          </span>
+                        ) : (
+                          <span className="ds-muted">—</span>
+                        )}
+                      </td>
+                      <td className="ds-num-cell">
+                        <span className="ds-num">{shortDate(lead.created_at)}</span>
+                      </td>
+                      <td className="ds-num-cell">
+                        <span className="ds-num">{shortDate(lead.last_activity_at)}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
 
-              {meta.total_pages > 1 && (
-                <div className="leads-pagination">
-                  <span>
-                    Page {meta.page} sur {meta.total_pages} — {meta.total} résultats
-                  </span>
-                  <div className="leads-pagination-buttons">
-                    <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                      Précédent
-                    </button>
-                    <button disabled={page >= meta.total_pages} onClick={() => setPage((p) => p + 1)}>
-                      Suivant
-                    </button>
-                  </div>
+            {meta.total_pages > 1 && (
+              <div className="leads-pagination">
+                <span>
+                  Page {meta.page} sur {meta.total_pages} — {meta.total} résultats
+                </span>
+                <div className="leads-pagination-buttons">
+                  <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                    Précédent
+                  </button>
+                  <button disabled={page >= meta.total_pages} onClick={() => setPage((p) => p + 1)}>
+                    Suivant
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+              </div>
+            )}
+          </>
+        )}
+      </TableCard>
 
       {showCreate && (
         <LeadCreateModal
@@ -199,27 +312,5 @@ export function LeadsListPage() {
         />
       )}
     </div>
-  )
-}
-
-function SortableHeader({
-  label,
-  field,
-  sort,
-  order,
-  onClick,
-}: {
-  label: string
-  field: SortField
-  sort: SortField
-  order: 'asc' | 'desc'
-  onClick: (field: SortField) => void
-}) {
-  const active = sort === field
-  return (
-    <th className="leads-th-sortable" onClick={() => onClick(field)}>
-      {label}
-      {active && <span className="leads-sort-arrow">{order === 'asc' ? '↑' : '↓'}</span>}
-    </th>
   )
 }
