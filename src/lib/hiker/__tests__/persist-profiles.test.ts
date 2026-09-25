@@ -62,11 +62,14 @@ function makeSupabaseMock({ leadByUserId, leadByHandle }: { leadByUserId: { id: 
         return {
           select: () => ({
             eq: () => ({
-              eq: (col: string) => ({
-                maybeSingle: vi.fn().mockResolvedValue({
-                  data: col === 'instagram_user_id' ? leadByUserId : col === 'instagram_handle' ? leadByHandle : null,
-                  error: null,
-                }),
+              in: vi.fn(async (col: string, values: string[]) => {
+                if (col === 'instagram_user_id' && leadByUserId) {
+                  return { data: [{ id: leadByUserId.id, instagram_user_id: values[0] }], error: null }
+                }
+                if (col === 'instagram_handle' && leadByHandle) {
+                  return { data: [{ id: leadByHandle.id, instagram_handle: values[0] }], error: null }
+                }
+                return { data: [], error: null }
               }),
             }),
           }),
@@ -82,14 +85,19 @@ function makeSupabaseMock({ leadByUserId, leadByHandle }: { leadByUserId: { id: 
   return { supabase, insertMock }
 }
 
+/** Every row sent to discovery_profiles, across all insert chunks. */
+function insertedRows(insertMock: ReturnType<typeof vi.fn>) {
+  return insertMock.mock.calls.flatMap((c) => c[0])
+}
+
 describe('persistDiscoveryProfiles', () => {
   it('never creates a lead — only inserts an observation row', async () => {
     const { supabase, insertMock } = makeSupabaseMock({ leadByUserId: null, leadByHandle: null })
 
     const result = await persistDiscoveryProfiles(supabase, 'workspace-1', 'run-1', makeResult([makeProfile()]))
 
-    expect(insertMock).toHaveBeenCalledTimes(1)
-    expect(insertMock).toHaveBeenCalledWith(
+    expect(insertedRows(insertMock)).toHaveLength(1)
+    expect(insertedRows(insertMock)[0]).toEqual(
       expect.objectContaining({
         workspace_id: 'workspace-1',
         discovery_run_id: 'run-1',
@@ -109,7 +117,7 @@ describe('persistDiscoveryProfiles', () => {
 
     const result = await persistDiscoveryProfiles(supabase, 'workspace-1', 'run-1', makeResult([makeProfile()]))
 
-    expect(insertMock).toHaveBeenCalledWith(expect.objectContaining({ matched_lead_id: 'existing-lead-id' }))
+    expect(insertedRows(insertMock)[0]).toEqual(expect.objectContaining({ matched_lead_id: 'existing-lead-id' }))
     expect(result.alreadyLeadsCount).toBe(1)
   })
 
@@ -118,7 +126,7 @@ describe('persistDiscoveryProfiles', () => {
 
     await persistDiscoveryProfiles(supabase, 'workspace-1', 'run-1', makeResult([makeProfile()]))
 
-    expect(insertMock).toHaveBeenCalledWith(expect.objectContaining({ matched_lead_id: 'lead-by-handle' }))
+    expect(insertedRows(insertMock)[0]).toEqual(expect.objectContaining({ matched_lead_id: 'lead-by-handle' }))
   })
 
   it('inserts one row per observed profile in the run', async () => {
@@ -131,7 +139,7 @@ describe('persistDiscoveryProfiles', () => {
       makeResult([makeProfile({ username: 'a', instagramUserId: 'ig_a' }), makeProfile({ username: 'b', instagramUserId: 'ig_b' })]),
     )
 
-    expect(insertMock).toHaveBeenCalledTimes(2)
+    expect(insertedRows(insertMock)).toHaveLength(2)
     expect(result.profilesObserved).toBe(2)
   })
 

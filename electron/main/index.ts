@@ -124,6 +124,20 @@ function createWindow() {
 // reach — never plain localStorage in the renderer, never logged.
 const SESSION_FILE = path.join(app.getPath('userData'), 'session.enc')
 
+// Opens a web page in the user's default browser (e.g. the ClosRM web
+// editors that are not rebuilt in the desktop app). http(s) only — never
+// file:, javascript: or custom schemes.
+ipcMain.handle('closrm:open-external', async (_event, url: string) => {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    throw new Error('URL invalide')
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error('Protocole non autorisé')
+  await shell.openExternal(parsed.toString())
+})
+
 ipcMain.handle('closrm:secure-storage:set', async (_event, plaintext: string) => {
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error('OS-backed encryption is not available on this machine')

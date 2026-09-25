@@ -19,38 +19,50 @@ export interface PersistProfilesResult {
   errors: string[]
 }
 
+const LOOKUP_CHUNK = 200
+const INSERT_CHUNK = 500
+
+// Batched: a scan can observe thousands of profiles — one lookup per chunk
+// of ids/handles and one insert per chunk of rows, instead of 2-3 sequential
+// requests per profile (which ran for minutes and risked the function's
+// time budget).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function persistDiscoveryProfiles(supabase: any, workspaceId: string, discoveryRunId: string, result: DiscoveryResult): Promise<PersistProfilesResult> {
   const errors: string[] = []
-  let alreadyLeadsCount = 0
 
+  const leadIdByUserId = new Map<string, string>()
+  const leadIdByHandle = new Map<string, string>()
+
+  const userIds = [...new Set(result.users.map((u) => u.instagramUserId).filter((id): id is string => !!id))]
+  for (let i = 0; i < userIds.length; i += LOOKUP_CHUNK) {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('id, instagram_user_id')
+      .eq('workspace_id', workspaceId)
+      .in('instagram_user_id', userIds.slice(i, i + LOOKUP_CHUNK))
+    if (error) errors.push(`Lead lookup by instagram_user_id failed: ${error.message}`)
+    for (const l of data ?? []) if (l.instagram_user_id) leadIdByUserId.set(l.instagram_user_id, l.id)
+  }
+
+  const handles = [...new Set(result.users.map((u) => u.username))]
+  for (let i = 0; i < handles.length; i += LOOKUP_CHUNK) {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('id, instagram_handle')
+      .eq('workspace_id', workspaceId)
+      .in('instagram_handle', handles.slice(i, i + LOOKUP_CHUNK))
+    if (error) errors.push(`Lead lookup by instagram_handle failed: ${error.message}`)
+    for (const l of data ?? []) if (l.instagram_handle && !leadIdByHandle.has(l.instagram_handle)) leadIdByHandle.set(l.instagram_handle, l.id)
+  }
+
+  let alreadyLeadsCount = 0
   // One row per observed profile per run — deliberately not deduped across
   // runs (see migration 102 comment: "les analyses sont gardées en backup",
   // each run's observations are its own historical record).
-  for (const profile of result.users) {
-    let matchedLeadId: string | null = null
-
-    if (profile.instagramUserId) {
-      const { data: leadByUserId } = await supabase
-        .from('leads')
-        .select('id')
-        .eq('workspace_id', workspaceId)
-        .eq('instagram_user_id', profile.instagramUserId)
-        .maybeSingle()
-      matchedLeadId = leadByUserId?.id ?? null
-    }
-    if (!matchedLeadId) {
-      const { data: leadByHandle } = await supabase
-        .from('leads')
-        .select('id')
-        .eq('workspace_id', workspaceId)
-        .eq('instagram_handle', profile.username)
-        .maybeSingle()
-      matchedLeadId = leadByHandle?.id ?? null
-    }
+  const rows = result.users.map((profile) => {
+    const matchedLeadId = (profile.instagramUserId && leadIdByUserId.get(profile.instagramUserId)) || leadIdByHandle.get(profile.username) || null
     if (matchedLeadId) alreadyLeadsCount += 1
-
-    const { error: insertError } = await supabase.from('discovery_profiles').insert({
+    return {
       workspace_id: workspaceId,
       discovery_run_id: discoveryRunId,
       instagram_user_id: profile.instagramUserId,
@@ -62,10 +74,14 @@ export async function persistDiscoveryProfiles(supabase: any, workspaceId: strin
       likes_count: profile.likeCount,
       comments_count: profile.commentCount,
       matched_lead_id: matchedLeadId,
-    })
+    }
+  })
 
+  for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
+    const chunk = rows.slice(i, i + INSERT_CHUNK)
+    const { error: insertError } = await supabase.from('discovery_profiles').insert(chunk)
     if (insertError) {
-      errors.push(`Failed to persist discovery profile for ${profile.username}: ${insertError.message}`)
+      errors.push(`Failed to persist discovery profiles ${chunk[0].instagram_username}…${chunk[chunk.length - 1].instagram_username}: ${insertError.message}`)
     }
   }
 

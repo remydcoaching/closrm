@@ -1,3 +1,4 @@
+import type { LeadStatus } from '../leads/types'
 // Mirrors the real Hiker discovery contract — POST/GET /api/instagram/discovery
 // (src/app/api/instagram/discovery/route.ts) and discovery_runs (migration
 // 097) from the main ClosRM repo. No new backend, no invented shape.
@@ -113,15 +114,41 @@ export interface InstagramContentSummary {
 }
 
 // ─── Content chart point (GET /api/instagram/content/chart) ───────────────
+/** Mirrors ContentMetrics (src/lib/instagram/content-metrics.ts). */
 export interface ContentChartPoint {
   contentId: string
   contentType: 'media' | 'clip'
   contentUrl: string | null
   thumbnailUrl: string | null
   publishedAt: string | null
-  views: number
-  engagementRate: number
-  leadsCount: number
+  runId: string
+  views: number | null
   likesCount: number
   commentsCount: number
+  engagementRate: number | null
+  identifiedLikers: number
+  identifiedCommenters: number
+  leadsCount: number
+}
+
+/** Mirrors ContentProfile (src/lib/instagram/content-data.ts). */
+export interface ContentProfile {
+  username: string
+  fullName: string | null
+  instagramUserId: string | null
+  profilePicUrl: string | null
+  isVerified: boolean | null
+  followsTarget: boolean | null
+  liked: boolean
+  commented: boolean
+  totalLikes: number | null
+  totalComments: number | null
+  discoveryProfileId: string | null
+  runId: string | null
+  lead: { id: string; firstName: string; lastName: string; status: LeadStatus } | null
+}
+
+export interface ContentDetail {
+  metrics: ContentChartPoint
+  profiles: ContentProfile[]
 }

@@ -7,6 +7,7 @@ import { HikerClient } from '@/lib/hiker/client'
 import { discoverInstagramAccount } from '@/lib/hiker/discovery'
 import { persistDiscoveryProfiles } from '@/lib/hiker/persist-profiles'
 import { persistDiscoveryContents } from '@/lib/hiker/persist-contents'
+import { persistDiscoveryInteractions } from '@/lib/hiker/persist-interactions'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -78,7 +79,18 @@ export async function POST(request: NextRequest) {
 
     const persistOutcome = await persistDiscoveryProfiles(supabase, workspaceId, run.id, result)
     const contentsOutcome = await persistDiscoveryContents(supabase, workspaceId, run.id, result)
-    const allPersistErrors = [...persistOutcome.errors, ...contentsOutcome.errors]
+    const interactionsOutcome = await persistDiscoveryInteractions(supabase, workspaceId, run.id, result)
+    const allPersistErrors = [...persistOutcome.errors, ...contentsOutcome.errors, ...interactionsOutcome.errors]
+    // A scan costs Hiker credits: if anything failed to persist, keep the
+    // raw observations on the run so they can be replayed instead of lost.
+    const backup =
+      allPersistErrors.length > 0
+        ? {
+            users: result.users.map((u) => ({ ...u, likedContentIds: [...u.likedContentIds], commentedContentIds: [...u.commentedContentIds] })),
+            interactions: result.interactions,
+            contents: result.contents.map(({ rawMetadata: _raw, ...c }) => c),
+          }
+        : undefined
 
     await supabase
       .from('discovery_runs')
@@ -94,7 +106,7 @@ export async function POST(request: NextRequest) {
         estimated_billed_requests: result.stats.estimatedBilledRequests,
         errors_count: result.errors.length + allPersistErrors.length,
         completed_at: result.stats.completedAt,
-        metadata: { warnings: result.warnings, persistErrors: allPersistErrors },
+        metadata: { warnings: result.warnings, persistErrors: allPersistErrors, ...(backup ? { backup } : {}) },
       })
       .eq('id', run.id)
 
@@ -106,6 +118,7 @@ export async function POST(request: NextRequest) {
       persisted: {
         profilesObserved: persistOutcome.profilesObserved,
         alreadyLeadsCount: persistOutcome.alreadyLeadsCount,
+        interactions: interactionsOutcome.interactionsPersisted,
       },
       warnings: result.warnings,
       errors: [...result.errors.map((e) => `${e.stage} ${e.status} on content ${e.contentId}`), ...allPersistErrors],

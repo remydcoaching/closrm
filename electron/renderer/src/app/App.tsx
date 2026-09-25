@@ -8,6 +8,7 @@ import { DiscoveryPage } from '../features/instagram/DiscoveryPage'
 import { CiblageRunPage } from '../features/instagram/CiblageRunPage'
 import { InteractionsPage } from '../features/instagram/InteractionsPage'
 import { ContentPage } from '../features/instagram/ContentPage'
+import { ContentDetailPage } from '../features/instagram/ContentDetailPage'
 import { AudiencePage } from '../features/instagram/AudiencePage'
 import { SessionsDmPage } from '../features/dm-sessions/SessionsDmPage'
 import { LeadMagnetsPage } from '../features/acquisition/LeadMagnetsPage'
@@ -77,6 +78,7 @@ function AppRoutes() {
         <Route path="instagram/discovery/:runId" element={<CiblageRunPage />} />
         <Route path="instagram/interactions" element={<InteractionsPage />} />
         <Route path="instagram/content" element={<ContentPage />} />
+        <Route path="instagram/content/:contentId" element={<ContentDetailPage />} />
         <Route path="instagram/audience" element={<AudiencePage />} />
         <Route path="instagram/sessions-dm" element={<SessionsDmPage />} />
         <Route path="acquisition/lead-magnets" element={<LeadMagnetsPage />} />

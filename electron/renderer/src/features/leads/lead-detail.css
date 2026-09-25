@@ -388,3 +388,23 @@
 .lead-detail-delete:hover {
   filter: brightness(0.97);
 }
+
+.lead-detail-confidence {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-radius: 14px;
+  background: var(--color-accent-soft);
+}
+
+.lead-detail-confidence-level {
+  font-weight: 700;
+  color: var(--color-text-strong);
+  margin-bottom: 6px;
+}
+
+.lead-detail-confidence p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}

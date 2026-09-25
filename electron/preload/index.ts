@@ -25,6 +25,9 @@ contextBridge.exposeInMainWorld('closrm', {
    * process). Never used for provider secrets — none of those ever reach
    * the renderer in the first place.
    */
+  /** Opens an http(s) URL in the default browser (validated in main). */
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('closrm:open-external', url),
+
   secureStorage: {
     set: (value: string): Promise<void> => ipcRenderer.invoke('closrm:secure-storage:set', value),
     get: (): Promise<string | null> => ipcRenderer.invoke('closrm:secure-storage:get'),

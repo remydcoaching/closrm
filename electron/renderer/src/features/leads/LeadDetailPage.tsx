@@ -26,6 +26,8 @@ import { buildActivity } from './build-activity'
 import { purchasePotential, PURCHASE_POTENTIAL_LABEL, PURCHASE_POTENTIAL_COLOR } from './purchase-potential'
 import type { Lead, LeadWithRelations, LeadJourney, EngagementScore } from './types'
 import './lead-detail.css'
+import { StatCard, StatGrid } from '../../design-system/StatCard'
+import { CONFIDENCE_LABEL, confidenceLevel, weeklyFrequency } from './confidence'
 
 interface InstagramSignal {
   follows_target: boolean
@@ -42,7 +44,7 @@ export function LeadDetailPage() {
   const [lead, setLead] = useState<LeadWithRelations | null>(null)
   const [journey, setJourney] = useState<LeadJourney | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<TabKey>('infos')
+  const [tab, setTab] = useState<TabKey>('activite')
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [notesValue, setNotesValue] = useState('')
@@ -292,23 +294,42 @@ export function LeadDetailPage() {
       </div>
 
       {(hasInstagramProfile || (score && score.totalInteractions > 0)) && (
-        <div className="lead-detail-ig-summary">
+        <StatGrid>
           {score && (
             <>
-              <SummaryStat label="Interactions" value={String(score.totalInteractions)} />
-              <SummaryStat label="Likes" value={String(score.likesCount)} />
-              <SummaryStat label="Commentaires" value={String(score.commentsCount)} />
-              <SummaryStat label="Dernière interaction" value={score.lastInteractionAt ? relativeTime(score.lastInteractionAt) : '—'} />
+              <StatCard label="Score" value={score.score} unit="/100" highlight onClick={() => setShowScoreDrawer(true)} caption="engagement Instagram observé" />
+              <StatCard
+                label="Niveau de confiance"
+                value={CONFIDENCE_LABEL[confidenceLevel(score)]}
+                onClick={() => setShowScoreDrawer(true)}
+                caption={`${score.totalInteractions} interaction${score.totalInteractions > 1 ? 's' : ''} · ${score.distinctContentCount} contenu${score.distinctContentCount > 1 ? 's' : ''} touché${score.distinctContentCount > 1 ? 's' : ''}`}
+              />
+              <StatCard
+                label="Engagement"
+                value={score.likesCount}
+                unit={`like${score.likesCount > 1 ? 's' : ''}`}
+                caption={`${score.commentsCount} commentaire${score.commentsCount > 1 ? 's' : ''} · ${score.dmCount} DM`}
+              />
+              <StatCard
+                label="Fréquence"
+                value={(() => {
+                  const f = weeklyFrequency(score)
+                  return f === null ? '—' : f.toLocaleString('fr-FR', { maximumFractionDigits: 1 })
+                })()}
+                unit="/ semaine"
+                caption={score.lastInteractionAt ? `dernière interaction ${relativeTime(score.lastInteractionAt)}` : 'aucune interaction'}
+              />
             </>
           )}
           {hasInstagramProfile && (
-            <>
-              <SummaryStat label="Followers" value={lead.instagram_followers_count != null ? String(lead.instagram_followers_count) : '—'} />
-              <SummaryStat label="Following" value={lead.instagram_following_count != null ? String(lead.instagram_following_count) : '—'} />
-              <SummaryStat label="Compte" value={lead.instagram_is_private ? 'Privé' : 'Public'} />
-            </>
+            <StatCard
+              label="Compte Instagram"
+              value={lead.instagram_followers_count ?? '—'}
+              unit="abonnés"
+              caption={`${lead.instagram_following_count ?? '—'} abonnements · ${lead.instagram_is_private ? 'privé' : 'public'}`}
+            />
           )}
-        </div>
+        </StatGrid>
       )}
       {hasInstagramProfile && lead.instagram_profile_synced_at && (
         <div className="lead-detail-sync-note">
@@ -331,8 +352,8 @@ export function LeadDetailPage() {
           separate routes. */}
       <Tabs
         items={[
+          { key: 'activite', label: `Parcours (${activity.length})` },
           { key: 'infos', label: 'Lead' },
-          { key: 'activite', label: `Activité (${activity.length})` },
           { key: 'relance', label: `Relance${pendingFollowUps.length > 0 ? ` (${pendingFollowUps.length})` : ''}` },
           { key: 'closing', label: 'Closing' },
         ]}
@@ -342,6 +363,14 @@ export function LeadDetailPage() {
 
       {showScoreDrawer && score && (
         <Drawer title="Pourquoi ce score ?" onClose={() => setShowScoreDrawer(false)}>
+          <div className="lead-detail-confidence">
+            <div className="lead-detail-confidence-level">Niveau de confiance : {CONFIDENCE_LABEL[confidenceLevel(score)]}</div>
+            <p>
+              Calculé à partir du score ({score.score}/100), du volume d&apos;interactions observées ({score.totalInteractions}), du nombre de contenus
+              touchés ({score.distinctContentCount}) et de leur récence. Moins de 3 interactions ou un seul contenu plafonnent la confiance à « Moyen » ;
+              aucune interaction depuis 60 jours la baisse d&apos;un niveau.
+            </p>
+          </div>
           {score.signals.length === 0 ? (
             <p className="lead-detail-empty">Aucun signal particulier détecté pour ce lead.</p>
           ) : (
@@ -610,15 +639,6 @@ function EditableRow({
           {value || '—'}
         </button>
       )}
-    </div>
-  )
-}
-
-function SummaryStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="lead-detail-summary-stat">
-      <div className="lead-detail-summary-value font-mono">{value}</div>
-      <div className="lead-detail-summary-label">{label}</div>
     </div>
   )
 }

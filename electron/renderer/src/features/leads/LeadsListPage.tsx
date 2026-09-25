@@ -24,12 +24,14 @@ import './leads-list.css'
 const PER_PAGE = 50
 
 type SortField = 'created_at' | 'last_activity_at' | 'first_name' | 'status'
-type Period = '7' | '30' | '90'
+type Period = '7' | '30' | '90' | '365' | 'custom'
 
 const PERIODS: { key: Period; label: string }[] = [
-  { key: '90', label: '90 jours' },
-  { key: '30', label: '30 jours' },
-  { key: '7', label: '7 jours' },
+  { key: '7', label: '7 j' },
+  { key: '30', label: '30 j' },
+  { key: '90', label: '90 j' },
+  { key: '365', label: '1 an' },
+  { key: 'custom', label: 'Personnalisé' },
 ]
 
 interface AudienceSegments {
@@ -54,6 +56,9 @@ export function LeadsListPage() {
   const [order, setOrder] = useState<'asc' | 'desc'>('desc')
   const [showCreate, setShowCreate] = useState(false)
   const [period, setPeriod] = useState<Period>('30')
+  const [customStart, setCustomStart] = useState(() => new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10))
+  // "Personnalisé" = from a chosen date up to today.
+  const periodDays = period === 'custom' ? Math.max(1, Math.ceil((Date.now() - new Date(customStart).getTime()) / 86_400_000)) : Number(period)
   const [segments, setSegments] = useState<AudienceSegments | null>(null)
   const [exporting, setExporting] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -73,10 +78,10 @@ export function LeadsListPage() {
   useEffect(() => {
     setSegments(null)
     api
-      .get<{ data: AudienceSegments }>(`/api/instagram/audience?period_days=${period}`)
+      .get<{ data: AudienceSegments }>(`/api/instagram/audience?period_days=${periodDays}`)
       .then((res) => setSegments(res.data))
       .catch(() => setSegments(null))
-  }, [period])
+  }, [periodDays])
 
   function buildParams(p: number, perPage: number) {
     const params = new URLSearchParams()
@@ -147,7 +152,7 @@ export function LeadsListPage() {
     }
   }
 
-  const periodLabel = `${period} j`
+  const periodLabel = period === 'custom' ? `depuis le ${shortDate(customStart)}` : `${periodDays} j`
   const activeFilters = statuses.length + sources.length
 
   return (
@@ -155,10 +160,19 @@ export function LeadsListPage() {
       <div className="leads-page-header">
         <div>
           <h1>Leads</h1>
-          <p>{leads === null ? '…' : `${new Intl.NumberFormat('fr-FR').format(meta.total)} prospect${meta.total > 1 ? 's' : ''}`}</p>
+          <p>Qui contacter en priorité, et ce qu&apos;on estime que ça vaut</p>
         </div>
         <div className="leads-page-header-actions">
           <Chips items={PERIODS} active={period} onChange={setPeriod} />
+          {period === 'custom' && (
+            <input
+              type="date"
+              className="leads-custom-date"
+              value={customStart}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => e.target.value && setCustomStart(e.target.value)}
+            />
+          )}
           <button type="button" className="ds-pill-button ds-pill-button--dark" onClick={() => setShowCreate(true)}>
             + Nouveau lead
           </button>
@@ -195,7 +209,7 @@ export function LeadsListPage() {
       </StatGrid>
 
       <TableCard
-        title="Tous les leads"
+        title={`Tous les leads · ${leads === null ? '…' : new Intl.NumberFormat('fr-FR').format(meta.total)}`}
         subtitle={activeFilters > 0 ? `${activeFilters} filtre${activeFilters > 1 ? 's' : ''} actif${activeFilters > 1 ? 's' : ''}` : 'Aucun filtre'}
         toolbar={
           <>
