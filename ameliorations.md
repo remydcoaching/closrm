@@ -906,3 +906,18 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 ---
 
 *Mis à jour le 2026-06-01 par Claude Code — ClosRM*
+
+---
+
+## Session 2026-09-25 — ClosRM Desktop / Instagram Intelligence (Pierre)
+
+| # | Proposition | Justification | Priorité |
+|---|-------------|---------------|----------|
+| A-D1 | `GET /api/instagram/account` ne doit plus renvoyer `access_token` / `page_access_token` (select explicite) | Le jeton Meta part au client (web et desktop) | Haute |
+| A-D2 | Endpoints agrégés `GET /api/dashboard/v2` et `/api/stats` exposant les requêtes serveur existantes | Le desktop recalcule le dashboard avec des dizaines de requêtes paginées | Moyenne |
+| A-D3 | Corriger les bugs web trouvés en portant les pages : Dashboard v2 (outcomes `fait/closed/present` inexistants → show/close rate à 0), leads chauds (statut `nouveau_lead` inexistant), Publicités (closés lus sur `json.total`, ROAS toujours 0, dates CRM figées à 7 j, attribution vide, KPI CPC inexistant, delta budget faux +100 %) | Chiffres faux affichés en prod | Haute |
+| A-D4 | `POST /api/booking-calendars` renvoie un objet d'erreur (flatten) au lieu d'un message ; `PATCH /api/bookings/:id` ignore calendar_id/lead_id/location_id | Erreurs illisibles, édition web cassée | Moyenne |
+| A-D5 | Stocker les miniatures des contenus analysés dans Supabase Storage au moment du scan | Les URLs CDN Instagram expirent en quelques jours (images vides dans Contenu) | Moyenne |
+| A-D6 | Vues de stories nominatives (lurkers "sur vos 10 dernières stories") : nécessite une session Instagram du coach (API privée, comme Insyder) — risque de blocage du compte, hors API officielle | Demandé dans la spec ; décision produit/risque à prendre | À décider |
+| A-D7 | Monitoring continu : relancer automatiquement une analyse légère (derniers contenus) toutes les X heures via cron | Couche "Monitoring" de la vision Insyder ; coût Hiker à arbitrer | Moyenne |
+| A-D8 | Filtre "niveau de confiance" sur la page Contenu (répartition des leads touchés par niveau) | Demandé dans la spec ; nécessite le score par lead côté serveur en masse | Moyenne |
