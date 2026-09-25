@@ -1,136 +1,345 @@
-// Acquisition > Publicités — reads the EXISTING GET /api/meta/ad-performance
-// (same route as the web's publicites-client.tsx). Simplified to the core
-// performance table (campaign/adset/ad level, spend/leads/CPL/ROAS) — the
-// web's full dashboard also has charts and configurable health thresholds,
-// not reproduced here to keep this landing solid rather than half-built.
-import { useEffect, useState } from 'react'
-import '../../design-system/tabs.css'
+// Acquisition > Publicités — full parity with the web's
+// src/app/(dashboard)/acquisition/publicites (publicites-client.tsx + tabs).
+// Same endpoints: GET /api/meta/insights (account / campaign / adset / ad,
+// preset or custom range, campaign_type filter, drill-down ids),
+// GET /api/meta/ad-performance (CRM attribution per row),
+// GET|PUT /api/ads-thresholds (health thresholds), GET /api/meta/ads/:id,
+// GET /api/performance/follow-ads, GET /api/instagram/snapshots, GET /api/leads.
+// Meta connection state is derived from the insights route's own errors
+// (404 "Meta not connected" / 403 "needs_upgrade") — the web reads it
+// server-side from the same integrations row.
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, ApiError } from '../../lib/api-client'
-import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
-import './acquisition.css'
-import { TableCard } from '../../design-system/TableCard'
-import { StatCard } from '../../design-system/StatCard'
+import { openWeb } from '../../lib/web-link'
+import { Tabs, Chips } from '../../design-system/Tabs'
+import { Input } from '../../design-system/Input'
+import { LoadingState } from '../../design-system/States'
+import { OverviewTab } from './publicites/OverviewTab'
+import { PerformanceTab } from './publicites/PerformanceTab'
+import { AdsTable } from './publicites/AdsTable'
+import { AdDrawer } from './publicites/AdDrawer'
+import { ThresholdsModal } from './publicites/ThresholdsModal'
+import { PERIOD_ITEMS, presetRange, type PeriodPreset } from './publicites/metrics'
+import type {
+  AdPerformanceResponse,
+  AdPerformanceRow,
+  CampaignTypeFilter,
+  CrmLevel,
+  InsightsLevel,
+  MetaBreakdownRow,
+  MetaInsightsResponse,
+  ThresholdOverrides,
+} from './publicites/types'
+import './publicites/publicites.css'
 
-type Level = 'campaign' | 'adset' | 'ad'
+type TabKey = 'overview' | 'performance' | 'campaigns' | 'adsets' | 'ads'
+type Connection = 'unknown' | 'connected' | 'not_connected' | 'needs_upgrade'
 
-interface AdPerformanceRow {
-  id: string
-  name: string
-  status: string
-  spend: number
-  impressions: number
-  clicks: number
-  lead_count: number
-  qualified_count: number
-  closed_count: number
-  revenue: number
-  cpl: number | null
-  roas: number | null
+interface DrillDown {
+  campaignId?: string
+  campaignName?: string
+  adsetId?: string
+  adsetName?: string
 }
 
-const LEVEL_OPTIONS: { key: Level; label: string }[] = [
-  { key: 'campaign', label: 'Campagnes' },
-  { key: 'adset', label: 'Ad sets' },
-  { key: 'ad', label: 'Ads' },
+const TAB_ITEMS: { key: TabKey; label: string }[] = [
+  { key: 'overview', label: "Vue d'ensemble" },
+  { key: 'performance', label: 'Performance' },
+  { key: 'campaigns', label: 'Campagnes' },
+  { key: 'adsets', label: 'Ad sets' },
+  { key: 'ads', label: 'Ads' },
 ]
 
-function money(n: number): string {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
+const TAB_TO_LEVEL: Record<TabKey, InsightsLevel> = {
+  overview: 'account',
+  performance: 'account',
+  campaigns: 'campaign',
+  adsets: 'adset',
+  ads: 'ad',
+}
+
+const TYPE_ITEMS: { key: CampaignTypeFilter; label: string }[] = [
+  { key: 'all', label: 'Tout' },
+  { key: 'leadform', label: 'Leadform' },
+  { key: 'follow_ads', label: 'Follow Ads' },
+]
+
+function errorText(err: unknown): string {
+  if (!(err instanceof ApiError)) return 'Erreur réseau. Vérifiez votre connexion.'
+  switch (err.message) {
+    case 'token_expired':
+      return 'Votre token Meta a expiré. Reconnectez votre compte.'
+    case 'rate_limited':
+      return 'Trop de requêtes vers Meta. Réessayez dans quelques minutes.'
+    case 'meta_error':
+      return 'Erreur Meta lors de la récupération des données.'
+    default:
+      return err.message || 'Erreur lors de la récupération des données'
+  }
+}
+
+function PageHeader({ children }: { children?: React.ReactNode }) {
+  return (
+    <div className="pub-header">
+      <div>
+        <h1>Publicités</h1>
+        <p>Performance de tes campagnes Meta Ads</p>
+      </div>
+      {children}
+    </div>
+  )
 }
 
 export function PublicitesPage() {
-  const [level, setLevel] = useState<Level>('campaign')
-  const [rows, setRows] = useState<AdPerformanceRow[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [notConnected, setNotConnected] = useState(false)
+  const [tab, setTab] = useState<TabKey>('overview')
+  const [drill, setDrill] = useState<DrillDown>({})
+  const [campaignType, setCampaignType] = useState<CampaignTypeFilter>('all')
+  const [period, setPeriod] = useState<PeriodPreset>('7d')
+  const initialCustom = presetRange('7d')
+  const [customFrom, setCustomFrom] = useState(initialCustom.dateFrom)
+  const [customTo, setCustomTo] = useState(initialCustom.dateTo)
+  const [applied, setApplied] = useState(initialCustom)
 
-  async function load() {
+  const [connection, setConnection] = useState<Connection>('unknown')
+  const [data, setData] = useState<MetaInsightsResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [crmByLevel, setCrmByLevel] = useState<Partial<Record<CrmLevel, Map<string, AdPerformanceRow>>>>({})
+  const [thresholds, setThresholds] = useState<ThresholdOverrides>({})
+  const [thresholdsOpen, setThresholdsOpen] = useState(false)
+  const [selectedAd, setSelectedAd] = useState<MetaBreakdownRow | null>(null)
+
+  // Resolved date range + query fragment for the insights route.
+  const { dateFrom, dateTo, periodQuery } = useMemo(() => {
+    if (period === 'custom') {
+      return { ...applied, periodQuery: `date_from=${applied.dateFrom}&date_to=${applied.dateTo}` }
+    }
+    return { ...presetRange(period), periodQuery: `preset=${period}` }
+  }, [period, applied])
+
+  useEffect(() => {
+    api
+      .get<{ data: ThresholdOverrides }>('/api/ads-thresholds')
+      .then((res) => setThresholds(res.data ?? {}))
+      .catch(() => {
+        /* defaults apply */
+      })
+  }, [])
+
+  const fetchInsights = useCallback(async () => {
+    setLoading(true)
     setError(null)
-    setNotConnected(false)
+    const params = new URLSearchParams(periodQuery)
+    params.set('level', TAB_TO_LEVEL[tab])
+    if (drill.campaignId && (tab === 'adsets' || tab === 'ads')) params.set('campaign_id', drill.campaignId)
+    if (drill.adsetId && tab === 'ads') params.set('adset_id', drill.adsetId)
+    params.set('campaign_type', campaignType)
     try {
-      const res = await api.get<{ data: AdPerformanceRow[] }>(`/api/meta/ad-performance?level=${level}`)
-      setRows(res.data)
+      const res = await api.get<MetaInsightsResponse>(`/api/meta/insights?${params.toString()}`)
+      setData(res)
+      setConnection('connected')
     } catch (err) {
-      if (err instanceof ApiError && err.message === 'meta_not_connected') {
-        setNotConnected(true)
-        setRows([])
-      } else {
-        setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
+      setData(null)
+      if (err instanceof ApiError && err.status === 404 && err.message === 'Meta not connected') setConnection('not_connected')
+      else if (err instanceof ApiError && err.message === 'needs_upgrade') setConnection('needs_upgrade')
+      else {
+        setConnection((c) => (c === 'unknown' ? 'connected' : c))
+        setError(errorText(err))
       }
+    } finally {
+      setLoading(false)
+    }
+  }, [periodQuery, tab, drill, campaignType])
+
+  useEffect(() => {
+    void fetchInsights()
+  }, [fetchInsights])
+
+  // CRM attribution for table tabs (same params as the web's fetchCrm).
+  useEffect(() => {
+    if (connection !== 'connected') return
+    if (tab !== 'campaigns' && tab !== 'adsets' && tab !== 'ads') return
+    const level: CrmLevel = tab === 'campaigns' ? 'campaign' : tab === 'adsets' ? 'adset' : 'ad'
+    const params = new URLSearchParams({ level, date_from: dateFrom, date_to: dateTo })
+    if (drill.campaignId && (tab === 'adsets' || tab === 'ads')) params.set('campaign_id', drill.campaignId)
+    if (drill.adsetId && tab === 'ads') params.set('adset_id', drill.adsetId)
+    let cancelled = false
+    setCrmByLevel((prev) => ({ ...prev, [level]: undefined }))
+    api
+      .get<AdPerformanceResponse>(`/api/meta/ad-performance?${params.toString()}`)
+      .then((res) => {
+        if (cancelled) return
+        setCrmByLevel((prev) => ({ ...prev, [level]: new Map((res.data ?? []).map((r) => [r.id, r])) }))
+      })
+      .catch(() => {
+        /* non-critical: CRM columns fall back to 0 / — */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [connection, tab, dateFrom, dateTo, drill])
+
+  function handleTabChange(next: TabKey) {
+    if (next === 'campaigns') setDrill({})
+    else if (next === 'adsets') setDrill((d) => ({ campaignId: d.campaignId, campaignName: d.campaignName }))
+    setTab(next)
+  }
+
+  function handleRowClick(row: MetaBreakdownRow) {
+    if (tab === 'campaigns') {
+      setDrill({ campaignId: row.id, campaignName: row.name })
+      setTab('adsets')
+    } else if (tab === 'adsets') {
+      setDrill((d) => ({ ...d, adsetId: row.id, adsetName: row.name }))
+      setTab('ads')
+    } else if (tab === 'ads') {
+      setSelectedAd(row)
     }
   }
 
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level])
+  if (connection === 'unknown' && loading) {
+    return (
+      <div className="pub-page">
+        <PageHeader />
+        <LoadingState label="Connexion à Meta Ads…" />
+      </div>
+    )
+  }
 
-  const totalSpend = (rows ?? []).reduce((s, r) => s + r.spend, 0)
-  const totalLeads = (rows ?? []).reduce((s, r) => s + r.lead_count, 0)
-  const totalRevenue = (rows ?? []).reduce((s, r) => s + r.revenue, 0)
+  if (connection === 'not_connected' || connection === 'needs_upgrade') {
+    const upgrade = connection === 'needs_upgrade'
+    return (
+      <div className="pub-page">
+        <PageHeader />
+        <div className={`pub-banner ${upgrade ? 'pub-banner--warning' : 'pub-banner--info'}`}>
+          <div>
+            <p className="pub-banner-title">{upgrade ? 'Mets à jour ta connexion Meta' : 'Connecte ton compte Meta'}</p>
+            <p className="pub-banner-text">
+              {upgrade
+                ? "De nouvelles permissions sont nécessaires pour accéder aux statistiques publicitaires. Tes leads continuent d'arriver normalement."
+                : 'Relie ton compte publicitaire pour voir tes performances Facebook & Instagram Ads en temps réel.'}
+            </p>
+          </div>
+          <div className="pub-controls">
+            <button type="button" className="ds-pill-button" onClick={() => void fetchInsights()}>
+              Revérifier
+            </button>
+            <button
+              type="button"
+              className="ds-pill-button ds-pill-button--dark"
+              onClick={() => void openWeb(upgrade ? '/api/integrations/meta' : '/parametres/integrations')}
+            >
+              {upgrade ? 'Mettre à jour →' : 'Connecter Meta →'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const level: CrmLevel | null = tab === 'campaigns' ? 'campaign' : tab === 'adsets' ? 'adset' : tab === 'ads' ? 'ad' : null
+  const rangeLabel = `Du ${dateFrom} au ${dateTo}`
 
   return (
-    <div className="ig-page">
-      <div className="ig-page-header">
-        <div>
-          <h1>Publicités</h1>
-          <p>Performance Meta Ads — 30 derniers jours.</p>
+    <div className="pub-page">
+      <PageHeader>
+        <div className="pub-controls">
+          <Chips items={TYPE_ITEMS} active={campaignType} onChange={setCampaignType} />
+          <button type="button" className="ds-pill-button" title="Configurer les seuils vert / orange / rouge des KPIs" onClick={() => setThresholdsOpen(true)}>
+            Seuils
+          </button>
         </div>
-        <div className="ig-page-filters">
-          {LEVEL_OPTIONS.map((opt) => (
-            <button key={opt.key} className={`ds-chip ${level === opt.key ? 'ds-chip--active' : ''}`} onClick={() => setLevel(opt.key)}>
-              {opt.label}
-            </button>
-          ))}
+      </PageHeader>
+
+      <div className="pub-header">
+        <Tabs items={TAB_ITEMS} active={tab} onChange={handleTabChange} />
+        <div className="pub-controls">
+          <Chips items={PERIOD_ITEMS} active={period} onChange={setPeriod} />
+          {period === 'custom' ? (
+            <div className="pub-custom-range">
+              Du
+              <Input type="date" value={customFrom} max={customTo} onChange={(e) => setCustomFrom(e.target.value)} />
+              au
+              <Input type="date" value={customTo} min={customFrom} onChange={(e) => setCustomTo(e.target.value)} />
+              <button
+                type="button"
+                className="ds-pill-button ds-pill-button--dark"
+                disabled={!customFrom || !customTo || customFrom > customTo}
+                onClick={() => setApplied({ dateFrom: customFrom, dateTo: customTo })}
+              >
+                OK
+              </button>
+            </div>
+          ) : (
+            <span className="pub-range-label">{rangeLabel}</span>
+          )}
         </div>
       </div>
 
-      {rows === null && !error && !notConnected && <LoadingState label="Chargement des campagnes…" />}
-      {error && <ErrorState message={error} onRetry={load} />}
-      {notConnected && <EmptyState title="Meta non connecté" description="Connectez votre compte Meta Business dans Paramètres > Intégrations pour voir vos performances." />}
-
-      {rows && rows.length > 0 && (
-        <>
-          <div className="ds-stat-grid">
-            <StatCard label="Dépensé" value={money(totalSpend)} />
-            <StatCard label="Leads générés" value={totalLeads} />
-            <StatCard label="Revenue" value={money(totalRevenue)} />
-          </div>
-
-          <TableCard>
-            <table className="ds-table">
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Statut</th>
-                <th>Dépensé</th>
-                <th>Leads</th>
-                <th>Qualifiés</th>
-                <th>Clos</th>
-                <th>CPL</th>
-                <th>ROAS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="ig-cell-name">{row.name}</td>
-                  <td className="ds-muted">{row.status}</td>
-                  <td className="ds-num-cell ds-num">{money(row.spend)}</td>
-                  <td className="ds-num-cell ds-num">{row.lead_count}</td>
-                  <td className="ds-num-cell ds-num">{row.qualified_count}</td>
-                  <td className="ds-num-cell ds-num">{row.closed_count}</td>
-                  <td className="ds-num-cell ds-num">{row.cpl != null ? money(row.cpl) : '—'}</td>
-                  <td className="ds-num-cell ds-num">{row.roas != null ? `${row.roas.toFixed(1)}x` : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-            </table>
-          </TableCard>
-        </>
+      {(drill.campaignName || drill.adsetName) && (tab === 'adsets' || tab === 'ads') && (
+        <nav className="pub-breadcrumb" aria-label="Fil d'Ariane">
+          <button type="button" onClick={() => handleTabChange('campaigns')}>
+            Campagnes
+          </button>
+          {drill.campaignName && (
+            <>
+              <span>›</span>
+              {tab === 'ads' && drill.adsetName ? (
+                <button type="button" onClick={() => handleTabChange('adsets')}>
+                  {drill.campaignName}
+                </button>
+              ) : (
+                <strong>{drill.campaignName}</strong>
+              )}
+            </>
+          )}
+          {drill.adsetName && tab === 'ads' && (
+            <>
+              <span>›</span>
+              <strong>{drill.adsetName}</strong>
+            </>
+          )}
+        </nav>
       )}
 
-      {rows && rows.length === 0 && !notConnected && <EmptyState title="Aucune donnée" description="Aucune campagne trouvée pour cette période." />}
+      {error ? (
+        <div className="pub-banner pub-banner--danger">
+          <div>
+            <p className="pub-banner-title">Erreur de connexion Meta</p>
+            <p className="pub-banner-text">{error}</p>
+          </div>
+          <button type="button" className="ds-pill-button ds-pill-button--dark" onClick={() => void fetchInsights()}>
+            Réessayer
+          </button>
+        </div>
+      ) : tab === 'overview' ? (
+        <OverviewTab
+          data={data}
+          loading={loading}
+          campaignType={campaignType}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          periodQuery={periodQuery}
+          thresholds={thresholds}
+        />
+      ) : tab === 'performance' ? (
+        <PerformanceTab data={data} loading={loading} campaignType={campaignType} dateFrom={dateFrom} dateTo={dateTo} periodQuery={periodQuery} />
+      ) : (
+        level && (
+          <AdsTable
+            tabKey={tab}
+            rows={data?.breakdown ?? null}
+            loading={loading}
+            crmMap={crmByLevel[level]}
+            thresholds={thresholds}
+            subtitle={`${rangeLabel}${tab === 'ads' ? ' · clic = créative et leads' : ' · clic = détail'}`}
+            onRowClick={handleRowClick}
+          />
+        )
+      )}
+
+      {thresholdsOpen && <ThresholdsModal onClose={() => setThresholdsOpen(false)} onSaved={setThresholds} />}
+      {selectedAd && <AdDrawer ad={selectedAd} onClose={() => setSelectedAd(null)} />}
     </div>
   )
 }

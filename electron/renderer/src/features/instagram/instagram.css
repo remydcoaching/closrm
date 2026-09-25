@@ -404,3 +404,52 @@
 .ig-profile-actions a {
   text-decoration: none;
 }
+
+/* ─── Audience ─────────────────────────────────────────── */
+.ig-audience-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: var(--space-4);
+}
+
+.ig-timing-best {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.ig-timing-grid {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  gap: 6px;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.ig-timing-row {
+  display: contents;
+}
+
+.ig-timing-head {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.ig-timing-cell {
+  height: 38px;
+  border-radius: 8px;
+  background: var(--color-bg-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.ig-timing-cell--weak {
+  opacity: 0.55;
+  font-style: italic;
+}

@@ -1,23 +1,35 @@
-// Instagram > Analyse de l'audience — segments leads with real Instagram
-// engagement data into actionable groups (actifs / ne vous suivent pas /
-// lurkers). Reads GET /api/instagram/audience (counts) and
-// GET /api/instagram/audience/leads?segment=... (drill-down list). No live
-// Instagram API call, no follower/story-view totals fabricated — everything
-// comes from instagram_interactions + discovery_profiles already persisted.
-import { useEffect, useState } from 'react'
+// Instagram > Audience — "comment votre communauté interagit avec vous".
+// - Segments (actifs / jamais contactés / ne vous suivent pas / lurkers) from
+//   GET /api/instagram/audience + drill-down /audience/leads (same
+//   definitions, src/lib/instagram/audience-segments.ts);
+// - Quand publier: engagement rate by weekday × slot of the coach's own
+//   scanned contents (publish-timing.ts);
+// - Vos réels: best reels by engagement rate (GET /api/instagram/content/chart);
+// - Vos stories: Meta insights per story (GET /api/instagram/stories —
+//   reach, replies, exits; Instagram does not expose who viewed a story
+//   through the official API).
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api-client'
+import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
+import { TableCard, ContactCell } from '../../design-system/TableCard'
+import { Chips } from '../../design-system/Tabs'
+import { Avatar } from '../../design-system/Avatar'
+import { StatusPill } from '../../design-system/StatusPill'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
-import { relativeTime } from '../leads/status'
+import { relativeTime, shortDate, statusEntry } from '../leads/status'
+import type { LeadStatus } from '../leads/types'
+import { ContentThumb } from './ContentThumb'
+import { formatRate } from './ContentPage'
+import { publishTiming, bestSlots, SLOTS, WEEKDAYS, MIN_SAMPLES } from './publish-timing'
+import type { ContentChartPoint } from './types'
 import './instagram.css'
-import { TableCard } from '../../design-system/TableCard'
-import { StatCard } from '../../design-system/StatCard'
 
 interface AudienceCounts {
   actifs: number
+  actifsJamaisContactes: number
   neVousSuiventPas: number
   lurkers: number
-  actifsJamaisContactes: number
   totalEngaged: number
 }
 
@@ -26,15 +38,39 @@ interface AudienceLeadRow {
   first_name: string
   last_name: string
   instagram_handle: string | null
-  status: string
+  instagram_profile_pic_url: string | null
+  status: LeadStatus
   call_attempts: number
+  follows_target: boolean | null
+  interactions_count: number
   last_seen_at: string | null
 }
 
+interface StoryRow {
+  id: string
+  thumbnail_url: string | null
+  story_type: string | null
+  impressions: number
+  reach: number
+  replies: number
+  exits: number
+  taps_forward: number
+  taps_back: number
+  published_at: string | null
+}
+
 type Segment = 'actifs' | 'actifs_jamais_contactes' | 'ne_vous_suivent_pas' | 'lurkers'
+type Period = '7' | '30' | '90' | '365'
+
+const PERIODS: { key: Period; label: string }[] = [
+  { key: '7', label: '7 j' },
+  { key: '30', label: '30 j' },
+  { key: '90', label: '90 j' },
+  { key: '365', label: '1 an' },
+]
 
 const SEGMENT_LABEL: Record<Segment, string> = {
-  actifs: 'Actifs (interaction < 7 jours)',
+  actifs: 'Leads actifs',
   actifs_jamais_contactes: 'Actifs, jamais contactés',
   ne_vous_suivent_pas: 'Ne vous suivent pas',
   lurkers: 'Lurkers (jamais contactés)',
@@ -42,15 +78,19 @@ const SEGMENT_LABEL: Record<Segment, string> = {
 
 export function AudiencePage() {
   const navigate = useNavigate()
+  const [period, setPeriod] = useState<Period>('30')
   const [counts, setCounts] = useState<AudienceCounts | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [segment, setSegment] = useState<Segment | null>(null)
+  const [segment, setSegment] = useState<Segment>('actifs_jamais_contactes')
   const [segmentLeads, setSegmentLeads] = useState<AudienceLeadRow[] | null>(null)
+  const [contents, setContents] = useState<ContentChartPoint[] | null>(null)
+  const [stories, setStories] = useState<StoryRow[] | null>(null)
 
   async function load() {
     setError(null)
+    setCounts(null)
     try {
-      const res = await api.get<{ data: AudienceCounts }>('/api/instagram/audience')
+      const res = await api.get<{ data: AudienceCounts }>(`/api/instagram/audience?period_days=${period}`)
       setCounts(res.data)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
@@ -59,85 +99,243 @@ export function AudiencePage() {
 
   useEffect(() => {
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period])
+
+  useEffect(() => {
+    setSegmentLeads(null)
+    api
+      .get<{ data: AudienceLeadRow[] }>(`/api/instagram/audience/leads?segment=${segment}&period_days=${period}`)
+      .then((res) => setSegmentLeads(res.data))
+      .catch(() => setSegmentLeads([]))
+  }, [segment, period])
+
+  useEffect(() => {
+    api
+      .get<{ data: ContentChartPoint[] }>('/api/instagram/content/chart?days=365')
+      .then((res) => setContents(res.data))
+      .catch(() => setContents([]))
+    const from = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10)
+    api
+      .get<{ data: StoryRow[] }>(`/api/instagram/stories?from=${from}`)
+      .then((res) => setStories(res.data))
+      .catch(() => setStories([]))
   }, [])
 
-  async function openSegment(s: Segment) {
-    setSegment(s)
-    setSegmentLeads(null)
-    try {
-      const res = await api.get<{ data: AudienceLeadRow[] }>(`/api/instagram/audience/leads?segment=${s}`)
-      setSegmentLeads(res.data)
-    } catch {
-      setSegmentLeads([])
-    }
-  }
+  const timing = useMemo(() => publishTiming(contents ?? []), [contents])
+  const best = useMemo(() => bestSlots(timing), [timing])
+  const maxRate = Math.max(0, ...timing.map((c) => c.avgRate ?? 0))
+  const topReels = useMemo(
+    () =>
+      (contents ?? [])
+        .filter((c) => c.contentType === 'clip' && c.engagementRate !== null)
+        .sort((a, b) => (b.engagementRate as number) - (a.engagementRate as number))
+        .slice(0, 5),
+    [contents],
+  )
+  const topStories = useMemo(() => [...(stories ?? [])].sort((a, b) => b.reach - a.reach).slice(0, 5), [stories])
 
   return (
     <div className="ig-page">
       <div className="ig-page-header">
         <div>
-          <h1>Analyse de l'audience</h1>
-          <p>Comment votre communauté interagit avec vous — basé sur les leads ayant une interaction Instagram connue.</p>
+          <h1>Audience</h1>
+          <p>Comment votre communauté interagit avec vous</p>
         </div>
+        <Chips items={PERIODS} active={period} onChange={setPeriod} />
       </div>
 
       {counts === null && !error && <LoadingState label="Chargement…" />}
       {error && <ErrorState message={error} onRetry={load} />}
 
-      {counts && counts.totalEngaged === 0 && (
-        <EmptyState title="Aucune donnée d'audience" description="Lancez une analyse Ciblage ou attendez les prochaines interactions détectées." />
-      )}
-
-      {counts && counts.totalEngaged > 0 && (
-        <div className="ds-stat-grid">
-          <StatCard label="Leads actifs" value={counts.actifs} caption="interaction sur les 7 derniers jours" onClick={() => openSegment('actifs')} />
+      {counts && (
+        <StatGrid>
+          <StatCard label="Personnes actives" value={counts.actifs} caption={`au moins une interaction sur ${period} j`} onClick={() => setSegment('actifs')} />
           <StatCard
-            label="Actifs, jamais contactés"
+            label="Actives, jamais contactées"
             value={counts.actifsJamaisContactes}
             highlight
-            caption="actifs sur la période, personne ne leur a écrit"
-            onClick={() => openSegment('actifs_jamais_contactes')}
+            caption="personne ne leur a écrit"
+            onClick={() => setSegment('actifs_jamais_contactes')}
           />
-          <StatCard label="Ne vous suivent pas" value={counts.neVousSuiventPas} caption="au dernier ciblage" onClick={() => openSegment('ne_vous_suivent_pas')} />
-          <StatCard label="Lurkers" value={counts.lurkers} unit="profils" caption="ont interagi, jamais contactés" onClick={() => openSegment('lurkers')} />
-          <StatCard label="Total engagés" value={counts.totalEngaged} caption="au moins une interaction observée" />
-        </div>
+          <StatCard label="Ne vous suivent pas" value={counts.neVousSuiventPas} caption="interagissent sans être abonnées" onClick={() => setSegment('ne_vous_suivent_pas')} />
+          <StatCard label="Lurkers" value={counts.lurkers} unit="profils" caption="ont interagi, jamais contactés" onClick={() => setSegment('lurkers')} />
+        </StatGrid>
       )}
 
-      {segment && (
-        <div className="ig-page-section">
-          <h2>{SEGMENT_LABEL[segment]}</h2>
-          {segmentLeads === null && <LoadingState label="Chargement…" />}
-          {segmentLeads && segmentLeads.length === 0 && <EmptyState title="Aucun lead dans ce segment" />}
-          {segmentLeads && segmentLeads.length > 0 && (
-            <TableCard>
-              <table className="ds-table">
-              <thead>
-                <tr>
-                  <th>Lead</th>
-                  <th>Statut</th>
-                  <th>Tentatives d'appel</th>
-                  <th>Dernière interaction</th>
-                </tr>
-              </thead>
+      <TableCard title="Quand publier" subtitle="Taux d'engagement moyen de vos contenus selon le jour et l'heure de publication (12 derniers mois)">
+        {contents === null ? (
+          <LoadingState label="Chargement…" />
+        ) : contents.length === 0 ? (
+          <EmptyState title="Pas encore de contenu analysé" description="Lancez une analyse de votre compte pour voir vos meilleurs créneaux." />
+        ) : (
+          <>
+            {best.length > 0 && (
+              <p className="ig-timing-best">
+                Meilleurs créneaux :{' '}
+                {best.map((c, i) => (
+                  <strong key={i}>
+                    {i > 0 && ' · '}
+                    {WEEKDAYS[c.weekday]} {SLOTS[c.slot].label} ({formatRate(c.avgRate)})
+                  </strong>
+                ))}
+              </p>
+            )}
+            <div className="ig-timing-grid">
+              <span />
+              {WEEKDAYS.map((d) => (
+                <span key={d} className="ig-timing-head">
+                  {d}
+                </span>
+              ))}
+              {SLOTS.map((slot, si) => (
+                <div key={slot.key} className="ig-timing-row">
+                  <span className="ig-timing-head">{slot.label}</span>
+                  {WEEKDAYS.map((_, wd) => {
+                    const cell = timing.find((c) => c.weekday === wd && c.slot === si)!
+                    const intensity = cell.avgRate && maxRate > 0 ? cell.avgRate / maxRate : 0
+                    return (
+                      <span
+                        key={wd}
+                        className={`ig-timing-cell ${cell.count > 0 && cell.count < MIN_SAMPLES ? 'ig-timing-cell--weak' : ''}`}
+                        style={{ background: cell.avgRate === null ? undefined : `rgba(200, 55, 171, ${0.08 + intensity * 0.8})` }}
+                        title={cell.count === 0 ? 'Aucun contenu' : `${cell.count} contenu${cell.count > 1 ? 's' : ''} · ${formatRate(cell.avgRate)}`}
+                      >
+                        {cell.avgRate === null ? '' : formatRate(cell.avgRate)}
+                      </span>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </TableCard>
+
+      <div className="ig-audience-columns">
+        <TableCard title="Vos réels" subtitle="Top 5 par taux d'engagement">
+          {topReels.length === 0 ? (
+            <EmptyState title="Aucun réel analysé" />
+          ) : (
+            <table className="ds-table">
               <tbody>
-                {segmentLeads.map((l) => (
-                  <tr key={l.id} className="ds-row-clickable" onClick={() => navigate(`/leads/${l.id}`)}>
+                {topReels.map((c) => (
+                  <tr key={c.contentId} className="ds-row-clickable" onClick={() => navigate(`/instagram/content/${encodeURIComponent(c.contentId)}`)}>
                     <td>
-                      <div className="ig-cell-name">{`${l.first_name} ${l.last_name}`.trim() || '—'}</div>
-                      {l.instagram_handle && <div className="ds-muted">@{l.instagram_handle}</div>}
+                      <div className="ds-contact">
+                        <ContentThumb url={c.thumbnailUrl} size={44} />
+                        <div className="ds-contact-text">
+                          <div className="ds-contact-name">Réel du {shortDate(c.publishedAt)}</div>
+                          <div className="ds-muted">{formatNumber(c.views ?? 0)} vues</div>
+                        </div>
+                      </div>
                     </td>
-                    <td className="ds-muted">{l.status}</td>
-                    <td className="ds-num-cell ds-num">{l.call_attempts}</td>
-                    <td className="ds-muted">{l.last_seen_at ? relativeTime(l.last_seen_at) : '—'}</td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{formatRate(c.engagementRate)}</span>
+                    </td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{c.leadsCount} leads</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
-              </table>
-            </TableCard>
+            </table>
           )}
-        </div>
-      )}
+        </TableCard>
+
+        <TableCard title="Vos stories" subtitle="Top 5 par portée (90 derniers jours, compte Meta connecté)">
+          {stories === null ? (
+            <LoadingState label="Chargement…" />
+          ) : topStories.length === 0 ? (
+            <EmptyState title="Aucune story synchronisée" description="Connectez Instagram via Meta dans Paramètres › Intégrations pour récupérer les statistiques de vos stories." />
+          ) : (
+            <table className="ds-table">
+              <thead>
+                <tr>
+                  <th>Story</th>
+                  <th className="ds-num-cell">Portée</th>
+                  <th className="ds-num-cell">Réponses</th>
+                  <th className="ds-num-cell">Sorties</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topStories.map((s) => (
+                  <tr key={s.id}>
+                    <td>
+                      <div className="ds-contact">
+                        <ContentThumb url={s.thumbnail_url} size={44} />
+                        <div className="ds-contact-name">{shortDate(s.published_at)}</div>
+                      </div>
+                    </td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{formatNumber(s.reach)}</span>
+                    </td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{formatNumber(s.replies)}</span>
+                    </td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{s.reach > 0 ? `${Math.round((s.exits / s.reach) * 100)} %` : '—'}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </TableCard>
+      </div>
+
+      <TableCard
+        title={`${SEGMENT_LABEL[segment]} · ${period} j`}
+        subtitle={segmentLeads ? `${formatNumber(segmentLeads.length)} contact${segmentLeads.length > 1 ? 's' : ''}` : '…'}
+        toolbar={
+          <Chips
+            items={(Object.keys(SEGMENT_LABEL) as Segment[]).map((k) => ({ key: k, label: SEGMENT_LABEL[k] }))}
+            active={segment}
+            onChange={setSegment}
+          />
+        }
+      >
+        {segmentLeads === null && <LoadingState label="Chargement…" />}
+        {segmentLeads && segmentLeads.length === 0 && <EmptyState title="Aucun lead dans ce segment" />}
+        {segmentLeads && segmentLeads.length > 0 && (
+          <table className="ds-table">
+            <thead>
+              <tr>
+                <th>Contact</th>
+                <th>Statut</th>
+                <th className="ds-num-cell">Interactions</th>
+                <th>Abonné</th>
+                <th className="ds-num-cell">Dernière activité</th>
+              </tr>
+            </thead>
+            <tbody>
+              {segmentLeads.map((l) => {
+                const name = `${l.first_name} ${l.last_name}`.trim() || l.instagram_handle || '—'
+                const st = statusEntry(l.status)
+                return (
+                  <tr key={l.id} className="ds-row-clickable" onClick={() => navigate(`/leads/${l.id}`)}>
+                    <td>
+                      <ContactCell name={name} handle={l.instagram_handle} avatar={<Avatar name={name} size={44} src={l.instagram_profile_pic_url} />} />
+                    </td>
+                    <td>
+                      <StatusPill label={st.label} color={st.color} bg={st.bg} />
+                    </td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num">{formatNumber(l.interactions_count)}</span>
+                    </td>
+                    <td>{l.follows_target === null ? '—' : l.follows_target ? 'Oui' : 'Non'}</td>
+                    <td className="ds-num-cell">
+                      <span className="ds-num" title={l.last_seen_at ? relativeTime(l.last_seen_at) : undefined}>
+                        {shortDate(l.last_seen_at)}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </TableCard>
     </div>
   )
 }
