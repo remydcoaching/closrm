@@ -1,0 +1,121 @@
+/* Compact icon-first navigation rail — a floating "pill" card, NOT a panel
+   stretched to the full window height. It sits vertically centered in a
+   full-height transparent column, with generous rounded corners and its
+   own intrinsic height (only as tall as its content needs). Layout
+   direction referenced from Insyder's own compiled UI (see Sidebar.tsx
+   header comment) — rebuilt with ClosRM's own tokens/classes, no code or
+   asset reused. */
+.ds-sidebar-rail {
+  width: 96px;
+  min-width: 96px;
+  height: 100vh;
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ds-sidebar-card {
+  width: 100%;
+}
+
+.ds-sidebar-card--flex {
+  background: var(--sidebar-bg);
+  border-radius: 32px;
+  /* Subtle separation from the white page background, not a visible glow —
+     a soft 1px border reads better than a diffuse shadow on a flat white
+     background (the earlier stronger shadow left a hazy halo). */
+  border: 1px solid var(--color-border);
+  padding: var(--space-4) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  flex: 0 0 auto;
+}
+
+.ds-sidebar-brand {
+  flex-shrink: 0;
+}
+
+.ds-sidebar-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--gradient-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-bold);
+  font-size: 13px;
+}
+
+.ds-sidebar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ds-sidebar-divider {
+  width: 24px;
+  height: 1px;
+  background: rgba(20, 20, 30, 0.08);
+}
+
+.ds-sidebar-item {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ds-sidebar-item:hover {
+  background: rgba(0, 0, 0, 0.045);
+  color: var(--color-text-primary);
+}
+
+/* Subtle active state, per spec: a lighter background + soft shadow, never
+   a large colored block — the icon itself picks up the Instagram accent. */
+.ds-sidebar-item--active {
+  background: var(--sidebar-item-active-bg);
+  color: var(--color-accent-solid);
+  box-shadow: 0 1px 3px rgba(16, 16, 18, 0.08);
+}
+
+.ds-sidebar-item--disabled {
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
+.ds-sidebar-item--disabled:hover {
+  background: transparent;
+  color: var(--color-text-faint);
+}
+
+.ds-sidebar-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-solid);
+  color: #fff;
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}

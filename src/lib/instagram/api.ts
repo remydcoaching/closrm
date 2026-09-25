@@ -45,7 +45,11 @@ export async function fetchIgMedia(token: string, limit = 50, igUserId?: string)
   const id = igUserId ?? 'me'
   const url = `${base}/${id}/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`IG media fetch failed: ${res.status}`)
+  if (!res.ok) {
+    const body = await res.text()
+    console.error('[fetchIgMedia] Meta error body:', body)
+    throw new Error(`IG media fetch failed: ${res.status} — ${body}`)
+  }
   const json = await res.json()
   return json.data ?? []
 }

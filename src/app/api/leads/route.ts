@@ -13,13 +13,16 @@ export async function GET(request: NextRequest) {
     const searchParams = Object.fromEntries(request.nextUrl.searchParams.entries())
     const filters = leadFiltersSchema.parse(searchParams)
 
-    // count: 'planned' utilise les stats Postgres (~ instantané) au lieu de
-    // count: 'exact' qui force un scan complet de la table à chaque requête.
-    // Précision ±10% suffisante pour la pagination UI ; gros gain de latence
-    // dès que la table dépasse quelques milliers de rows.
+    // count: 'exact' (was 'planned'). 'planned' reads Postgres's internal
+    // reltuples estimate, refreshed only by ANALYZE/autovacuum — after a
+    // Hiker discovery run bulk-inserts hundreds of leads at once, that
+    // estimate goes stale immediately and can under-report the real total
+    // by hundreds (observed: 1105 real rows, ~550 shown). At this table
+    // size (~1-2k rows per workspace) an exact count is cheap enough that
+    // correctness matters more than the marginal latency saved.
     let query = supabase
       .from('leads')
-      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, assigned_to, instagram_handle, meta_campaign_id, meta_adset_id, meta_ad_id, created_at, updated_at', { count: 'planned' })
+      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, assigned_to, instagram_handle, meta_campaign_id, meta_adset_id, meta_ad_id, created_at, updated_at', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .order(filters.sort, { ascending: filters.order === 'asc' })
 

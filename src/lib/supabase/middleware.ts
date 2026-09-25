@@ -10,6 +10,28 @@ function isPublicRoute(pathname: string): boolean {
   )
 }
 
+// ClosRM Desktop (Electron) is a non-web client that calls the API from a
+// Vite dev-server origin (or file:// once packaged) instead of same-origin
+// like the web app — so it needs explicit CORS headers the web has never
+// required. The web app (same-origin, no Origin header on same-origin
+// requests) and the mobile app (no browser, no Origin header at all) are
+// both unaffected: this only ever adds headers when the request Origin
+// matches this explicit allowlist, never a wildcard.
+const ALLOWED_DESKTOP_ORIGINS = [
+  'http://localhost:5173', // electron/ Vite dev server (see electron/vite.config.ts)
+]
+
+function corsHeadersFor(request: NextRequest): Record<string, string> | null {
+  const origin = request.headers.get('origin')
+  if (!origin || !ALLOWED_DESKTOP_ORIGINS.includes(origin)) return null
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Access-Control-Max-Age': '86400',
+  }
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -38,6 +60,20 @@ export async function updateSession(request: NextRequest) {
   // auth via getWorkspaceId(). The Supabase client above still processes cookies
   // for session token refresh, but we avoid the 200-500ms network round-trip.
   if (pathname.startsWith('/api/')) {
+    const cors = corsHeadersFor(request)
+
+    // Preflight: the browser never sends Authorization on this request, so
+    // getWorkspaceId() further down would always 401 it — answer here
+    // instead of letting it reach the route at all.
+    if (request.method === 'OPTIONS' && cors) {
+      return new NextResponse(null, { status: 204, headers: cors })
+    }
+
+    if (cors) {
+      for (const [key, value] of Object.entries(cors)) {
+        supabaseResponse.headers.set(key, value)
+      }
+    }
     return supabaseResponse
   }
 

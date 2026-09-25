@@ -4,6 +4,7 @@ import MetaIntegrationCard from './meta-card'
 import GoogleCalendarCard from './google-card'
 import TelegramCard from './telegram-card'
 import YoutubeCard from './youtube-card'
+import ApifyCard from './apify-card'
 import DomainWizardCard from '@/components/emails/DomainWizardCard'
 import SuppressionList from '@/components/emails/SuppressionList'
 
@@ -24,6 +25,7 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
   const metaIntegration = integrations?.find(i => i.type === 'meta')
   const telegramIntegration = integrations?.find(i => i.type === 'telegram')
   const youtubeIntegration = integrations?.find(i => i.type === 'youtube')
+  const apifyIntegration = integrations?.find(i => i.type === 'apify')
 
   const successMessage: Record<string, string> = {
     meta_connected: 'Facebook Meta Ads + Instagram connecté avec succès ! Les leads arrivent maintenant automatiquement.',
@@ -101,6 +103,9 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
 
         {/* Telegram */}
         <TelegramCard integration={telegramIntegration ?? null} />
+
+        {/* Apify — suivi des likes Instagram */}
+        <ApifyCard integration={apifyIntegration ?? null} />
 
         {/* Stripe */}
         <PlaceholderCard

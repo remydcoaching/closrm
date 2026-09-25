@@ -1,0 +1,42 @@
+.lead-create-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 16, 18, 0.35);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.lead-create-modal {
+  width: 420px;
+  max-width: calc(100vw - 40px);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-6);
+}
+
+.lead-create-modal h2 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-lg);
+}
+
+.lead-create-modal form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.lead-create-error {
+  color: var(--color-danger);
+  font-size: var(--font-size-xs);
+  margin: 0;
+}
+
+.lead-create-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}

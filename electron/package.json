@@ -1,0 +1,51 @@
+{
+  "name": "closrm-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ClosRM Desktop — Electron shell (M1 vertical slice: auth + Leads).",
+  "main": "dist-electron/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build && electron-builder",
+    "build:renderer": "tsc -p tsconfig.json && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src main preload --ext .ts,.tsx",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.100.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "jsdom": "^30.1.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vite-plugin-electron": "^0.29.0",
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vitest": "^5.0.1"
+  },
+  "build": {
+    "appId": "com.closrm.desktop",
+    "productName": "ClosRM",
+    "files": [
+      "dist",
+      "dist-electron"
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.business"
+    },
+    "directories": {
+      "output": "release"
+    }
+  }
+}

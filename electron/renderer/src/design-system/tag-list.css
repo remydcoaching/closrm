@@ -1,0 +1,63 @@
+.ds-tag-list-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.ds-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.ds-tag-chip button {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 13px;
+}
+
+.ds-tag-list-empty {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-faint);
+}
+
+.ds-tag-list-add {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.ds-tag-list-add input {
+  flex: 1;
+  height: 30px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  outline: none;
+  font-family: inherit;
+}
+
+.ds-tag-list-add button {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-accent-solid);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+}

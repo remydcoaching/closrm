@@ -1,0 +1,55 @@
+.ds-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 16, 18, 0.25);
+  z-index: 300;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ds-drawer {
+  width: 380px;
+  max-width: calc(100vw - 40px);
+  height: 100%;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  animation: ds-drawer-in 0.18s ease;
+}
+
+@keyframes ds-drawer-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.ds-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+}
+
+.ds-drawer-header button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ds-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}

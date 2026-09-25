@@ -1,0 +1,57 @@
+.acq-row-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.acq-action-danger {
+  color: var(--color-danger) !important;
+}
+
+.acq-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.acq-stat-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.acq-stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.acq-stat-value {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.acq-top-lead-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  margin-bottom: var(--space-2);
+  text-align: left;
+}
+
+.acq-click-badge {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-accent-solid);
+  background: var(--color-accent-soft);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
