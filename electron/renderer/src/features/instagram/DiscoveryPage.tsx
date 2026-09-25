@@ -16,6 +16,7 @@ import type { DiscoveryRun, DiscoveryResponse } from './types'
 import './instagram.css'
 import { TableCard } from '../../design-system/TableCard'
 import { StatCard } from '../../design-system/StatCard'
+import { useInstagramAccount } from '../../lib/instagram-account'
 
 function statusLabel(status: DiscoveryRun['status']): string {
   return { RUNNING: 'En cours', SUCCESS: 'Terminé', PARTIAL: 'Partiel', FAILED: 'Échoué' }[status]
@@ -27,7 +28,8 @@ function statusTone(status: DiscoveryRun['status']): string {
 
 export function DiscoveryPage() {
   const navigate = useNavigate()
-  const [username, setUsername] = useState('')
+  const { account } = useInstagramAccount()
+  const [username, setUsername] = useState(account?.username ?? '')
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<DiscoveryResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -68,8 +70,8 @@ export function DiscoveryPage() {
     <div className="ig-page">
       <div className="ig-page-header">
         <div>
-          <h1>Ciblage</h1>
-          <p>Analysez un compte Instagram public pour voir qui a aimé ou commenté son contenu, puis ciblez les profils qui vous intéressent.</p>
+          <h1>Analyse (ciblage)</h1>
+          <p>Analysez votre compte (ou n'importe quel compte public) : qui a aimé ou commenté ses contenus, qui vous suit, qui est déjà lead — puis ciblez. Chaque analyse reste disponible dans l'historique.</p>
         </div>
       </div>
 

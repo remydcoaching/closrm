@@ -26,6 +26,13 @@ const DashboardIcon = (
   </svg>
 )
 
+const AgendaIcon = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18" />
+  </svg>
+)
+
 const LeadsIcon = (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -113,7 +120,8 @@ const PublicitesIcon = (
 // left undefined (not 0) until a real backend count is wired — an absent
 // badge, not a fake "0", is the honest default per the no-fake-data rule.
 const NAV_ITEMS: SidebarItem[] = [
-  { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon, disabled: true },
+  { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
+  { to: '/agenda', label: 'Agenda', icon: AgendaIcon, matchPaths: ['/agenda'] },
   // Pipeline, Closing, Relances and Deals are tabs of the Leads page.
   { to: '/leads', label: 'Leads', icon: LeadsIcon, matchPaths: ['/pipeline', '/closing', '/relances', '/deals'] },
 ]
@@ -128,7 +136,7 @@ const INSTAGRAM_ITEMS: SidebarItem[] = [
   { to: '/acquisition/publicites', label: 'Publicités', icon: PublicitesIcon },
 ]
 
-const ANALYTICS_ITEMS: SidebarItem[] = [{ to: '/analytics', label: 'Analytics', icon: AnalyticsIcon, disabled: true }]
+const ANALYTICS_ITEMS: SidebarItem[] = [{ to: '/statistiques', label: 'Statistiques', icon: AnalyticsIcon, matchPaths: ['/finance'] }]
 
 const SYSTEM_ITEMS: SidebarItem[] = [
   { to: '/integrations', label: 'Intégrations', icon: IntegrationsIcon, disabled: true },

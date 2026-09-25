@@ -18,6 +18,20 @@ export const TAB_GROUPS = {
       { label: 'Deals', to: '/deals' },
     ],
   },
+  agenda: {
+    key: 'agenda',
+    tabs: [
+      { label: 'Vue calendrier', to: '/agenda' },
+      { label: 'Pages de réservation', to: '/agenda/pages' },
+    ],
+  },
+  stats: {
+    key: 'stats',
+    tabs: [
+      { label: 'Stats', to: '/statistiques' },
+      { label: 'Finance', to: '/finance' },
+    ],
+  },
 } satisfies Record<string, TabGroup>
 
 /** True when `pathname` belongs to one of the group's tabs (sub-routes included). */

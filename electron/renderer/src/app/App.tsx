@@ -17,6 +17,12 @@ import { PipelinePage } from '../features/crm/PipelinePage'
 import { RelancesPage } from '../features/crm/RelancesPage'
 import { DealsPage } from '../features/crm/DealsPage'
 import { ClosingPage } from '../features/crm/ClosingPage'
+import { DashboardPage } from '../features/dashboard/DashboardPage'
+import { AgendaPage } from '../features/agenda/AgendaPage'
+import { BookingPagesPage } from '../features/agenda/BookingPagesPage'
+import { BookingCalendarEditPage } from '../features/agenda/BookingCalendarEditPage'
+import { StatsPage } from '../features/stats/StatsPage'
+import { FinancePage } from '../features/stats/FinancePage'
 import { TabGroupLayout } from '../design-system/PageTabs'
 import { TAB_GROUPS } from './tab-groups'
 import { LoadingState } from '../design-system/States'
@@ -59,7 +65,17 @@ function AppRoutes() {
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to="/leads" replace />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route element={<TabGroupLayout group={TAB_GROUPS.agenda} />}>
+          <Route path="agenda" element={<AgendaPage />} />
+          <Route path="agenda/pages" element={<BookingPagesPage />} />
+        </Route>
+        <Route path="agenda/pages/:id" element={<BookingCalendarEditPage />} />
+        <Route element={<TabGroupLayout group={TAB_GROUPS.stats} />}>
+          <Route path="statistiques" element={<StatsPage />} />
+          <Route path="finance" element={<FinancePage />} />
+        </Route>
         {/* Clicking a lead navigates to its own dedicated page (/leads/:id)
             rather than opening a docked side panel — explicit feedback:
             "quand tu cliques sur un lead, ça t'affiche le lead, ça
