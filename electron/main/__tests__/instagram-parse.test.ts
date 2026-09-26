@@ -38,14 +38,14 @@ describe('parseViewersPage', () => {
     const page = parseViewersPage({
       users: [
         { pk: 1, username: 'alice', full_name: 'Alice', profile_pic_url: 'https://cdn/a.jpg', is_verified: true },
-        { pk: 2, username: 'bob', profile_pic_url: 'javascript:alert(1)' },
+        { pk: 2, username: 'bob', profile_pic_url: 'javascript:alert(1)', has_liked: true },
         { username: 'nopk' },
       ],
       next_max_id: 'abc',
     })
     expect(page.viewers).toEqual([
-      { pk: '1', username: 'alice', fullName: 'Alice', profilePicUrl: 'https://cdn/a.jpg', isVerified: true },
-      { pk: '2', username: 'bob', fullName: null, profilePicUrl: null, isVerified: null },
+      { pk: '1', username: 'alice', fullName: 'Alice', profilePicUrl: 'https://cdn/a.jpg', isVerified: true, hasLiked: null },
+      { pk: '2', username: 'bob', fullName: null, profilePicUrl: null, isVerified: null, hasLiked: true },
     ])
     expect(page.nextMaxId).toBe('abc')
   })
@@ -57,5 +57,30 @@ describe('classifyFailure', () => {
     expect(classifyFailure(400, { message: 'checkpoint_required' })).toBe('checkpoint')
     expect(classifyFailure(403, { message: 'login_required' })).toBe('not_connected')
     expect(classifyFailure(500, {})).toBe('error')
+  })
+})
+
+import { parseArchiveDayShells, parseReelsMediaItems } from '../instagram-parse'
+
+describe('parseArchiveDayShells', () => {
+  it('keeps archiveDay ids and the cursor when more are available', () => {
+    expect(parseArchiveDayShells({ items: [{ id: 'archiveDay:1' }, { id: 'other' }, {}], more_available: true, max_id: 'm' })).toEqual({ ids: ['archiveDay:1'], maxId: 'm' })
+    expect(parseArchiveDayShells({ items: [], more_available: false, max_id: 'm' }).maxId).toBeNull()
+  })
+})
+
+describe('parseReelsMediaItems', () => {
+  it('flattens every reel, newest first, with image and video urls', () => {
+    const out = parseReelsMediaItems({
+      reels: {
+        'archiveDay:1': { items: [{ pk: '1', taken_at: 100, media_type: 1, image_versions2: { candidates: [{ url: 'https://i/1.jpg' }] } }] },
+        'archiveDay:2': {
+          items: [{ pk: '2', taken_at: 200, media_type: 2, video_versions: [{ url: 'https://v/2.mp4' }], image_versions2: { candidates: [{ url: 'https://i/2.jpg' }] }, viewer_count: 12 }],
+        },
+      },
+    })
+    expect(out.map((s) => s.pk)).toEqual(['2', '1'])
+    expect(out[0]).toMatchObject({ mediaType: 'video', videoUrl: 'https://v/2.mp4', imageUrl: 'https://i/2.jpg', viewerCount: 12 })
+    expect(out[1]).toMatchObject({ mediaType: 'image', videoUrl: null })
   })
 })

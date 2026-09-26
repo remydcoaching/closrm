@@ -18,6 +18,7 @@ import { funnelStage, FUNNEL_STAGE_LABEL, FUNNEL_STAGE_COLOR, type FunnelStage }
 import { ContentThumb } from './ContentThumb'
 import type { ContentChartPoint } from './types'
 import './instagram.css'
+import { usePaged, PaginationBar } from '../../design-system/Pagination'
 
 type Period = '7' | '30' | '90' | '365' | 'all'
 type Format = 'all' | 'clip' | 'media'
@@ -77,6 +78,8 @@ export function ContentPage() {
       return true
     })
   }, [items, format, stage])
+
+  const paged = usePaged(filtered)
 
   const stageCounts = useMemo(() => {
     const counts: Record<FunnelStage, number> = { haut: 0, milieu: 0, bas: 0 }
@@ -223,7 +226,7 @@ export function ContentPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((c) => {
+                  {paged.pageRows.map((c) => {
                     const st = c.engagementRate === null ? null : funnelStage(c.engagementRate)
                     return (
                       <tr key={c.contentId} className="ds-row-clickable" onClick={() => navigate(`/instagram/content/${encodeURIComponent(c.contentId)}`)}>
@@ -269,6 +272,7 @@ export function ContentPage() {
                 </tbody>
               </table>
             )}
+            <PaginationBar total={paged.total} page={paged.page} pages={paged.pages} size={paged.size} onPage={paged.setPage} onSize={paged.setSize} />
           </TableCard>
         </>
       )}

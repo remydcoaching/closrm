@@ -9,6 +9,83 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const DEFAULT_SCORING = { like: 1, comment: 3, dm: 5, mention: 2, story_view: 1 } as const
 
+/** Points needed for ~63/100 — the curve's scale. */
+export const SCORE_SCALE = 30
+
+/**
+ * Raw points (sum of workspace-weighted interactions, unbounded) → a 0-100
+ * score: 100 × (1 − e^(−points / SCORE_SCALE)). Monotonic, so rankings by
+ * points and by score agree; ~63 at 30 pts, ~96 at 100 pts, never above 100.
+ */
+export function normalizeScore(points: number): number {
+  if (points <= 0) return 0
+  return Math.min(100, Math.round(100 * (1 - Math.exp(-points / SCORE_SCALE))))
+}
+
+export interface BatchInteractionRow {
+  lead_id: string
+  interaction_type: string
+  source_post_id: string | null
+  first_seen_at: string | null
+  last_seen_at: string | null
+}
+
+export interface BatchScore {
+  score: number
+  points: number
+  totalInteractions: number
+  distinctContentCount: number
+  likesCount: number
+  commentsCount: number
+  storyViewsCount: number
+  firstInteractionAt: string | null
+  lastInteractionAt: string | null
+}
+
+/** Pure: per-lead scores from interaction rows (same weights as the single-lead score). */
+export function aggregateScores(rows: BatchInteractionRow[], scoring: Record<string, number>): Map<string, BatchScore> {
+  const out = new Map<string, BatchScore & { contents: Set<string> }>()
+  for (const r of rows) {
+    const s =
+      out.get(r.lead_id) ??
+      ({ score: 0, points: 0, totalInteractions: 0, distinctContentCount: 0, likesCount: 0, commentsCount: 0, storyViewsCount: 0, firstInteractionAt: null, lastInteractionAt: null, contents: new Set<string>() } as BatchScore & { contents: Set<string> })
+    s.points += scoring[r.interaction_type] ?? 1
+    s.totalInteractions += 1
+    if (r.interaction_type === 'like') s.likesCount += 1
+    if (r.interaction_type === 'comment') s.commentsCount += 1
+    if (r.interaction_type === 'story_view') s.storyViewsCount += 1
+    if (r.source_post_id) s.contents.add(r.source_post_id)
+    if (r.first_seen_at && (!s.firstInteractionAt || r.first_seen_at < s.firstInteractionAt)) s.firstInteractionAt = r.first_seen_at
+    if (r.last_seen_at && (!s.lastInteractionAt || r.last_seen_at > s.lastInteractionAt)) s.lastInteractionAt = r.last_seen_at
+    out.set(r.lead_id, s)
+  }
+  const result = new Map<string, BatchScore>()
+  for (const [id, s] of out) {
+    const { contents, ...rest } = s
+    result.set(id, { ...rest, distinctContentCount: contents.size, score: normalizeScore(rest.points) })
+  }
+  return result
+}
+
+/** Scores for many leads in a few queries (chunked), e.g. for a table. */
+export async function scoreLeads(supabase: SupabaseClient, workspaceId: string, leadIds: string[]): Promise<Map<string, BatchScore>> {
+  const scoring = await loadScoringRules(supabase, workspaceId)
+  const rows: BatchInteractionRow[] = []
+  for (let i = 0; i < leadIds.length; i += 200) {
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase
+        .from('instagram_interactions')
+        .select('lead_id, interaction_type, source_post_id, first_seen_at, last_seen_at')
+        .eq('workspace_id', workspaceId)
+        .in('lead_id', leadIds.slice(i, i + 200))
+        .range(from, from + 999)
+      rows.push(...((data ?? []) as BatchInteractionRow[]))
+      if (!data || data.length < 1000) break
+    }
+  }
+  return aggregateScores(rows, scoring)
+}
+
 export interface EngagementSignal {
   key: string
   label: string
@@ -22,6 +99,8 @@ export interface EngagementScoreResult {
   dmCount: number
   mentionCount: number
   storyViewsCount: number
+  /** Raw weighted points behind the 0-100 score. */
+  points: number
   totalInteractions: number
   distinctContentCount: number
   firstInteractionAt: string | null
@@ -173,7 +252,8 @@ export async function computeEngagementScore(
   }
 
   return {
-    score,
+    score: normalizeScore(score),
+    points: score,
     likesCount,
     commentsCount,
     dmCount,

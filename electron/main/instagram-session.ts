@@ -12,7 +12,7 @@
 //   their story viewers list), and collection stops at the first sign of a
 //   challenge or rate limit.
 import { BrowserWindow, net, session, type Session } from 'electron'
-import { classifyFailure, parseOwnReel, parseViewersPage, type InstagramFailure, type OwnStory, type StoryViewer } from './instagram-parse'
+import { classifyFailure, parseArchiveDayShells, parseOwnReel, parseReelsMediaItems, parseViewersPage, reelOwnerUsername, type ArchivedStory, type InstagramFailure, type OwnStory, type StoryViewer } from './instagram-parse'
 
 const PARTITION = 'persist:instagram'
 const IG = 'https://www.instagram.com'
@@ -77,32 +77,40 @@ async function igGet(path: string): Promise<unknown> {
         try {
           body = JSON.parse(text)
         } catch {
-          // An HTML page instead of JSON = redirected to login/challenge.
-          reject(new IgError('not_connected', 'Session Instagram expirée'))
+          // HTML instead of JSON: login page, challenge or an endpoint change.
+          console.error(`[instagram] ${path} → ${res.statusCode} non-JSON: ${text.slice(0, 200).replace(/\s+/g, ' ')}`)
+          reject(
+            new IgError(
+              res.statusCode === 429 ? 'rate_limited' : res.statusCode === 401 || res.statusCode === 403 ? 'not_connected' : 'error',
+              `Réponse inattendue d'Instagram (${res.statusCode})`,
+            ),
+          )
           return
         }
         if (res.statusCode >= 200 && res.statusCode < 300) resolve(body)
-        else reject(new IgError(classifyFailure(res.statusCode, body), `Instagram ${res.statusCode}`))
+        else {
+          console.error(`[instagram] ${path} → ${res.statusCode}: ${text.slice(0, 200)}`)
+          reject(new IgError(classifyFailure(res.statusCode, body), `Instagram ${res.statusCode}`))
+        }
       })
     })
-    req.on('error', (err) => reject(new IgError('error', err.message)))
+    // Instagram drops the connection when it throttles (net::ERR_FAILED):
+    // back off like a 429 rather than retrying.
+    req.on('error', (err) => {
+      console.error(`[instagram] ${path} → ${err.message}`)
+      reject(new IgError(/ERR_FAILED|ERR_CONNECTION|ERR_EMPTY_RESPONSE/.test(err.message) ? 'rate_limited' : 'error', err.message))
+    })
     req.end()
   })
 }
 
+// No network call here: status is read from the session cookies only (a
+// profile lookup on every check got the account rate-limited). The username
+// comes from the stories response during collection.
 export async function getStatus(): Promise<InstagramSessionStatus> {
   const [sessionId, userId] = await Promise.all([cookie('sessionid'), cookie('ds_user_id')])
   if (!sessionId || !userId) return { connected: false, userId: null, username: null }
-  if (cachedUsername?.userId === userId) return { connected: true, userId, username: cachedUsername.username }
-  try {
-    const info = (await igGet(`/api/v1/users/${userId}/info/`)) as { user?: { username?: string } }
-    const username = info.user?.username ?? null
-    if (username) cachedUsername = { userId, username }
-    return { connected: true, userId, username }
-  } catch (err) {
-    if (err instanceof IgError && err.reason === 'not_connected') return { connected: false, userId: null, username: null }
-    return { connected: true, userId, username: null }
-  }
+  return { connected: true, userId, username: cachedUsername?.userId === userId ? cachedUsername.username : null }
 }
 
 /** Opens instagram.com login in an isolated window; resolves when logged in or closed. */
@@ -169,6 +177,8 @@ export async function collectStoryViewers(): Promise<CollectResult> {
     if (!status.connected || !status.userId) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
 
     const reel = await igGet(`/api/v1/feed/reels_media/?reel_ids=${status.userId}`)
+    const owner = reelOwnerUsername(reel, status.userId)
+    if (owner) cachedUsername = { userId: status.userId, username: owner }
     const items = parseOwnReel(reel, status.userId)
     const stories: OwnStory[] = []
     for (const item of items) {
@@ -184,11 +194,49 @@ export async function collectStoryViewers(): Promise<CollectResult> {
       }
       stories.push({ ...item, viewers })
     }
-    return { ok: true, accountUsername: status.username ?? status.userId, stories }
+    return { ok: true, accountUsername: owner ?? status.username ?? status.userId, stories }
   } catch (err) {
     if (err instanceof IgError) return { ok: false, reason: err.reason, message: err.message }
     return { ok: false, reason: 'error', message: err instanceof Error ? err.message : 'Erreur inconnue' }
   } finally {
     collecting = false
+  }
+}
+
+
+export type ArchiveResult = { ok: true; stories: ArchivedStory[] } | { ok: false; reason: InstagramFailure; message: string }
+
+let archiveCache: { at: number; stories: ArchivedStory[] } | null = null
+const ARCHIVE_TTL_MS = 30 * 60_000
+const ARCHIVE_DAYS = 12
+const REELS_PER_REQUEST = 4
+
+/**
+ * The coach's story archive (last ARCHIVE_DAYS days with a story) with
+ * fresh media URLs, to display stories whose stored links have expired.
+ * On demand only, cached 30 min, a handful of spaced requests.
+ */
+export async function storyArchive(force = false): Promise<ArchiveResult> {
+  if (!force && archiveCache && Date.now() - archiveCache.at < ARCHIVE_TTL_MS) return { ok: true, stories: archiveCache.stories }
+  try {
+    const status = await getStatus()
+    if (!status.connected) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
+    const shells = parseArchiveDayShells(await igGet('/api/v1/archive/reel/day_shells/?timezone_offset=' + -new Date().getTimezoneOffset() * 60))
+    const ids = shells.ids.slice(0, ARCHIVE_DAYS)
+    const stories: ArchivedStory[] = []
+    for (let i = 0; i < ids.length; i += REELS_PER_REQUEST) {
+      await humanPause()
+      const q = ids
+        .slice(i, i + REELS_PER_REQUEST)
+        .map((id) => `reel_ids=${encodeURIComponent(id)}`)
+        .join('&')
+      stories.push(...parseReelsMediaItems(await igGet(`/api/v1/feed/reels_media/?${q}`)))
+    }
+    stories.sort((a, b) => b.takenAt.localeCompare(a.takenAt))
+    archiveCache = { at: Date.now(), stories }
+    return { ok: true, stories }
+  } catch (err) {
+    if (err instanceof IgError) return { ok: false, reason: err.reason, message: err.message }
+    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : 'Erreur inconnue' }
   }
 }

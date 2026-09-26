@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api-client'
 import { useStoryCollector } from '../../lib/story-collector'
+import { useInstagramAccount } from '../../lib/instagram-account'
 import { formatNumber } from '../../design-system/StatCard'
 import { TableCard, ContactCell } from '../../design-system/TableCard'
 import { Chips } from '../../design-system/Tabs'
@@ -15,6 +16,7 @@ import { LoadingState, EmptyState } from '../../design-system/States'
 import { relativeTime, shortDate, statusEntry } from '../leads/status'
 import type { LeadStatus } from '../leads/types'
 import './instagram.css'
+import { usePaged, PaginationBar } from '../../design-system/Pagination'
 
 export interface StoryViewerSummary {
   userId: string
@@ -56,6 +58,7 @@ export function useStoryLurkers(stories: number, refreshKey: unknown) {
 
 export function StorySessionPanel() {
   const { available, status, collecting, lastRun, pausedUntil, connect, disconnect, collectNow } = useStoryCollector()
+  const { account } = useInstagramAccount()
   if (!available) return null
   const paused = pausedUntil && pausedUntil > Date.now()
 
@@ -79,7 +82,7 @@ export function StorySessionPanel() {
       ) : (
         <>
           <div>
-            <strong>Session Instagram @{status.username ?? '…'} · collecte automatique toutes les 30 min tant que l&apos;app est ouverte</strong>
+            <strong>Session Instagram @{status.username ?? account?.username ?? '…'} · collecte automatique toutes les 30 min tant que l&apos;app est ouverte</strong>
             <p>
               {collecting
                 ? 'Collecte en cours…'
@@ -120,6 +123,7 @@ export function StoryViewersSection() {
       }),
     [data, filter],
   )
+  const paged = usePaged(rows)
 
   return (
     <TableCard
@@ -167,7 +171,7 @@ export function StoryViewersSection() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((v) => {
+            {paged.pageRows.map((v) => {
               const name = v.lead?.name || v.fullName || v.username
               const st = v.lead ? statusEntry(v.lead.status) : null
               return (
@@ -195,6 +199,7 @@ export function StoryViewersSection() {
           </tbody>
         </table>
       )}
+      <PaginationBar total={paged.total} page={paged.page} pages={paged.pages} size={paged.size} onPage={paged.setPage} onSize={paged.setSize} />
     </TableCard>
   )
 }

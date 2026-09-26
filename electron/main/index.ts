@@ -101,8 +101,20 @@ function createWindow() {
   win.webContents.on('did-fail-load', (_e, errorCode, errorDescription, validatedURL) => {
     console.error('[closrm] renderer failed to load', { errorCode, errorDescription, validatedURL })
   })
+  // Dev: mirror renderer console warnings/errors into the terminal so a
+  // blank window always comes with its cause.
+  if (DEV_SERVER_URL) {
+    win.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+      if (level >= 2) console.error(`[renderer] ${message} (${sourceId}:${line})`)
+    })
+    win.webContents.on('preload-error', (_e, preloadPath, error) => {
+      console.error('[closrm] preload failed', preloadPath, error)
+    })
+  }
   win.webContents.on('render-process-gone', (_e, details) => {
     console.error('[closrm] renderer process gone', details)
+    // Never leave a blank window behind: reload the renderer.
+    if (!win.isDestroyed()) setTimeout(() => !win.isDestroyed() && win.webContents.reload(), 500)
   })
   if (DEV_SERVER_URL) win.webContents.openDevTools({ mode: 'detach' })
 
@@ -133,6 +145,7 @@ ipcMain.handle('closrm:ig:status', () => instagramSession.getStatus())
 ipcMain.handle('closrm:ig:login', () => instagramSession.login(mainWindow))
 ipcMain.handle('closrm:ig:logout', () => instagramSession.logout())
 ipcMain.handle('closrm:ig:collect-stories', () => instagramSession.collectStoryViewers())
+ipcMain.handle('closrm:ig:story-archive', (_e, force?: boolean) => instagramSession.storyArchive(!!force))
 
 ipcMain.handle('closrm:open-external', async (_event, url: string) => {
   let parsed: URL
@@ -181,8 +194,11 @@ app.whenReady().then(() => {
         'Content-Security-Policy': [
           "default-src 'self'; " +
             "script-src 'self' 'unsafe-inline'; " + // 'unsafe-inline' relaxed only for Vite HMR in dev; tighten before production build
-            "style-src 'self' 'unsafe-inline'; " +
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+            "font-src 'self' https://fonts.gstatic.com; " +
             "img-src 'self' data: https:; " +
+            // Story videos are played straight from Instagram's CDN.
+            "media-src 'self' https: blob:; " +
             "connect-src 'self' https://*.supabase.co wss://*.supabase.co " +
             (process.env.CLOSRM_API_BASE_URL ?? 'http://localhost:3000'),
         ],

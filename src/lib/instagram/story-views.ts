@@ -12,6 +12,7 @@ const viewerSchema = z.object({
   fullName: z.string().max(200).nullish(),
   profilePicUrl: z.string().url().max(2000).nullish(),
   isVerified: z.boolean().nullish(),
+  hasLiked: z.boolean().nullish(),
 })
 
 const storySchema = z.object({
@@ -73,6 +74,7 @@ export function planStoryViewRows(
         full_name: v.fullName ?? null,
         profile_pic_url: v.profilePicUrl ?? null,
         is_verified: v.isVerified ?? null,
+        has_liked: v.hasLiked ?? null,
         matched_lead_id: leadId,
       })
       if (leadId && !existingInteractions.has(interactionKey(leadId, story.pk, v.pk))) {
@@ -159,9 +161,17 @@ export async function persistStoryViews(supabase: SupabaseClient, workspaceId: s
   }
   for (let i = 0; i < rows.viewers.length; i += WRITE_CHUNK) {
     // Merge-upsert: first_seen_at is not sent, so the first sighting is kept.
-    const { error } = await supabase
-      .from('story_viewers')
-      .upsert(rows.viewers.slice(i, i + WRITE_CHUNK), { onConflict: 'workspace_id,story_pk,instagram_user_id' })
+    const chunk = rows.viewers.slice(i, i + WRITE_CHUNK)
+    let { error } = await supabase.from('story_viewers').upsert(chunk, { onConflict: 'workspace_id,story_pk,instagram_user_id' })
+    // Migration 108 (has_liked) not applied yet: store the rest anyway.
+    if (error && /has_liked/.test(error.message)) {
+      ;({ error } = await supabase
+        .from('story_viewers')
+        .upsert(
+          chunk.map(({ has_liked: _h, ...rest }) => rest),
+          { onConflict: 'workspace_id,story_pk,instagram_user_id' },
+        ))
+    }
     if (error) errors.push(`viewers ${i}: ${error.message}`)
   }
   for (let i = 0; i < rows.interactions.length; i += WRITE_CHUNK) {

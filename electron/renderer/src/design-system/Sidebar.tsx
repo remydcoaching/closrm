@@ -75,6 +75,7 @@ const AnalyticsIcon = (
   </svg>
 )
 
+
 const AudienceIcon = (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -150,7 +151,7 @@ const INSTAGRAM_ITEMS: SidebarItem[] = [
   { to: '/instagram/discovery', label: 'Analyse (ciblage)', icon: DiscoveryIcon },
   { to: '/instagram/interactions', label: 'Interactions', icon: InteractionsIcon },
   { to: '/instagram/content', label: 'Content', icon: ContentIcon },
-  { to: '/instagram/audience', label: 'Audience', icon: AudienceIcon },
+  { to: '/instagram/audience', label: 'Audience', icon: AudienceIcon, matchPaths: ['/instagram/stories'] },
   { to: '/acquisition/lead-magnets', label: 'Lead Magnets', icon: LeadMagnetIcon },
   { to: '/acquisition/publicites', label: 'Publicités', icon: PublicitesIcon },
   { to: '/acquisition/funnels', label: 'Funnels', icon: FunnelIcon },

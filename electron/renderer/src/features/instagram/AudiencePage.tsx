@@ -5,9 +5,7 @@
 // - Quand publier: engagement rate by weekday × slot of the coach's own
 //   scanned contents (publish-timing.ts);
 // - Vos réels: best reels by engagement rate (GET /api/instagram/content/chart);
-// - Vos stories: Meta insights per story (GET /api/instagram/stories —
-//   reach, replies, exits; Instagram does not expose who viewed a story
-//   through the official API).
+// - Vos stories: gallery from the coach's own Instagram archive (StoriesGallery).
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api-client'
@@ -23,8 +21,10 @@ import { ContentThumb } from './ContentThumb'
 import { formatRate } from './ContentPage'
 import { publishTiming, bestSlots, SLOTS, WEEKDAYS, MIN_SAMPLES } from './publish-timing'
 import { StoryViewersSection } from './StoryViewersSection'
+import { StoriesGallery } from './StoriesPage'
 import type { ContentChartPoint } from './types'
 import './instagram.css'
+import { usePaged, PaginationBar } from '../../design-system/Pagination'
 
 interface AudienceCounts {
   actifs: number
@@ -47,18 +47,6 @@ interface AudienceLeadRow {
   last_seen_at: string | null
 }
 
-interface StoryRow {
-  id: string
-  thumbnail_url: string | null
-  story_type: string | null
-  impressions: number
-  reach: number
-  replies: number
-  exits: number
-  taps_forward: number
-  taps_back: number
-  published_at: string | null
-}
 
 type Segment = 'actifs' | 'actifs_jamais_contactes' | 'ne_vous_suivent_pas' | 'lurkers'
 type Period = '7' | '30' | '90' | '365'
@@ -85,7 +73,6 @@ export function AudiencePage() {
   const [segment, setSegment] = useState<Segment>('actifs_jamais_contactes')
   const [segmentLeads, setSegmentLeads] = useState<AudienceLeadRow[] | null>(null)
   const [contents, setContents] = useState<ContentChartPoint[] | null>(null)
-  const [stories, setStories] = useState<StoryRow[] | null>(null)
 
   async function load() {
     setError(null)
@@ -116,12 +103,9 @@ export function AudiencePage() {
       .get<{ data: ContentChartPoint[] }>('/api/instagram/content/chart?days=365')
       .then((res) => setContents(res.data))
       .catch(() => setContents([]))
-    const from = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10)
-    api
-      .get<{ data: StoryRow[] }>(`/api/instagram/stories?from=${from}`)
-      .then((res) => setStories(res.data))
-      .catch(() => setStories([]))
   }, [])
+
+  const paged = usePaged(segmentLeads ?? [])
 
   const timing = useMemo(() => publishTiming(contents ?? []), [contents])
   const best = useMemo(() => bestSlots(timing), [timing])
@@ -134,7 +118,6 @@ export function AudiencePage() {
         .slice(0, 5),
     [contents],
   )
-  const topStories = useMemo(() => [...(stories ?? [])].sort((a, b) => b.reach - a.reach).slice(0, 5), [stories])
 
   return (
     <div className="ig-page">
@@ -215,6 +198,10 @@ export function AudiencePage() {
         )}
       </TableCard>
 
+      <TableCard>
+        <StoriesGallery />
+      </TableCard>
+
       <div className="ig-audience-columns">
         <TableCard title="Vos réels" subtitle="Top 5 par taux d'engagement">
           {topReels.length === 0 ? (
@@ -246,45 +233,6 @@ export function AudiencePage() {
           )}
         </TableCard>
 
-        <TableCard title="Vos stories" subtitle="Top 5 par portée (90 derniers jours, compte Meta connecté)">
-          {stories === null ? (
-            <LoadingState label="Chargement…" />
-          ) : topStories.length === 0 ? (
-            <EmptyState title="Aucune story synchronisée" description="Connectez Instagram via Meta dans Paramètres › Intégrations pour récupérer les statistiques de vos stories." />
-          ) : (
-            <table className="ds-table">
-              <thead>
-                <tr>
-                  <th>Story</th>
-                  <th className="ds-num-cell">Portée</th>
-                  <th className="ds-num-cell">Réponses</th>
-                  <th className="ds-num-cell">Sorties</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topStories.map((s) => (
-                  <tr key={s.id}>
-                    <td>
-                      <div className="ds-contact">
-                        <ContentThumb url={s.thumbnail_url} size={28} />
-                        <div className="ds-contact-name">{shortDate(s.published_at)}</div>
-                      </div>
-                    </td>
-                    <td className="ds-num-cell">
-                      <span className="ds-num">{formatNumber(s.reach)}</span>
-                    </td>
-                    <td className="ds-num-cell">
-                      <span className="ds-num">{formatNumber(s.replies)}</span>
-                    </td>
-                    <td className="ds-num-cell">
-                      <span className="ds-num">{s.reach > 0 ? `${Math.round((s.exits / s.reach) * 100)} %` : '—'}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </TableCard>
       </div>
 
       <TableCard
@@ -312,7 +260,7 @@ export function AudiencePage() {
               </tr>
             </thead>
             <tbody>
-              {segmentLeads.map((l) => {
+              {paged.pageRows.map((l) => {
                 const name = `${l.first_name} ${l.last_name}`.trim() || l.instagram_handle || '—'
                 const st = statusEntry(l.status)
                 return (
@@ -338,6 +286,7 @@ export function AudiencePage() {
             </tbody>
           </table>
         )}
+        <PaginationBar total={paged.total} page={paged.page} pages={paged.pages} size={paged.size} onPage={paged.setPage} onSize={paged.setSize} />
       </TableCard>
     </div>
   )

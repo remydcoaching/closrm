@@ -21,6 +21,7 @@ import { ContentThumb } from './ContentThumb'
 import { contentTypeLabel, formatRate } from './ContentPage'
 import type { ContentDetail, ContentProfile } from './types'
 import './instagram.css'
+import { usePaged, PaginationBar } from '../../design-system/Pagination'
 
 type Filter = 'all' | 'commenters' | 'likers' | 'leads' | 'not_leads' | 'not_following'
 
@@ -85,6 +86,8 @@ export function ContentDetailPage() {
       }
     })
   }, [detail, filter, search])
+
+  const paged = usePaged(profiles)
 
   if (error && !detail) return <ErrorState message={error} onRetry={load} />
   if (!detail) return <LoadingState label="Chargement du contenu…" />
@@ -170,7 +173,7 @@ export function ContentDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {profiles.map((p) => {
+              {paged.pageRows.map((p) => {
                 const name = p.lead ? `${p.lead.firstName} ${p.lead.lastName}`.trim() || p.fullName || p.username : p.fullName || p.username
                 const st = p.lead ? statusEntry(p.lead.status) : null
                 return (
@@ -205,6 +208,7 @@ export function ContentDetailPage() {
             </tbody>
           </table>
         )}
+        <PaginationBar total={paged.total} page={paged.page} pages={paged.pages} size={paged.size} onPage={paged.setPage} onSize={paged.setSize} />
       </TableCard>
 
       {selected && (

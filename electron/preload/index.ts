@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('closrm', {
     login: () => ipcRenderer.invoke('closrm:ig:login'),
     logout: (): Promise<void> => ipcRenderer.invoke('closrm:ig:logout'),
     collectStories: () => ipcRenderer.invoke('closrm:ig:collect-stories'),
+    storyArchive: (force?: boolean) => ipcRenderer.invoke('closrm:ig:story-archive', force),
   },
 
   secureStorage: {

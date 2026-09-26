@@ -64,7 +64,8 @@ describe('computeEngagementScore', () => {
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await computeEngagementScore(supabase as any, 'ws-1', 'lead-1')
-    expect(result?.score).toBe(DEFAULT_SCORING.like + DEFAULT_SCORING.comment)
+    expect(result?.points).toBe(DEFAULT_SCORING.like + DEFAULT_SCORING.comment)
+    expect(result?.score).toBe(normalizeScore(DEFAULT_SCORING.like + DEFAULT_SCORING.comment))
     expect(result?.likesCount).toBe(1)
     expect(result?.commentsCount).toBe(1)
   })
@@ -80,7 +81,7 @@ describe('computeEngagementScore', () => {
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await computeEngagementScore(supabase as any, 'ws-1', 'lead-1')
-    expect(result?.score).toBe(10)
+    expect(result?.points).toBe(10)
   })
 
   it('produces a data-backed signal for interactions spread across multiple contents', async () => {
@@ -122,5 +123,34 @@ describe('computeEngagementScore', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await computeEngagementScore(supabase as any, 'ws-1', 'lead-1')
     expect(result?.signals.some((s) => s.key === 'overdue_followup')).toBe(true)
+  })
+})
+
+import { aggregateScores, normalizeScore } from '../engagement-score'
+
+describe('normalizeScore', () => {
+  it('maps points to 0-100, monotonic and capped', () => {
+    expect(normalizeScore(0)).toBe(0)
+    expect(normalizeScore(30)).toBe(63)
+    expect(normalizeScore(100)).toBe(96)
+    expect(normalizeScore(10_000)).toBe(100)
+    expect(normalizeScore(10)).toBeLessThan(normalizeScore(11))
+  })
+})
+
+describe('aggregateScores', () => {
+  it('sums weighted points per lead and counts distinct contents', () => {
+    const scores = aggregateScores(
+      [
+        { lead_id: 'a', interaction_type: 'like', source_post_id: 'p1', first_seen_at: '2026-01-01', last_seen_at: '2026-01-02' },
+        { lead_id: 'a', interaction_type: 'comment', source_post_id: 'p2', first_seen_at: '2026-01-03', last_seen_at: '2026-01-05' },
+        { lead_id: 'a', interaction_type: 'story_view', source_post_id: 's1', first_seen_at: null, last_seen_at: '2026-01-04' },
+        { lead_id: 'b', interaction_type: 'like', source_post_id: 'p1', first_seen_at: null, last_seen_at: null },
+      ],
+      { like: 1, comment: 3, story_view: 1 },
+    )
+    expect(scores.get('a')).toMatchObject({ points: 5, totalInteractions: 3, distinctContentCount: 3, commentsCount: 1, storyViewsCount: 1, firstInteractionAt: '2026-01-01', lastInteractionAt: '2026-01-05' })
+    expect(scores.get('a')!.score).toBe(normalizeScore(5))
+    expect(scores.get('b')!.points).toBe(1)
   })
 })
