@@ -85,7 +85,16 @@ async function igGet(path: string): Promise<unknown> {
     try {
       return await igGetOn(IG, path)
     } catch (err) {
-      if (err instanceof IgError && err.reason === 'error' && /\(200\)/.test(err.message)) return await igGetOn(IG_API, path)
+      if (err instanceof IgError && err.reason === 'error' && /\(200\)/.test(err.message)) {
+        // i.instagram.com doesn't accept web-session cookies for every
+        // endpoint: its login_required there is NOT a real logout.
+        try {
+          return await igGetOn(IG_API, path)
+        } catch (apiErr) {
+          if (apiErr instanceof IgError && apiErr.reason === 'not_connected') throw new IgError('error', 'Endpoint indisponible pour une session web')
+          throw apiErr
+        }
+      }
       throw err
     }
   } catch (err) {

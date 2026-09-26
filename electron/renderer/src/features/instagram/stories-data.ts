@@ -4,6 +4,7 @@
 // story (GET /api/instagram/story-views).
 import { useCallback, useEffect, useState } from 'react'
 import type { ArchivedStory } from '../../lib/electron-bridge'
+import { useStoryCollector } from '../../lib/story-collector'
 
 export type { ArchivedStory }
 
@@ -33,9 +34,11 @@ export function useStoryArchive() {
     [bridge],
   )
 
+  // Reload when the Instagram session (re)connects.
+  const connected = !!useStoryCollector().status?.connected
   useEffect(() => {
-    load()
-  }, [load])
+    load(connected)
+  }, [load, connected])
 
   return { stories, error, reload: () => load(true) }
 }

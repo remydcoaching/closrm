@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api-client'
+import { useStoryCollector } from '../../lib/story-collector'
 import { LoadingState, EmptyState } from '../../design-system/States'
 import type { ArchivedStory, HighlightCollection } from '../../lib/electron-bridge'
 import { StoryCard } from './StoriesPage'
@@ -29,10 +30,14 @@ export function HighlightsSection() {
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [collected, setCollected] = useState<Map<string, number>>(new Map())
+  const { status } = useStoryCollector()
+  const connected = !!status?.connected
 
+  // Re-run when the session connects (e.g. right after "Connecter ma session").
   useEffect(() => {
-    if (!bridge) return
+    if (!bridge || !connected) return
     let cancelled = false
+    setError(null)
     ;(async () => {
       const tray = await bridge.highlights()
       if (cancelled) return
@@ -54,7 +59,7 @@ export function HighlightsSection() {
     return () => {
       cancelled = true
     }
-  }, [bridge])
+  }, [bridge, connected])
 
   useEffect(() => {
     api
@@ -91,8 +96,9 @@ export function HighlightsSection() {
         Vos stories à la une <span>rangées par les personnes qui les ont aimées ou vues</span>
       </div>
 
-      {error && <EmptyState title="Stories à la une indisponibles" description={error} />}
-      {!error && collections === null && <LoadingState label="Chargement de vos stories à la une…" />}
+      {!connected && <EmptyState title="Session Instagram non connectée" description={FAILURE.not_connected} />}
+      {connected && error && <EmptyState title="Stories à la une indisponibles" description={error} />}
+      {connected && !error && collections === null && <LoadingState label="Chargement de vos stories à la une…" />}
       {collections && collections.length === 0 && <EmptyState title="Aucune story à la une sur votre profil" />}
 
       {collections && collections.length > 0 && (
