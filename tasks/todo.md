@@ -11,15 +11,16 @@
 - [x] Résultats de ciblage complets (pagination, filtres, recherche, export)
 - [x] Persistance Ciblage par lots + interactions par contenu + backup en cas d'échec
 - [x] Agenda, Dashboard, Statistiques/Finance, Publicités (parité web)
-- [ ] Funnels / Emails / Automations / Messages (agent en cours)
+- [x] Funnels / Emails / Automations / Messages
+- [x] Viewers de stories via la session Instagram du coach (comme Insyder)
 - [ ] Réseaux sociaux / Paramètres / Équipe (agent en cours)
 
 ## À faire par Pierre (prod — non fait par Claude)
-- [ ] Appliquer en prod : 102/103 déjà appliquées ; appliquer 104_discovery_interactions.sql et 105_workspace_instagram_username.sql
+- [x] 104 et 105 appliquées par Pierre (2026-09-25)
+- [ ] Appliquer 106_story_viewers.sql
 - [ ] Déployer le code web (routes /api/instagram/*) AVANT de relancer une analyse Hiker
 - [ ] Relancer l'analyse @rebmann_pierre (crédits Hiker) — le run du 20/09 n'a rien enregistré
 
 ## Avant PR
 - [ ] Rebase sur origin/develop (67+ commits de retard) ; renuméroter 096–105 de cette branche après 101 ; supprimer 107 (doublon de develop 100)
 - [ ] Ajouter 'electron/**' à l'exclude de vitest.config.mts
-- [ ] Décision : vues de stories (identités des viewers) — impossible via API officielle, voir ameliorations.md
