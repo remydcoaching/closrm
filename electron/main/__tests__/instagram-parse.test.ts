@@ -38,14 +38,14 @@ describe('parseViewersPage', () => {
     const page = parseViewersPage({
       users: [
         { pk: 1, username: 'alice', full_name: 'Alice', profile_pic_url: 'https://cdn/a.jpg', is_verified: true },
-        { pk: 2, username: 'bob', profile_pic_url: 'javascript:alert(1)', has_liked: true },
+        { pk: 2, username: 'bob', profile_pic_url: 'javascript:alert(1)', has_liked: true, is_private: true },
         { username: 'nopk' },
       ],
       next_max_id: 'abc',
     })
     expect(page.viewers).toEqual([
-      { pk: '1', username: 'alice', fullName: 'Alice', profilePicUrl: 'https://cdn/a.jpg', isVerified: true, hasLiked: null },
-      { pk: '2', username: 'bob', fullName: null, profilePicUrl: null, isVerified: null, hasLiked: true },
+      { pk: '1', username: 'alice', fullName: 'Alice', profilePicUrl: 'https://cdn/a.jpg', isVerified: true, hasLiked: null, isPrivate: null },
+      { pk: '2', username: 'bob', fullName: null, profilePicUrl: null, isVerified: null, hasLiked: true, isPrivate: true },
     ])
     expect(page.nextMaxId).toBe('abc')
   })
@@ -105,5 +105,13 @@ describe('parseHighlightItems', () => {
   it('groups items by highlight and reads like counts', () => {
     const m = parseHighlightItems({ reels: { 'highlight:1': { items: [{ pk: '9', taken_at: 5, media_type: 1, like_count: 386 }] } } })
     expect(m.get('highlight:1')?.[0]).toMatchObject({ pk: '9', likeCount: 386 })
+  })
+})
+
+describe('feed/user/:id/story/ shape', () => {
+  it('reads the single reel object', () => {
+    const body = { reel: { user: { username: 'coach' }, items: [{ pk: '7', taken_at: 10, media_type: 1 }] } }
+    expect(parseOwnReel(body, '42')[0].pk).toBe('7')
+    expect(parseReelsMediaItems(body)[0].pk).toBe('7')
   })
 })

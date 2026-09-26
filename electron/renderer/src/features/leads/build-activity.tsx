@@ -90,7 +90,8 @@ export function buildActivity(calls: Call[], followUps: FollowUp[], journeyEvent
       const thumb = (event.metadata?.content_thumbnail_url as string | null | undefined) ?? null
       const contentKind = event.metadata?.content_kind as string | null | undefined
       const publishedAt = event.metadata?.content_published_at as string | null | undefined
-      const kindLabel = contentKind ? KIND_LABEL[contentKind] : null
+      const highlightTitle = event.metadata?.highlight_title as string | null | undefined
+      const kindLabel = highlightTitle ? `Story « ${highlightTitle} »` : contentKind ? KIND_LABEL[contentKind] : event.event_type === 'instagram_story_view' ? 'Story' : null
       entries.push({
         id: `ig-${event.id}`,
         kind: event.event_type.replace('instagram_', ''),

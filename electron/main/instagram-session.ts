@@ -11,10 +11,15 @@
 // - Requests are few, sequential and spaced out (a normal person opening
 //   their story viewers list), and collection stops at the first sign of a
 //   challenge or rate limit.
-import { BrowserWindow, net, session, type Session } from 'electron'
+import { BrowserWindow, session, type Session } from 'electron'
 import { classifyFailure, parseArchiveDayShells, parseHighlightItems, parseHighlightsTray, type HighlightCollection, parseOwnReel, parseReelsMediaItems, parseViewersPage, reelOwnerUsername, type ArchivedStory, type InstagramFailure, type OwnStory, type StoryViewer } from './instagram-parse'
 
 const PARTITION = 'persist:instagram'
+
+/** Viewer list of one of the owner's stories (the web client's own request). */
+function viewersPath(storyPk: string, maxId: string | null): string {
+  return `/api/v1/media/${encodeURIComponent(storyPk)}/list_reel_media_viewer/?supported_capabilities_new=%5B%5D${maxId ? `&max_id=${encodeURIComponent(maxId)}` : ''}`
+}
 const IG = 'https://www.instagram.com'
 // Public app id of Instagram's own web client (sent by instagram.com itself).
 const IG_WEB_APP_ID = '936619743392459'
@@ -59,13 +64,7 @@ class IgError extends Error {
   }
 }
 
-const IG_API = 'https://i.instagram.com'
 
-/**
- * GET on www.instagram.com; some owner-only endpoints answer an empty body
- * there, so an empty/non-JSON 200 is retried once on i.instagram.com (same
- * session cookies, .instagram.com domain).
- */
 // Account-wide cooldown: once Instagram throttles (429 / dropped
 // connection) or asks for a checkpoint, EVERY Instagram call from this app
 // is refused for a while — whichever page asked — so retries from several
@@ -82,21 +81,7 @@ async function igGet(path: string): Promise<unknown> {
     throw new IgError('rate_limited', `Pause Instagram encore ${Math.ceil(cooldownRemainingMs() / 60_000)} min`)
   }
   try {
-    try {
-      return await igGetOn(IG, path)
-    } catch (err) {
-      if (err instanceof IgError && err.reason === 'error' && /\(200\)/.test(err.message)) {
-        // i.instagram.com doesn't accept web-session cookies for every
-        // endpoint: its login_required there is NOT a real logout.
-        try {
-          return await igGetOn(IG_API, path)
-        } catch (apiErr) {
-          if (apiErr instanceof IgError && apiErr.reason === 'not_connected') throw new IgError('error', 'Endpoint indisponible pour une session web')
-          throw apiErr
-        }
-      }
-      throw err
-    }
+    return await igGetOn(IG, path)
   } catch (err) {
     if (err instanceof IgError && (err.reason === 'rate_limited' || err.reason === 'checkpoint')) {
       cooldownUntil = Date.now() + COOLDOWN_MS
@@ -106,49 +91,82 @@ async function igGet(path: string): Promise<unknown> {
   }
 }
 
-async function igGetOn(host: string, path: string): Promise<unknown> {
-  const csrf = (await cookie('csrftoken')) ?? ''
-  return new Promise((resolve, reject) => {
-    const req = net.request({ url: `${host}${path}`, method: 'GET', session: igSession(), useSessionCookies: true })
-    req.setHeader('X-IG-App-ID', IG_WEB_APP_ID)
-    req.setHeader('X-CSRFToken', csrf)
-    req.setHeader('X-Requested-With', 'XMLHttpRequest')
-    req.setHeader('Accept', '*/*')
-    req.setHeader('Referer', `${IG}/`)
-    req.on('response', (res) => {
-      const chunks: Buffer[] = []
-      res.on('data', (c) => chunks.push(c))
-      res.on('end', () => {
-        const text = Buffer.concat(chunks).toString('utf8')
-        let body: unknown = null
-        try {
-          body = JSON.parse(text)
-        } catch {
-          // HTML instead of JSON: login page, challenge or an endpoint change.
-          console.error(`[instagram] ${path} → ${res.statusCode} non-JSON: ${text.slice(0, 200).replace(/\s+/g, ' ')}`)
-          reject(
-            new IgError(
-              res.statusCode === 429 ? 'rate_limited' : res.statusCode === 401 || res.statusCode === 403 ? 'not_connected' : 'error',
-              `Réponse inattendue d'Instagram (${res.statusCode})`,
-            ),
-          )
-          return
-        }
-        if (res.statusCode >= 200 && res.statusCode < 300) resolve(body)
-        else {
-          console.error(`[instagram] ${path} → ${res.statusCode}: ${text.slice(0, 200)}`)
-          reject(new IgError(classifyFailure(res.statusCode, body), `Instagram ${res.statusCode}`))
-        }
-      })
-    })
-    // Instagram drops the connection when it throttles (net::ERR_FAILED):
-    // back off like a 429 rather than retrying.
-    req.on('error', (err) => {
-      console.error(`[instagram] ${path} → ${err.message}`)
-      reject(new IgError(/ERR_FAILED|ERR_CONNECTION|ERR_EMPTY_RESPONSE/.test(err.message) ? 'rate_limited' : 'error', err.message))
-    })
-    req.end()
+// ─── Transport: same-origin fetch from an Instagram page ─────────────────
+// Requests are made from inside a hidden instagram.com page (same approach
+// as Insyder): same origin, same cookies and the headers Instagram's own web
+// client sends. Requests from the main process (net.request) were answered
+// with empty bodies / dropped connections for owner-only endpoints. The
+// page lives in the isolated 'persist:instagram' partition; nothing but the
+// JSON response comes back to the main process, cookies never do.
+let pageWin: BrowserWindow | null = null
+let pageReady: Promise<BrowserWindow> | null = null
+
+function instagramPage(): Promise<BrowserWindow> {
+  if (pageWin && !pageWin.isDestroyed() && pageReady) return pageReady
+  pageWin = new BrowserWindow({
+    show: false,
+    width: 800,
+    height: 600,
+    webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true },
   })
+  const win = pageWin
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  win.on('closed', () => {
+    if (pageWin === win) {
+      pageWin = null
+      pageReady = null
+    }
+  })
+  pageReady = win.loadURL(`${IG}/`).then(() => win)
+  pageReady.catch(() => {
+    pageReady = null
+  })
+  return pageReady
+}
+
+export function closeInstagramPage() {
+  if (pageWin && !pageWin.isDestroyed()) pageWin.close()
+  pageWin = null
+  pageReady = null
+}
+
+async function igGetOn(_host: string, path: string): Promise<unknown> {
+  let win: BrowserWindow
+  try {
+    win = await instagramPage()
+  } catch (err) {
+    throw new IgError('error', `Page Instagram indisponible: ${err instanceof Error ? err.message : err}`)
+  }
+  // Only the path is interpolated (JSON-encoded); the page reads its own
+  // csrftoken cookie itself.
+  const script = `(async () => {
+    const csrf = (document.cookie.match(/(?:^|; )csrftoken=([^;]+)/) || [])[1] || '';
+    try {
+      const r = await fetch(${JSON.stringify(path)}, {
+        credentials: 'include',
+        headers: { 'X-IG-App-ID': ${JSON.stringify(IG_WEB_APP_ID)}, 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': csrf },
+      });
+      return { status: r.status, text: await r.text() };
+    } catch (e) {
+      return { status: 0, text: '', networkError: String(e && e.message || e) };
+    }
+  })()`
+  const res = (await win.webContents.executeJavaScript(script, true)) as { status: number; text: string; networkError?: string }
+  if (res.networkError) {
+    console.error(`[instagram] ${path.split('?')[0]} → network error`)
+    throw new IgError('rate_limited', 'Connexion refusée par Instagram')
+  }
+  let body: unknown = null
+  try {
+    body = JSON.parse(res.text)
+  } catch {
+    console.error(`[instagram] ${path.split('?')[0]} → ${res.status} non-JSON`)
+    throw new IgError(res.status === 429 ? 'rate_limited' : res.status === 401 || res.status === 403 ? 'not_connected' : 'error', `Réponse inattendue d'Instagram (${res.status})`)
+  }
+  if (res.status >= 200 && res.status < 300) return body
+  const reason = classifyFailure(res.status, body)
+  console.error(`[instagram] ${path.split('?')[0]} → ${res.status} (${reason})`)
+  throw new IgError(reason, `Instagram ${res.status}`)
 }
 
 // No network call here: status is read from the session cookies only (a
@@ -212,6 +230,7 @@ export function login(parent: BrowserWindow | null): Promise<InstagramSessionSta
 
 export async function logout(): Promise<void> {
   cachedUsername = null
+  closeInstagramPage()
   await igSession().clearStorageData()
 }
 
@@ -223,7 +242,7 @@ export async function collectStoryViewers(): Promise<CollectResult> {
     const status = await getStatus()
     if (!status.connected || !status.userId) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
 
-    const reel = await igGet(`/api/v1/feed/reels_media/?reel_ids=${status.userId}`)
+    const reel = await igGet(`/api/v1/feed/user/${status.userId}/story/`)
     const owner = reelOwnerUsername(reel, status.userId)
     if (owner) cachedUsername = { userId: status.userId, username: owner }
     const items = parseOwnReel(reel, status.userId)
@@ -233,8 +252,7 @@ export async function collectStoryViewers(): Promise<CollectResult> {
       let maxId: string | null = null
       for (let page = 0; page < MAX_VIEWER_PAGES_PER_STORY; page++) {
         await humanPause()
-        const q: string = maxId ? `?max_id=${encodeURIComponent(maxId)}` : ''
-        const parsed = parseViewersPage(await igGet(`/api/v1/media/${item.pk}/list_reel_media_viewer/${q}`))
+        const parsed = parseViewersPage(await igGet(viewersPath(item.pk, maxId)))
         viewers.push(...parsed.viewers)
         if (!parsed.nextMaxId || parsed.viewers.length === 0) break
         maxId = parsed.nextMaxId
@@ -273,7 +291,7 @@ export async function storyArchive(force = false): Promise<ArchiveResult> {
       if (!status.connected || !status.userId) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
       // 1. Live stories — the same endpoint the viewer collection uses.
       const byPk = new Map<string, ArchivedStory>()
-      for (const s of parseReelsMediaItems(await igGet(`/api/v1/feed/reels_media/?reel_ids=${status.userId}`))) byPk.set(s.pk, s)
+      for (const s of parseReelsMediaItems(await igGet(`/api/v1/feed/user/${status.userId}/story/`))) byPk.set(s.pk, s)
       // 2. Archive — best effort only: skipped silently if Instagram doesn't
       //    answer it (empty body seen in practice), never retried in a loop.
       try {
@@ -359,4 +377,93 @@ export async function highlightItems(ids: string[]): Promise<HighlightItemsResul
     // Return what we have; the caller shows partial results.
     return Object.keys(items).length > 0 ? { ok: true, items } : failure(err)
   }
+}
+
+// ─── Highlight viewers ────────────────────────────────────────────────────
+export interface HighlightStoryResult {
+  pk: string
+  highlightId: string
+  highlightTitle: string
+  takenAt: string
+  mediaType: 'image' | 'video' | null
+  thumbnailUrl: string | null
+  viewerCount: number | null
+  likeCount: number | null
+  /** 'ok' even with 0 viewers; 'error' = the list could not be read (never "0"). */
+  status: 'ok' | 'error'
+  error: string | null
+  viewers: StoryViewer[]
+}
+
+export type HighlightViewersResult =
+  | { ok: true; accountUsername: string; stories: HighlightStoryResult[]; skipped: number; stoppedEarly: InstagramFailure | null }
+  | { ok: false; reason: InstagramFailure; message: string }
+
+const VIEWER_CONCURRENCY = 2
+
+/**
+ * Viewers of every story in the coach's highlights. Incremental: stories in
+ * `skipPks` (already collected, no longer changing) are not fetched again.
+ * Two stories at a time, spaced; stops at the first throttle/checkpoint and
+ * returns what it has (the rest stays for the next run).
+ */
+export async function collectHighlightViewers(skipPks: string[]): Promise<HighlightViewersResult> {
+  const status = await getStatus()
+  if (!status.connected || !status.userId) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
+  const tray = await highlightsTray()
+  if (!tray.ok) return tray
+  const items = await highlightItems(tray.collections.map((c) => c.id))
+  if (!items.ok) return items
+
+  const skip = new Set(skipPks)
+  const queue: Omit<HighlightStoryResult, 'status' | 'error' | 'viewers'>[] = []
+  const seen = new Set<string>()
+  let skipped = 0
+  for (const c of tray.collections) {
+    for (const st of items.items[c.id] ?? []) {
+      if (seen.has(st.pk)) continue // same story in two collections
+      seen.add(st.pk)
+      if (skip.has(st.pk)) {
+        skipped += 1
+        continue
+      }
+      queue.push({
+        pk: st.pk,
+        highlightId: c.id,
+        highlightTitle: c.title,
+        takenAt: st.takenAt,
+        mediaType: st.mediaType,
+        thumbnailUrl: st.imageUrl,
+        viewerCount: st.viewerCount,
+        likeCount: st.likeCount,
+      })
+    }
+  }
+
+  const results: HighlightStoryResult[] = []
+  let stoppedEarly: InstagramFailure | null = null
+  let next = 0
+  const worker = async () => {
+    while (next < queue.length && !stoppedEarly) {
+      const story = queue[next++]
+      const viewers: StoryViewer[] = []
+      try {
+        let maxId: string | null = null
+        for (let page = 0; page < MAX_VIEWER_PAGES_PER_STORY; page++) {
+          await humanPause()
+          const parsed = parseViewersPage(await igGet(viewersPath(story.pk, maxId)))
+          viewers.push(...parsed.viewers)
+          if (!parsed.nextMaxId || parsed.viewers.length === 0) break
+          maxId = parsed.nextMaxId
+        }
+        results.push({ ...story, status: 'ok', error: null, viewers })
+      } catch (err) {
+        const reason = err instanceof IgError ? err.reason : 'error'
+        results.push({ ...story, status: 'error', error: err instanceof Error ? err.message : String(err), viewers })
+        if (reason === 'rate_limited' || reason === 'checkpoint' || reason === 'not_connected') stoppedEarly = reason
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: VIEWER_CONCURRENCY }, worker))
+  return { ok: true, accountUsername: status.username ?? status.userId, stories: results, skipped, stoppedEarly }
 }

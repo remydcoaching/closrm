@@ -36,6 +36,24 @@ export async function GET(request: NextRequest) {
   try {
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
+    // ?known=1: every collected story with its collection state, so the
+    // desktop only re-reads stories whose viewer list can still change.
+    if (request.nextUrl.searchParams.get('known') === '1') {
+      let res = await supabase
+        .from('story_view_stories')
+        .select('story_pk, taken_at, last_collected_at, viewers_collected, fetch_status')
+        .eq('workspace_id', workspaceId)
+        .limit(5000)
+      if (res.error && /fetch_status/.test(res.error.message)) {
+        res = (await supabase
+          .from('story_view_stories')
+          .select('story_pk, taken_at, last_collected_at, viewers_collected')
+          .eq('workspace_id', workspaceId)
+          .limit(5000)) as typeof res
+      }
+      if (res.error) throw new Error(res.error.message)
+      return NextResponse.json({ data: res.data ?? [] })
+    }
     // ?story=<pk>: that story and its viewers, with lead + score when known.
     const storyPk = request.nextUrl.searchParams.get('story')
     if (storyPk) return NextResponse.json({ data: await loadStoryDetail(supabase, workspaceId, storyPk) })

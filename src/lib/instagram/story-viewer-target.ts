@@ -81,9 +81,10 @@ export async function targetStoryViewer(supabase: SupabaseClient, workspaceId: s
       profile_url: `https://instagram.com/${r.instagram_username}`,
       source_post_id: r.story_pk,
       source_provider: 'desktop_session',
-      // Real observation window: story published → first seen by ClosRM.
-      first_seen_at: takenAt.get(r.story_pk) ?? r.first_seen_at,
+      // Observation time (when ClosRM saw them in the viewer list).
+      first_seen_at: r.first_seen_at,
       last_seen_at: r.first_seen_at,
+      metadata: { story_taken_at: takenAt.get(r.story_pk) ?? null },
     }))
   if (toInsert.length > 0) {
     const { error: iErr } = await supabase.from('instagram_interactions').insert(toInsert)

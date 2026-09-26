@@ -11,6 +11,8 @@ import { useStoryCollector } from '../../lib/story-collector'
 import { LoadingState, EmptyState } from '../../design-system/States'
 import type { ArchivedStory, HighlightCollection } from '../../lib/electron-bridge'
 import { StoryCard } from './StoriesPage'
+import { finalStoryPks, type KnownStory } from './story-scan'
+import { invalidate } from '../../lib/query-cache'
 import './stories.css'
 
 const FAILURE: Record<string, string> = {
@@ -84,6 +86,68 @@ export function HighlightsSection() {
   const selectedItems = selected ? items[selected] : undefined
   const topSelected = useMemo(() => [...(selectedItems ?? [])].sort((a, b) => rankValue(b) - rankValue(a)).slice(0, 5), [selectedItems])
 
+  // ─── Nominative viewers of highlight stories ───
+  const [scanning, setScanning] = useState(false)
+  const [scanReport, setScanReport] = useState<string | null>(null)
+
+  async function scanViewers() {
+    if (!bridge) return
+    setScanning(true)
+    setScanReport(null)
+    try {
+      const known = await api.get<{ data: KnownStory[] }>('/api/instagram/story-views?known=1').catch(() => ({ data: [] as KnownStory[] }))
+      const res = await bridge.collectHighlightViewers(finalStoryPks(known.data))
+      if (!res.ok) {
+        setScanReport(FAILURE[res.reason] ?? res.message)
+        return
+      }
+      if (res.stories.length === 0) {
+        setScanReport(res.skipped > 0 ? `Rien à relire : ${res.skipped} stories déjà collectées et définitives.` : 'Aucune story à la une accessible.')
+        return
+      }
+      const saved = await api.post<{ data: { stories: number; storiesUnreadable: number; viewers: number; leadsMatched: number; errors: string[] } }>(
+        '/api/instagram/story-views',
+        {
+          accountUsername: res.accountUsername,
+          stories: res.stories.map((st) => ({
+            pk: st.pk,
+            takenAt: st.takenAt,
+            mediaType: st.mediaType,
+            thumbnailUrl: st.thumbnailUrl,
+            viewerCount: st.viewerCount,
+            likeCount: st.likeCount,
+            highlightId: st.highlightId,
+            highlightTitle: st.highlightTitle,
+            status: st.status,
+            error: st.error,
+            viewers: st.viewers,
+          })),
+        },
+      )
+      const d = saved.data
+      const withViewers = res.stories.filter((st) => st.status === 'ok' && st.viewers.length > 0).length
+      const readableEmpty = res.stories.filter((st) => st.status === 'ok' && st.viewers.length === 0).length
+      setScanReport(
+        [
+          `${res.stories.length} stories à la une lues`,
+          `${withViewers} avec des spectateurs (${d.viewers} vues, ${d.leadsMatched} leads reconnus)`,
+          readableEmpty > 0 ? `${readableEmpty} sans spectateur visible (Instagram ne les liste que 48 h après publication)` : null,
+          d.storiesUnreadable > 0 ? `${d.storiesUnreadable} illisibles (erreur Instagram, réessayées au prochain scan)` : null,
+          res.skipped > 0 ? `${res.skipped} déjà collectées, non relues` : null,
+          res.stoppedEarly ? `arrêt anticipé : ${FAILURE[res.stoppedEarly] ?? res.stoppedEarly}` : null,
+          d.errors.length > 0 ? `enregistrement partiel : ${d.errors[0]}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      )
+      invalidate((k) => k.startsWith('/api/instagram/story-views') || k.startsWith('/api/desktop/leads/'))
+    } catch (err) {
+      setScanReport(err instanceof Error ? err.message : 'Récupération impossible')
+    } finally {
+      setScanning(false)
+    }
+  }
+
   function open(st: ArchivedStory) {
     navigate(`/instagram/stories/${st.pk}`, { state: { story: st } })
   }
@@ -92,9 +156,17 @@ export function HighlightsSection() {
 
   return (
     <section className="story-gallery">
-      <div className="story-section-title">
-        Vos stories à la une <span>rangées par les personnes qui les ont aimées ou vues</span>
+      <div className="story-section-head">
+        <div className="story-section-title">
+          Vos stories à la une <span>rangées par les personnes qui les ont aimées ou vues</span>
+        </div>
+        {connected && (
+          <button type="button" className="ds-pill-button ds-pill-button--dark" onClick={scanViewers} disabled={scanning}>
+            {scanning ? 'Récupération des spectateurs…' : 'Récupérer les spectateurs'}
+          </button>
+        )}
       </div>
+      {scanReport && <p className="ds-muted story-scan-report">{scanReport}</p>}
 
       {!connected && <EmptyState title="Session Instagram non connectée" description={FAILURE.not_connected} />}
       {connected && error && <EmptyState title="Stories à la une indisponibles" description={error} />}

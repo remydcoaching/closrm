@@ -32,7 +32,15 @@ import { JourneyStrip } from './JourneyStrip'
 import { useCachedQuery } from '../../lib/use-cached-query'
 import { invalidate, updateCached } from '../../lib/query-cache'
 
+interface LeadStoryViews {
+  count: number
+  lastObservedAt: string | null
+  highlights: string[]
+  items: { storyPk: string; highlightTitle: string | null; takenAt: string | null; observedAt: string; thumbnailUrl: string | null }[]
+}
+
 interface LeadIntelligence {
+  storyViews?: LeadStoryViews
   lead: LeadWithRelations
   journey: LeadJourney | null
   score: EngagementScore | null
@@ -61,6 +69,7 @@ export function LeadDetailPage() {
   const journey = intel?.journey ?? null
   const score = intel?.score ?? null
   const instagramSignal = intel?.instagramSignal ?? null
+  const storyViews = intel?.storyViews ?? null
   const error = query.error
   const [tab, setTab] = useState<TabKey>('activite')
   const [editingField, setEditingField] = useState<string | null>(null)
@@ -347,6 +356,38 @@ export function LeadDetailPage() {
           Appel — joint
         </Button>
       </div>
+
+      {storyViews && storyViews.count > 0 && (
+        <section className="lead-story-views">
+          <div className="lead-story-views-head">
+            <h3>Instagram · stories</h3>
+            <span className="ds-muted">observations collectées depuis votre session Instagram</span>
+          </div>
+          <div className="lead-story-views-facts">
+            <div>
+              <span className="ds-muted">Stories vues</span>
+              <strong className="ds-num">{storyViews.count}</strong>
+            </div>
+            <div>
+              <span className="ds-muted">Dernière observation</span>
+              <strong className="ds-num">{storyViews.lastObservedAt ? new Date(storyViews.lastObservedAt).toLocaleDateString('fr-FR') : '—'}</strong>
+            </div>
+            <div>
+              <span className="ds-muted">À la une vues</span>
+              <strong>{storyViews.highlights.length > 0 ? storyViews.highlights.join(', ') : '—'}</strong>
+            </div>
+          </div>
+          <ul className="lead-story-views-list">
+            {storyViews.items.slice(0, 12).map((it) => (
+              <li key={it.storyPk}>
+                <span className="ds-num">{new Date(it.observedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</span>
+                <span>{it.highlightTitle ? `Story « ${it.highlightTitle} »` : 'Story'} → vue</span>
+                {it.takenAt && <span className="ds-muted">publiée le {new Date(it.takenAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <JourneyStrip entries={activity} />
 

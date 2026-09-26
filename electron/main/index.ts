@@ -147,6 +147,9 @@ ipcMain.handle('closrm:ig:logout', () => instagramSession.logout())
 ipcMain.handle('closrm:ig:collect-stories', () => instagramSession.collectStoryViewers())
 ipcMain.handle('closrm:ig:highlights', (_e, force?: boolean) => instagramSession.highlightsTray(!!force))
 ipcMain.handle('closrm:ig:highlight-items', (_e, ids: string[]) => instagramSession.highlightItems(Array.isArray(ids) ? ids.slice(0, 40).map(String) : []))
+ipcMain.handle('closrm:ig:collect-highlight-viewers', (_e, skipPks: unknown) =>
+  instagramSession.collectHighlightViewers(Array.isArray(skipPks) ? skipPks.slice(0, 5000).map(String) : []),
+)
 ipcMain.handle('closrm:ig:story-archive', (_e, force?: boolean) => instagramSession.storyArchive(!!force))
 
 ipcMain.handle('closrm:open-external', async (_event, url: string) => {

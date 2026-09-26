@@ -34,6 +34,53 @@ export async function loadInstagramSignal(
   return data ?? null
 }
 
+export interface LeadStoryViews {
+  count: number
+  lastObservedAt: string | null
+  highlights: string[]
+  items: { storyPk: string; highlightTitle: string | null; takenAt: string | null; observedAt: string; thumbnailUrl: string | null }[]
+}
+
+/**
+ * Stories (live and "à la une") this lead was seen viewing, from the
+ * desktop's story-viewer collection. observedAt = when ClosRM saw them in
+ * the viewer list (Instagram doesn't give the exact view time).
+ */
+export async function loadLeadStoryViews(supabase: SupabaseClient, workspaceId: string, leadId: string): Promise<LeadStoryViews> {
+  const { data: seen } = await supabase
+    .from('story_viewers')
+    .select('story_pk, first_seen_at')
+    .eq('workspace_id', workspaceId)
+    .eq('matched_lead_id', leadId)
+    .limit(1000)
+  const rows = seen ?? []
+  if (rows.length === 0) return { count: 0, lastObservedAt: null, highlights: [], items: [] }
+  const pks = rows.map((r) => r.story_pk as string)
+  let res = await supabase.from('story_view_stories').select('story_pk, taken_at, thumbnail_url, highlight_title').eq('workspace_id', workspaceId).in('story_pk', pks)
+  if (res.error && /highlight_title/.test(res.error.message)) {
+    res = (await supabase.from('story_view_stories').select('story_pk, taken_at, thumbnail_url').eq('workspace_id', workspaceId).in('story_pk', pks)) as typeof res
+  }
+  const stories = new Map(((res.data ?? []) as { story_pk: string; taken_at: string; thumbnail_url: string | null; highlight_title?: string | null }[]).map((st) => [st.story_pk, st]))
+  const items = rows
+    .map((r) => {
+      const st = stories.get(r.story_pk as string)
+      return {
+        storyPk: r.story_pk as string,
+        highlightTitle: st?.highlight_title ?? null,
+        takenAt: st?.taken_at ?? null,
+        observedAt: r.first_seen_at as string,
+        thumbnailUrl: st?.thumbnail_url ?? null,
+      }
+    })
+    .sort((a, b) => b.observedAt.localeCompare(a.observedAt))
+  return {
+    count: items.length,
+    lastObservedAt: items[0]?.observedAt ?? null,
+    highlights: [...new Set(items.map((i) => i.highlightTitle).filter((t): t is string => !!t))],
+    items,
+  }
+}
+
 async function timed<T>(timings: Record<string, number>, key: string, p: Promise<T>): Promise<T> {
   const t0 = Date.now()
   try {
@@ -46,13 +93,14 @@ async function timed<T>(timings: Record<string, number>, key: string, p: Promise
 export async function loadLeadIntelligence(supabase: SupabaseClient, workspaceId: string, id: string) {
   const timings: Record<string, number> = {}
   const t0 = Date.now()
-  const [lead, journey, score] = await Promise.all([
+  const [lead, journey, score, storyViews] = await Promise.all([
     timed(timings, 'lead', loadLeadWithRelations(supabase, workspaceId, id)),
     timed(timings, 'journey', loadLeadJourney(supabase, workspaceId, id)),
     timed(timings, 'score', computeEngagementScore(supabase, workspaceId, id)),
+    timed(timings, 'storyViews', loadLeadStoryViews(supabase, workspaceId, id)),
   ])
   if (!lead) return null
   const instagramSignal = await timed(timings, 'instagramSignal', loadInstagramSignal(supabase, workspaceId, lead))
   timings.total = Date.now() - t0
-  return { data: { lead, journey, score, instagramSignal }, timings }
+  return { data: { lead, journey, score, instagramSignal, storyViews }, timings }
 }

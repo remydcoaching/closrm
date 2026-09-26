@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('closrm', {
     logout: (): Promise<void> => ipcRenderer.invoke('closrm:ig:logout'),
     collectStories: () => ipcRenderer.invoke('closrm:ig:collect-stories'),
     storyArchive: (force?: boolean) => ipcRenderer.invoke('closrm:ig:story-archive', force),
+    collectHighlightViewers: (skipPks: string[]) => ipcRenderer.invoke('closrm:ig:collect-highlight-viewers', skipPks),
     highlights: (force?: boolean) => ipcRenderer.invoke('closrm:ig:highlights', force),
     highlightItems: (ids: string[]) => ipcRenderer.invoke('closrm:ig:highlight-items', ids),
   },

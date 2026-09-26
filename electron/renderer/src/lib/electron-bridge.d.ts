@@ -4,6 +4,34 @@ export interface InstagramSessionStatus {
   username: string | null
 }
 
+export interface StoryViewerData {
+  pk: string
+  username: string
+  fullName: string | null
+  profilePicUrl: string | null
+  isVerified: boolean | null
+  hasLiked: boolean | null
+  isPrivate: boolean | null
+}
+
+export interface HighlightStoryResult {
+  pk: string
+  highlightId: string
+  highlightTitle: string
+  takenAt: string
+  mediaType: 'image' | 'video' | null
+  thumbnailUrl: string | null
+  viewerCount: number | null
+  likeCount: number | null
+  status: 'ok' | 'error'
+  error: string | null
+  viewers: StoryViewerData[]
+}
+
+export type HighlightViewersResult =
+  | { ok: true; accountUsername: string; stories: HighlightStoryResult[]; skipped: number; stoppedEarly: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error' | null }
+  | { ok: false; reason: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error'; message: string }
+
 export interface CollectedStory {
   pk: string
   takenAt: string
@@ -11,7 +39,7 @@ export interface CollectedStory {
   mediaType: 'image' | 'video' | null
   thumbnailUrl: string | null
   viewerCount: number | null
-  viewers: { pk: string; username: string; fullName: string | null; profilePicUrl: string | null; isVerified: boolean | null; hasLiked: boolean | null }[]
+  viewers: StoryViewerData[]
 }
 
 export type CollectStoriesResult =
@@ -55,6 +83,7 @@ export interface ClosRMBridge {
     collectStories: () => Promise<CollectStoriesResult>
     storyArchive: (force?: boolean) => Promise<StoryArchiveResult>
     highlights: (force?: boolean) => Promise<HighlightsResult>
+    collectHighlightViewers: (skipPks: string[]) => Promise<HighlightViewersResult>
     highlightItems: (ids: string[]) => Promise<HighlightItemsResult>
   }
   secureStorage: {

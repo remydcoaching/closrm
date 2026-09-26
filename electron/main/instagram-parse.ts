@@ -12,6 +12,7 @@ export interface StoryViewer {
   isVerified: boolean | null
   /** Sent a heart on the story (owner-only info in the viewer list). */
   hasLiked: boolean | null
+  isPrivate: boolean | null
 }
 
 export interface OwnStory {
@@ -53,7 +54,7 @@ const httpsUrl = (v: unknown): string | null => {
 /** Username of the reel owner (the coach) in a feed/reels_media response. */
 export function reelOwnerUsername(body: unknown, userId: string): string | null {
   const root = asObj(body)
-  const reel = asObj(asObj(root?.reels)?.[userId]) ?? asObj(Array.isArray(root?.reels_media) ? root.reels_media[0] : null)
+  const reel = asObj(root?.reel) ?? asObj(asObj(root?.reels)?.[userId]) ?? asObj(Array.isArray(root?.reels_media) ? root.reels_media[0] : null)
   return asStr(asObj(reel?.user)?.username)
 }
 
@@ -61,7 +62,7 @@ export function reelOwnerUsername(body: unknown, userId: string): string | null 
 export function parseOwnReel(body: unknown, userId: string): Omit<OwnStory, 'viewers'>[] {
   const root = asObj(body)
   if (!root) return []
-  const reel = asObj(asObj(root.reels)?.[userId]) ?? asObj(Array.isArray(root.reels_media) ? root.reels_media[0] : null)
+  const reel = asObj(root.reel) ?? asObj(asObj(root.reels)?.[userId]) ?? asObj(Array.isArray(root.reels_media) ? root.reels_media[0] : null)
   const items = Array.isArray(reel?.items) ? reel.items : []
   const out: Omit<OwnStory, 'viewers'>[] = []
   for (const raw of items) {
@@ -102,7 +103,7 @@ export function parseArchiveDayShells(body: unknown): { ids: string[]; maxId: st
 export function parseReelsMediaItems(body: unknown): ArchivedStory[] {
   const root = asObj(body)
   const reels = asObj(root?.reels)
-  const reelList = reels ? Object.values(reels) : Array.isArray(root?.reels_media) ? root.reels_media : []
+  const reelList = reels ? Object.values(reels) : Array.isArray(root?.reels_media) ? root.reels_media : root?.reel ? [root.reel] : []
   const out: ArchivedStory[] = []
   for (const reel of reelList) {
     const items = asObj(reel)?.items
@@ -145,6 +146,7 @@ export function parseViewersPage(body: unknown): { viewers: StoryViewer[]; nextM
       profilePicUrl: httpsUrl(u.profile_pic_url),
       isVerified: typeof u.is_verified === 'boolean' ? u.is_verified : null,
       hasLiked: typeof u.has_liked === 'boolean' ? u.has_liked : typeof u.has_liked_reel === 'boolean' ? u.has_liked_reel : null,
+      isPrivate: typeof u.is_private === 'boolean' ? u.is_private : null,
     })
   }
   return { viewers, nextMaxId: asStr(root?.next_max_id) }
