@@ -207,6 +207,7 @@ export async function collectStoryViewers(): Promise<CollectResult> {
 export type ArchiveResult = { ok: true; stories: ArchivedStory[] } | { ok: false; reason: InstagramFailure; message: string }
 
 let archiveCache: { at: number; stories: ArchivedStory[] } | null = null
+let archiveInFlight: Promise<ArchiveResult> | null = null
 const ARCHIVE_TTL_MS = 30 * 60_000
 const ARCHIVE_DAYS = 12
 const REELS_PER_REQUEST = 4
@@ -218,25 +219,41 @@ const REELS_PER_REQUEST = 4
  */
 export async function storyArchive(force = false): Promise<ArchiveResult> {
   if (!force && archiveCache && Date.now() - archiveCache.at < ARCHIVE_TTL_MS) return { ok: true, stories: archiveCache.stories }
-  try {
-    const status = await getStatus()
-    if (!status.connected) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
-    const shells = parseArchiveDayShells(await igGet('/api/v1/archive/reel/day_shells/?timezone_offset=' + -new Date().getTimezoneOffset() * 60))
-    const ids = shells.ids.slice(0, ARCHIVE_DAYS)
-    const stories: ArchivedStory[] = []
-    for (let i = 0; i < ids.length; i += REELS_PER_REQUEST) {
-      await humanPause()
-      const q = ids
-        .slice(i, i + REELS_PER_REQUEST)
-        .map((id) => `reel_ids=${encodeURIComponent(id)}`)
-        .join('&')
-      stories.push(...parseReelsMediaItems(await igGet(`/api/v1/feed/reels_media/?${q}`)))
+  if (archiveInFlight) return archiveInFlight
+  archiveInFlight = (async (): Promise<ArchiveResult> => {
+    try {
+      const status = await getStatus()
+      if (!status.connected || !status.userId) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
+      // 1. Live stories — the same endpoint the viewer collection uses.
+      const byPk = new Map<string, ArchivedStory>()
+      for (const s of parseReelsMediaItems(await igGet(`/api/v1/feed/reels_media/?reel_ids=${status.userId}`))) byPk.set(s.pk, s)
+      // 2. Archive — best effort only: skipped silently if Instagram doesn't
+      //    answer it (empty body seen in practice), never retried in a loop.
+      try {
+        await humanPause()
+        const shells = parseArchiveDayShells(await igGet('/api/v1/archive/reel/day_shells/?timezone_offset=' + -new Date().getTimezoneOffset() * 60))
+        const ids = shells.ids.slice(0, ARCHIVE_DAYS)
+        for (let i = 0; i < ids.length; i += REELS_PER_REQUEST) {
+          await humanPause()
+          const q = ids
+            .slice(i, i + REELS_PER_REQUEST)
+            .map((id) => `reel_ids=${encodeURIComponent(id)}`)
+            .join('&')
+          for (const s of parseReelsMediaItems(await igGet(`/api/v1/feed/reels_media/?${q}`))) if (!byPk.has(s.pk)) byPk.set(s.pk, s)
+        }
+      } catch (err) {
+        if (err instanceof IgError && err.reason === 'rate_limited') throw err
+        console.error('[instagram] archive unavailable, showing live stories only')
+      }
+      const stories = [...byPk.values()].sort((a, b) => b.takenAt.localeCompare(a.takenAt))
+      archiveCache = { at: Date.now(), stories }
+      return { ok: true, stories }
+    } catch (err) {
+      if (err instanceof IgError) return { ok: false, reason: err.reason, message: err.message }
+      return { ok: false, reason: 'error', message: err instanceof Error ? err.message : 'Erreur inconnue' }
+    } finally {
+      archiveInFlight = null
     }
-    stories.sort((a, b) => b.takenAt.localeCompare(a.takenAt))
-    archiveCache = { at: Date.now(), stories }
-    return { ok: true, stories }
-  } catch (err) {
-    if (err instanceof IgError) return { ok: false, reason: err.reason, message: err.message }
-    return { ok: false, reason: 'error', message: err instanceof Error ? err.message : 'Erreur inconnue' }
-  }
+  })()
+  return archiveInFlight
 }

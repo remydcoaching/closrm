@@ -13,6 +13,8 @@ import './stories.css'
 
 interface CollectedStory {
   story_pk: string
+  taken_at: string
+  thumbnail_url: string | null
   viewers_collected: number
   viewer_count: number | null
 }
@@ -46,7 +48,7 @@ export function StoryCard({ story, rank, collected, onClick }: { story: Archived
 /** Stories gallery (top 5 + all), used on the Audience page. */
 export function StoriesGallery() {
   const navigate = useNavigate()
-  const { stories, error, reload } = useStoryArchive()
+  const { stories: live, error, reload } = useStoryArchive()
   const [collected, setCollected] = useState<Map<string, CollectedStory>>(new Map())
   const [sort, setSort] = useState<Sort>('recent')
 
@@ -56,6 +58,19 @@ export function StoriesGallery() {
       .then((res) => setCollected(new Map(res.data.stories.map((s) => [s.story_pk, s]))))
       .catch(() => setCollected(new Map()))
   }, [])
+
+  // Instagram (fresh media) + stories ClosRM already collected, so the
+  // gallery still shows something when Instagram doesn't answer.
+  const stories = useMemo<ArchivedStory[] | null>(() => {
+    if (live === null && !error && collected.size === 0) return null
+    const byPk = new Map((live ?? []).map((st) => [st.pk, st]))
+    for (const c of collected.values()) {
+      if (!byPk.has(c.story_pk)) {
+        byPk.set(c.story_pk, { pk: c.story_pk, takenAt: c.taken_at, mediaType: null, imageUrl: c.thumbnail_url, videoUrl: null, viewerCount: c.viewer_count })
+      }
+    }
+    return [...byPk.values()].sort((a, b) => b.takenAt.localeCompare(a.takenAt))
+  }, [live, collected, error])
 
   const sorted = useMemo(() => {
     const list = [...(stories ?? [])]
@@ -82,9 +97,10 @@ export function StoriesGallery() {
         </button>
       </div>
 
-      {stories === null && !error && <LoadingState label="Chargement de vos stories depuis Instagram…" />}
-      {error && <EmptyState title="Stories indisponibles" description={error} />}
-      {stories && stories.length === 0 && <EmptyState title="Aucune story dans votre archive récente" />}
+      {stories === null && <LoadingState label="Chargement de vos stories depuis Instagram…" />}
+      {error && stories !== null && stories.length === 0 && <EmptyState title="Stories indisponibles" description={error} />}
+      {error && stories !== null && stories.length > 0 && <p className="ds-muted">{error} — affichage des stories déjà collectées.</p>}
+      {!error && stories && stories.length === 0 && <EmptyState title="Aucune story pour le moment" description="Vos stories en ligne apparaissent ici, et restent visibles une fois collectées." />}
 
       {stories && stories.length > 0 && (
         <>
