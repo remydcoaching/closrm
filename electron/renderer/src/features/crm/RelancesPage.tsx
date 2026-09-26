@@ -2,7 +2,7 @@
 // filters, same role-scoping as the web). Status change uses the same
 // PATCH /api/follow-ups/:id the web's FollowUpActionModal uses.
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api-client'
 import { FilterMenu } from '../../design-system/FilterMenu'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
@@ -10,6 +10,8 @@ import { followUpChannelLabel, followUpStatusLabel } from '../leads/status'
 import type { FollowUpWithLead, FollowUpsListResponse, FollowUpStatus } from './types'
 import './crm.css'
 import { TableCard } from '../../design-system/TableCard'
+import { Tabs } from '../../design-system/Tabs'
+import { SessionsDmPage } from '../dm-sessions/SessionsDmPage'
 
 const STATUS_OPTIONS = [
   { key: 'en_attente', label: 'En attente' },
@@ -21,7 +23,7 @@ function isOverdue(fu: FollowUpWithLead): boolean {
   return fu.status === 'en_attente' && new Date(fu.scheduled_at) < new Date()
 }
 
-export function RelancesPage() {
+function FollowUpsView() {
   const navigate = useNavigate()
   const [followUps, setFollowUps] = useState<FollowUpWithLead[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -111,6 +113,31 @@ export function RelancesPage() {
           </table>
         </TableCard>
       )}
+    </div>
+  )
+}
+
+type RelancesView = 'relances' | 'sessions-dm'
+
+// Relances tab of the Leads page — follow-ups list and DM sessions side by
+// side (explicit feedback: Sessions DM lives here, not in the sidebar; same
+// entry point as the web's Relances tab). ?vue=sessions-dm deep-links it.
+export function RelancesPage() {
+  const [params, setParams] = useSearchParams()
+  const view: RelancesView = params.get('vue') === 'sessions-dm' ? 'sessions-dm' : 'relances'
+  return (
+    <div className="crm-relances-shell">
+      <div className="crm-relances-switch">
+        <Tabs
+          items={[
+            { key: 'relances' as RelancesView, label: 'Relances' },
+            { key: 'sessions-dm' as RelancesView, label: 'Sessions DM' },
+          ]}
+          active={view}
+          onChange={(k) => setParams(k === 'relances' ? {} : { vue: k }, { replace: true })}
+        />
+      </div>
+      <div className="crm-relances-body">{view === 'relances' ? <FollowUpsView /> : <SessionsDmPage />}</div>
     </div>
   )
 }

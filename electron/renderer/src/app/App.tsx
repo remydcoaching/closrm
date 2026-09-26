@@ -10,7 +10,6 @@ import { InteractionsPage } from '../features/instagram/InteractionsPage'
 import { ContentPage } from '../features/instagram/ContentPage'
 import { ContentDetailPage } from '../features/instagram/ContentDetailPage'
 import { AudiencePage } from '../features/instagram/AudiencePage'
-import { SessionsDmPage } from '../features/dm-sessions/SessionsDmPage'
 import { LeadMagnetsPage } from '../features/acquisition/LeadMagnetsPage'
 import { PublicitesPage } from '../features/acquisition/PublicitesPage'
 import { PipelinePage } from '../features/crm/PipelinePage'
@@ -100,7 +99,8 @@ function AppRoutes() {
         <Route path="instagram/content" element={<ContentPage />} />
         <Route path="instagram/content/:contentId" element={<ContentDetailPage />} />
         <Route path="instagram/audience" element={<AudiencePage />} />
-        <Route path="instagram/sessions-dm" element={<SessionsDmPage />} />
+        {/* Sessions DM now lives in Leads › Relances. */}
+        <Route path="instagram/sessions-dm" element={<Navigate to="/relances?vue=sessions-dm" replace />} />
         <Route path="acquisition/lead-magnets" element={<LeadMagnetsPage />} />
         <Route path="acquisition/publicites" element={<PublicitesPage />} />
         <Route path="acquisition/funnels" element={<FunnelsPage />} />

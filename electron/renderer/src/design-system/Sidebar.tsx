@@ -67,11 +67,6 @@ const ContentIcon = (
   </svg>
 )
 
-const DmSessionsIcon = (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  </svg>
-)
 
 const AnalyticsIcon = (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -148,7 +143,7 @@ const NAV_ITEMS: SidebarItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
   { to: '/agenda', label: 'Agenda', icon: AgendaIcon, matchPaths: ['/agenda'] },
   // Pipeline, Closing, Relances and Deals are tabs of the Leads page.
-  { to: '/leads', label: 'Leads', icon: LeadsIcon, matchPaths: ['/pipeline', '/closing', '/relances', '/deals'] },
+  { to: '/leads', label: 'Leads', icon: LeadsIcon, matchPaths: ['/pipeline', '/closing', '/relances', '/deals', '/instagram/sessions-dm'] },
 ]
 
 const INSTAGRAM_ITEMS: SidebarItem[] = [
@@ -156,7 +151,6 @@ const INSTAGRAM_ITEMS: SidebarItem[] = [
   { to: '/instagram/interactions', label: 'Interactions', icon: InteractionsIcon },
   { to: '/instagram/content', label: 'Content', icon: ContentIcon },
   { to: '/instagram/audience', label: 'Audience', icon: AudienceIcon },
-  { to: '/instagram/sessions-dm', label: 'Sessions DM', icon: DmSessionsIcon },
   { to: '/acquisition/lead-magnets', label: 'Lead Magnets', icon: LeadMagnetIcon },
   { to: '/acquisition/publicites', label: 'Publicités', icon: PublicitesIcon },
   { to: '/acquisition/funnels', label: 'Funnels', icon: FunnelIcon },
