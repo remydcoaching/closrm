@@ -56,6 +56,14 @@ export function useStoryLurkers(stories: number, refreshKey: unknown) {
   return { data, error }
 }
 
+function formatDelay(ms: number): string {
+  const min = Math.max(1, Math.round(ms / 60_000))
+  if (min < 60) return `${min} min`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m ? `${h} h ${m}` : `${h} h`
+}
+
 export function StorySessionPanel() {
   const { available, status, collecting, lastRun, pausedUntil, connect, disconnect, collectNow } = useStoryCollector()
   const { account } = useInstagramAccount()
@@ -89,12 +97,12 @@ export function StorySessionPanel() {
                 : lastRun
                   ? `Dernière collecte ${relativeTime(lastRun.at)} — ${lastRun.ok ? `${formatNumber(lastRun.viewers)} vues sur ${lastRun.stories} stor${lastRun.stories > 1 ? 'ies' : 'y'}` : 'échec'}${lastRun.message ? ` · ${lastRun.message}` : ''}`
                   : 'Aucune collecte pour le moment.'}
-              {paused && ` Reprise automatique ${relativeTime(new Date(pausedUntil).toISOString()).replace('il y a', 'dans')}.`}
+              {paused && ` Reprise automatique dans ${formatDelay(pausedUntil - Date.now())}.`}
             </p>
           </div>
           <div className="ig-story-session-actions">
-            <button type="button" className="ds-pill-button" onClick={collectNow} disabled={collecting}>
-              {collecting ? 'Collecte…' : 'Collecter maintenant'}
+            <button type="button" className="ds-pill-button" onClick={collectNow} disabled={collecting || !!paused} title={paused ? 'En pause pour protéger votre compte' : undefined}>
+              {collecting ? 'Collecte…' : paused ? 'En pause' : 'Collecter maintenant'}
             </button>
             <button type="button" className="ds-pill-button" onClick={disconnect}>
               Déconnecter

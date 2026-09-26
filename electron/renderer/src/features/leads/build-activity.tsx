@@ -1,3 +1,4 @@
+import { useState } from 'react'
 // Merges calls[] + follow_ups[] (GET /api/leads/:id) and journey events
 // (GET /api/leads/:id/journey — funnel + instagram_like/instagram_comment)
 // into one chronological timeline. Pure data transform, no fabricated
@@ -32,6 +33,23 @@ const FUNNEL_ICON = (
     <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
   </svg>
 )
+
+/** Thumbnail of the story/post a gesture was on; Instagram icon if missing or expired. */
+function ContentIcon({ url }: { url: string | null }) {
+  const [broken, setBroken] = useState(false)
+  if (!url || broken || !url.startsWith('https://')) return INSTAGRAM_ICON
+  return <img src={url} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+}
+
+const KIND_LABEL: Record<string, string> = { story: 'Story', reel: 'Réel', post: 'Publication' }
+
+const GESTURE: Record<string, string> = {
+  instagram_like: 'a liké',
+  instagram_comment: 'a commenté',
+  instagram_story_view: 'a vu votre story',
+  instagram_dm: 'vous a écrit en DM',
+  instagram_mention: 'vous a mentionné',
+}
 
 const INSTAGRAM_EVENT_TITLE: Record<string, string> = {
   instagram_like: 'Instagram — a liké un post',
@@ -69,13 +87,20 @@ export function buildActivity(calls: Call[], followUps: FollowUp[], journeyEvent
   for (const event of journeyEvents) {
     if (event.event_type in INSTAGRAM_EVENT_TITLE) {
       const username = event.metadata?.instagram_username as string | undefined
+      const thumb = (event.metadata?.content_thumbnail_url as string | null | undefined) ?? null
+      const contentKind = event.metadata?.content_kind as string | null | undefined
+      const publishedAt = event.metadata?.content_published_at as string | null | undefined
+      const kindLabel = contentKind ? KIND_LABEL[contentKind] : null
       entries.push({
         id: `ig-${event.id}`,
         kind: event.event_type.replace('instagram_', ''),
         at: event.created_at,
-        icon: INSTAGRAM_ICON,
-        title: INSTAGRAM_EVENT_TITLE[event.event_type],
-        detail: username ? `@${username}` : undefined,
+        icon: <ContentIcon url={thumb} />,
+        // "Story · publiée le 26 sept." like Insyder when the content is known.
+        title: kindLabel
+          ? `${kindLabel}${publishedAt ? ` · publié${contentKind === 'story' || contentKind === 'post' ? 'e' : ''} le ${new Date(publishedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`
+          : INSTAGRAM_EVENT_TITLE[event.event_type],
+        detail: kindLabel ? GESTURE[event.event_type] : username ? `@${username}` : undefined,
       })
     } else if (event.event_type === 'view' || event.event_type === 'form_submit' || event.event_type === 'button_click') {
       const label: Record<string, string> = {

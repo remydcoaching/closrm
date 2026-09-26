@@ -111,11 +111,24 @@ export async function GET(
     // instagram_comment, instagram_dm, instagram_mention, instagram_story_view
     const { data: igInteractions } = await supabase
       .from('instagram_interactions')
-      .select('id, interaction_type, instagram_username, profile_url, source_post_url, metadata, last_seen_at')
+      .select('id, interaction_type, instagram_username, profile_url, source_post_id, source_post_url, metadata, last_seen_at')
       .eq('workspace_id', workspaceId)
       .eq('lead_id', lead.id)
       .order('last_seen_at', { ascending: true })
       .limit(200)
+
+    // Visual of the story / post each gesture was on (stories collected by
+    // the desktop app, contents from Ciblage scans) — shown in the journey.
+    const postIds = [...new Set((igInteractions ?? []).map((ig) => ig.source_post_id as string | null).filter((id): id is string => !!id))]
+    const thumbs = new Map<string, { url: string | null; kind: 'story' | 'reel' | 'post'; publishedAt: string | null }>()
+    if (postIds.length > 0) {
+      const [{ data: storyRows }, { data: contentRows }] = await Promise.all([
+        supabase.from('story_view_stories').select('story_pk, thumbnail_url, taken_at').eq('workspace_id', workspaceId).in('story_pk', postIds),
+        supabase.from('discovery_contents').select('content_id, thumbnail_url, content_type, published_at, created_at').eq('workspace_id', workspaceId).in('content_id', postIds),
+      ])
+      for (const c of contentRows ?? []) thumbs.set(c.content_id, { url: c.thumbnail_url, kind: c.content_type === 'clip' ? 'reel' : 'post', publishedAt: c.published_at })
+      for (const st of storyRows ?? []) thumbs.set(st.story_pk, { url: st.thumbnail_url, kind: 'story', publishedAt: st.taken_at })
+    }
 
     const igEvents: JourneyEvent[] = (igInteractions ?? []).map((ig) => ({
       id: ig.id as string,
@@ -124,6 +137,10 @@ export async function GET(
         ...(ig.metadata as Record<string, unknown> ?? {}),
         instagram_username: ig.instagram_username,
         source_post_url: ig.source_post_url,
+        source_post_id: ig.source_post_id,
+        content_thumbnail_url: ig.source_post_id ? (thumbs.get(ig.source_post_id as string)?.url ?? null) : null,
+        content_kind: ig.source_post_id ? (thumbs.get(ig.source_post_id as string)?.kind ?? null) : null,
+        content_published_at: ig.source_post_id ? (thumbs.get(ig.source_post_id as string)?.publishedAt ?? null) : null,
       },
       funnel_page_id: null,
       funnel_page_name: null,

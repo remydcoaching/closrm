@@ -66,7 +66,7 @@ export function StoriesGallery() {
     const byPk = new Map((live ?? []).map((st) => [st.pk, st]))
     for (const c of collected.values()) {
       if (!byPk.has(c.story_pk)) {
-        byPk.set(c.story_pk, { pk: c.story_pk, takenAt: c.taken_at, mediaType: null, imageUrl: c.thumbnail_url, videoUrl: null, viewerCount: c.viewer_count })
+        byPk.set(c.story_pk, { pk: c.story_pk, takenAt: c.taken_at, mediaType: null, imageUrl: c.thumbnail_url, videoUrl: null, viewerCount: c.viewer_count, likeCount: null })
       }
     }
     return [...byPk.values()].sort((a, b) => b.takenAt.localeCompare(a.takenAt))

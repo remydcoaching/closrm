@@ -84,3 +84,26 @@ describe('parseReelsMediaItems', () => {
     expect(out[1]).toMatchObject({ mediaType: 'image', videoUrl: null })
   })
 })
+
+
+import { parseHighlightItems, parseHighlightsTray } from '../instagram-parse'
+
+describe('parseHighlightsTray', () => {
+  it('reads collections with title, cover and count', () => {
+    expect(
+      parseHighlightsTray({
+        tray: [
+          { id: 'highlight:1', title: 'Clients 22', media_count: 7, cover_media: { cropped_image_version: { url: 'https://c/1.jpg' } } },
+          { id: 'weird', title: 'x' },
+        ],
+      }),
+    ).toEqual([{ id: 'highlight:1', title: 'Clients 22', coverUrl: 'https://c/1.jpg', mediaCount: 7 }])
+  })
+})
+
+describe('parseHighlightItems', () => {
+  it('groups items by highlight and reads like counts', () => {
+    const m = parseHighlightItems({ reels: { 'highlight:1': { items: [{ pk: '9', taken_at: 5, media_type: 1, like_count: 386 }] } } })
+    expect(m.get('highlight:1')?.[0]).toMatchObject({ pk: '9', likeCount: 386 })
+  })
+})

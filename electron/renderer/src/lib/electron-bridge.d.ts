@@ -25,11 +25,23 @@ export interface ArchivedStory {
   imageUrl: string | null
   videoUrl: string | null
   viewerCount: number | null
+  likeCount: number | null
 }
 
 export type StoryArchiveResult =
   | { ok: true; stories: ArchivedStory[] }
   | { ok: false; reason: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error'; message: string }
+
+export interface HighlightCollection {
+  id: string
+  title: string
+  coverUrl: string | null
+  mediaCount: number | null
+}
+
+type IgFailure = { ok: false; reason: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error'; message: string }
+export type HighlightsResult = { ok: true; collections: HighlightCollection[] } | IgFailure
+export type HighlightItemsResult = { ok: true; items: Record<string, ArchivedStory[]> } | IgFailure
 
 export interface ClosRMBridge {
   platform: NodeJS.Platform
@@ -42,6 +54,8 @@ export interface ClosRMBridge {
     logout: () => Promise<void>
     collectStories: () => Promise<CollectStoriesResult>
     storyArchive: (force?: boolean) => Promise<StoryArchiveResult>
+    highlights: (force?: boolean) => Promise<HighlightsResult>
+    highlightItems: (ids: string[]) => Promise<HighlightItemsResult>
   }
   secureStorage: {
     set: (value: string) => Promise<void>

@@ -32,6 +32,8 @@ export interface ArchivedStory {
   imageUrl: string | null
   videoUrl: string | null
   viewerCount: number | null
+  /** Hearts received, when Instagram reports it to the owner. */
+  likeCount: number | null
 }
 
 type Json = Record<string, unknown>
@@ -119,6 +121,7 @@ export function parseReelsMediaItems(body: unknown): ArchivedStory[] {
         imageUrl: largestCandidate(it),
         videoUrl: Array.isArray(videos) && videos.length > 0 ? httpsUrl(asObj(videos[0])?.url) : null,
         viewerCount: asNum(it.total_viewer_count) ?? asNum(it.viewer_count),
+        likeCount: asNum(it.like_count) ?? asNum(asObj(it.story_like_info)?.like_count) ?? asNum(it.story_likes_count),
       })
     }
   }
@@ -156,4 +159,43 @@ export function classifyFailure(status: number, body: unknown): InstagramFailure
   if (/checkpoint|challenge/i.test(msg)) return 'checkpoint'
   if (status === 401 || status === 403 || /login_required/i.test(msg)) return 'not_connected'
   return 'error'
+}
+
+
+export interface HighlightCollection {
+  id: string // "highlight:…"
+  title: string
+  coverUrl: string | null
+  mediaCount: number | null
+}
+
+/** GET /api/v1/highlights/:userId/highlights_tray/ → the coach's collections, in profile order. */
+export function parseHighlightsTray(body: unknown): HighlightCollection[] {
+  const tray = asObj(body)?.tray
+  if (!Array.isArray(tray)) return []
+  const out: HighlightCollection[] = []
+  for (const raw of tray) {
+    const h = asObj(raw)
+    const id = asStr(h?.id)
+    if (!h || !id || !id.startsWith('highlight:')) continue
+    const cover = asObj(h.cover_media)
+    out.push({
+      id,
+      title: asStr(h.title) ?? '',
+      coverUrl: httpsUrl(asObj(cover?.cropped_image_version)?.url) ?? httpsUrl(asObj(cover?.full_image_version)?.url),
+      mediaCount: asNum(h.media_count),
+    })
+  }
+  return out
+}
+
+/** Items of each highlight in a reels_media response, keyed by highlight id. */
+export function parseHighlightItems(body: unknown): Map<string, ArchivedStory[]> {
+  const reels = asObj(asObj(body)?.reels)
+  const out = new Map<string, ArchivedStory[]>()
+  if (!reels) return out
+  for (const [id, reel] of Object.entries(reels)) {
+    out.set(id, parseReelsMediaItems({ reels: { [id]: reel } }))
+  }
+  return out
 }

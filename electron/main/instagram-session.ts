@@ -12,7 +12,7 @@
 //   their story viewers list), and collection stops at the first sign of a
 //   challenge or rate limit.
 import { BrowserWindow, net, session, type Session } from 'electron'
-import { classifyFailure, parseArchiveDayShells, parseOwnReel, parseReelsMediaItems, parseViewersPage, reelOwnerUsername, type ArchivedStory, type InstagramFailure, type OwnStory, type StoryViewer } from './instagram-parse'
+import { classifyFailure, parseArchiveDayShells, parseHighlightItems, parseHighlightsTray, type HighlightCollection, parseOwnReel, parseReelsMediaItems, parseViewersPage, reelOwnerUsername, type ArchivedStory, type InstagramFailure, type OwnStory, type StoryViewer } from './instagram-parse'
 
 const PARTITION = 'persist:instagram'
 const IG = 'https://www.instagram.com'
@@ -59,10 +59,48 @@ class IgError extends Error {
   }
 }
 
+const IG_API = 'https://i.instagram.com'
+
+/**
+ * GET on www.instagram.com; some owner-only endpoints answer an empty body
+ * there, so an empty/non-JSON 200 is retried once on i.instagram.com (same
+ * session cookies, .instagram.com domain).
+ */
+// Account-wide cooldown: once Instagram throttles (429 / dropped
+// connection) or asks for a checkpoint, EVERY Instagram call from this app
+// is refused for a while — whichever page asked — so retries from several
+// places can't make things worse.
+const COOLDOWN_MS = 30 * 60_000
+let cooldownUntil = 0
+
+export function cooldownRemainingMs(): number {
+  return Math.max(0, cooldownUntil - Date.now())
+}
+
 async function igGet(path: string): Promise<unknown> {
+  if (Date.now() < cooldownUntil) {
+    throw new IgError('rate_limited', `Pause Instagram encore ${Math.ceil(cooldownRemainingMs() / 60_000)} min`)
+  }
+  try {
+    try {
+      return await igGetOn(IG, path)
+    } catch (err) {
+      if (err instanceof IgError && err.reason === 'error' && /\(200\)/.test(err.message)) return await igGetOn(IG_API, path)
+      throw err
+    }
+  } catch (err) {
+    if (err instanceof IgError && (err.reason === 'rate_limited' || err.reason === 'checkpoint')) {
+      cooldownUntil = Date.now() + COOLDOWN_MS
+      console.error(`[instagram] cooldown ${COOLDOWN_MS / 60_000} min after: ${err.message}`)
+    }
+    throw err
+  }
+}
+
+async function igGetOn(host: string, path: string): Promise<unknown> {
   const csrf = (await cookie('csrftoken')) ?? ''
   return new Promise((resolve, reject) => {
-    const req = net.request({ url: `${IG}${path}`, method: 'GET', session: igSession(), useSessionCookies: true })
+    const req = net.request({ url: `${host}${path}`, method: 'GET', session: igSession(), useSessionCookies: true })
     req.setHeader('X-IG-App-ID', IG_WEB_APP_ID)
     req.setHeader('X-CSRFToken', csrf)
     req.setHeader('X-Requested-With', 'XMLHttpRequest')
@@ -256,4 +294,60 @@ export async function storyArchive(force = false): Promise<ArchiveResult> {
     }
   })()
   return archiveInFlight
+}
+
+
+// ─── Highlights ("à la une") ──────────────────────────────────────────────
+export type HighlightsResult = { ok: true; collections: HighlightCollection[] } | { ok: false; reason: InstagramFailure; message: string }
+export type HighlightItemsResult = { ok: true; items: Record<string, ArchivedStory[]> } | { ok: false; reason: InstagramFailure; message: string }
+
+const HIGHLIGHTS_TTL_MS = 6 * 60 * 60_000
+let trayCache: { at: number; collections: HighlightCollection[] } | null = null
+const itemsCache = new Map<string, { at: number; items: ArchivedStory[] }>()
+
+function failure(err: unknown): { ok: false; reason: InstagramFailure; message: string } {
+  if (err instanceof IgError) return { ok: false, reason: err.reason, message: err.message }
+  return { ok: false, reason: 'error', message: err instanceof Error ? err.message : 'Erreur inconnue' }
+}
+
+/** The coach's highlight collections (1 request, cached 6 h). */
+export async function highlightsTray(force = false): Promise<HighlightsResult> {
+  if (!force && trayCache && Date.now() - trayCache.at < HIGHLIGHTS_TTL_MS) return { ok: true, collections: trayCache.collections }
+  try {
+    const status = await getStatus()
+    if (!status.connected || !status.userId) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
+    const collections = parseHighlightsTray(await igGet(`/api/v1/highlights/${status.userId}/highlights_tray/`))
+    trayCache = { at: Date.now(), collections }
+    return { ok: true, collections }
+  } catch (err) {
+    return failure(err)
+  }
+}
+
+/** Stories of the given collections (≤ 4 per request, spaced, cached 6 h each). */
+export async function highlightItems(ids: string[]): Promise<HighlightItemsResult> {
+  const items: Record<string, ArchivedStory[]> = {}
+  const missing: string[] = []
+  for (const id of ids) {
+    const c = itemsCache.get(id)
+    if (c && Date.now() - c.at < HIGHLIGHTS_TTL_MS) items[id] = c.items
+    else missing.push(id)
+  }
+  try {
+    for (let i = 0; i < missing.length; i += REELS_PER_REQUEST) {
+      if (i > 0) await humanPause()
+      const q = missing
+        .slice(i, i + REELS_PER_REQUEST)
+        .map((id) => `reel_ids=${encodeURIComponent(id)}`)
+        .join('&')
+      for (const [id, list] of parseHighlightItems(await igGet(`/api/v1/feed/reels_media/?${q}`))) {
+        itemsCache.set(id, { at: Date.now(), items: list })
+        items[id] = list
+      }
+    }
+    return { ok: true, items }
+  } catch (err) {
+    // Return what we have; the caller shows partial results.
+    return Object.keys(items).length > 0 ? { ok: true, items } : failure(err)
+  }
 }
