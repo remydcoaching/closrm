@@ -84,9 +84,21 @@ const AudienceIcon = (
   </svg>
 )
 
-const IntegrationsIcon = (
+
+const TeamIcon = (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 9h4V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v4h4v6h-4v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4H4z" />
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+    <path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6" />
+  </svg>
+)
+
+const SocialIcon = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
   </svg>
 )
 
@@ -155,6 +167,7 @@ const INSTAGRAM_ITEMS: SidebarItem[] = [
   { to: '/acquisition/lead-magnets', label: 'Lead Magnets', icon: LeadMagnetIcon },
   { to: '/acquisition/publicites', label: 'Publicités', icon: PublicitesIcon },
   { to: '/acquisition/funnels', label: 'Funnels', icon: FunnelIcon },
+  { to: '/acquisition/reseaux-sociaux', label: 'Réseaux sociaux', icon: SocialIcon },
 ]
 
 const MARKETING_ITEMS: SidebarItem[] = [
@@ -166,8 +179,8 @@ const MARKETING_ITEMS: SidebarItem[] = [
 const ANALYTICS_ITEMS: SidebarItem[] = [{ to: '/statistiques', label: 'Statistiques', icon: AnalyticsIcon, matchPaths: ['/finance'] }]
 
 const SYSTEM_ITEMS: SidebarItem[] = [
-  { to: '/integrations', label: 'Intégrations', icon: IntegrationsIcon, disabled: true },
-  { to: '/parametres', label: 'Paramètres', icon: SettingsIcon, disabled: true },
+  { to: '/parametres/equipe', label: 'Équipe', icon: TeamIcon, matchPaths: ['/equipe'] },
+  { to: '/parametres/reglages', label: 'Paramètres', icon: SettingsIcon, matchPaths: ['/parametres/integrations', '/parametres/assistant-ia'] },
 ]
 
 export function Sidebar() {

@@ -32,6 +32,21 @@ export const TAB_GROUPS = {
       { label: 'Finance', to: '/finance' },
     ],
   },
+  parametres: {
+    key: 'parametres',
+    tabs: [
+      { label: 'Compte', to: '/parametres/reglages' },
+      { label: 'Intégrations', to: '/parametres/integrations' },
+      { label: 'Assistant IA', to: '/parametres/assistant-ia' },
+    ],
+  },
+  equipe: {
+    key: 'equipe',
+    tabs: [
+      { label: 'Membres', to: '/parametres/equipe' },
+      { label: 'Chat', to: '/equipe/messages' },
+    ],
+  },
 } satisfies Record<string, TabGroup>
 
 /** True when `pathname` belongs to one of the group's tabs (sub-routes included). */

@@ -74,30 +74,42 @@ export async function loadContentMetrics(supabase: SupabaseClient, workspaceId: 
 
   const rows = latestPerContent((data ?? []) as DiscoveryContentRow[])
   const runIds = [...new Set(rows.map((r) => r.discovery_run_id))]
-  const [interactions, matched, summaries] = await Promise.all([
-    loadInteractions(supabase, workspaceId, runIds),
-    loadMatchedLeads(supabase, workspaceId, runIds),
+  const latestRunByContent = new Map(rows.map((r) => [r.content_id, r.discovery_run_id]))
+  const observed = new Map<string, { likers: number; commenters: number; leads: number }>()
+
+  const [rpc, summaries] = await Promise.all([
+    runIds.length > 0 ? supabase.rpc('discovery_content_observed', { p_workspace: workspaceId, p_run_ids: runIds }) : Promise.resolve({ data: [], error: null }),
     supabase.from('instagram_content_summary').select('source_post_id, leads_count').eq('workspace_id', workspaceId),
   ])
 
-  const latestRunByContent = new Map(rows.map((r) => [r.content_id, r.discovery_run_id]))
-  const observed = new Map<string, { likers: Set<string>; commenters: Set<string>; leads: Set<string> }>()
-  for (const i of interactions) {
-    if (latestRunByContent.get(i.content_id) !== i.discovery_run_id) continue
-    const o = observed.get(i.content_id) ?? { likers: new Set(), commenters: new Set(), leads: new Set() }
-    ;(i.interaction_type === 'like' ? o.likers : o.commenters).add(i.instagram_username)
-    const leadId = matched.get(`${i.discovery_run_id}|${i.instagram_username}`)
-    if (leadId) o.leads.add(leadId)
-    observed.set(i.content_id, o)
+  if (!rpc.error) {
+    // Grouped in Postgres (migration 109).
+    for (const r of (rpc.data ?? []) as { discovery_run_id: string; content_id: string; likers: number; commenters: number; leads: number }[]) {
+      if (latestRunByContent.get(r.content_id) !== r.discovery_run_id) continue
+      observed.set(r.content_id, { likers: Number(r.likers), commenters: Number(r.commenters), leads: Number(r.leads) })
+    }
+  } else {
+    // Fallback while 109 isn't deployed: group raw rows here.
+    const [interactions, matched] = await Promise.all([loadInteractions(supabase, workspaceId, runIds), loadMatchedLeads(supabase, workspaceId, runIds)])
+    const sets = new Map<string, { likers: Set<string>; commenters: Set<string>; leads: Set<string> }>()
+    for (const i of interactions) {
+      if (latestRunByContent.get(i.content_id) !== i.discovery_run_id) continue
+      const o = sets.get(i.content_id) ?? { likers: new Set(), commenters: new Set(), leads: new Set() }
+      ;(i.interaction_type === 'like' ? o.likers : o.commenters).add(i.instagram_username)
+      const leadId = matched.get(`${i.discovery_run_id}|${i.instagram_username}`)
+      if (leadId) o.leads.add(leadId)
+      sets.set(i.content_id, o)
+    }
+    for (const [id, o] of sets) observed.set(id, { likers: o.likers.size, commenters: o.commenters.size, leads: o.leads.size })
   }
   const apifyLeads = new Map((summaries.data ?? []).map((s) => [s.source_post_id as string, s.leads_count as number]))
 
   return rows.map((r) => {
     const o = observed.get(r.content_id)
     const counts: ObservedCounts = {
-      likers: o?.likers.size ?? 0,
-      commenters: o?.commenters.size ?? 0,
-      leads: Math.max(o?.leads.size ?? 0, apifyLeads.get(r.content_id) ?? 0),
+      likers: o?.likers ?? 0,
+      commenters: o?.commenters ?? 0,
+      leads: Math.max(o?.leads ?? 0, apifyLeads.get(r.content_id) ?? 0),
     }
     return buildContentMetrics(r, counts)
   })

@@ -22,6 +22,7 @@ import { formatRate } from './ContentPage'
 import { publishTiming, bestSlots, SLOTS, WEEKDAYS, MIN_SAMPLES } from './publish-timing'
 import { StoryViewersSection } from './StoryViewersSection'
 import { StoriesGallery } from './StoriesPage'
+import { HighlightsSection } from './HighlightsSection'
 import type { ContentChartPoint } from './types'
 import './instagram.css'
 import { usePaged, PaginationBar } from '../../design-system/Pagination'
@@ -200,6 +201,10 @@ export function AudiencePage() {
 
       <TableCard>
         <StoriesGallery />
+      </TableCard>
+
+      <TableCard>
+        <HighlightsSection />
       </TableCard>
 
       <div className="ig-audience-columns">

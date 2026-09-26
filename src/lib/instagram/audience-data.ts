@@ -17,23 +17,47 @@ export interface EngagedLeadRow extends EngagedLead {
 const PAGE = 1000
 const CHUNK = 200
 
+// Short per-process cache: the Leads cards, Audience and its drill-down
+// lists all need the same data within seconds of each other.
+const CACHE_TTL_MS = 60_000
+const cache = new Map<string, { at: number; rows: EngagedLeadRow[] }>()
+
 export async function loadEngagedLeads(supabase: SupabaseClient, workspaceId: string): Promise<EngagedLeadRow[]> {
+  const hit = cache.get(workspaceId)
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.rows
+  const rows = await loadEngagedLeadsUncached(supabase, workspaceId)
+  cache.set(workspaceId, { at: Date.now(), rows })
+  return rows
+}
+
+async function loadEngagedLeadsUncached(supabase: SupabaseClient, workspaceId: string): Promise<EngagedLeadRow[]> {
   const lastSeenByLead = new Map<string, string>()
   const countByLead = new Map<string, number>()
-  // Paged: PostgREST caps a single response at 1000 rows.
-  for (let from = 0; ; from += PAGE) {
-    const { data: rows, error } = await supabase
-      .from('instagram_interactions')
-      .select('lead_id, last_seen_at')
-      .eq('workspace_id', workspaceId)
-      .range(from, from + PAGE - 1)
-    if (error) throw new Error(error.message)
-    for (const row of rows ?? []) {
-      const prev = lastSeenByLead.get(row.lead_id)
-      if (!prev || row.last_seen_at > prev) lastSeenByLead.set(row.lead_id, row.last_seen_at)
-      countByLead.set(row.lead_id, (countByLead.get(row.lead_id) ?? 0) + 1)
+
+  // Grouped in Postgres (migration 109); falls back to paging raw rows if
+  // the function isn't deployed yet.
+  const { data: grouped, error: rpcError } = await supabase.rpc('instagram_engaged_leads', { p_workspace: workspaceId })
+  if (!rpcError) {
+    for (const g of (grouped ?? []) as { lead_id: string; last_seen_at: string; interactions_count: number }[]) {
+      lastSeenByLead.set(g.lead_id, g.last_seen_at)
+      countByLead.set(g.lead_id, Number(g.interactions_count))
     }
-    if (!rows || rows.length < PAGE) break
+  } else {
+    // PostgREST caps a single response at 1000 rows.
+    for (let from = 0; ; from += PAGE) {
+      const { data: rows, error } = await supabase
+        .from('instagram_interactions')
+        .select('lead_id, last_seen_at')
+        .eq('workspace_id', workspaceId)
+        .range(from, from + PAGE - 1)
+      if (error) throw new Error(error.message)
+      for (const row of rows ?? []) {
+        const prev = lastSeenByLead.get(row.lead_id)
+        if (!prev || row.last_seen_at > prev) lastSeenByLead.set(row.lead_id, row.last_seen_at)
+        countByLead.set(row.lead_id, (countByLead.get(row.lead_id) ?? 0) + 1)
+      }
+      if (!rows || rows.length < PAGE) break
+    }
   }
 
   const ids = [...lastSeenByLead.keys()]

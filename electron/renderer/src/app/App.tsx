@@ -18,6 +18,12 @@ import { RelancesPage } from '../features/crm/RelancesPage'
 import { DealsPage } from '../features/crm/DealsPage'
 import { ClosingPage } from '../features/crm/ClosingPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
+import { SocialPage } from '../features/social/SocialPage'
+import { SettingsAccountPage } from '../features/settings/SettingsAccountPage'
+import { IntegrationsPage } from '../features/settings/IntegrationsPage'
+import { AiAssistantPage } from '../features/settings/AiAssistantPage'
+import { TeamPage } from '../features/settings/TeamPage'
+import { TeamChatPage } from '../features/settings/TeamChatPage'
 import { FunnelsPage } from '../features/marketing/FunnelsPage'
 import { EmailsPage } from '../features/marketing/EmailsPage'
 import { AutomationsPage } from '../features/marketing/AutomationsPage'
@@ -107,6 +113,16 @@ function AppRoutes() {
         <Route path="acquisition/lead-magnets" element={<LeadMagnetsPage />} />
         <Route path="acquisition/publicites" element={<PublicitesPage />} />
         <Route path="acquisition/funnels" element={<FunnelsPage />} />
+        <Route path="acquisition/reseaux-sociaux" element={<SocialPage />} />
+        <Route element={<TabGroupLayout group={TAB_GROUPS.parametres} />}>
+          <Route path="parametres/reglages" element={<SettingsAccountPage />} />
+          <Route path="parametres/integrations" element={<IntegrationsPage />} />
+          <Route path="parametres/assistant-ia" element={<AiAssistantPage />} />
+        </Route>
+        <Route element={<TabGroupLayout group={TAB_GROUPS.equipe} />}>
+          <Route path="parametres/equipe" element={<TeamPage />} />
+          <Route path="equipe/messages" element={<TeamChatPage />} />
+        </Route>
         <Route path="acquisition/emails" element={<EmailsPage />} />
         <Route path="acquisition/automations" element={<AutomationsPage />} />
         <Route path="acquisition/messages" element={<MessagesPage />} />

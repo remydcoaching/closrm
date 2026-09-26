@@ -21,7 +21,19 @@ interface CollectedStory {
 
 type Sort = 'recent' | 'views'
 
-export function StoryCard({ story, rank, collected, onClick }: { story: ArchivedStory; rank?: number; collected?: number; onClick: () => void }) {
+export function StoryCard({
+  story,
+  rank,
+  collected,
+  subtitle,
+  onClick,
+}: {
+  story: ArchivedStory
+  rank?: number
+  collected?: number
+  subtitle?: string
+  onClick: () => void
+}) {
   const [broken, setBroken] = useState(false)
   return (
     <button type="button" className="story-card" onClick={onClick}>
@@ -38,7 +50,12 @@ export function StoryCard({ story, rank, collected, onClick }: { story: Archived
         {story.mediaType === 'video' && <span className="story-card-play">▶</span>}
       </div>
       <div className="story-card-meta">
-        <span className="ds-num">{story.viewerCount !== null ? `${formatNumber(story.viewerCount)} vues` : '—'}</span>
+        {story.likeCount !== null && story.likeCount !== undefined ? (
+          <span className="ds-num story-card-likes">♥ {formatNumber(story.likeCount)} j&apos;aime</span>
+        ) : (
+          <span className="ds-num">{story.viewerCount !== null ? `${formatNumber(story.viewerCount)} vues` : '—'}</span>
+        )}
+        {subtitle && <span className="story-card-sub">{subtitle}</span>}
         {collected !== undefined && <span className="story-card-sub">{formatNumber(collected)} spectateurs identifiés</span>}
       </div>
     </button>

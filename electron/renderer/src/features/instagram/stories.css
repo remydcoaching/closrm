@@ -220,3 +220,62 @@
 .story-section-head--spaced {
   margin-top: 22px;
 }
+
+.story-section-title--sub {
+  margin-top: 20px;
+}
+
+.story-card-likes {
+  color: var(--color-text-strong);
+}
+
+.highlight-tray {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+}
+
+.highlight-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 64px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.highlight-bubble-img {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--color-bg-muted);
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-border-strong);
+}
+
+.highlight-bubble--active .highlight-bubble-img {
+  box-shadow: 0 0 0 2px var(--color-text-strong);
+}
+
+.highlight-bubble-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.highlight-bubble-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
