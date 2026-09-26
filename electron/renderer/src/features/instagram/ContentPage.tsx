@@ -21,6 +21,7 @@ import { Tabs } from '../../design-system/Tabs'
 import { SearchInput } from '../../design-system/SearchInput'
 import './instagram.css'
 import { usePaged, PaginationBar } from '../../design-system/Pagination'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 type Period = '7' | '30' | '90' | '365' | 'all'
 type Format = 'all' | 'clip' | 'media'
@@ -68,30 +69,20 @@ export function ContentPage() {
   const [conf, setConf] = useState<ConfFilter>('all')
   const [view, setView] = useState<TableView>('audience')
   const [search, setSearch] = useState('')
-  const [confAvailable, setConfAvailable] = useState(true)
-  const [items, setItems] = useState<ContentChartPoint[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
-  async function load() {
-    setError(null)
-    setItems(null)
-    try {
-      const q = new URLSearchParams()
-      if (period !== 'all') q.set('days', period)
-      // Confidence counts are heavier to compute: only when the filter is used.
-      if (conf !== 'all') q.set('confidence', '1')
-      const res = await api.get<{ data: ContentChartPoint[]; confidenceAvailable?: boolean }>(`/api/instagram/content/chart?${q.toString()}`)
-      setItems(res.data)
-      setConfAvailable(res.confidenceAvailable !== false)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }
-
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, conf === 'all'])
+  const q = new URLSearchParams()
+  if (period !== 'all') q.set('days', period)
+  // Confidence counts are heavier to compute: only when the filter is used.
+  if (conf !== 'all') q.set('confidence', '1')
+  const chartQuery = useCachedQuery<{ data: ContentChartPoint[]; confidenceAvailable?: boolean }>(`/api/instagram/content/chart?${q.toString()}`, {
+    screen: 'Content',
+    staleMs: 5 * 60_000,
+    keepPrevious: true,
+  })
+  const items = chartQuery.data?.data ?? null
+  const confAvailable = chartQuery.data?.confidenceAvailable !== false
+  const error = chartQuery.error
+  const load = chartQuery.refresh
 
   const filtered = useMemo(() => {
     return (items ?? []).filter((c) => {

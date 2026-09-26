@@ -156,13 +156,16 @@ export async function fetchKpisV2(workspaceId: string, period: number): Promise<
       .lt('scheduled_at', sinceCurrent),
   ])
 
-  const showOutcomes = ['fait', 'closed', 'present']
+  // calls.outcome is 'pending' | 'done' | 'cancelled' | 'no_show' (types/index.ts).
+  // Shown = done; unresolved (pending) calls aren't counted either way.
+  const showOutcomes = ['done']
+  const resolved = (o: string | null) => !!o && o !== 'pending'
   const showCurrent = pastCallsCurrent.data?.filter(c => showOutcomes.includes(c.outcome ?? '')).length ?? 0
-  const totalCurrent = pastCallsCurrent.data?.filter(c => c.outcome).length ?? 0
+  const totalCurrent = pastCallsCurrent.data?.filter(c => resolved(c.outcome)).length ?? 0
   const showRateCurrent = totalCurrent > 0 ? Math.round((showCurrent / totalCurrent) * 100) : 0
 
   const showPrevious = pastCallsPrev.data?.filter(c => showOutcomes.includes(c.outcome ?? '')).length ?? 0
-  const totalPrev = pastCallsPrev.data?.filter(c => c.outcome).length ?? 0
+  const totalPrev = pastCallsPrev.data?.filter(c => resolved(c.outcome)).length ?? 0
   const showRatePrevious = totalPrev > 0 ? Math.round((showPrevious / totalPrev) * 100) : 0
 
   // Close rate
@@ -381,14 +384,14 @@ export async function getHotLeads(workspaceId: string): Promise<PriorityLead[]> 
   const supabase = await createClient()
   const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString()
 
-  // Hot lead = activité récente (48h) ET (status nouveau_lead OU tag chaud/VIP)
+  // Hot lead = activité récente (48h) ET (status nouveau OU tag chaud/VIP)
   const { data } = await supabase
     .from('leads')
     .select('id, first_name, last_name, status, last_activity_at, tags')
     .eq('workspace_id', workspaceId)
     .gte('last_activity_at', twoDaysAgo)
     .not('status', 'in', '(clos,dead)')
-    .or('status.eq.nouveau_lead,tags.cs.{chaud},tags.cs.{VIP}')
+    .or('status.eq.nouveau,tags.cs.{chaud},tags.cs.{VIP}')
     .order('last_activity_at', { ascending: false })
     .limit(5)
 
@@ -430,7 +433,7 @@ export async function getFunnelData(workspaceId: string, period: number): Promis
   // Pour ces leads, compter ceux qui ont booké / show / clos (uniques)
   const [bookingsRows, callsRows, dealsRows] = await Promise.all([
     supabase.from('bookings').select('lead_id').in('lead_id', leadIds).neq('status', 'cancelled'),
-    supabase.from('calls').select('lead_id').in('lead_id', leadIds).in('outcome', ['fait', 'closed', 'present']),
+    supabase.from('calls').select('lead_id').in('lead_id', leadIds).eq('outcome', 'done'),
     supabase.from('deals').select('lead_id').in('lead_id', leadIds).eq('status', 'active'),
   ])
 

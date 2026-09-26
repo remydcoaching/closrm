@@ -21,6 +21,14 @@ import { LeadCreateModal } from './LeadCreateModal'
 import { useStoryLurkers } from '../instagram/StoryViewersSection'
 import type { Lead, LeadsListResponse } from './types'
 import './leads-list.css'
+import { useCachedQuery } from '../../lib/use-cached-query'
+import { getCached, isStale, revalidate } from '../../lib/query-cache'
+
+/** Hovering a row warms the lead page (one aggregated request, deduplicated). */
+function prefetchLead(id: string) {
+  const key = `/api/desktop/leads/${id}/intelligence`
+  if (isStale(getCached(key), 30_000)) revalidate(key).catch(() => {})
+}
 
 const PER_PAGE = 50
 
@@ -45,9 +53,7 @@ interface AudienceSegments {
 
 export function LeadsListPage() {
   const navigate = useNavigate()
-  const [leads, setLeads] = useState<Lead[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [meta, setMeta] = useState({ total: 0, page: 1, per_page: PER_PAGE, total_pages: 1 })
+  const [exportError, setExportError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -60,7 +66,6 @@ export function LeadsListPage() {
   const [customStart, setCustomStart] = useState(() => new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10))
   // "Personnalisé" = from a chosen date up to today.
   const periodDays = period === 'custom' ? Math.max(1, Math.ceil((Date.now() - new Date(customStart).getTime()) / 86_400_000)) : Number(period)
-  const [segments, setSegments] = useState<AudienceSegments | null>(null)
   const [exporting, setExporting] = useState(false)
   const { data: storyLurkers } = useStoryLurkers(10, null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -77,13 +82,8 @@ export function LeadsListPage() {
     setPage(1)
   }, [debouncedSearch, statuses, sources, sort, order])
 
-  useEffect(() => {
-    setSegments(null)
-    api
-      .get<{ data: AudienceSegments }>(`/api/instagram/audience?period_days=${periodDays}`)
-      .then((res) => setSegments(res.data))
-      .catch(() => setSegments(null))
-  }, [periodDays])
+  const segmentsQuery = useCachedQuery<{ data: AudienceSegments }>(`/api/instagram/audience?period_days=${periodDays}`, { screen: 'LeadsCards', staleMs: 60_000 })
+  const segments = segmentsQuery.data?.data ?? null
 
   function buildParams(p: number, perPage: number) {
     const params = new URLSearchParams()
@@ -97,21 +97,12 @@ export function LeadsListPage() {
     return params
   }
 
-  async function load() {
-    setError(null)
-    try {
-      const res = await api.get<LeadsListResponse>(`/api/leads?${buildParams(page, PER_PAGE).toString()}`)
-      setLeads(res.data)
-      setMeta(res.meta)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }
-
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, debouncedSearch, statuses, sources, sort, order])
+  // Cache first: returning to Leads shows the last list instantly.
+  const listQuery = useCachedQuery<LeadsListResponse>(`/api/leads?${buildParams(page, PER_PAGE).toString()}`, { screen: 'Leads', staleMs: 20_000, keepPrevious: true })
+  const leads = listQuery.data?.data ?? null
+  const meta = listQuery.data?.meta ?? { total: 0, page: 1, per_page: PER_PAGE, total_pages: 1 }
+  const error = listQuery.error ?? exportError
+  const load = listQuery.refresh
 
   function toggleSort(field: SortField) {
     if (sort === field) {
@@ -148,7 +139,7 @@ export function LeadsListPage() {
         ]),
       ])
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Export impossible')
+      setExportError(err instanceof ApiError ? err.message : 'Export impossible')
     } finally {
       setExporting(false)
     }
@@ -273,7 +264,12 @@ export function LeadsListPage() {
                   const source = sourceEntry(lead.source)
                   const name = displayName(lead.first_name, lead.last_name, lead.instagram_handle ?? 'Sans nom')
                   return (
-                    <tr key={lead.id} className="ds-row-clickable" onClick={() => navigate(`/leads/${lead.id}`)}>
+                    <tr
+                      key={lead.id}
+                      className="ds-row-clickable"
+                      onClick={() => navigate(`/leads/${lead.id}`)}
+                      onMouseEnter={() => prefetchLead(lead.id)}
+                    >
                       <td>
                         <ContactCell
                           name={name}

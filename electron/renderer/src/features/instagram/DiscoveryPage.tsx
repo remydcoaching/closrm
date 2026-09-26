@@ -18,6 +18,7 @@ import { TableCard } from '../../design-system/TableCard'
 import { StatCard } from '../../design-system/StatCard'
 import { useInstagramAccount } from '../../lib/instagram-account'
 import { Tabs } from '../../design-system/Tabs'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 function statusLabel(status: DiscoveryRun['status']): string {
   return { RUNNING: 'En cours', SUCCESS: 'Terminé', PARTIAL: 'Partiel', FAILED: 'Échoué' }[status]
@@ -34,21 +35,12 @@ export function DiscoveryPage() {
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<DiscoveryResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [runs, setRuns] = useState<DiscoveryRun[] | null>(null)
-  const [runsError, setRunsError] = useState<string | null>(null)
 
-  async function loadRuns() {
-    try {
-      const res = await api.get<{ runs: DiscoveryRun[] }>('/api/instagram/discovery')
-      setRuns(res.runs)
-    } catch (err) {
-      setRunsError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }
-
-  useEffect(() => {
-    loadRuns()
-  }, [])
+  // Cache first, refreshed in the background (lib/query-cache).
+  const loadRunsQuery = useCachedQuery<{ runs: DiscoveryRun[] }>('/api/instagram/discovery', { screen: 'Discovery', staleMs: 30000, keepPrevious: true })
+  const runs = loadRunsQuery.data ? loadRunsQuery.data.runs : null
+  const runsError = loadRunsQuery.error
+  const loadRuns = loadRunsQuery.refresh
 
   async function handleAnalyze(e: React.FormEvent) {
     e.preventDefault()

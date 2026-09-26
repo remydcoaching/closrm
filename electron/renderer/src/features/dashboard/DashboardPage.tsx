@@ -28,6 +28,7 @@ import { BriefModal } from './BriefModal'
 import { SetterDashboard, CloserDashboard } from './TeamDashboards'
 import './dashboard.css'
 import '../stats/stats.css'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 const PERIODS: { key: string; label: string }[] = [
   { key: '7', label: '7 jours' },
@@ -86,23 +87,18 @@ export function DashboardPage() {
 function AdminDashboard({ firstName }: { firstName: string }) {
   const navigate = useNavigate()
   const [period, setPeriod] = useState<Exclude<StatsPeriod, 0>>(30)
-  const [data, setData] = useState<AdminDashboardData | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [brief, setBrief] = useState<{ leadId: string; bookingId: string | null; leadName: string } | null>(null)
 
-  const load = useCallback(async () => {
-    setError(null)
-    setData(null)
-    try {
-      setData(await loadAdminDashboard(period))
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Erreur inconnue')
-    }
-  }, [period])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  // Cache first: a revisit shows the last command center instantly and
+  // refreshes it in the background.
+  const query = useCachedQuery<AdminDashboardData>(`desktop:dashboard:${period}`, {
+    screen: 'Dashboard',
+    staleMs: 30_000,
+    fetcher: () => loadAdminDashboard(period),
+  })
+  const data = query.data ?? null
+  const error = query.error
+  const load = query.refresh
 
   const openLead = (id: string) => navigate(`/leads/${id}`)
 

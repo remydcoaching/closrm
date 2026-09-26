@@ -17,6 +17,7 @@ import { relativeTime, shortDate, statusEntry } from '../leads/status'
 import type { LeadStatus } from '../leads/types'
 import './instagram.css'
 import { usePaged, PaginationBar } from '../../design-system/Pagination'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 export interface StoryViewerSummary {
   userId: string
@@ -41,19 +42,14 @@ type Window = '10' | '30'
 type Filter = 'lurkers' | 'all' | 'leads' | 'not_leads'
 
 export function useStoryLurkers(stories: number, refreshKey: unknown) {
-  const [data, setData] = useState<StoryLurkersResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const key = `/api/instagram/story-views?stories=${stories}`
+  const q = useCachedQuery<{ data: StoryLurkersResponse }>(key, { screen: 'StoryLurkers', staleMs: 60_000 })
+  // A finished collection brings new viewers: refresh.
   useEffect(() => {
-    setError(null)
-    api
-      .get<{ data: StoryLurkersResponse }>(`/api/instagram/story-views?stories=${stories}`)
-      .then((res) => setData(res.data))
-      .catch((err) => {
-        setData(null)
-        setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-      })
-  }, [stories, refreshKey])
-  return { data, error }
+    if (refreshKey) void q.refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey])
+  return { data: q.data?.data ?? null, error: q.error }
 }
 
 function formatDelay(ms: number): string {

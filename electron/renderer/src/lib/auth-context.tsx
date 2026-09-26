@@ -14,6 +14,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { extractAuthCode } from './deep-link'
+import { clearCachePartition, setCachePartition } from './query-cache'
 
 interface AuthContextValue {
   session: Session | null
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('[auth] getSession error:', error.message)
           setStartupError(error.message)
         }
+        setCachePartition(data.session?.user.id ?? null)
         setSession(data.session)
         setLoading(false)
       })
@@ -74,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      // Display cache is per account: switch partition before anything renders.
+      setCachePartition(newSession?.user.id ?? null)
       setSession(newSession)
     })
 
@@ -117,6 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    // Remove this account's display cache from disk too.
+    clearCachePartition(session?.user.id ?? null)
     await supabase.auth.signOut()
   }
 

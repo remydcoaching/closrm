@@ -11,6 +11,7 @@ import { TableCard, ContactCell } from '../../design-system/TableCard'
 import { Avatar } from '../../design-system/Avatar'
 import { shortDate } from '../leads/status'
 import './crm.css'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Actif',
@@ -25,22 +26,12 @@ function formatMoney(n: number): string {
 
 export function DealsPage() {
   const navigate = useNavigate()
-  const [deals, setDeals] = useState<DealWithLead[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
-  async function load() {
-    setError(null)
-    try {
-      const res = await api.get<{ data: DealWithLead[] }>('/api/deals')
-      setDeals(res.data)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }
-
-  useEffect(() => {
-    load()
-  }, [])
+  // Cache first, refreshed in the background (lib/query-cache).
+  const loadQuery = useCachedQuery<{ data: DealWithLead[] }>('/api/deals', { screen: 'Deals', staleMs: 30000, keepPrevious: true })
+  const deals = loadQuery.data ? loadQuery.data.data : null
+  const error = loadQuery.error
+  const load = loadQuery.refresh
 
   const totalRevenue = (deals ?? []).reduce((sum, d) => sum + d.amount, 0)
   const totalCollected = (deals ?? []).reduce((sum, d) => sum + d.cash_collected, 0)

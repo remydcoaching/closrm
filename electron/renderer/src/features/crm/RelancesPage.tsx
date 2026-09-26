@@ -12,6 +12,7 @@ import './crm.css'
 import { TableCard } from '../../design-system/TableCard'
 import { Tabs } from '../../design-system/Tabs'
 import { SessionsDmPage } from '../dm-sessions/SessionsDmPage'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 const STATUS_OPTIONS = [
   { key: 'en_attente', label: 'En attente' },
@@ -25,28 +26,17 @@ function isOverdue(fu: FollowUpWithLead): boolean {
 
 function FollowUpsView() {
   const navigate = useNavigate()
-  const [followUps, setFollowUps] = useState<FollowUpWithLead[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [statuses, setStatuses] = useState<string[]>(['en_attente'])
   const [updating, setUpdating] = useState<string | null>(null)
 
-  async function load() {
-    setError(null)
-    try {
-      const params = new URLSearchParams()
-      params.set('per_page', '100')
-      if (statuses.length > 0) params.set('status', statuses.join(','))
-      const res = await api.get<FollowUpsListResponse>(`/api/follow-ups?${params.toString()}`)
-      setFollowUps(res.data)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }
-
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statuses])
+  const params = new URLSearchParams()
+  params.set('per_page', '100')
+  if (statuses.length > 0) params.set('status', statuses.join(','))
+  // Cache first, refreshed in the background (lib/query-cache).
+  const loadQuery = useCachedQuery<FollowUpsListResponse>(`/api/follow-ups?${params.toString()}`, { screen: 'Relances', staleMs: 15000, keepPrevious: true })
+  const followUps = loadQuery.data ? loadQuery.data.data : null
+  const error = loadQuery.error
+  const load = loadQuery.refresh
 
   async function markDone(fu: FollowUpWithLead) {
     setUpdating(fu.id)

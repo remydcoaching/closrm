@@ -11,25 +11,16 @@ import { LoadingState, ErrorState } from '../../design-system/States'
 import { STATUS_CONFIG, statusEntry, displayName } from '../leads/status'
 import type { GroupedColumns } from './types'
 import './crm.css'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 export function PipelinePage() {
   const navigate = useNavigate()
-  const [columns, setColumns] = useState<GroupedColumns | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
-  async function load() {
-    setError(null)
-    try {
-      const res = await api.get<{ columns: GroupedColumns }>('/api/leads/grouped?limit_per_status=25')
-      setColumns(res.columns)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }
-
-  useEffect(() => {
-    load()
-  }, [])
+  // Cache first, refreshed in the background (lib/query-cache).
+  const loadQuery = useCachedQuery<{ columns: GroupedColumns }>('/api/leads/grouped?limit_per_status=25', { screen: 'Pipeline', staleMs: 20000, keepPrevious: true })
+  const columns = loadQuery.data ? loadQuery.data.columns : null
+  const error = loadQuery.error
+  const load = loadQuery.refresh
 
   if (columns === null && !error) return <LoadingState label="Chargement du pipeline…" />
   if (error) return <ErrorState message={error} onRetry={load} />

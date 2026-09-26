@@ -26,6 +26,7 @@ import { HighlightsSection } from './HighlightsSection'
 import type { ContentChartPoint } from './types'
 import './instagram.css'
 import { usePaged, PaginationBar } from '../../design-system/Pagination'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 interface AudienceCounts {
   actifs: number
@@ -69,42 +70,19 @@ const SEGMENT_LABEL: Record<Segment, string> = {
 export function AudiencePage() {
   const navigate = useNavigate()
   const [period, setPeriod] = useState<Period>('30')
-  const [counts, setCounts] = useState<AudienceCounts | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [segment, setSegment] = useState<Segment>('actifs_jamais_contactes')
-  const [segmentLeads, setSegmentLeads] = useState<AudienceLeadRow[] | null>(null)
-  const [contents, setContents] = useState<ContentChartPoint[] | null>(null)
 
-  async function load() {
-    setError(null)
-    setCounts(null)
-    try {
-      const res = await api.get<{ data: AudienceCounts }>(`/api/instagram/audience?period_days=${period}`)
-      setCounts(res.data)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }
-
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period])
-
-  useEffect(() => {
-    setSegmentLeads(null)
-    api
-      .get<{ data: AudienceLeadRow[] }>(`/api/instagram/audience/leads?segment=${segment}&period_days=${period}`)
-      .then((res) => setSegmentLeads(res.data))
-      .catch(() => setSegmentLeads([]))
-  }, [segment, period])
-
-  useEffect(() => {
-    api
-      .get<{ data: ContentChartPoint[] }>('/api/instagram/content/chart?days=365')
-      .then((res) => setContents(res.data))
-      .catch(() => setContents([]))
-  }, [])
+  // Each block reads its own cached snapshot: the page shows the last known
+  // values instantly and every block refreshes in the background, none
+  // blocking another. The content snapshot is shared with the Contenu page.
+  const countsQuery = useCachedQuery<{ data: AudienceCounts }>(`/api/instagram/audience?period_days=${period}`, { screen: 'Audience', staleMs: 60_000, keepPrevious: true })
+  const segmentQuery = useCachedQuery<{ data: AudienceLeadRow[] }>(`/api/instagram/audience/leads?segment=${segment}&period_days=${period}`, { screen: 'AudienceSegment', staleMs: 60_000, keepPrevious: true })
+  const contentsQuery = useCachedQuery<{ data: ContentChartPoint[] }>('/api/instagram/content/chart?days=365', { screen: 'AudienceContents', staleMs: 5 * 60_000 })
+  const counts = countsQuery.data?.data ?? null
+  const segmentLeads = segmentQuery.data?.data ?? (segmentQuery.error ? [] : null)
+  const contents = contentsQuery.data?.data ?? (contentsQuery.error ? [] : null)
+  const error = countsQuery.error
+  const load = countsQuery.refresh
 
   const paged = usePaged(segmentLeads ?? [])
 

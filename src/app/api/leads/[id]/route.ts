@@ -6,6 +6,7 @@ import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
 import { getNextCloser } from '@/lib/team/round-robin'
 import { fireStatusChangeCapi } from '@/lib/meta/capi'
+import { loadLeadWithRelations } from '@/lib/leads/lead-intelligence'
 
 export async function GET(
   _request: NextRequest,
@@ -16,40 +17,11 @@ export async function GET(
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
-    const { data: lead, error } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('id', id)
-      .eq('workspace_id', workspaceId)
-      .single()
-
-    if (error || !lead) {
+    const data = await loadLeadWithRelations(supabase, workspaceId, id)
+    if (!data) {
       return NextResponse.json({ error: 'Lead introuvable' }, { status: 404 })
     }
-
-    // Récupérer les appels liés
-    const { data: calls } = await supabase
-      .from('calls')
-      .select('*')
-      .eq('lead_id', id)
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false })
-
-    // Récupérer les follow-ups liés
-    const { data: followUps } = await supabase
-      .from('follow_ups')
-      .select('*')
-      .eq('lead_id', id)
-      .eq('workspace_id', workspaceId)
-      .order('scheduled_at', { ascending: true })
-
-    return NextResponse.json({
-      data: {
-        ...lead,
-        calls: calls ?? [],
-        follow_ups: followUps ?? [],
-      },
-    })
+    return NextResponse.json({ data })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

@@ -29,6 +29,15 @@ import './lead-detail.css'
 import { StatCard, StatGrid } from '../../design-system/StatCard'
 import { CONFIDENCE_LABEL, confidenceLevel, weeklyFrequency } from './confidence'
 import { JourneyStrip } from './JourneyStrip'
+import { useCachedQuery } from '../../lib/use-cached-query'
+import { invalidate, updateCached } from '../../lib/query-cache'
+
+interface LeadIntelligence {
+  lead: LeadWithRelations
+  journey: LeadJourney | null
+  score: EngagementScore | null
+  instagramSignal: InstagramSignal | null
+}
 
 interface InstagramSignal {
   follows_target: boolean
@@ -42,9 +51,17 @@ type TabKey = 'infos' | 'activite' | 'relance' | 'closing'
 export function LeadDetailPage() {
   const { id: leadId } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [lead, setLead] = useState<LeadWithRelations | null>(null)
-  const [journey, setJourney] = useState<LeadJourney | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // One aggregated request (lead + calls + follow-ups, journey, score, IG
+  // signal), shown from the display cache instantly on revisit and refreshed
+  // in the background.
+  const cacheKey = leadId ? `/api/desktop/leads/${leadId}/intelligence` : null
+  const query = useCachedQuery<{ data: LeadIntelligence }>(cacheKey, { screen: 'LeadDetail', staleMs: 10_000 })
+  const intel = query.data?.data
+  const lead = intel?.lead ?? null
+  const journey = intel?.journey ?? null
+  const score = intel?.score ?? null
+  const instagramSignal = intel?.instagramSignal ?? null
+  const error = query.error
   const [tab, setTab] = useState<TabKey>('activite')
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -52,9 +69,7 @@ export function LeadDetailPage() {
   const [notesDirty, setNotesDirty] = useState(false)
   const [savingNotes, setSavingNotes] = useState(false)
   const [logging, setLogging] = useState(false)
-  const [score, setScore] = useState<EngagementScore | null>(null)
   const [showScoreDrawer, setShowScoreDrawer] = useState(false)
-  const [instagramSignal, setInstagramSignal] = useState<InstagramSignal | null>(null)
   const [newFollowUpReason, setNewFollowUpReason] = useState('')
   const [newFollowUpDate, setNewFollowUpDate] = useState('')
   const [newFollowUpChannel, setNewFollowUpChannel] = useState<'whatsapp' | 'email' | 'instagram_dm' | 'manuel'>('manuel')
@@ -65,53 +80,38 @@ export function LeadDetailPage() {
   const [savingDeal, setSavingDeal] = useState(false)
 
   useEffect(() => {
-    if (!leadId) return
-    setLead(null)
-    setJourney(null)
-    setError(null)
-    setTab('infos')
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setTab('activite')
   }, [leadId])
 
+  // Form fields follow the lead's saved values (per lead, and after refreshes
+  // unless the user is editing notes).
+  useEffect(() => {
+    if (!lead) return
+    if (!notesDirty) setNotesValue(lead.notes ?? '')
+    setDealAmount(lead.deal_amount != null ? String(lead.deal_amount) : '')
+    setDealCashCollected(String(lead.cash_collected ?? 0))
+    setDealInstallments(String(lead.deal_installments ?? 1))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead?.id, lead?.notes, lead?.deal_amount, lead?.cash_collected, lead?.deal_installments])
+
+  /** After a write: refetch this lead and mark lists that show it as stale. */
   async function load() {
-    if (!leadId) return
-    try {
-      const res = await api.get<{ data: LeadWithRelations }>(`/api/leads/${leadId}`)
-      setLead(res.data)
-      setNotesValue(res.data.notes ?? '')
-      setNotesDirty(false)
-      setDealAmount(res.data.deal_amount != null ? String(res.data.deal_amount) : '')
-      setDealCashCollected(String(res.data.cash_collected ?? 0))
-      setDealInstallments(String(res.data.deal_installments ?? 1))
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-      return
-    }
-    try {
-      const res = await api.get<{ data: LeadJourney }>(`/api/leads/${leadId}/journey`)
-      setJourney(res.data)
-    } catch {
-      setJourney(null)
-    }
-    try {
-      const res = await api.get<{ data: EngagementScore }>(`/api/leads/${leadId}/score`)
-      setScore(res.data)
-    } catch {
-      setScore(null)
-    }
-    try {
-      const res = await api.get<{ data: InstagramSignal | null }>(`/api/leads/${leadId}/instagram-signal`)
-      setInstagramSignal(res.data)
-    } catch {
-      setInstagramSignal(null)
-    }
+    invalidate((k) => k.startsWith('/api/leads?') || k.startsWith('/api/follow-ups') || k.startsWith('/api/deals'))
+    await query.refresh()
   }
 
   async function patch(payload: Partial<Lead>) {
-    if (!lead || !leadId) return
-    const res = await api.patch<{ data: Lead }>(`/api/leads/${leadId}`, payload)
-    setLead((prev) => (prev ? { ...prev, ...res.data } : prev))
+    if (!lead || !leadId || !cacheKey) return
+    const merge = (d: { data: LeadIntelligence }, p: Partial<Lead>) => ({ data: { ...d.data, lead: { ...d.data.lead, ...p } } })
+    updateCached<{ data: LeadIntelligence }>(cacheKey, (d) => merge(d, payload)) // optimistic
+    try {
+      const res = await api.patch<{ data: Lead }>(`/api/leads/${leadId}`, payload)
+      updateCached<{ data: LeadIntelligence }>(cacheKey, (d) => merge(d, res.data))
+      invalidate((k) => k.startsWith('/api/leads?'))
+    } catch (err) {
+      await query.refresh() // roll back to the server state
+      throw err
+    }
   }
 
   function startEdit(field: string, value: string) {

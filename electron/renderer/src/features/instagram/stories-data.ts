@@ -37,7 +37,9 @@ export function useStoryArchive() {
   // Reload when the Instagram session (re)connects.
   const connected = !!useStoryCollector().status?.connected
   useEffect(() => {
-    load(connected)
+    // Failures are not cached in main, so a plain load retries after reconnecting.
+    load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, connected])
 
   return { stories, error, reload: () => load(true) }

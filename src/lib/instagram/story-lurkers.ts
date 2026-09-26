@@ -88,7 +88,25 @@ export function summarizeViewers(
 const PAGE = 1000
 const CHUNK = 200
 
+const LURKERS_TTL_MS = 30_000
+const lurkersCache = new Map<string, { at: number; value: Awaited<ReturnType<typeof loadStoryLurkersUncached>> }>()
+
+/** Cached 30 s per (workspace, N): Leads cards, Audience and the collector all ask for it. */
 export async function loadStoryLurkers(supabase: SupabaseClient, workspaceId: string, lastN: number) {
+  const key = `${workspaceId}|${lastN}`
+  const hit = lurkersCache.get(key)
+  if (hit && Date.now() - hit.at < LURKERS_TTL_MS) return hit.value
+  const value = await loadStoryLurkersUncached(supabase, workspaceId, lastN)
+  lurkersCache.set(key, { at: Date.now(), value })
+  return value
+}
+
+/** New viewers were just saved: drop cached aggregates for this workspace. */
+export function invalidateStoryLurkers(workspaceId: string) {
+  for (const k of lurkersCache.keys()) if (k.startsWith(`${workspaceId}|`)) lurkersCache.delete(k)
+}
+
+async function loadStoryLurkersUncached(supabase: SupabaseClient, workspaceId: string, lastN: number) {
   const { data: stories, error } = await supabase
     .from('story_view_stories')
     .select('story_pk, taken_at, thumbnail_url, viewer_count, viewers_collected')
@@ -115,28 +133,40 @@ export async function loadStoryLurkers(supabase: SupabaseClient, workspaceId: st
   }
 
   const leadIds = [...new Set(viewers.map((v) => v.matched_lead_id).filter((id): id is string => !!id))]
+  const userIds = [...new Set(viewers.map((v) => v.instagram_user_id))]
+  const chunks = <T,>(arr: T[]) => Array.from({ length: Math.ceil(arr.length / CHUNK) }, (_, i) => arr.slice(i * CHUNK, (i + 1) * CHUNK))
+
+  // All lead / DM / follow lookups at once instead of chunk after chunk.
+  const [leadChunks, followChunks] = await Promise.all([
+    Promise.all(
+      chunks(leadIds).map((ids) =>
+        Promise.all([
+          supabase.from('leads').select('id, status, first_name, last_name, call_attempts, dm_conversation_active_at').eq('workspace_id', workspaceId).in('id', ids),
+          supabase.from('dm_session_items').select('lead_id').in('lead_id', ids).in('outcome', ['relaunched', 'replied']),
+        ]),
+      ),
+    ),
+    Promise.all(
+      chunks(userIds).map((ids) =>
+        supabase
+          .from('discovery_profiles')
+          .select('instagram_user_id, follows_target, created_at')
+          .eq('workspace_id', workspaceId)
+          .in('instagram_user_id', ids)
+          .order('created_at', { ascending: false }),
+      ),
+    ),
+  ])
+
   const leads = new Map<string, LeadContact>()
-  for (let i = 0; i < leadIds.length; i += CHUNK) {
-    const ids = leadIds.slice(i, i + CHUNK)
-    const [{ data: l }, { data: dm }] = await Promise.all([
-      supabase.from('leads').select('id, status, first_name, last_name, call_attempts, dm_conversation_active_at').eq('workspace_id', workspaceId).in('id', ids),
-      supabase.from('dm_session_items').select('lead_id').in('lead_id', ids).in('outcome', ['relaunched', 'replied']),
-    ])
+  for (const [{ data: l }, { data: dm }] of leadChunks) {
     const sent = new Set((dm ?? []).map((d) => d.lead_id as string))
     for (const row of l ?? []) {
       leads.set(row.id, { ...row, call_attempts: row.call_attempts ?? 0, dm_conversation_active_at: row.dm_conversation_active_at ?? null, dmSent: sent.has(row.id) } as LeadContact)
     }
   }
-
-  const userIds = [...new Set(viewers.map((v) => v.instagram_user_id))]
   const follows = new Map<string, boolean>()
-  for (let i = 0; i < userIds.length; i += CHUNK) {
-    const { data } = await supabase
-      .from('discovery_profiles')
-      .select('instagram_user_id, follows_target, created_at')
-      .eq('workspace_id', workspaceId)
-      .in('instagram_user_id', userIds.slice(i, i + CHUNK))
-      .order('created_at', { ascending: false })
+  for (const { data } of followChunks) {
     for (const p of data ?? []) if (p.instagram_user_id && !follows.has(p.instagram_user_id)) follows.set(p.instagram_user_id, p.follows_target)
   }
 

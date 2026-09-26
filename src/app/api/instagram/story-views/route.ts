@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { persistStoryViews, storyViewsPayloadSchema } from '@/lib/instagram/story-views'
-import { loadStoryLurkers } from '@/lib/instagram/story-lurkers'
+import { invalidateStoryLurkers, loadStoryLurkers } from '@/lib/instagram/story-lurkers'
 import { loadStoryDetail } from '@/lib/instagram/story-detail'
 
 /**
@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Données invalides' }, { status: 400 })
     }
     const result = await persistStoryViews(supabase, workspaceId, parsed.data)
+    invalidateStoryLurkers(workspaceId)
     return NextResponse.json({ data: result }, { status: result.errors.length > 0 ? 207 : 200 })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') {

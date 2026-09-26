@@ -11,6 +11,7 @@ import { LoadingState, ErrorState, EmptyState } from '../../design-system/States
 import type { InstagramInteraction, InteractionType } from './types'
 import './instagram.css'
 import { TableCard } from '../../design-system/TableCard'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 const TYPE_OPTIONS: { key: InteractionType; label: string }[] = [
   { key: 'like', label: 'Like' },
@@ -32,29 +33,18 @@ function providerLabel(provider: string | null): string {
 
 export function InteractionsPage() {
   const navigate = useNavigate()
-  const [interactions, setInteractions] = useState<InstagramInteraction[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [types, setTypes] = useState<string[]>([])
   const [providers, setProviders] = useState<string[]>([])
 
-  async function load() {
-    setError(null)
-    try {
-      const params = new URLSearchParams()
-      params.set('per_page', '50')
-      if (types[0]) params.set('interaction_type', types[0])
-      if (providers[0]) params.set('source_provider', providers[0])
-      const res = await api.get<{ data: InstagramInteraction[] }>(`/api/instagram/interactions?${params.toString()}`)
-      setInteractions(res.data)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }
-
-  useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [types, providers])
+  const params = new URLSearchParams()
+  params.set('per_page', '50')
+  if (types[0]) params.set('interaction_type', types[0])
+  if (providers[0]) params.set('source_provider', providers[0])
+  // Cache first, refreshed in the background (lib/query-cache).
+  const loadQuery = useCachedQuery<{ data: InstagramInteraction[] }>(`/api/instagram/interactions?${params.toString()}`, { screen: 'Interactions', staleMs: 30000, keepPrevious: true })
+  const interactions = loadQuery.data ? loadQuery.data.data : null
+  const error = loadQuery.error
+  const load = loadQuery.refresh
 
   return (
     <div className="ig-page">
