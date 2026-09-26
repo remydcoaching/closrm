@@ -22,6 +22,7 @@ import type { LeadStatus } from '../leads/types'
 import { ContentThumb } from './ContentThumb'
 import { formatRate } from './ContentPage'
 import { publishTiming, bestSlots, SLOTS, WEEKDAYS, MIN_SAMPLES } from './publish-timing'
+import { StoryViewersSection } from './StoryViewersSection'
 import type { ContentChartPoint } from './types'
 import './instagram.css'
 
@@ -162,6 +163,8 @@ export function AudiencePage() {
           <StatCard label="Lurkers" value={counts.lurkers} unit="profils" caption="ont interagi, jamais contactés" onClick={() => setSegment('lurkers')} />
         </StatGrid>
       )}
+
+      <StoryViewersSection />
 
       <TableCard title="Quand publier" subtitle="Taux d'engagement moyen de vos contenus selon le jour et l'heure de publication (12 derniers mois)">
         {contents === null ? (

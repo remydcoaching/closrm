@@ -8,6 +8,7 @@ import { Sidebar } from '../design-system/Sidebar'
 import { Avatar } from '../design-system/Avatar'
 import { useAuth } from '../lib/auth-context'
 import { InstagramAccountProvider, useInstagramAccount } from '../lib/instagram-account'
+import { StoryCollectorProvider } from '../lib/story-collector'
 import { InstagramAccountModal, InstagramOnboarding } from './InstagramOnboarding'
 import { LoadingState } from '../design-system/States'
 import './dashboard-layout.css'
@@ -36,6 +37,7 @@ function Shell() {
   if (account === null) return <InstagramOnboarding />
 
   return (
+    <StoryCollectorProvider>
     <div className="app-shell">
       <Sidebar />
       <div className="app-main">
@@ -64,6 +66,7 @@ function Shell() {
       </div>
       {editing && <InstagramAccountModal onClose={() => setEditing(false)} />}
     </div>
+    </StoryCollectorProvider>
   )
 }
 

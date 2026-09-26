@@ -7,7 +7,7 @@
 // without behavior change.
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export const DEFAULT_SCORING = { like: 1, comment: 3, dm: 5, mention: 2 } as const
+export const DEFAULT_SCORING = { like: 1, comment: 3, dm: 5, mention: 2, story_view: 1 } as const
 
 export interface EngagementSignal {
   key: string
@@ -21,6 +21,7 @@ export interface EngagementScoreResult {
   commentsCount: number
   dmCount: number
   mentionCount: number
+  storyViewsCount: number
   totalInteractions: number
   distinctContentCount: number
   firstInteractionAt: string | null
@@ -79,6 +80,7 @@ export async function computeEngagementScore(
   let commentsCount = 0
   let dmCount = 0
   let mentionCount = 0
+  let storyViewsCount = 0
   let firstInteractionAt: string | null = null
   let lastInteractionAt: string | null = null
   const contentIds = new Set<string>()
@@ -90,6 +92,7 @@ export async function computeEngagementScore(
     if (type === 'comment') commentsCount += 1
     if (type === 'dm') dmCount += 1
     if (type === 'mention') mentionCount += 1
+    if (type === 'story_view') storyViewsCount += 1
     if (row.source_post_id) contentIds.add(row.source_post_id as string)
     const firstSeen = row.first_seen_at as string | null
     const lastSeen = row.last_seen_at as string | null
@@ -132,6 +135,13 @@ export async function computeEngagementScore(
       detail: 'Un commentaire est un signal plus fort qu\'un like.',
     })
   }
+  if (storyViewsCount > 0) {
+    signals.push({
+      key: 'story_viewer',
+      label: `Regarde vos stories (${storyViewsCount})`,
+      detail: 'Vues de stories collectées depuis votre compte : il suit votre contenu même sans liker.',
+    })
+  }
   if (lastInteractionAt) {
     const daysSince = Math.floor((Date.now() - new Date(lastInteractionAt).getTime()) / 86_400_000)
     if (daysSince <= 3) {
@@ -168,6 +178,7 @@ export async function computeEngagementScore(
     commentsCount,
     dmCount,
     mentionCount,
+    storyViewsCount,
     totalInteractions: rows.length,
     distinctContentCount: contentIds.size,
     firstInteractionAt,

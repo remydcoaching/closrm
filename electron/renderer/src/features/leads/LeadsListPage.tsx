@@ -18,6 +18,7 @@ import { Chips } from '../../design-system/Tabs'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
 import { STATUS_CONFIG, SOURCE_CONFIG, statusEntry, sourceEntry, displayName, shortDate } from './status'
 import { LeadCreateModal } from './LeadCreateModal'
+import { useStoryLurkers } from '../instagram/StoryViewersSection'
 import type { Lead, LeadsListResponse } from './types'
 import './leads-list.css'
 
@@ -61,6 +62,7 @@ export function LeadsListPage() {
   const periodDays = period === 'custom' ? Math.max(1, Math.ceil((Date.now() - new Date(customStart).getTime()) / 86_400_000)) : Number(period)
   const [segments, setSegments] = useState<AudienceSegments | null>(null)
   const [exporting, setExporting] = useState(false)
+  const { data: storyLurkers } = useStoryLurkers(10, null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -193,13 +195,23 @@ export function LeadsListPage() {
           caption="actifs sur la période, personne ne leur a écrit"
           onClick={() => navigate('/instagram/audience')}
         />
-        <StatCard
-          label="Lurkers"
-          value={segments ? segments.lurkers : '—'}
-          unit={segments ? 'profils' : undefined}
-          caption="ont interagi, jamais contactés"
-          onClick={() => navigate('/instagram/audience')}
-        />
+        {storyLurkers && storyLurkers.totalStories > 0 ? (
+          <StatCard
+            label="Lurkers acheteurs"
+            value={storyLurkers.lurkers}
+            unit="profils"
+            caption={`sur vos ${storyLurkers.totalStories} dernières stories · jamais contactés`}
+            onClick={() => navigate('/instagram/audience')}
+          />
+        ) : (
+          <StatCard
+            label="Lurkers"
+            value={segments ? segments.lurkers : '—'}
+            unit={segments ? 'profils' : undefined}
+            caption="ont interagi, jamais contactés"
+            onClick={() => navigate('/instagram/audience')}
+          />
+        )}
         <StatCard
           label="Ne vous suivent pas"
           value={segments ? segments.neVousSuiventPas : '—'}

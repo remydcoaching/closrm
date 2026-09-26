@@ -8,6 +8,7 @@
 import { app, BrowserWindow, ipcMain, safeStorage, session, shell } from 'electron'
 import path from 'node:path'
 import { readFile, writeFile, unlink } from 'node:fs/promises'
+import * as instagramSession from './instagram-session'
 
 // This file compiles to CommonJS (see vite.config.ts) — Electron's native
 // `electron` module import does not interoperate correctly with Node's ESM
@@ -127,6 +128,12 @@ const SESSION_FILE = path.join(app.getPath('userData'), 'session.enc')
 // Opens a web page in the user's default browser (e.g. the ClosRM web
 // editors that are not rebuilt in the desktop app). http(s) only — never
 // file:, javascript: or custom schemes.
+// Coach's own Instagram session — story viewers only (see instagram-session.ts).
+ipcMain.handle('closrm:ig:status', () => instagramSession.getStatus())
+ipcMain.handle('closrm:ig:login', () => instagramSession.login(mainWindow))
+ipcMain.handle('closrm:ig:logout', () => instagramSession.logout())
+ipcMain.handle('closrm:ig:collect-stories', () => instagramSession.collectStoryViewers())
+
 ipcMain.handle('closrm:open-external', async (_event, url: string) => {
   let parsed: URL
   try {

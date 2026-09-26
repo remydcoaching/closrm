@@ -28,6 +28,14 @@ contextBridge.exposeInMainWorld('closrm', {
   /** Opens an http(s) URL in the default browser (validated in main). */
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('closrm:open-external', url),
 
+  /** Coach's own Instagram session (story viewers). Cookies never leave the main process. */
+  instagram: {
+    status: () => ipcRenderer.invoke('closrm:ig:status'),
+    login: () => ipcRenderer.invoke('closrm:ig:login'),
+    logout: (): Promise<void> => ipcRenderer.invoke('closrm:ig:logout'),
+    collectStories: () => ipcRenderer.invoke('closrm:ig:collect-stories'),
+  },
+
   secureStorage: {
     set: (value: string): Promise<void> => ipcRenderer.invoke('closrm:secure-storage:set', value),
     get: (): Promise<string | null> => ipcRenderer.invoke('closrm:secure-storage:get'),

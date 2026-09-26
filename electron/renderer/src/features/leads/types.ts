@@ -109,6 +109,7 @@ export interface EngagementScore {
   commentsCount: number
   dmCount: number
   mentionCount: number
+  storyViewsCount?: number
   totalInteractions: number
   distinctContentCount: number
   firstInteractionAt: string | null

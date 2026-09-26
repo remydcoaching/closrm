@@ -107,7 +107,8 @@ export async function GET(
       })
     }
 
-    // 4. Instagram engagement events (likes/comments) for this lead
+    // 4. Instagram engagement events for this lead — instagram_like,
+    // instagram_comment, instagram_dm, instagram_mention, instagram_story_view
     const { data: igInteractions } = await supabase
       .from('instagram_interactions')
       .select('id, interaction_type, instagram_username, profile_url, source_post_url, metadata, last_seen_at')
@@ -118,7 +119,7 @@ export async function GET(
 
     const igEvents: JourneyEvent[] = (igInteractions ?? []).map((ig) => ({
       id: ig.id as string,
-      event_type: ig.interaction_type === 'like' ? 'instagram_like' : 'instagram_comment',
+      event_type: `instagram_${ig.interaction_type}`,
       metadata: {
         ...(ig.metadata as Record<string, unknown> ?? {}),
         instagram_username: ig.instagram_username,

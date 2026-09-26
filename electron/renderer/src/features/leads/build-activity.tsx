@@ -33,6 +33,14 @@ const FUNNEL_ICON = (
   </svg>
 )
 
+const INSTAGRAM_EVENT_TITLE: Record<string, string> = {
+  instagram_like: 'Instagram — a liké un post',
+  instagram_comment: 'Instagram — a commenté',
+  instagram_story_view: 'Instagram — a vu votre story',
+  instagram_dm: 'Instagram — vous a écrit en DM',
+  instagram_mention: 'Instagram — vous a mentionné',
+}
+
 export function buildActivity(calls: Call[], followUps: FollowUp[], journeyEvents: JourneyEvent[]): ActivityEntry[] {
   const entries: ActivityEntry[] = []
 
@@ -57,13 +65,13 @@ export function buildActivity(calls: Call[], followUps: FollowUp[], journeyEvent
   }
 
   for (const event of journeyEvents) {
-    if (event.event_type === 'instagram_like' || event.event_type === 'instagram_comment') {
+    if (event.event_type in INSTAGRAM_EVENT_TITLE) {
       const username = event.metadata?.instagram_username as string | undefined
       entries.push({
         id: `ig-${event.id}`,
         at: event.created_at,
         icon: INSTAGRAM_ICON,
-        title: event.event_type === 'instagram_like' ? 'Instagram — a liké un post' : 'Instagram — a commenté',
+        title: INSTAGRAM_EVENT_TITLE[event.event_type],
         detail: username ? `@${username}` : undefined,
       })
     } else if (event.event_type === 'view' || event.event_type === 'form_submit' || event.event_type === 'button_click') {

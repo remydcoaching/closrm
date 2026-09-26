@@ -308,7 +308,7 @@ export function LeadDetailPage() {
                 label="Engagement"
                 value={score.likesCount}
                 unit={`like${score.likesCount > 1 ? 's' : ''}`}
-                caption={`${score.commentsCount} commentaire${score.commentsCount > 1 ? 's' : ''} · ${score.dmCount} DM`}
+                caption={`${score.commentsCount} commentaire${score.commentsCount > 1 ? 's' : ''} · ${score.storyViewsCount ?? 0} vue${(score.storyViewsCount ?? 0) > 1 ? 's' : ''} de story · ${score.dmCount} DM`}
               />
               <StatCard
                 label="Fréquence"
