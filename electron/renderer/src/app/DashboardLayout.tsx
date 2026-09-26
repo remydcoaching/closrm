@@ -30,11 +30,11 @@ export function DashboardLayout() {
 }
 
 function Shell() {
-  const { account } = useInstagramAccount()
+  const { account, skipped } = useInstagramAccount()
   const [editing, setEditing] = useState(false)
 
   if (account === undefined) return <LoadingState label="Chargement de votre compte…" />
-  if (account === null) return <InstagramOnboarding />
+  if (account === null && !skipped) return <InstagramOnboarding />
 
   return (
     <StoryCollectorProvider>
@@ -47,16 +47,23 @@ function Shell() {
               <span className="app-brand-logo">C</span>
               ClosRM
             </span>
-            <button type="button" className="app-ig-pill" onClick={() => setEditing(true)} title="Changer de compte Instagram">
-              <Avatar name={account.username} size={34} />
-              <span className="app-ig-pill-text">
-                <span className="app-ig-pill-handle">@{account.username}</span>
-                <span className="app-ig-pill-status">
-                  <i /> Connecté
+            {account ? (
+              <button type="button" className="app-ig-pill" onClick={() => setEditing(true)} title="Changer de compte Instagram">
+                <Avatar name={account.username} size={34} />
+                <span className="app-ig-pill-text">
+                  <span className="app-ig-pill-handle">@{account.username}</span>
+                  <span className="app-ig-pill-status">
+                    <i /> Connecté
+                  </span>
                 </span>
-              </span>
-              <span className="app-ig-pill-glyph">{InstagramGlyph}</span>
-            </button>
+                <span className="app-ig-pill-glyph">{InstagramGlyph}</span>
+              </button>
+            ) : (
+              <button type="button" className="app-ig-pill app-ig-pill--empty" onClick={() => setEditing(true)}>
+                <span className="app-ig-pill-glyph">{InstagramGlyph}</span>
+                <span className="app-ig-pill-handle">Ajouter mon compte Instagram</span>
+              </button>
+            )}
           </div>
           <UserMenu />
         </header>

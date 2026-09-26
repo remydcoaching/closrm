@@ -7,7 +7,7 @@ import { Card } from '../../design-system/Card'
 type Mode = 'password' | 'magic-link'
 
 export function LoginPage() {
-  const { requestMagicLink, loginWithPassword } = useAuth()
+  const { requestMagicLink, loginWithPassword, startupError } = useAuth()
   const [mode, setMode] = useState<Mode>('password')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -72,7 +72,7 @@ export function LoginPage() {
                 required
               />
             )}
-            {error && <p style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-xs)' }}>{error}</p>}
+            {(error || startupError) && <p style={{ color: 'var(--color-danger)', fontSize: 'var(--font-size-xs)' }}>{error ?? startupError}</p>}
             <Button type="submit" variant="primary" disabled={status === 'sending' || !email || (mode === 'password' && !password)}>
               {status === 'sending' ? 'Connexion…' : mode === 'password' ? 'Se connecter' : 'Recevoir un lien de connexion'}
             </Button>

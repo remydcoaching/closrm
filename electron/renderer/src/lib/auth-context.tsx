@@ -18,6 +18,8 @@ import { extractAuthCode } from './deep-link'
 interface AuthContextValue {
   session: Session | null
   loading: boolean
+  /** Why the saved session could not be restored at startup, if it failed. */
+  startupError: string | null
   requestMagicLink: (email: string) => Promise<{ error: string | null }>
   loginWithPassword: (email: string, password: string) => Promise<{ error: string | null }>
   logout: () => Promise<void>
@@ -32,12 +34,42 @@ const DEEP_LINK_REDIRECT = 'closrm://auth-callback'
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [startupError, setStartupError] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
+    // Never leave the app stuck on "Vérification de la session…": if the
+    // secure storage bridge or the token refresh fails or hangs, fall back to
+    // the login screen and surface the reason.
+    let settled = false
+    const timeout = setTimeout(() => {
+      if (settled) return
+      settled = true
+      console.error('[auth] getSession timed out after 8s')
+      setStartupError('La session n’a pas pu être restaurée (délai dépassé). Reconnectez-vous.')
       setLoading(false)
-    })
+    }, 8000)
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        if (error) {
+          console.error('[auth] getSession error:', error.message)
+          setStartupError(error.message)
+        }
+        setSession(data.session)
+        setLoading(false)
+      })
+      .catch((err: unknown) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        const message = err instanceof Error ? err.message : String(err)
+        console.error('[auth] getSession failed:', message)
+        setStartupError(`Session non restaurée : ${message}`)
+        setLoading(false)
+      })
 
     const {
       data: { subscription },
@@ -45,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(newSession)
     })
 
-    const unsubscribeDeepLink = window.closrm.onDeepLink(async (url) => {
+    const unsubscribeDeepLink = (window.closrm?.onDeepLink ?? (() => () => {}))(async (url) => {
       const code = extractAuthCode(url)
       if (!code) return
       const { error } = await supabase.auth.exchangeCodeForSession(code)
@@ -55,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return () => {
+      clearTimeout(timeout)
       subscription.unsubscribe()
       unsubscribeDeepLink()
     }
@@ -88,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, loading, requestMagicLink, loginWithPassword, logout }}>
+    <AuthContext.Provider value={{ session, loading, startupError, requestMagicLink, loginWithPassword, logout }}>
       {children}
     </AuthContext.Provider>
   )

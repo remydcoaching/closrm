@@ -9,9 +9,14 @@ export interface TargetAccount {
   source: 'workspace' | 'meta' | 'last_scan'
 }
 
+const SKIP_KEY = 'closrm:instagram-onboarding:skipped'
+
 interface InstagramAccountValue {
   /** undefined = loading, null = none known yet. */
   account: TargetAccount | null | undefined
+  /** The coach chose "Faire plus tard" on the onboarding. */
+  skipped: boolean
+  skip: () => void
   save: (username: string) => Promise<void>
   reload: () => Promise<void>
 }
@@ -20,6 +25,22 @@ const Ctx = createContext<InstagramAccountValue | null>(null)
 
 export function InstagramAccountProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<TargetAccount | null | undefined>(undefined)
+  const [skipped, setSkipped] = useState(() => {
+    try {
+      return localStorage.getItem(SKIP_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  const skip = useCallback(() => {
+    setSkipped(true)
+    try {
+      localStorage.setItem(SKIP_KEY, '1')
+    } catch {
+      // per-session only if storage is unavailable
+    }
+  }, [])
 
   const reload = useCallback(async () => {
     try {
@@ -39,7 +60,7 @@ export function InstagramAccountProvider({ children }: { children: ReactNode }) 
     reload()
   }, [reload])
 
-  return <Ctx.Provider value={{ account, save, reload }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ account, skipped, skip, save, reload }}>{children}</Ctx.Provider>
 }
 
 export function useInstagramAccount(): InstagramAccountValue {

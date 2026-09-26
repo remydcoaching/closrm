@@ -47,6 +47,7 @@ function HandleForm({ submitLabel, onSaved }: { submitLabel: string; onSaved: ()
 export function InstagramOnboarding() {
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const { skip } = useInstagramAccount()
   return (
     <div className="ig-onboarding">
       <div className="ig-onboarding-card">
@@ -59,7 +60,11 @@ export function InstagramOnboarding() {
           ClosRM l&apos;utilise pour analyser qui interagit avec tes contenus, ton audience et quels posts t&apos;amènent des leads. Aucun mot de passe Instagram n&apos;est
           demandé.
         </p>
-        <HandleForm submitLabel="Continuer" onSaved={() => navigate('/leads')} />
+        <HandleForm submitLabel="Continuer" onSaved={() => navigate('/dashboard')} />
+        <button type="button" className="ds-pill-button" onClick={skip}>
+          Faire plus tard
+        </button>
+        <p className="ig-onboarding-note">Enregistrer ton pseudo ne consomme aucun crédit : seules les analyses lancées depuis Analyse › ciblage en utilisent.</p>
         <button type="button" className="ig-onboarding-logout" onClick={logout}>
           Se déconnecter
         </button>

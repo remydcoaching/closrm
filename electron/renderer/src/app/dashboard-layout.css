@@ -243,3 +243,16 @@
   font-size: var(--font-size-xs);
   cursor: pointer;
 }
+
+.app-ig-pill--empty {
+  padding: 8px 14px;
+}
+
+.app-ig-pill--empty .app-ig-pill-glyph {
+  margin-left: 0;
+}
+
+.ig-onboarding-note {
+  font-size: var(--font-size-xs) !important;
+  text-align: center;
+}
