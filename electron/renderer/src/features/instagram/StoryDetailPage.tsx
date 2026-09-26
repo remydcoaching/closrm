@@ -146,7 +146,11 @@ export function StoryDetailPage() {
               value={counts?.viewers ?? '—'}
               caption={views ? `ceux qu'on a pu nommer, sur ${formatNumber(views)} vues` : 'collectés depuis votre session'}
             />
-            <StatCard label="Réactions" value={counts?.reactions ?? '—'} caption="cœurs envoyés sur la story" />
+            <StatCard
+              label="Réactions"
+              value={media?.likeCount ?? counts?.reactions ?? '—'}
+              caption={media?.likeCount != null ? "j'aime comptés par Instagram" : 'cœurs envoyés sur la story'}
+            />
             <StatCard label="Leads" value={counts?.leads ?? '—'} highlight caption="spectateurs déjà dans votre CRM" />
           </div>
         </div>
@@ -174,7 +178,14 @@ export function StoryDetailPage() {
         {!detail && !error && <LoadingState label="Chargement des spectateurs…" />}
         {error && <ErrorState message={error} />}
         {detail && detail.viewers.length === 0 && (
-          <EmptyState title="Aucun spectateur collecté" description="Les spectateurs sont collectés tant que la story est en ligne (24 h), app ouverte et session Instagram connectée." />
+          <EmptyState
+            title="Aucun spectateur collecté"
+            description={
+              takenAt && Date.now() - new Date(takenAt).getTime() > 48 * 3_600_000
+                ? "Instagram ne montre les spectateurs d'une story que pendant 48 h après sa publication. Celle-ci est plus ancienne et ClosRM n'était pas ouvert pendant ce délai : ses spectateurs ne sont plus récupérables. Ses j'aime restent visibles ci-dessus."
+                : 'Les spectateurs sont collectés automatiquement toutes les 30 min tant que la story est en ligne, que l’app est ouverte et que la session Instagram est connectée.'
+            }
+          />
         )}
         {detail && detail.viewers.length > 0 && rows.length === 0 && <EmptyState title="Personne dans ce filtre" />}
         {rows.length > 0 && (
