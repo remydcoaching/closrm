@@ -81,6 +81,20 @@ export function StoryDetailPage() {
   const [filter, setFilter] = useState<Filter>('leads')
   const [search, setSearch] = useState('')
   const [mediaBroken, setMediaBroken] = useState(false)
+  const [targeting, setTargeting] = useState<string | null>(null)
+
+  // "Cibler": link the viewer to their lead or create one; their story views
+  // then appear in the lead's journey and score.
+  async function target(v: DetailViewer) {
+    setTargeting(v.userId)
+    try {
+      const res = await api.post<{ data: { leadId: string } }>('/api/instagram/story-viewers/target', { instagramUserId: v.userId })
+      navigate(`/leads/${res.data.leadId}`)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Ciblage impossible')
+      setTargeting(null)
+    }
+  }
 
   useEffect(() => {
     api
@@ -174,6 +188,7 @@ export function StoryDetailPage() {
                 <th>Niveau de confiance</th>
                 <th className="ds-num-cell">Dernière activité</th>
                 <th className="ds-num-cell">Interactions</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -216,6 +231,21 @@ export function StoryDetailPage() {
                     </td>
                     <td className="ds-num-cell">
                       <span className="ds-num">{v.lead ? formatNumber(v.lead.totalInteractions) : '—'}</span>
+                    </td>
+                    <td className="ds-num-cell">
+                      {!v.lead && (
+                        <button
+                          type="button"
+                          className="ds-pill-button ds-pill-button--dark"
+                          disabled={targeting === v.userId}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            target(v)
+                          }}
+                        >
+                          {targeting === v.userId ? 'Ciblage…' : 'Cibler'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )

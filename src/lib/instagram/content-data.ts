@@ -1,7 +1,19 @@
 // Supabase loaders behind the Content page — chart points and per-content
 // detail. See content-metrics.ts for how figures are derived.
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { scoreLeads } from '@/lib/leads/engagement-score'
+import { confidenceLevel, type ConfidenceLevel } from '@/lib/leads/confidence'
 import { buildContentMetrics, latestPerContent, type ContentMetrics, type DiscoveryContentRow, type ObservedCounts } from './content-metrics'
+
+const CONTENT_COLS = 'discovery_run_id, content_id, content_type, content_url, thumbnail_url, published_at, view_count, reported_like_count, reported_comment_count, created_at'
+
+/** discovery_contents select with caption, retried without it until migration 109 is applied. */
+async function selectContents(build: (cols: string) => PromiseLike<{ data: unknown; error: { message: string } | null }>) {
+  let res = await build(`${CONTENT_COLS}, caption`)
+  if (res.error && /caption/.test(res.error.message)) res = await build(CONTENT_COLS)
+  if (res.error) throw new Error(res.error.message)
+  return (res.data ?? []) as DiscoveryContentRow[]
+}
 
 const PAGE = 1000
 const CHUNK = 100
@@ -64,15 +76,12 @@ async function loadMatchedLeads(supabase: SupabaseClient, workspaceId: string, r
 }
 
 export async function loadContentMetrics(supabase: SupabaseClient, workspaceId: string, sinceIso: string | null): Promise<ContentMetrics[]> {
-  let q = supabase
-    .from('discovery_contents')
-    .select('discovery_run_id, content_id, content_type, content_url, thumbnail_url, published_at, view_count, reported_like_count, reported_comment_count, created_at')
-    .eq('workspace_id', workspaceId)
-  if (sinceIso) q = q.gte('published_at', sinceIso)
-  const { data, error } = await q
-  if (error) throw new Error(error.message)
-
-  const rows = latestPerContent((data ?? []) as DiscoveryContentRow[])
+  const raw = await selectContents((c) => {
+    let q = supabase.from('discovery_contents').select(c).eq('workspace_id', workspaceId)
+    if (sinceIso) q = q.gte('published_at', sinceIso)
+    return q
+  })
+  const rows = latestPerContent(raw)
   const runIds = [...new Set(rows.map((r) => r.discovery_run_id))]
   const latestRunByContent = new Map(rows.map((r) => [r.content_id, r.discovery_run_id]))
   const observed = new Map<string, { likers: number; commenters: number; leads: number }>()
@@ -138,13 +147,8 @@ export interface ContentDetail {
 }
 
 export async function loadContentDetail(supabase: SupabaseClient, workspaceId: string, contentId: string): Promise<ContentDetail | null> {
-  const { data, error } = await supabase
-    .from('discovery_contents')
-    .select('discovery_run_id, content_id, content_type, content_url, thumbnail_url, published_at, view_count, reported_like_count, reported_comment_count, created_at')
-    .eq('workspace_id', workspaceId)
-    .eq('content_id', contentId)
-  if (error) throw new Error(error.message)
-  const [row] = latestPerContent((data ?? []) as DiscoveryContentRow[])
+  const raw = await selectContents((c) => supabase.from('discovery_contents').select(c).eq('workspace_id', workspaceId).eq('content_id', contentId))
+  const [row] = latestPerContent(raw)
   if (!row) return null
 
   const interactions = await loadInteractions(supabase, workspaceId, [row.discovery_run_id], [contentId])
@@ -256,4 +260,32 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
   // Commenters first (stronger intent), then by account-wide activity.
   profiles.sort((a, b) => Number(b.commented) - Number(a.commented) || (b.totalLikes ?? 0) + (b.totalComments ?? 0) - ((a.totalLikes ?? 0) + (a.totalComments ?? 0)))
   return { metrics, profiles }
+}
+
+
+export type ConfidenceCounts = Partial<Record<ConfidenceLevel, number>>
+
+/**
+ * Leads reached by each content, counted by confidence level (Contenu page
+ * filter). Uses instagram_content_leads (migration 109); returns null when
+ * that function isn't deployed yet so the UI can say so.
+ */
+export async function loadContentConfidence(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  runIds: string[],
+): Promise<Map<string, ConfidenceCounts> | null> {
+  const { data, error } = await supabase.rpc('instagram_content_leads', { p_workspace: workspaceId, p_run_ids: runIds })
+  if (error) return null
+  const pairs = (data ?? []) as { content_id: string; lead_id: string }[]
+  const scores = await scoreLeads(supabase, workspaceId, [...new Set(pairs.map((p) => p.lead_id))])
+  const out = new Map<string, ConfidenceCounts>()
+  for (const p of pairs) {
+    const sc = scores.get(p.lead_id)
+    const level = sc ? confidenceLevel(sc) : 'insuffisant'
+    const counts = out.get(p.content_id) ?? {}
+    counts[level] = (counts[level] ?? 0) + 1
+    out.set(p.content_id, counts)
+  }
+  return out
 }

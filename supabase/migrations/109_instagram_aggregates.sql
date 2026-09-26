@@ -47,3 +47,30 @@ $$;
 
 create index if not exists idx_instagram_interactions_ws_lead on instagram_interactions(workspace_id, lead_id);
 create index if not exists idx_discovery_profiles_run_username on discovery_profiles(discovery_run_id, instagram_username);
+
+-- Distinct (content, lead) pairs: leads reached by each content, from
+-- Ciblage observations (latest runs passed in) and from instagram_interactions.
+-- Powers the Contenu page's "Niveau de confiance" filter.
+create or replace function instagram_content_leads(p_workspace uuid, p_run_ids uuid[])
+returns table (content_id text, lead_id uuid)
+language sql
+stable
+security invoker
+as $$
+  select distinct di.content_id, dp.matched_lead_id
+  from discovery_interactions di
+  join discovery_profiles dp
+    on dp.discovery_run_id = di.discovery_run_id
+   and dp.instagram_username = di.instagram_username
+  where di.workspace_id = p_workspace
+    and di.discovery_run_id = any (p_run_ids)
+    and dp.matched_lead_id is not null
+  union
+  select distinct ii.source_post_id::text, ii.lead_id
+  from instagram_interactions ii
+  where ii.workspace_id = p_workspace
+    and ii.source_post_id is not null
+$$;
+
+-- Caption of each scanned content (shown as its title in Contenu).
+alter table discovery_contents add column if not exists caption text;

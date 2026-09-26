@@ -144,14 +144,36 @@ export function CiblageRunPage() {
   return (
     <div className="ig-page">
       <button type="button" className="ds-pill-button ig-back" onClick={() => navigate('/instagram/discovery')}>
-        ← Analyses
+        ← Mes analyses
       </button>
-      <div className="ig-page-header">
-        <div>
-          <h1>{run ? `@${run.instagram_username}` : 'Profils à cibler'}</h1>
-          <p>Ils ont aimé ou commenté ses contenus, en public{run ? ` — analyse du ${shortDate(run.started_at)}` : ''}.</p>
+
+      {run && (
+        <div className="ig-run-banner">
+          <div>
+            <strong>
+              Données du {new Date(run.started_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })},{' '}
+              {new Date(run.started_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            </strong>
+            <span>Analyse rouverte à sa date : rien n&apos;a été relancé.</span>
+          </div>
+          <button type="button" className="ds-pill-button" onClick={() => navigate('/instagram/discovery')} title="Relancer une analyse consomme des crédits Hiker">
+            Actualiser
+          </button>
         </div>
-      </div>
+      )}
+
+      {run && (
+        <div className="ig-run-account">
+          <Avatar name={run.instagram_username} size={40} />
+          <div>
+            <strong>@{run.instagram_username}</strong>
+            <span className="ds-muted">
+              {run.contents_found ? `${formatNumber(run.contents_found)} contenus analysés` : ''}
+              {run.users_found ? ` · ${formatNumber(run.users_found)} profils observés` : ''}
+            </span>
+          </div>
+        </div>
+      )}
 
       {counts && (
         <StatGrid>
@@ -163,8 +185,8 @@ export function CiblageRunPage() {
       )}
 
       <TableCard
-        title={`${FILTER_LABEL[filter]} · ${res ? formatNumber(res.meta.total) : '…'}`}
-        subtitle="Cliquez sur « Cibler » pour ajouter un profil à vos leads"
+        title="Profils qui ont réagi, à cibler"
+        subtitle={`Ils ont aimé ou commenté ses contenus, en public — ${FILTER_LABEL[filter].toLowerCase()} : ${res ? formatNumber(res.meta.total) : '…'}`}
         toolbar={
           <>
             <SearchInput value={searchInput} onChange={setSearchInput} placeholder="Rechercher un contact" />
@@ -189,11 +211,11 @@ export function CiblageRunPage() {
               <thead>
                 <tr>
                   <SortHeader label="Contact" active={sort === 'instagram_username'} order={order} onClick={() => toggleSort('instagram_username')} />
-                  <SortHeader label="Assiduité" align="right" active={sort === 'likes_count'} order={order} onClick={() => toggleSort('likes_count')} />
+                  <SortHeader label="A fait" active={sort === 'likes_count'} order={order} onClick={() => toggleSort('likes_count')} />
                   <SortHeader label="Commentaires" align="right" active={sort === 'comments_count'} order={order} onClick={() => toggleSort('comments_count')} />
-                  <th>Abonné</th>
-                  <th>Déjà lead</th>
-                  <th />
+                  <th>Vous suit</th>
+                  <th>Déjà un de vos leads</th>
+                  <th className="ds-num-cell">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -208,20 +230,30 @@ export function CiblageRunPage() {
                           avatar={<Avatar name={name} size={28} src={profile.profile_pic_url} />}
                         />
                       </td>
-                      <td className="ds-num-cell">
-                        <span className="ds-num">
-                          {contentsAnalysed ? `${formatNumber(profile.likes_count)} sur ${formatNumber(contentsAnalysed)}` : formatNumber(profile.likes_count)}
+                      <td>
+                        <span className="ig-did">
+                          <span className={`ig-did-icon ${profile.likes_count > 0 ? 'ig-did-icon--on' : ''}`} title={`${profile.likes_count} contenu(s) liké(s)${contentsAnalysed ? ` sur ${contentsAnalysed}` : ''}`}>
+                            ♥{profile.likes_count > 0 && <b>{profile.likes_count > 99 ? '99+' : profile.likes_count}</b>}
+                          </span>
+                          <span className={`ig-did-icon ${profile.comments_count > 0 ? 'ig-did-icon--on' : ''}`} title={`${profile.comments_count} commentaire(s)`}>
+                            💬{profile.comments_count > 0 && <b>{profile.comments_count > 99 ? '99+' : profile.comments_count}</b>}
+                          </span>
+                          {contentsAnalysed ? <span className="ds-muted">{formatNumber(profile.likes_count)} sur {formatNumber(contentsAnalysed)}</span> : null}
                         </span>
                       </td>
                       <td className="ds-num-cell">
                         <span className="ds-num">{formatNumber(profile.comments_count)}</span>
                       </td>
-                      <td>{profile.follows_target ? 'Oui' : 'Non'}</td>
-                      <td>{profile.matched_lead_id ? 'Oui' : 'Non'}</td>
+                      <td>
+                        <span className={`ig-yesno-pill ${profile.follows_target ? 'ig-yesno-pill--yes' : ''}`}>{profile.follows_target ? 'Oui' : 'Non'}</span>
+                      </td>
+                      <td>
+                        <span className={`ig-yesno-pill ${profile.matched_lead_id ? 'ig-yesno-pill--yes' : ''}`}>{profile.matched_lead_id ? 'Oui' : 'Non'}</span>
+                      </td>
                       <td className="ds-num-cell">
                         <button
                           type="button"
-                          className={`ds-pill-button ${profile.matched_lead_id ? '' : 'ds-pill-button--dark'}`}
+                          className={profile.matched_lead_id ? 'ds-pill-button' : 'ig-target-button'}
                           disabled={targeting === profile.id}
                           onClick={() => handleTarget(profile)}
                         >

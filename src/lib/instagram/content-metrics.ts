@@ -15,6 +15,7 @@ export interface DiscoveryContentRow {
   thumbnail_url: string | null
   published_at: string | null
   view_count: number | null
+  caption?: string | null
   reported_like_count: number | null
   reported_comment_count: number | null
   created_at: string
@@ -31,6 +32,7 @@ export interface ContentMetrics {
   contentType: string
   contentUrl: string | null
   thumbnailUrl: string | null
+  caption: string | null
   publishedAt: string | null
   runId: string
   views: number | null
@@ -64,6 +66,7 @@ export function buildContentMetrics(row: DiscoveryContentRow, observed: Observed
     contentType: row.content_type,
     contentUrl: row.content_url,
     thumbnailUrl: row.thumbnail_url,
+    caption: row.caption ?? null,
     publishedAt: row.published_at,
     runId: row.discovery_run_id,
     views,

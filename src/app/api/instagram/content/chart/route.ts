@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
-import { loadContentMetrics } from '@/lib/instagram/content-data'
+import { loadContentConfidence, loadContentMetrics } from '@/lib/instagram/content-data'
 
 /**
  * Content page data: one entry per scanned content (latest Ciblage snapshot)
@@ -18,6 +18,14 @@ export async function GET(request: NextRequest) {
     const since = days > 0 ? new Date(Date.now() - days * 86_400_000).toISOString() : null
     const data = await loadContentMetrics(supabase, workspaceId, since)
     data.sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
+    // ?confidence=1: leads reached per content by confidence level (on demand — heavier).
+    if (request.nextUrl.searchParams.get('confidence') === '1') {
+      const confidence = await loadContentConfidence(supabase, workspaceId, [...new Set(data.map((d) => d.runId))])
+      return NextResponse.json({
+        data: data.map((d) => ({ ...d, confidence: confidence?.get(d.contentId) ?? {} })),
+        confidenceAvailable: confidence !== null,
+      })
+    }
     return NextResponse.json({ data })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') {

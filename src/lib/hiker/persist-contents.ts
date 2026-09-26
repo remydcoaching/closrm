@@ -16,7 +16,7 @@ export async function persistDiscoveryContents(supabase: any, workspaceId: strin
   let contentsPersisted = 0
 
   for (const content of result.contents) {
-    const { error: insertError } = await supabase.from('discovery_contents').insert({
+    const row = {
       workspace_id: workspaceId,
       discovery_run_id: discoveryRunId,
       content_id: content.id,
@@ -31,7 +31,14 @@ export async function persistDiscoveryContents(supabase: any, workspaceId: strin
       view_count: content.viewCount,
       reported_like_count: content.likeCount,
       reported_comment_count: content.commentCount,
-    })
+    }
+    const caption = (content.rawMetadata as { caption_text?: string })?.caption_text?.slice(0, 2000) ?? null
+    let { error: insertError } = await supabase.from('discovery_contents').insert({ ...row, caption })
+    // Migration 109 (caption) not applied yet: store the rest anyway.
+    if (insertError && /caption/.test(insertError.message ?? '')) {
+      ;({ error: insertError } = await supabase.from('discovery_contents').insert(row))
+    }
+
 
     if (insertError) {
       // A unique (discovery_run_id, content_id) collision is expected if

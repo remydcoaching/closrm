@@ -120,6 +120,7 @@ export interface ContentChartPoint {
   contentType: 'media' | 'clip'
   contentUrl: string | null
   thumbnailUrl: string | null
+  caption?: string | null
   publishedAt: string | null
   runId: string
   views: number | null
@@ -129,7 +130,11 @@ export interface ContentChartPoint {
   identifiedLikers: number
   identifiedCommenters: number
   leadsCount: number
+  /** Leads reached per confidence level (only with ?confidence=1). */
+  confidence?: Partial<Record<ConfidenceKey, number>>
 }
+
+export type ConfidenceKey = 'tres_eleve' | 'eleve' | 'moyen' | 'faible' | 'insuffisant'
 
 /** Mirrors ContentProfile (src/lib/instagram/content-data.ts). */
 export interface ContentProfile {

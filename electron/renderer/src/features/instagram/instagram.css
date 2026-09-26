@@ -526,3 +526,121 @@
   gap: 12px;
   flex-wrap: wrap;
 }
+
+.ig-caption {
+  max-width: 520px;
+  font-weight: 500;
+}
+
+.ig-type-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-muted);
+  font-size: 10.5px;
+  color: var(--color-text-secondary);
+}
+
+/* ─── Ciblage (reference: Insyder analyse) ─── */
+.ig-run-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+}
+
+.ig-run-banner strong {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-strong);
+}
+
+.ig-run-banner span {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.ig-run-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.ig-run-account strong {
+  display: block;
+  font-size: 12.5px;
+  color: var(--color-text-strong);
+}
+
+.ig-did {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ig-did-icon {
+  position: relative;
+  font-size: 13px;
+  color: var(--color-text-faint);
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.ig-did-icon--on {
+  color: var(--color-accent-solid);
+  filter: none;
+  opacity: 1;
+}
+
+.ig-did-icon b {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--color-accent-solid);
+  color: #fff;
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+}
+
+.ig-yesno-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.ig-yesno-pill--yes {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.ig-target-button {
+  border: none;
+  padding: 6px 16px;
+  border-radius: 8px;
+  background: var(--gradient-accent);
+  color: #fff;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ig-target-button:disabled {
+  opacity: 0.6;
+}

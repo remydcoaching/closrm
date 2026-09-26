@@ -17,6 +17,7 @@ import './instagram.css'
 import { TableCard } from '../../design-system/TableCard'
 import { StatCard } from '../../design-system/StatCard'
 import { useInstagramAccount } from '../../lib/instagram-account'
+import { Tabs } from '../../design-system/Tabs'
 
 function statusLabel(status: DiscoveryRun['status']): string {
   return { RUNNING: 'En cours', SUCCESS: 'Terminé', PARTIAL: 'Partiel', FAILED: 'Échoué' }[status]
@@ -66,8 +67,20 @@ export function DiscoveryPage() {
     }
   }
 
+  const [tab, setTab] = useState<'analyse' | 'history'>('analyse')
+
   return (
     <div className="ig-page">
+      <Tabs
+        items={[
+          { key: 'analyse' as const, label: 'Analyse' },
+          { key: 'history' as const, label: `Mes analyses${runs ? ` ${runs.length}` : ''}` },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
+      {tab === 'analyse' && (
+      <>
       <div className="ig-page-header">
         <div>
           <h1>Analyse (ciblage)</h1>
@@ -115,8 +128,13 @@ export function DiscoveryPage() {
         </div>
       )}
 
+      </>
+      )}
+
+      {tab === 'history' && (
       <div className="ig-page-section">
-        <h2>Historique des analyses</h2>
+        <h2>Mes analyses</h2>
+        <p className="ds-muted">Chaque analyse est conservée : la rouvrir ne relance rien et ne consomme aucun crédit.</p>
         {runs === null && !runsError && <LoadingState label="Chargement de l'historique…" />}
         {runsError && <ErrorState message={runsError} onRetry={loadRuns} />}
         {runs && runs.length === 0 && <EmptyState title="Aucune analyse" description="Lancez votre première analyse ci-dessus." />}
@@ -149,6 +167,7 @@ export function DiscoveryPage() {
           </TableCard>
         )}
       </div>
+      )}
     </div>
   )
 }
