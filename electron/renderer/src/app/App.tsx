@@ -18,6 +18,10 @@ import { RelancesPage } from '../features/crm/RelancesPage'
 import { DealsPage } from '../features/crm/DealsPage'
 import { ClosingPage } from '../features/crm/ClosingPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
+import { FunnelsPage } from '../features/marketing/FunnelsPage'
+import { EmailsPage } from '../features/marketing/EmailsPage'
+import { AutomationsPage } from '../features/marketing/AutomationsPage'
+import { MessagesPage } from '../features/marketing/MessagesPage'
 import { AgendaPage } from '../features/agenda/AgendaPage'
 import { BookingPagesPage } from '../features/agenda/BookingPagesPage'
 import { BookingCalendarEditPage } from '../features/agenda/BookingCalendarEditPage'
@@ -99,6 +103,10 @@ function AppRoutes() {
         <Route path="instagram/sessions-dm" element={<SessionsDmPage />} />
         <Route path="acquisition/lead-magnets" element={<LeadMagnetsPage />} />
         <Route path="acquisition/publicites" element={<PublicitesPage />} />
+        <Route path="acquisition/funnels" element={<FunnelsPage />} />
+        <Route path="acquisition/emails" element={<EmailsPage />} />
+        <Route path="acquisition/automations" element={<AutomationsPage />} />
+        <Route path="acquisition/messages" element={<MessagesPage />} />
       </Route>
     </Routes>
   )

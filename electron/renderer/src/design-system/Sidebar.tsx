@@ -114,6 +114,31 @@ const PublicitesIcon = (
   </svg>
 )
 
+const FunnelIcon = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 4h18l-7 8v6l-4 2v-8z" />
+  </svg>
+)
+
+const MailIcon = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m22 6-10 7L2 6" />
+  </svg>
+)
+
+const ZapIcon = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+  </svg>
+)
+
+const MessagesIcon = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z" />
+  </svg>
+)
+
 // CLOSRM_DESKTOP_FINAL_VISION.md §7 navigation. Only Leads is fully wired
 // today (Phase D). Everything else is listed for wayfinding per the
 // approved navigation shape, disabled until its Phase lands. Badges are
@@ -134,6 +159,13 @@ const INSTAGRAM_ITEMS: SidebarItem[] = [
   { to: '/instagram/sessions-dm', label: 'Sessions DM', icon: DmSessionsIcon },
   { to: '/acquisition/lead-magnets', label: 'Lead Magnets', icon: LeadMagnetIcon },
   { to: '/acquisition/publicites', label: 'Publicités', icon: PublicitesIcon },
+  { to: '/acquisition/funnels', label: 'Funnels', icon: FunnelIcon },
+]
+
+const MARKETING_ITEMS: SidebarItem[] = [
+  { to: '/acquisition/messages', label: 'Messages', icon: MessagesIcon },
+  { to: '/acquisition/emails', label: 'Emails', icon: MailIcon },
+  { to: '/acquisition/automations', label: 'Automations', icon: ZapIcon },
 ]
 
 const ANALYTICS_ITEMS: SidebarItem[] = [{ to: '/statistiques', label: 'Statistiques', icon: AnalyticsIcon, matchPaths: ['/finance'] }]
@@ -161,6 +193,14 @@ export function Sidebar() {
 
         <div className="ds-sidebar-group">
           {INSTAGRAM_ITEMS.map((item) => (
+            <SidebarButton key={item.to} item={item} />
+          ))}
+        </div>
+
+        <div className="ds-sidebar-divider" />
+
+        <div className="ds-sidebar-group">
+          {MARKETING_ITEMS.map((item) => (
             <SidebarButton key={item.to} item={item} />
           ))}
         </div>
