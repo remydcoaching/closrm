@@ -206,7 +206,7 @@ export function InstagramInbox() {
                 className={`mk-convo ${selected?.id === c.id ? 'mk-convo--active' : ''} ${c.unread_count > 0 ? 'mk-convo--unread' : ''}`}
                 onClick={() => select(c)}
               >
-                <Avatar name={name(c)} src={c.participant_avatar_url} size={40} />
+                <Avatar name={name(c)} src={c.participant_avatar_url} size={28} />
                 <div className="mk-convo-body">
                   <div className="mk-convo-top">
                     <span className="mk-convo-name">{name(c)}</span>
@@ -225,7 +225,7 @@ export function InstagramInbox() {
         {selected ? (
           <>
             <div className="mk-thread-head">
-              <Avatar name={name(selected)} src={selected.participant_avatar_url} size={40} />
+              <Avatar name={name(selected)} src={selected.participant_avatar_url} size={28} />
               <div className="mk-thread-head-text">
                 <div className="mk-name">{name(selected)}</div>
                 {selected.participant_username && <div className="ds-muted">@{selected.participant_username}</div>}

@@ -49,7 +49,7 @@ function Shell() {
             </span>
             {account ? (
               <button type="button" className="app-ig-pill" onClick={() => setEditing(true)} title="Changer de compte Instagram">
-                <Avatar name={account.username} size={34} />
+                <Avatar name={account.username} size={30} />
                 <span className="app-ig-pill-text">
                   <span className="app-ig-pill-handle">@{account.username}</span>
                   <span className="app-ig-pill-status">
@@ -96,7 +96,7 @@ function UserMenu() {
   return (
     <div className="app-user" ref={ref}>
       <button type="button" className="app-user-button" onClick={() => setOpen((o) => !o)}>
-        <Avatar name={name} size={34} />
+        <Avatar name={name} size={30} />
         <span className="app-user-name">{name}</span>
         <span className="app-user-caret">▾</span>
       </button>

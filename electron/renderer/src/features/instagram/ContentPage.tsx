@@ -92,6 +92,7 @@ export function ContentPage() {
     const views = withViews.reduce((s, c) => s + (c.views ?? 0), 0)
     const engagements = withViews.reduce((s, c) => s + c.likesCount + c.commentsCount, 0)
     return {
+      reelViews: withViews.filter((c) => c.contentType === 'clip').reduce((sum, c) => sum + (c.views ?? 0), 0),
       contents: filtered.length,
       views,
       rate: views > 0 ? engagements / views : null,
@@ -99,6 +100,11 @@ export function ContentPage() {
       identified: filtered.reduce((s, c) => s + c.identifiedLikers + c.identifiedCommenters, 0),
     }
   }, [filtered])
+
+  const bestReel = useMemo(
+    () => filtered.filter((c) => c.contentType === 'clip' && c.views !== null).sort((a, b) => (b.views ?? 0) - (a.views ?? 0))[0] ?? null,
+    [filtered],
+  )
 
   const scatterPoints: ScatterPoint[] = filtered
     .filter((c) => c.views !== null && c.engagementRate !== null)
@@ -135,23 +141,9 @@ export function ContentPage() {
       <div className="ig-page-header">
         <div>
           <h1>Contenu</h1>
-          <p>Quel contenu amène des leads — un point par contenu, taille = leads touchés.</p>
+          <p>Chaque post et réel, et ce que chacun a rapporté — pas seulement ce qu&apos;il a fait de vues.</p>
         </div>
-      </div>
-
-      <div className="ig-content-filters">
-        <Chips items={FORMATS} active={format} onChange={setFormat} />
         <Chips items={PERIODS} active={period} onChange={setPeriod} />
-        <Chips
-          items={[
-            { key: 'all' as StageFilter, label: 'Toutes étapes' },
-            { key: 'bas' as StageFilter, label: FUNNEL_STAGE_LABEL.bas, count: stageCounts.bas },
-            { key: 'milieu' as StageFilter, label: FUNNEL_STAGE_LABEL.milieu, count: stageCounts.milieu },
-            { key: 'haut' as StageFilter, label: FUNNEL_STAGE_LABEL.haut, count: stageCounts.haut },
-          ]}
-          active={stage}
-          onChange={setStage}
-        />
       </div>
 
       {items === null && !error && <LoadingState label="Chargement des contenus…" />}
@@ -163,24 +155,57 @@ export function ContentPage() {
       {items && items.length > 0 && (
         <>
           <StatGrid>
-            <StatCard label="Contenus analysés" value={totals.contents} caption="sur la période et les filtres" />
-            <StatCard label="Vues" value={totals.views} caption="cumulées, compteurs Instagram" />
-            <StatCard label="Taux d'engagement" value={formatRate(totals.rate)} caption="(likes + commentaires) / vues" />
+            <StatCard label="Vues gagnées par les réels" value={totals.reelViews} caption="pendant la période, tous réels confondus" />
+            <StatCard
+              label="Réel le plus vu"
+              value={
+                bestReel ? (
+                  <span className="ig-stat-media">
+                    <ContentThumb url={bestReel.thumbnailUrl} size={26} />
+                    <span>Réel du {shortDate(bestReel.publishedAt)}</span>
+                  </span>
+                ) : (
+                  '—'
+                )
+              }
+              caption={bestReel ? `${formatNumber(bestReel.views ?? 0)} vues · ${formatRate(bestReel.engagementRate)}` : undefined}
+              onClick={bestReel ? () => navigate(`/instagram/content/${encodeURIComponent(bestReel.contentId)}`) : undefined}
+            />
+            <StatCard label="Taux d'engagement" value={formatRate(totals.rate)} caption="(likes + commentaires) / vues, compteurs Instagram" />
             <StatCard label="Leads touchés" value={totals.leads} highlight caption={`${formatNumber(totals.identified)} interactions identifiées`} />
           </StatGrid>
 
-          <TableCard title="Engagement × vues" subtitle="Vues en échelle logarithmique — sinon 9 bulles sur 10 sont collées à gauche. Le taux, lui, est linéaire : 2 % vaut 2 fois 1 %.">
+          <TableCard title="Quel contenu amène des leads" subtitle="Un contenu par bulle, taille = leads touchés. Cliquez pour l'ouvrir.">
+            <div className="ig-filter-rows">
+              <span className="ig-filter-label">Forme</span>
+              <Chips items={FORMATS} active={format} onChange={setFormat} />
+              <span className="ig-filter-label">Étape</span>
+              <Chips
+                items={[
+                  { key: 'all' as StageFilter, label: 'Toutes' },
+                  { key: 'bas' as StageFilter, label: FUNNEL_STAGE_LABEL.bas, count: stageCounts.bas },
+                  { key: 'milieu' as StageFilter, label: FUNNEL_STAGE_LABEL.milieu, count: stageCounts.milieu },
+                  { key: 'haut' as StageFilter, label: FUNNEL_STAGE_LABEL.haut, count: stageCounts.haut },
+                ]}
+                active={stage}
+                onChange={setStage}
+              />
+            </div>
+            <ScatterChart points={scatterPoints} />
             <div className="ig-content-legend">
-              {(['haut', 'milieu', 'bas'] as FunnelStage[]).map((s) => (
-                <span key={s}>
-                  <i style={{ background: FUNNEL_STAGE_COLOR[s] }} /> {FUNNEL_STAGE_LABEL[s]}
+              {(['bas', 'milieu', 'haut'] as FunnelStage[]).map((st) => (
+                <span key={st}>
+                  <i style={{ background: FUNNEL_STAGE_COLOR[st] }} /> {FUNNEL_STAGE_LABEL[st]}
                 </span>
               ))}
             </div>
-            <ScatterChart points={scatterPoints} />
+            <p className="ig-chart-note">
+              Taux = (likes + commentaires) ÷ vues, compteurs Instagram. Les vues sont sur une échelle logarithmique (sans ça, neuf bulles sur dix
+              s&apos;empileraient à gauche) : une distance horizontale ne se lit pas comme une distance. Le taux, lui, est linéaire : 2 % vaut deux fois 1 %.
+            </p>
           </TableCard>
 
-          <TableCard title="Tous les contenus" subtitle={`${filtered.length} contenu${filtered.length > 1 ? 's' : ''}`}>
+          <TableCard title="Tout le contenu, du plus récent au plus ancien" subtitle="Cliquez une ligne pour voir les profils et leads liés">
             {filtered.length === 0 ? (
               <EmptyState title="Aucun contenu pour ces filtres" />
             ) : (
@@ -204,7 +229,7 @@ export function ContentPage() {
                       <tr key={c.contentId} className="ds-row-clickable" onClick={() => navigate(`/instagram/content/${encodeURIComponent(c.contentId)}`)}>
                         <td>
                           <div className="ds-contact">
-                            <ContentThumb url={c.thumbnailUrl} size={48} />
+                            <ContentThumb url={c.thumbnailUrl} size={30} />
                             <div className="ds-contact-text">
                               <div className="ds-contact-name">{contentTypeLabel(c.contentType)}</div>
                               <div className="ds-muted">{c.contentId}</div>

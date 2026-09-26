@@ -226,7 +226,7 @@ export function AudiencePage() {
                   <tr key={c.contentId} className="ds-row-clickable" onClick={() => navigate(`/instagram/content/${encodeURIComponent(c.contentId)}`)}>
                     <td>
                       <div className="ds-contact">
-                        <ContentThumb url={c.thumbnailUrl} size={44} />
+                        <ContentThumb url={c.thumbnailUrl} size={28} />
                         <div className="ds-contact-text">
                           <div className="ds-contact-name">Réel du {shortDate(c.publishedAt)}</div>
                           <div className="ds-muted">{formatNumber(c.views ?? 0)} vues</div>
@@ -266,7 +266,7 @@ export function AudiencePage() {
                   <tr key={s.id}>
                     <td>
                       <div className="ds-contact">
-                        <ContentThumb url={s.thumbnail_url} size={44} />
+                        <ContentThumb url={s.thumbnail_url} size={28} />
                         <div className="ds-contact-name">{shortDate(s.published_at)}</div>
                       </div>
                     </td>
@@ -318,7 +318,7 @@ export function AudiencePage() {
                 return (
                   <tr key={l.id} className="ds-row-clickable" onClick={() => navigate(`/leads/${l.id}`)}>
                     <td>
-                      <ContactCell name={name} handle={l.instagram_handle} avatar={<Avatar name={name} size={44} src={l.instagram_profile_pic_url} />} />
+                      <ContactCell name={name} handle={l.instagram_handle} avatar={<Avatar name={name} size={28} src={l.instagram_profile_pic_url} />} />
                     </td>
                     <td>
                       <StatusPill label={st.label} color={st.color} bg={st.bg} />

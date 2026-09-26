@@ -6,6 +6,8 @@ export interface ActivityEntry {
   icon: React.ReactNode
   title: string
   detail?: string
+  /** Gesture category, used by the journey strip summaries (like, comment, story_view, dm, mention, call, relance, funnel). */
+  kind?: string
 }
 
 function dayLabel(iso: string): string {

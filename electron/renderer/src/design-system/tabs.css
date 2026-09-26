@@ -15,10 +15,10 @@
 .ds-tab {
   border: none;
   background: transparent;
-  padding: 6px 14px;
+  padding: 4px 11px;
   border-radius: var(--radius-full);
   font: inherit;
-  font-size: var(--font-size-sm);
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -40,16 +40,16 @@
 .ds-chips {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
 }
 
 .ds-chip {
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface);
-  padding: 6px 12px;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
   font: inherit;
-  font-size: var(--font-size-sm);
+  font-size: 11px;
   font-weight: 500;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -86,7 +86,8 @@
 }
 
 .ds-page-tabs {
-  margin: var(--space-4) var(--space-6) 0;
+  margin: 16px 0 0;
+  margin-inline: max(28px, calc((100% - 1240px) / 2));
   flex-shrink: 0;
 }
 

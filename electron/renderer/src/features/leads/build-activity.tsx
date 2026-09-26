@@ -47,6 +47,7 @@ export function buildActivity(calls: Call[], followUps: FollowUp[], journeyEvent
   for (const call of calls) {
     entries.push({
       id: `call-${call.id}`,
+      kind: 'call',
       at: call.scheduled_at,
       icon: PHONE_ICON,
       title: `Appel ${callTypeLabel(call.type)} — ${callOutcomeLabel(call.outcome)}`,
@@ -57,6 +58,7 @@ export function buildActivity(calls: Call[], followUps: FollowUp[], journeyEvent
   for (const fu of followUps) {
     entries.push({
       id: `followup-${fu.id}`,
+      kind: 'relance',
       at: fu.scheduled_at,
       icon: CLOCK_ICON,
       title: `Relance ${followUpChannelLabel(fu.channel)} — ${followUpStatusLabel(fu.status)}`,
@@ -69,6 +71,7 @@ export function buildActivity(calls: Call[], followUps: FollowUp[], journeyEvent
       const username = event.metadata?.instagram_username as string | undefined
       entries.push({
         id: `ig-${event.id}`,
+        kind: event.event_type.replace('instagram_', ''),
         at: event.created_at,
         icon: INSTAGRAM_ICON,
         title: INSTAGRAM_EVENT_TITLE[event.event_type],
@@ -82,6 +85,7 @@ export function buildActivity(calls: Call[], followUps: FollowUp[], journeyEvent
       }
       entries.push({
         id: `funnel-${event.id}`,
+        kind: 'funnel',
         at: event.created_at,
         icon: FUNNEL_ICON,
         title: label[event.event_type] ?? event.event_type,

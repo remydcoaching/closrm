@@ -1,9 +1,9 @@
 /* ─── Table card ────────────────────────────────────────── */
 .ds-table-card {
   border: 1px solid var(--color-border);
-  border-radius: 20px;
+  border-radius: 14px;
   background: var(--color-surface);
-  padding: 22px 26px 10px;
+  padding: 16px 18px 6px;
   min-width: 0;
 }
 
@@ -13,19 +13,19 @@
   align-items: center;
   gap: var(--space-4);
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .ds-table-card-title {
   margin: 0;
-  font-size: 17px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--color-text-strong);
 }
 
 .ds-table-card-subtitle {
-  margin: 3px 0 0;
-  font-size: var(--font-size-sm);
+  margin: 2px 0 0;
+  font-size: 11px;
   color: var(--color-text-tertiary);
 }
 
@@ -44,13 +44,13 @@
 .ds-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-size-base);
+  font-size: 12px;
 }
 
 .ds-table th {
-  padding: 10px 12px;
+  padding: 7px 10px;
   text-align: left;
-  font-size: var(--font-size-sm);
+  font-size: 10.5px;
   font-weight: 500;
   color: var(--color-text-muted);
   border-bottom: 1px solid var(--color-border);
@@ -59,7 +59,7 @@
 }
 
 .ds-table td {
-  padding: 12px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text-secondary);
   vertical-align: middle;
@@ -120,14 +120,14 @@
 
 .ds-muted {
   color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+  font-size: 11px;
 }
 
 /* ─── Contact cell ──────────────────────────────────────── */
 .ds-contact {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -144,7 +144,7 @@
 }
 
 .ds-contact-handle {
-  font-size: var(--font-size-sm);
+  font-size: 11px;
   color: var(--color-accent-solid);
 }
 
@@ -152,10 +152,10 @@
 .ds-pill-button {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
-  padding: 8px 16px;
+  padding: 5px 12px;
   border-radius: var(--radius-full);
   font: inherit;
-  font-size: var(--font-size-sm);
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text-secondary);
   cursor: pointer;

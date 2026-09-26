@@ -28,6 +28,7 @@ import type { Lead, LeadWithRelations, LeadJourney, EngagementScore } from './ty
 import './lead-detail.css'
 import { StatCard, StatGrid } from '../../design-system/StatCard'
 import { CONFIDENCE_LABEL, confidenceLevel, weeklyFrequency } from './confidence'
+import { JourneyStrip } from './JourneyStrip'
 
 interface InstagramSignal {
   follows_target: boolean
@@ -346,6 +347,8 @@ export function LeadDetailPage() {
           Appel — joint
         </Button>
       </div>
+
+      <JourneyStrip entries={activity} />
 
       {/* Lead / Relance / Closing selector — mirrors leads-client.tsx on the
           web keeping these three views inside one page rather than as

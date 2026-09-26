@@ -177,7 +177,7 @@ export function StoryViewersSection() {
                   onClick={() => v.lead && navigate(`/leads/${v.lead.id}`)}
                 >
                   <td>
-                    <ContactCell name={`${name}${v.isVerified ? ' ✓' : ''}`} handle={v.username} avatar={<Avatar name={name} size={44} src={v.profilePicUrl} />} />
+                    <ContactCell name={`${name}${v.isVerified ? ' ✓' : ''}`} handle={v.username} avatar={<Avatar name={name} size={28} src={v.profilePicUrl} />} />
                   </td>
                   <td className="ds-num-cell">
                     <span className="ds-num">

@@ -205,7 +205,7 @@ export function CiblageRunPage() {
                         <ContactCell
                           name={`${name}${profile.is_verified ? ' ✓' : ''}`}
                           handle={profile.instagram_username}
-                          avatar={<Avatar name={name} size={44} src={profile.profile_pic_url} />}
+                          avatar={<Avatar name={name} size={28} src={profile.profile_pic_url} />}
                         />
                       </td>
                       <td className="ds-num-cell">

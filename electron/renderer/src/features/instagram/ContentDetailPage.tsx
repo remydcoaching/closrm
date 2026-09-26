@@ -176,7 +176,7 @@ export function ContentDetailPage() {
                 return (
                   <tr key={p.username} className="ds-row-clickable" onClick={() => setSelected(p)}>
                     <td>
-                      <ContactCell name={name} handle={p.username} avatar={<Avatar name={name} size={44} src={p.profilePicUrl} />} />
+                      <ContactCell name={name} handle={p.username} avatar={<Avatar name={name} size={28} src={p.profilePicUrl} />} />
                     </td>
                     <td>{[p.liked && 'A liké', p.commented && 'A commenté'].filter(Boolean).join(' · ')}</td>
                     <td>{p.followsTarget === null ? '—' : p.followsTarget ? 'Oui' : 'Non'}</td>

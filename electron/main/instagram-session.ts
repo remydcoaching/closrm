@@ -115,24 +115,39 @@ export function login(parent: BrowserWindow | null): Promise<InstagramSessionSta
       parent: parent ?? undefined,
       modal: false,
       title: 'Connexion Instagram — ClosRM',
+      backgroundColor: '#ffffff',
       webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true },
     })
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
     let done = false
+    let poll: ReturnType<typeof setInterval> | null = null
+
     const finish = async () => {
       if (done) return
       done = true
+      if (poll) clearInterval(poll)
       ses.cookies.removeListener('changed', onCookie)
-      const status = await getStatus()
+      // Close first: once logged in Instagram shows its own (dark) home /
+      // "save login info" screens, which must not stay on screen.
       if (!win.isDestroyed()) win.close()
-      resolve(status)
+      resolve(await getStatus())
+    }
+
+    // Logged in = sessionid + ds_user_id cookies present. Checked on cookie
+    // change, on every navigation and every second (cookie events alone
+    // are not reliable across Instagram's redirects).
+    const check = async () => {
+      if (done) return
+      const [sid, uid] = await Promise.all([cookie('sessionid'), cookie('ds_user_id')])
+      if (sid && uid) finish()
     }
     const onCookie = (_e: Electron.Event, c: Electron.Cookie, _cause: string, removed: boolean) => {
-      // sessionid appears once login (incl. 2FA) succeeded; give Instagram a
-      // moment to set the remaining cookies before reading them.
-      if (!removed && c.name === 'sessionid' && c.value) setTimeout(finish, 1500)
+      if (!removed && (c.name === 'sessionid' || c.name === 'ds_user_id')) check()
     }
     ses.cookies.on('changed', onCookie)
+    win.webContents.on('did-navigate', check)
+    win.webContents.on('did-navigate-in-page', check)
+    poll = setInterval(check, 1000)
     win.on('closed', () => {
       if (!done) finish()
     })

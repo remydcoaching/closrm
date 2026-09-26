@@ -278,7 +278,7 @@ export function LeadsListPage() {
                         <ContactCell
                           name={name}
                           handle={lead.instagram_handle}
-                          avatar={<Avatar name={name} size={44} src={lead.instagram_profile_pic_url} />}
+                          avatar={<Avatar name={name} size={28} src={lead.instagram_profile_pic_url} />}
                         />
                       </td>
                       <td>

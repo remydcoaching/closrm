@@ -167,7 +167,7 @@ export function EmailInbox() {
                 className={`mk-convo ${selected?.id === c.id ? 'mk-convo--active' : ''} ${c.unread_count > 0 ? 'mk-convo--unread' : ''}`}
                 onClick={() => select(c)}
               >
-                <Avatar name={label(c)} size={40} />
+                <Avatar name={label(c)} size={28} />
                 <div className="mk-convo-body">
                   <div className="mk-convo-top">
                     <span className="mk-convo-name">{label(c)}</span>
@@ -193,7 +193,7 @@ export function EmailInbox() {
         {selected ? (
           <>
             <div className="mk-thread-head">
-              <Avatar name={label(selected)} size={40} />
+              <Avatar name={label(selected)} size={28} />
               <div className="mk-thread-head-text">
                 <div className="mk-name">{label(selected)}</div>
                 <div className="ds-muted">
