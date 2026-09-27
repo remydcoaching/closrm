@@ -1,7 +1,19 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-06-09
+> Derniere mise a jour : 2026-09-27
+
+---
+
+## Session 2026-09-25 → 27 — ClosRM Desktop + Instagram Intelligence (Pierre, PR #561)
+
+- **Desktop (Electron)** à parité web : tous les modules, design compact façon Insyder, cache d'affichage (stale-while-revalidate) sur tous les écrans principaux et la plupart des secondaires.
+- **Instagram** : Ciblage (Hiker, observation puis « Cibler »), Contenu, Audience, spectateurs nominatifs des stories via la session du coach (fetch in-page, UA Chrome desktop, comme Insyder), likes (`viewers[].has_liked`), vidéos, copie des médias dans Supabase Storage.
+- **Limite Instagram vérifiée** : spectateurs d'une story fournis ~48 h seulement (stories à la une anciennes → liste vide).
+- **Perf** : fiche lead en 1 appel agrégé (914 → ~400 ms, revisite instantanée). Panne Supabase du 26/09 = `cron.job_run_details` 288 Mo : purgé + cron de purge quotidien (base 31 Mo, API 0,2 s).
+- **Bugs web corrigés** : dashboard v2 (show rate toujours 0, leads chauds), liste leads sans `last_activity_at` ni photo IG.
+- **Migrations** 102–116 (renumérotées après develop). **Restent à appliquer : 115, 116.**
+- Détails : `taches/tache-049-closrm-desktop-instagram-intelligence.md`, `tasks/todo.md`.
 
 ---
 

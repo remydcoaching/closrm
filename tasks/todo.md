@@ -27,7 +27,8 @@
 
 ## Avant PR
 - [x] Fusion origin/develop, migrations renumérotées, doublon supprimé, electron exclu de vitest
-- [ ] Dashboard Desktop : brancher l'écran sur GET /api/desktop/dashboard (snapshot serveur) au lieu des ~12 requêtes
+- [x] Dashboard Desktop : cache + 13 appels par lead supprimés (liste leads renvoie last_activity_at)
+- [ ] Emails / Réseaux sociaux : passer au cache (encore en appels directs)
 - [ ] Dashboard serveur (v2-queries) : 3,7 s, à optimiser
 
 ## Stories (2026-09-27, vérifié en live sur le compte)
