@@ -14,6 +14,7 @@ const viewerSchema = z.object({
   isVerified: z.boolean().nullish(),
   hasLiked: z.boolean().nullish(),
   isPrivate: z.boolean().nullish(),
+  replyText: z.string().max(2000).nullish(),
 })
 
 const storySchema = z.object({
@@ -22,6 +23,7 @@ const storySchema = z.object({
   expiringAt: z.string().datetime().nullish(),
   mediaType: z.enum(['image', 'video']).nullish(),
   thumbnailUrl: z.string().url().max(2000).nullish(),
+  videoUrl: z.string().url().max(4000).nullish(),
   viewerCount: z.number().int().min(0).nullish(),
   likeCount: z.number().int().min(0).nullish(),
   highlightId: z.string().max(80).nullish(),

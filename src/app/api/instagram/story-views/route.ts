@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { persistStoryViews, storyViewsPayloadSchema } from '@/lib/instagram/story-views'
 import { invalidateStoryLurkers, loadStoryLurkers } from '@/lib/instagram/story-lurkers'
 import { loadStoryDetail } from '@/lib/instagram/story-detail'
+import { storeStoryMedia } from '@/lib/instagram/story-media'
 
 /**
  * Story viewers of the coach's own account.
@@ -23,6 +24,8 @@ export async function POST(request: NextRequest) {
     }
     const result = await persistStoryViews(supabase, workspaceId, parsed.data)
     invalidateStoryLurkers(workspaceId)
+    // Copy media while the CDN links are valid (after the response).
+    after(() => storeStoryMedia(workspaceId, parsed.data.stories).catch(() => {}))
     return NextResponse.json({ data: result }, { status: result.errors.length > 0 ? 207 : 200 })
   } catch (err) {
     if (err instanceof Error && err.message === 'Not authenticated') {

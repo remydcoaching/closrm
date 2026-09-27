@@ -12,9 +12,11 @@
 //   their story viewers list), and collection stops at the first sign of a
 //   challenge or rate limit.
 import { BrowserWindow, session, type Session } from 'electron'
-import { classifyFailure, parseArchiveDayShells, parseHighlightItems, parseHighlightsTray, type HighlightCollection, parseOwnReel, parseReelsMediaItems, parseViewersPage, reelOwnerUsername, type ArchivedStory, type InstagramFailure, type OwnStory, type StoryViewer } from './instagram-parse'
+import { classifyFailure, parseGraphqlHighlights, parseHighlightItems, type HighlightCollection, parseOwnReel, parseReelsMediaItems, parseViewersPage, reelOwnerUsername, type ArchivedStory, type InstagramFailure, type OwnStory, type StoryViewer } from './instagram-parse'
 
 const PARTITION = 'persist:instagram'
+// Profile query of Instagram's web client (returns edge_highlight_reels).
+const HIGHLIGHTS_QUERY_HASH = 'd4d88dc1500312af6f937f7b804c68c3'
 
 /** Viewer list of one of the owner's stories (the web client's own request). */
 function viewersPath(storyPk: string, maxId: string | null): string {
@@ -38,12 +40,14 @@ export type CollectResult =
 let cachedUsername: { userId: string; username: string } | null = null
 let collecting = false
 
+// A plain desktop Chrome user agent (same approach as Insyder): Instagram
+// serves its web API to regular browsers, not to "Electron/…" clients.
+const DESKTOP_UA = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`
+const ACCEPT_LANGUAGE = 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
+
 function igSession(): Session {
   const ses = session.fromPartition(PARTITION)
-  // Present as the regular Chrome build Electron embeds, without the
-  // "Electron/x" and app tokens.
-  const ua = ses.getUserAgent().replace(/\s(Electron|closrm-desktop|ClosRM)\/\S+/gi, '')
-  ses.setUserAgent(ua)
+  ses.setUserAgent(DESKTOP_UA, ACCEPT_LANGUAGE)
   return ses
 }
 
@@ -110,6 +114,8 @@ function instagramPage(): Promise<BrowserWindow> {
     webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true },
   })
   const win = pageWin
+  igSession()
+  win.webContents.setUserAgent(DESKTOP_UA)
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.on('closed', () => {
     if (pageWin === win) {
@@ -191,6 +197,7 @@ export function login(parent: BrowserWindow | null): Promise<InstagramSessionSta
       backgroundColor: '#ffffff',
       webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true },
     })
+    win.webContents.setUserAgent(DESKTOP_UA)
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
     let done = false
     let poll: ReturnType<typeof setInterval> | null = null
@@ -242,23 +249,30 @@ export async function collectStoryViewers(): Promise<CollectResult> {
     const status = await getStatus()
     if (!status.connected || !status.userId) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
 
-    const reel = await igGet(`/api/v1/feed/user/${status.userId}/story/`)
+    const reel = await igGet(`/api/v1/feed/reels_media/?reel_ids=${status.userId}`)
     const owner = reelOwnerUsername(reel, status.userId)
     if (owner) cachedUsername = { userId: status.userId, username: owner }
     const items = parseOwnReel(reel, status.userId)
-    const stories: OwnStory[] = []
-    for (const item of items) {
-      const viewers: StoryViewer[] = []
-      let maxId: string | null = null
-      for (let page = 0; page < MAX_VIEWER_PAGES_PER_STORY; page++) {
-        await humanPause()
-        const parsed = parseViewersPage(await igGet(viewersPath(item.pk, maxId)))
-        viewers.push(...parsed.viewers)
-        if (!parsed.nextMaxId || parsed.viewers.length === 0) break
-        maxId = parsed.nextMaxId
+    // Two stories at a time (pages of one story stay sequential).
+    const stories: OwnStory[] = new Array(items.length)
+    let next = 0
+    const worker = async () => {
+      while (next < items.length) {
+        const i = next++
+        const item = items[i]
+        const viewers: StoryViewer[] = []
+        let maxId: string | null = null
+        for (let page = 0; page < MAX_VIEWER_PAGES_PER_STORY; page++) {
+          if (page > 0 || i > 1) await humanPause()
+          const parsed = parseViewersPage(await igGet(viewersPath(item.pk, maxId)))
+          viewers.push(...parsed.viewers)
+          if (!parsed.nextMaxId || parsed.viewers.length === 0) break
+          maxId = parsed.nextMaxId
+        }
+        stories[i] = { ...item, likeCount: viewers.filter((v) => v.hasLiked).length, viewers }
       }
-      stories.push({ ...item, viewers })
     }
+    await Promise.all([worker(), worker()])
     return { ok: true, accountUsername: owner ?? status.username ?? status.userId, stories }
   } catch (err) {
     if (err instanceof IgError) return { ok: false, reason: err.reason, message: err.message }
@@ -291,25 +305,9 @@ export async function storyArchive(force = false): Promise<ArchiveResult> {
       if (!status.connected || !status.userId) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
       // 1. Live stories — the same endpoint the viewer collection uses.
       const byPk = new Map<string, ArchivedStory>()
-      for (const s of parseReelsMediaItems(await igGet(`/api/v1/feed/user/${status.userId}/story/`))) byPk.set(s.pk, s)
-      // 2. Archive — best effort only: skipped silently if Instagram doesn't
-      //    answer it (empty body seen in practice), never retried in a loop.
-      try {
-        await humanPause()
-        const shells = parseArchiveDayShells(await igGet('/api/v1/archive/reel/day_shells/?timezone_offset=' + -new Date().getTimezoneOffset() * 60))
-        const ids = shells.ids.slice(0, ARCHIVE_DAYS)
-        for (let i = 0; i < ids.length; i += REELS_PER_REQUEST) {
-          await humanPause()
-          const q = ids
-            .slice(i, i + REELS_PER_REQUEST)
-            .map((id) => `reel_ids=${encodeURIComponent(id)}`)
-            .join('&')
-          for (const s of parseReelsMediaItems(await igGet(`/api/v1/feed/reels_media/?${q}`))) if (!byPk.has(s.pk)) byPk.set(s.pk, s)
-        }
-      } catch (err) {
-        if (err instanceof IgError && err.reason === 'rate_limited') throw err
-        console.error('[instagram] archive unavailable, showing live stories only')
-      }
+      for (const s of parseReelsMediaItems(await igGet(`/api/v1/feed/reels_media/?reel_ids=${status.userId}`))) byPk.set(s.pk, s)
+      // (The story archive endpoint isn't served to the web client: only live
+      // stories are read; past ones come from what ClosRM collected.)
       const stories = [...byPk.values()].sort((a, b) => b.takenAt.localeCompare(a.takenAt))
       archiveCache = { at: Date.now(), stories }
       return { ok: true, stories }
@@ -343,7 +341,9 @@ export async function highlightsTray(force = false): Promise<HighlightsResult> {
   try {
     const status = await getStatus()
     if (!status.connected || !status.userId) return { ok: false, reason: 'not_connected', message: 'Session Instagram non connectée' }
-    const collections = parseHighlightsTray(await igGet(`/api/v1/highlights/${status.userId}/highlights_tray/`))
+    const variables = { user_id: status.userId, include_chaining: false, include_reel: false, include_suggested_users: false, include_logged_out_extras: false, include_highlight_reels: true, include_live_status: false }
+    // highlights_tray isn't served to the web client; the profile GraphQL query is.
+    const collections = parseGraphqlHighlights(await igGet(`/graphql/query/?query_hash=${HIGHLIGHTS_QUERY_HASH}&variables=${encodeURIComponent(JSON.stringify(variables))}`))
     trayCache = { at: Date.now(), collections }
     return { ok: true, collections }
   } catch (err) {
@@ -396,10 +396,11 @@ export interface HighlightStoryResult {
 }
 
 export type HighlightViewersResult =
-  | { ok: true; accountUsername: string; stories: HighlightStoryResult[]; skipped: number; stoppedEarly: InstagramFailure | null }
+  | { ok: true; accountUsername: string; stories: HighlightStoryResult[]; skipped: number; tooOld: number; stoppedEarly: InstagramFailure | null }
   | { ok: false; reason: InstagramFailure; message: string }
 
 const VIEWER_CONCURRENCY = 2
+const VIEWER_WINDOW_MS = 48 * 3_600_000
 
 /**
  * Viewers of every story in the coach's highlights. Incremental: stories in
@@ -419,12 +420,19 @@ export async function collectHighlightViewers(skipPks: string[]): Promise<Highli
   const queue: Omit<HighlightStoryResult, 'status' | 'error' | 'viewers'>[] = []
   const seen = new Set<string>()
   let skipped = 0
+  let tooOld = 0
   for (const c of tray.collections) {
     for (const st of items.items[c.id] ?? []) {
       if (seen.has(st.pk)) continue // same story in two collections
       seen.add(st.pk)
       if (skip.has(st.pk)) {
         skipped += 1
+        continue
+      }
+      // Instagram only lists viewers during the first 48 h (verified: older
+      // highlight stories answer 0 users / viewer_count null) — don't ask.
+      if (Date.now() - new Date(st.takenAt).getTime() > VIEWER_WINDOW_MS) {
+        tooOld += 1
         continue
       }
       queue.push({
@@ -456,7 +464,7 @@ export async function collectHighlightViewers(skipPks: string[]): Promise<Highli
           if (!parsed.nextMaxId || parsed.viewers.length === 0) break
           maxId = parsed.nextMaxId
         }
-        results.push({ ...story, status: 'ok', error: null, viewers })
+        results.push({ ...story, likeCount: story.likeCount ?? viewers.filter((v) => v.hasLiked).length, status: 'ok', error: null, viewers })
       } catch (err) {
         const reason = err instanceof IgError ? err.reason : 'error'
         results.push({ ...story, status: 'error', error: err instanceof Error ? err.message : String(err), viewers })
@@ -465,5 +473,5 @@ export async function collectHighlightViewers(skipPks: string[]): Promise<Highli
     }
   }
   await Promise.all(Array.from({ length: VIEWER_CONCURRENCY }, worker))
-  return { ok: true, accountUsername: status.username ?? status.userId, stories: results, skipped, stoppedEarly }
+  return { ok: true, accountUsername: status.username ?? status.userId, stories: results, skipped, tooOld, stoppedEarly }
 }

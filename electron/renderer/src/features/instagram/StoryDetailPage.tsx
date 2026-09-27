@@ -39,7 +39,17 @@ interface DetailViewer {
 }
 
 interface StoryDetail {
-  story: { taken_at: string; media_type: string | null; viewer_count: number | null; viewers_collected: number } | null
+  story: {
+    taken_at: string
+    media_type: string | null
+    viewer_count: number | null
+    viewers_collected: number
+    thumbnail_url?: string | null
+    image_url?: string | null
+    video_url?: string | null
+    like_count?: number | null
+    highlight_title?: string | null
+  } | null
   viewers: DetailViewer[]
   counts: { viewers: number; reactions: number; leads: number }
 }
@@ -75,7 +85,17 @@ export function StoryDetailPage() {
   const location = useLocation()
   const passed = (location.state as { story?: ArchivedStory } | null)?.story
   const { stories: archive } = useStoryArchive()
-  const media = passed ?? archive?.find((s) => s.pk === pk) ?? null
+  const [detailEarly, setDetailEarly] = useState<StoryDetail['story']>(null)
+  const live = passed ?? archive?.find((s) => s.pk === pk) ?? null
+  // Stored copy first (never expires), then the live Instagram link.
+  const media = {
+    mediaType: live?.mediaType ?? (detailEarly?.video_url ? 'video' : (detailEarly?.media_type as 'image' | 'video' | null) ?? null),
+    videoUrl: detailEarly?.video_url ?? live?.videoUrl ?? null,
+    imageUrl: detailEarly?.image_url ?? live?.imageUrl ?? detailEarly?.thumbnail_url ?? null,
+    viewerCount: live?.viewerCount ?? null,
+    likeCount: live?.likeCount ?? detailEarly?.like_count ?? null,
+    takenAt: live?.takenAt ?? null,
+  }
   const [detail, setDetail] = useState<StoryDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('leads')
@@ -99,7 +119,10 @@ export function StoryDetailPage() {
   useEffect(() => {
     api
       .get<{ data: StoryDetail }>(`/api/instagram/story-views?story=${encodeURIComponent(pk)}`)
-      .then((res) => setDetail(res.data))
+      .then((res) => {
+        setDetail(res.data)
+        setDetailEarly(res.data.story)
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Erreur inconnue'))
   }, [pk])
 
@@ -127,8 +150,8 @@ export function StoryDetailPage() {
 
       <div className="story-detail-hero">
         <div className="story-detail-media">
-          {media?.mediaType === 'video' && media.videoUrl && !mediaBroken ? (
-            <video src={media.videoUrl} poster={media.imageUrl ?? undefined} controls autoPlay muted loop playsInline onError={() => setMediaBroken(true)} />
+          {media.videoUrl && !mediaBroken ? (
+            <video src={media.videoUrl} poster={media.imageUrl ?? undefined} controls autoPlay loop playsInline onError={() => setMediaBroken(true)} />
           ) : media?.imageUrl && !mediaBroken ? (
             <img src={media.imageUrl} alt="" referrerPolicy="no-referrer" onError={() => setMediaBroken(true)} />
           ) : (
@@ -136,7 +159,7 @@ export function StoryDetailPage() {
           )}
         </div>
         <div className="story-detail-info">
-          <h1>Story</h1>
+          <h1>{detailEarly?.highlight_title ? `Story « ${detailEarly.highlight_title} »` : 'Story'}</h1>
           <div className="story-detail-cards">
             <StatCard label="Forme" value={media?.mediaType === 'video' ? 'Vidéo' : media?.mediaType === 'image' ? 'Image' : 'Story'} />
             <StatCard label="Publiée" value={takenAt ? shortDate(takenAt) : '—'} caption={takenAt ? new Date(takenAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : undefined} />
@@ -182,7 +205,7 @@ export function StoryDetailPage() {
             title="Aucun spectateur collecté"
             description={
               takenAt && Date.now() - new Date(takenAt).getTime() > 48 * 3_600_000
-                ? "Instagram ne montre les spectateurs d'une story que pendant 48 h après sa publication. Celle-ci est plus ancienne et ClosRM n'était pas ouvert pendant ce délai : ses spectateurs ne sont plus récupérables. Ses j'aime restent visibles ci-dessus."
+                ? "Instagram ne fournit les spectateurs d'une story que pendant 48 h après sa publication (vérifié : pour cette story il renvoie une liste vide). Elle a été publiée avant que ClosRM ne collecte : ses spectateurs ne sont plus récupérables. Pour vos prochaines stories, ils sont collectés automatiquement puis conservés."
                 : 'Les spectateurs sont collectés automatiquement toutes les 30 min tant que la story est en ligne, que l’app est ouverte et que la session Instagram est connectée.'
             }
           />

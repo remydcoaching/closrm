@@ -15,6 +15,9 @@ interface CollectedStory {
   story_pk: string
   taken_at: string
   thumbnail_url: string | null
+  image_url?: string | null
+  video_url?: string | null
+  like_count?: number | null
   viewers_collected: number
   viewer_count: number | null
 }
@@ -80,10 +83,18 @@ export function StoriesGallery() {
   // gallery still shows something when Instagram doesn't answer.
   const stories = useMemo<ArchivedStory[] | null>(() => {
     if (live === null && !error && collected.size === 0) return null
-    const byPk = new Map((live ?? []).map((st) => [st.pk, st]))
+    const byPk = new Map((live ?? []).map((st) => [st.pk, { ...st, likeCount: st.likeCount ?? collected.get(st.pk)?.like_count ?? null }]))
     for (const c of collected.values()) {
       if (!byPk.has(c.story_pk)) {
-        byPk.set(c.story_pk, { pk: c.story_pk, takenAt: c.taken_at, mediaType: null, imageUrl: c.thumbnail_url, videoUrl: null, viewerCount: c.viewer_count, likeCount: null })
+        byPk.set(c.story_pk, {
+          pk: c.story_pk,
+          takenAt: c.taken_at,
+          mediaType: c.video_url ? 'video' : null,
+          imageUrl: c.image_url ?? c.thumbnail_url,
+          videoUrl: c.video_url ?? null,
+          viewerCount: c.viewer_count,
+          likeCount: c.like_count ?? null,
+        })
       }
     }
     return [...byPk.values()].sort((a, b) => b.takenAt.localeCompare(a.takenAt))

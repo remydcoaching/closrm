@@ -13,6 +13,8 @@ export interface StoryViewer {
   /** Sent a heart on the story (owner-only info in the viewer list). */
   hasLiked: boolean | null
   isPrivate: boolean | null
+  /** Text reply sent to the story, if any. */
+  replyText: string | null
 }
 
 export interface OwnStory {
@@ -21,6 +23,9 @@ export interface OwnStory {
   expiringAt: string | null
   mediaType: 'image' | 'video' | null
   thumbnailUrl: string | null
+  videoUrl: string | null
+  /** Hearts: viewers with has_liked (computed after reading the viewer list). */
+  likeCount: number | null
   viewerCount: number | null
   viewers: StoryViewer[]
 }
@@ -72,13 +77,16 @@ export function parseOwnReel(body: unknown, userId: string): Omit<OwnStory, 'vie
     const takenAt = unixToIso(it.taken_at)
     if (!pk || !takenAt) continue
     const candidates = asObj(it.image_versions2)?.candidates
-    const thumb = Array.isArray(candidates) ? httpsUrl(asObj(candidates[candidates.length > 1 ? candidates.length - 1 : 0])?.url) : null
+    // candidates[0] is the full-resolution image (the last one is a tiny thumbnail).
+    const thumb = Array.isArray(candidates) ? httpsUrl(asObj(candidates[0])?.url) : null
     out.push({
       pk,
       takenAt,
       expiringAt: unixToIso(it.expiring_at),
       mediaType: it.media_type === 2 ? 'video' : it.media_type === 1 ? 'image' : null,
       thumbnailUrl: thumb,
+      videoUrl: Array.isArray(it.video_versions) && it.video_versions.length > 0 ? httpsUrl(asObj(it.video_versions[0])?.url) : null,
+      likeCount: null,
       viewerCount: asNum(it.total_viewer_count) ?? asNum(it.viewer_count),
     })
   }
@@ -129,27 +137,62 @@ export function parseReelsMediaItems(body: unknown): ArchivedStory[] {
   return out.sort((a, b) => b.takenAt.localeCompare(a.takenAt))
 }
 
-/** One page of GET /api/v1/media/:pk/list_reel_media_viewer/. */
+/**
+ * One page of GET /api/v1/media/:pk/list_reel_media_viewer/. `users[]` carries
+ * the profiles; `viewers[]` carries per-viewer facts ({ user, has_liked,
+ * reply_text }) — the heart and the reply only exist there.
+ */
 export function parseViewersPage(body: unknown): { viewers: StoryViewer[]; nextMaxId: string | null } {
   const root = asObj(body)
-  const users = Array.isArray(root?.users) ? root.users : []
+  const facts = new Map<string, { hasLiked: boolean | null; replyText: string | null }>()
+  const fromViewers: Json[] = []
+  for (const raw of Array.isArray(root?.viewers) ? root.viewers : []) {
+    const v = asObj(raw)
+    const u = asObj(v?.user)
+    const pk = asStr(u?.pk) ?? asStr(u?.pk_id) ?? asStr(u?.id)
+    if (!v || !u || !pk) continue
+    facts.set(pk, { hasLiked: typeof v.has_liked === 'boolean' ? v.has_liked : null, replyText: asStr(v.reply_text) })
+    fromViewers.push(u)
+  }
+  const users = Array.isArray(root?.users) && root.users.length > 0 ? root.users : fromViewers
   const viewers: StoryViewer[] = []
   for (const raw of users) {
     const u = asObj(raw)
     const pk = asStr(u?.pk) ?? asStr(u?.pk_id) ?? asStr(u?.id)
     const username = asStr(u?.username)
     if (!u || !pk || !username) continue
+    const f = facts.get(pk)
     viewers.push({
       pk,
       username,
       fullName: asStr(u.full_name),
       profilePicUrl: httpsUrl(u.profile_pic_url),
       isVerified: typeof u.is_verified === 'boolean' ? u.is_verified : null,
-      hasLiked: typeof u.has_liked === 'boolean' ? u.has_liked : typeof u.has_liked_reel === 'boolean' ? u.has_liked_reel : null,
+      hasLiked: f?.hasLiked ?? (typeof u.has_liked === 'boolean' ? u.has_liked : null),
       isPrivate: typeof u.is_private === 'boolean' ? u.is_private : null,
+      replyText: f?.replyText ?? null,
     })
   }
   return { viewers, nextMaxId: asStr(root?.next_max_id) }
+}
+
+/** Highlights from the profile GraphQL query (web). Reel ids are "highlight:<id>". */
+export function parseGraphqlHighlights(body: unknown): HighlightCollection[] {
+  const edges = asObj(asObj(asObj(asObj(body)?.data)?.user)?.edge_highlight_reels)?.edges
+  if (!Array.isArray(edges)) return []
+  const out: HighlightCollection[] = []
+  for (const e of edges) {
+    const n = asObj(asObj(e)?.node)
+    const id = asStr(n?.id)
+    if (!n || !id) continue
+    out.push({
+      id: id.startsWith('highlight:') ? id : `highlight:${id}`,
+      title: asStr(n.title) ?? '',
+      coverUrl: httpsUrl(asObj(n.cover_media_cropped_thumbnail)?.url) ?? httpsUrl(asObj(n.cover_media)?.thumbnail_src),
+      mediaCount: null,
+    })
+  }
+  return out
 }
 
 export type InstagramFailure = 'not_connected' | 'checkpoint' | 'rate_limited' | 'error'

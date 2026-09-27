@@ -22,7 +22,7 @@ describe('parseOwnReel', () => {
     }
     const out = parseOwnReel(body, '42')
     expect(out).toHaveLength(1)
-    expect(out[0]).toMatchObject({ pk: '3001', mediaType: 'video', viewerCount: 61, thumbnailUrl: 'https://cdn/small.jpg' })
+    expect(out[0]).toMatchObject({ pk: '3001', mediaType: 'video', viewerCount: 61, thumbnailUrl: 'https://cdn/big.jpg' })
     expect(out[0].takenAt).toBe(new Date(1758880000 * 1000).toISOString())
   })
 
@@ -44,8 +44,8 @@ describe('parseViewersPage', () => {
       next_max_id: 'abc',
     })
     expect(page.viewers).toEqual([
-      { pk: '1', username: 'alice', fullName: 'Alice', profilePicUrl: 'https://cdn/a.jpg', isVerified: true, hasLiked: null, isPrivate: null },
-      { pk: '2', username: 'bob', fullName: null, profilePicUrl: null, isVerified: null, hasLiked: true, isPrivate: true },
+      { pk: '1', username: 'alice', fullName: 'Alice', profilePicUrl: 'https://cdn/a.jpg', isVerified: true, hasLiked: null, isPrivate: null, replyText: null },
+      { pk: '2', username: 'bob', fullName: null, profilePicUrl: null, isVerified: null, hasLiked: true, isPrivate: true, replyText: null },
     ])
     expect(page.nextMaxId).toBe('abc')
   })
@@ -113,5 +113,34 @@ describe('feed/user/:id/story/ shape', () => {
     const body = { reel: { user: { username: 'coach' }, items: [{ pk: '7', taken_at: 10, media_type: 1 }] } }
     expect(parseOwnReel(body, '42')[0].pk).toBe('7')
     expect(parseReelsMediaItems(body)[0].pk).toBe('7')
+  })
+})
+
+import { parseGraphqlHighlights } from '../instagram-parse'
+
+describe('viewers[] facts', () => {
+  it('reads has_liked and reply_text from viewers[] and users from it when users[] is empty', () => {
+    const page = parseViewersPage({
+      users: [],
+      viewers: [
+        { user: { pk: 1, username: 'alice' }, has_liked: true, reply_text: 'Top 🔥' },
+        { user: { pk: 2, username: 'bob' }, has_liked: false, reply_text: '' },
+      ],
+    })
+    expect(page.viewers.map((v) => [v.username, v.hasLiked, v.replyText])).toEqual([
+      ['alice', true, 'Top 🔥'],
+      ['bob', false, null],
+    ])
+  })
+  it('merges viewers[] facts into users[] profiles', () => {
+    const page = parseViewersPage({ users: [{ pk: 1, username: 'alice', full_name: 'Alice' }], viewers: [{ user: { pk: 1 }, has_liked: true }] })
+    expect(page.viewers[0]).toMatchObject({ fullName: 'Alice', hasLiked: true })
+  })
+})
+
+describe('parseGraphqlHighlights', () => {
+  it('reads highlight reels as highlight:<id>', () => {
+    const out = parseGraphqlHighlights({ data: { user: { edge_highlight_reels: { edges: [{ node: { id: '182', title: 'QUI SUIS-JE', cover_media_cropped_thumbnail: { url: 'https://c/x.jpg' } } }] } } } })
+    expect(out).toEqual([{ id: 'highlight:182', title: 'QUI SUIS-JE', coverUrl: 'https://c/x.jpg', mediaCount: null }])
   })
 })

@@ -29,7 +29,7 @@ export interface HighlightStoryResult {
 }
 
 export type HighlightViewersResult =
-  | { ok: true; accountUsername: string; stories: HighlightStoryResult[]; skipped: number; stoppedEarly: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error' | null }
+  | { ok: true; accountUsername: string; stories: HighlightStoryResult[]; skipped: number; tooOld: number; stoppedEarly: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error' | null }
   | { ok: false; reason: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error'; message: string }
 
 export interface CollectedStory {

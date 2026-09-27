@@ -102,7 +102,16 @@ export function HighlightsSection() {
         return
       }
       if (res.stories.length === 0) {
-        setScanReport(res.skipped > 0 ? `Rien à relire : ${res.skipped} stories déjà collectées et définitives.` : 'Aucune story à la une accessible.')
+        setScanReport(
+          [
+            res.tooOld > 0
+              ? `${res.tooOld} stories à la une publiées il y a plus de 48 h : Instagram ne donne plus leurs spectateurs (vérifié : il renvoie une liste vide). Les spectateurs de vos prochaines stories sont collectés automatiquement pendant leurs 48 h, puis gardés.`
+              : null,
+            res.skipped > 0 ? `${res.skipped} déjà collectées.` : null,
+          ]
+            .filter(Boolean)
+            .join(' ') || 'Aucune story à la une accessible.',
+        )
         return
       }
       const saved = await api.post<{ data: { stories: number; storiesUnreadable: number; viewers: number; leadsMatched: number; errors: string[] } }>(
@@ -134,6 +143,7 @@ export function HighlightsSection() {
           readableEmpty > 0 ? `${readableEmpty} sans spectateur visible (Instagram ne les liste que 48 h après publication)` : null,
           d.storiesUnreadable > 0 ? `${d.storiesUnreadable} illisibles (erreur Instagram, réessayées au prochain scan)` : null,
           res.skipped > 0 ? `${res.skipped} déjà collectées, non relues` : null,
+          res.tooOld > 0 ? `${res.tooOld} de plus de 48 h : spectateurs plus fournis par Instagram` : null,
           res.stoppedEarly ? `arrêt anticipé : ${FAILURE[res.stoppedEarly] ?? res.stoppedEarly}` : null,
           d.errors.length > 0 ? `enregistrement partiel : ${d.errors[0]}` : null,
         ]

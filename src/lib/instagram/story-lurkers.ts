@@ -11,6 +11,10 @@ export interface StoryRow {
   story_pk: string
   taken_at: string
   thumbnail_url: string | null
+  image_url?: string | null
+  video_url?: string | null
+  like_count?: number | null
+  highlight_title?: string | null
   viewer_count: number | null
   viewers_collected: number
 }
@@ -108,14 +112,14 @@ export function invalidateStoryLurkers(workspaceId: string) {
 }
 
 async function loadStoryLurkersUncached(supabase: SupabaseClient, workspaceId: string, lastN: number) {
-  const { data: stories, error } = await supabase
-    .from('story_view_stories')
-    .select('story_pk, taken_at, thumbnail_url, viewer_count, viewers_collected')
-    .eq('workspace_id', workspaceId)
-    .order('taken_at', { ascending: false })
-    .limit(lastN)
+  const base = 'story_pk, taken_at, thumbnail_url, viewer_count, viewers_collected'
+  const query = (cols: string) => supabase.from('story_view_stories').select(cols).eq('workspace_id', workspaceId).order('taken_at', { ascending: false }).limit(lastN)
+  // Stored media + likes (migrations 115/116) when available.
+  let res = await query(`${base}, image_url, video_url, like_count, highlight_title`)
+  if (res.error) res = await query(base)
+  const { data: stories, error } = res
   if (error) throw new Error(error.message)
-  const storyRows = (stories ?? []) as StoryRow[]
+  const storyRows = (stories ?? []) as unknown as StoryRow[]
   const pks = storyRows.map((s) => s.story_pk)
 
   const viewers: ViewerRow[] = []

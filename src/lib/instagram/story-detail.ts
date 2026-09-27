@@ -26,12 +26,11 @@ export interface StoryDetailViewer {
 }
 
 export async function loadStoryDetail(supabase: SupabaseClient, workspaceId: string, storyPk: string) {
-  const { data: story } = await supabase
-    .from('story_view_stories')
-    .select('story_pk, taken_at, media_type, thumbnail_url, viewer_count, viewers_collected, last_collected_at')
-    .eq('workspace_id', workspaceId)
-    .eq('story_pk', storyPk)
-    .maybeSingle()
+  const storyQuery = (cols: string) => supabase.from('story_view_stories').select(cols).eq('workspace_id', workspaceId).eq('story_pk', storyPk).maybeSingle()
+  const base = 'story_pk, taken_at, media_type, thumbnail_url, viewer_count, viewers_collected, last_collected_at'
+  let storyRes = await storyQuery(`${base}, image_url, video_url, like_count, highlight_title`)
+  if (storyRes.error) storyRes = await storyQuery(base)
+  const story = storyRes.data as Record<string, unknown> | null
 
   const cols = 'instagram_user_id, instagram_username, full_name, profile_pic_url, is_verified, matched_lead_id, first_seen_at'
   let res = await supabase.from('story_viewers').select(`${cols}, has_liked`).eq('workspace_id', workspaceId).eq('story_pk', storyPk).limit(10000)
