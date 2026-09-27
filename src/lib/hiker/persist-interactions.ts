@@ -1,5 +1,5 @@
 // Persists DiscoveryResult.interactions (who liked / commented which
-// content) into discovery_interactions (migration 104). Bulk inserts by
+// content) into discovery_interactions (migration 110). Bulk inserts by
 // chunk — a scan easily yields thousands of rows, one request per row
 // would blow the function's time budget.
 import type { DiscoveryResult } from './discovery'

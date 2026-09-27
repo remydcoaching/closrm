@@ -243,7 +243,7 @@ export async function persistDiscoveryResult(supabase: any, workspaceId: string,
   // Persist the discovered account's OWN Instagram profile fields (biography,
   // follower/following counts, verified/private, profile picture) onto its
   // lead row, if that account is already a lead in this workspace — see
-  // migration 098. Best-effort: a failure here does not fail the whole
+  // migration 104. Best-effort: a failure here does not fail the whole
   // discovery run (the interactions above are the primary outcome).
   try {
     await persistDiscoveredAccountProfile(supabase, workspaceId, result)

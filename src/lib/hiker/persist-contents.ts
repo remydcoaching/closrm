@@ -1,5 +1,5 @@
 // Persists per-content metadata (views, type, thumbnail) from a
-// DiscoveryResult into discovery_contents (migration 103) — the data
+// DiscoveryResult into discovery_contents (migration 109) — the data
 // discoverInstagramAccount already computes (NormalizedContent.viewCount,
 // .thumbnail_url via rawMetadata) but that was previously discarded once
 // the scan completed. Powers the Content page's engagement-vs-views chart.
@@ -34,7 +34,7 @@ export async function persistDiscoveryContents(supabase: any, workspaceId: strin
     }
     const caption = (content.rawMetadata as { caption_text?: string })?.caption_text?.slice(0, 2000) ?? null
     let { error: insertError } = await supabase.from('discovery_contents').insert({ ...row, caption })
-    // Migration 109 (caption) not applied yet: store the rest anyway.
+    // Migration 114 (caption) not applied yet: store the rest anyway.
     if (insertError && /caption/.test(insertError.message ?? '')) {
       ;({ error: insertError } = await supabase.from('discovery_contents').insert(row))
     }

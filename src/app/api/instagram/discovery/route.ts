@@ -15,7 +15,7 @@ export const maxDuration = 300
 /**
  * "Ciblage" (renamed from "Instagram Discovery" per product feedback) —
  * triggers a Hiker scan of a public Instagram account and OBSERVES who
- * liked/commented on its content into discovery_profiles (migration 102).
+ * liked/commented on its content into discovery_profiles (migration 108).
  * This does NOT create a lead for every profile anymore — a scan is
  * read-only intelligence gathering; converting a specific profile into a
  * lead is a separate, explicit action (see

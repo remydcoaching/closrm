@@ -7,7 +7,7 @@ import { loadInstagramSignal } from '@/lib/leads/lead-intelligence'
  * Most recent Ciblage (Discovery) observation of this lead's Instagram
  * account, if any — follows_target ("vu comme abonné"), last engagement
  * counts at scan time. Read from discovery_profiles (the table a scan
- * observes profiles into, see migration 102) rather than fabricating a
+ * observes profiles into, see migration 108) rather than fabricating a
  * live "follows you" check, which ClosRM has no way to perform outside of
  * a Hiker scan. Returns null if this lead has never appeared in a scan.
  */

@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Layers, Save, X, Plus } from 'lucide-react'
+import { Layers, Save, X, Plus, Sparkles } from 'lucide-react'
 import type { MetaInsightsResponse } from '@/app/api/meta/insights/route'
 import type { AdPerformanceRow } from '@/app/api/meta/ad-performance/route'
 import { evaluateHealthColor, HEALTH_COLORS } from './health-thresholds'
@@ -33,6 +33,8 @@ interface AdsTableTabProps {
   dateTo?: string
   crmMap?: Map<string, AdPerformanceRow>
   onRowClick?: (id: string, name: string) => void
+  /** Analyse globale de toutes les lignes affichées (filtrées+triées). */
+  onAnalyzeAll?: (rows: Array<{ id: string; name: string; data: Record<string, unknown> }>) => void
 }
 
 type ColumnKey =
@@ -444,7 +446,7 @@ function SortableHeaderCell({
 
 /* ── Main component ──────────────────────────────────────────── */
 
-export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick }: AdsTableTabProps) {
+export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick, onAnalyzeAll }: AdsTableTabProps) {
   const [sort, setSort] = useState<SortState>(null)
   const [search, setSearch] = useState('')
 
@@ -984,6 +986,43 @@ export default function AdsTableTab({ data, loading, tabKey, crmMap, onRowClick 
             </div>
           )}
         </div>
+
+        {/* Analyze with Claude (global) */}
+        {onAnalyzeAll && (
+          <button
+            onClick={() => {
+              const rows = sorted.map(r => {
+                const crm = crmMap?.get(r.id) as unknown as Record<string, unknown> | undefined
+                return {
+                  id: r.id,
+                  name: r.name,
+                  data: { ...(r as unknown as Record<string, unknown>), crm: crm ?? null },
+                }
+              })
+              onAnalyzeAll(rows)
+            }}
+            disabled={sorted.length === 0}
+            title={`Analyser ${sorted.length} ligne${sorted.length > 1 ? 's' : ''} affichée${sorted.length > 1 ? 's' : ''} avec Claude`}
+            style={{
+              padding: '7px 14px',
+              borderRadius: 6,
+              border: '1px solid rgba(168,85,247,0.35)',
+              background: 'rgba(168,85,247,0.08)',
+              color: '#a855f7',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: sorted.length === 0 ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              opacity: sorted.length === 0 ? 0.5 : 1,
+            }}
+          >
+            <Sparkles size={13} />
+            Analyser avec Claude
+          </button>
+        )}
 
         {/* Column picker */}
         <div style={{ position: 'relative' }}>

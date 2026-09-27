@@ -183,7 +183,7 @@ describe('Phase 3.5 — interactions (point 5)', () => {
       source_post_id: 'hiker_media_pk_987654321',
     })
     // This row has no counterpart in apify_watched_posts anywhere — the whole
-    // point of migration 096. The in-memory mock has no apify_watched_posts
+    // point of migration 102. The in-memory mock has no apify_watched_posts
     // table at all, which is itself the assertion: persisting this row never
     // required one to exist.
   })

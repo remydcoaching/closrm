@@ -45,6 +45,14 @@ export default function HeroConfig({ config, onChange, pages, blocks, funnelId }
           style={inputStyle}
         />
       </div>
+      <label style={toggleRowStyle}>
+        <input
+          type="checkbox"
+          checked={config.showButton !== false}
+          onChange={e => onChange({ ...config, showButton: e.target.checked })}
+        />
+        <span>Afficher le bouton</span>
+      </label>
       <div>
         <label style={labelStyle}>Texte du bouton</label>
         <input
@@ -105,4 +113,9 @@ const inputStyle: React.CSSProperties = {
   width: '100%', padding: '7px 10px', fontSize: 13,
   background: 'var(--bg-input)', border: '1px solid var(--border-primary)', borderRadius: 8,
   color: 'var(--text-primary)', outline: 'none',
+}
+
+const toggleRowStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8,
+  fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer',
 }

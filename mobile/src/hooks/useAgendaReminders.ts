@@ -122,7 +122,9 @@ export function useAgendaReminders() {
 
     return () => {
       cancelled = true
-      void supabase.removeChannel(channel)
+      // channel.unsubscribe() plutôt que supabase.removeChannel() : ce
+      // dernier peut crasher natif (Hermes SIGSEGV) au démontage rapide.
+      void channel.unsubscribe()
       clearInterval(interval)
     }
   }, [user])

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Phone, Bell, BarChart2, Database,
   Zap, Megaphone, Mail, Settings, Plug, PanelLeftClose, PanelLeft, LogOut,
   CalendarDays, CalendarRange, Layers, Share2, MessageCircle, MessagesSquare, Sparkles, Users2,
-  GraduationCap, Link2, Euro, Scissors,
+  GraduationCap, Link2, Euro, Scissors, ListChecks,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isRouteVisible } from '@/lib/permissions'
@@ -47,6 +47,7 @@ const NAV = [
       { label: 'Messages', href: '/acquisition/messages', icon: MessageCircle, matchPaths: ['/acquisition/messages'] },
       { label: 'Emails', href: '/acquisition/emails', icon: Mail, matchPaths: ['/acquisition/emails'] },
       { label: 'Automations', href: '/acquisition/automations', icon: Zap, matchPaths: ['/acquisition/automations'] },
+      { label: 'Process de setting', href: '/acquisition/process-setting', icon: ListChecks, matchPaths: ['/acquisition/process-setting'] },
     ],
   },
   {
@@ -160,7 +161,7 @@ export default function Sidebar({ collapsed, onToggle, logoUrl }: { collapsed: b
               const matchPaths = (item as { matchPaths?: string[] }).matchPaths ?? [item.href]
               const active = matchPaths.some((p) => pathname === p || pathname.startsWith(p + '/'))
               return (
-                <Link key={item.href} href={item.href} title={collapsed ? item.label : undefined} style={{
+                <Link key={item.href} href={item.href} prefetch={false} title={collapsed ? item.label : undefined} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: collapsed ? '8px 0' : '7px 10px',
                   justifyContent: collapsed ? 'center' : 'flex-start',
                   borderRadius: 8, fontSize: 13, textDecoration: 'none', marginBottom: 2,

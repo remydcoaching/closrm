@@ -81,7 +81,7 @@ export interface Lead {
   meta_ad_id: string | null
   instagram_handle: string | null
   // Instagram profile snapshot — populated by a Hiker discovery targeting
-  // this lead's own account (migration 098). Never real-time: always paired
+  // this lead's own account (migration 104). Never real-time: always paired
   // with instagram_profile_synced_at in the UI, never presented as live.
   instagram_followers_count: number | null
   instagram_following_count: number | null
@@ -93,6 +93,7 @@ export interface Lead {
   email_unsubscribed: boolean
   email_unsubscribed_at: string | null
   last_activity_at: string | null
+  dm_conversation_active_at: string | null
   deal_amount: number | null
   deal_installments: number
   cash_collected: number
@@ -603,6 +604,10 @@ export type FunnelBlockType =
   | 'image'
   | 'spacer'
   | 'footer'
+  | 'problems'
+  | 'program'
+  | 'qualifier'
+  | 'about_coach'
 
 /**
  * Config des effets visuels activables au niveau d'un bloc spécifique.
@@ -637,6 +642,8 @@ export interface HeroBlockConfig {
    * 'bottom' = poussé vers le bas du hero avec un grand margin-top
    */
   ctaPosition?: 'top' | 'middle' | 'bottom'
+  /** Affiche le bouton CTA. true par défaut (undefined = affiché, rétrocompat). */
+  showButton?: boolean
 }
 
 export interface VideoBlockConfig {
@@ -728,12 +735,18 @@ export interface BookingActionsBlockConfig {
 export interface PricingBlockConfig {
   title: string
   price: string
+  /** Prix barré affiché au-dessus du prix actuel (offre spéciale). Vide = pas d'offre spéciale. */
+  originalPrice?: string
   currency: string
   period: string
   features: string[]
   ctaText: string
   ctaUrl: string
   highlighted: boolean
+  /** Affiche le bouton CTA. true par défaut (undefined = affiché, rétrocompat). */
+  showButton?: boolean
+  /** Texte de précisions affiché en italique sous le bouton (ex: "Sans engagement"). Vide = rien affiché. */
+  footnote?: string
 }
 
 export interface FaqItem {
@@ -807,6 +820,75 @@ export interface FunnelFooterBlockConfig {
   copyrightText: string
 }
 
+export interface ProblemItem {
+  id: string
+  title: string
+  description: string
+  showNumber: boolean
+  icon?: { name: string } | null
+  imageUrl?: string | null
+}
+
+export interface ProblemsBlockConfig {
+  title: string
+  subtitle?: string
+  items: ProblemItem[]
+  columns: 1 | 2 | 3
+  numberLabel?: string
+}
+
+export interface ProgramStep {
+  id: string
+  number: string
+  title: string
+  description: string
+  icon?: { name: string } | null
+  imageUrl?: string | null
+}
+
+export interface ProgramBlockConfig {
+  title: string
+  subtitle?: string
+  items: ProgramStep[]
+  columns: 2 | 3 | 4
+}
+
+export interface QualifierPoint {
+  id: string
+  text: string
+}
+
+export interface QualifierColumn {
+  title: string
+  subtitle?: string
+  icon?: { name: string } | null
+  items: QualifierPoint[]
+}
+
+export interface QualifierBlockConfig {
+  yes: QualifierColumn
+  no: QualifierColumn
+}
+
+export interface CoachStat {
+  id: string
+  value: string
+  label: string
+}
+
+export interface AboutCoachBlockConfig {
+  imageUrl: string | null
+  title: string
+  subtitle?: string
+  text: string
+  ctaText?: string
+  ctaUrl?: string
+  stats: CoachStat[]
+  layout: 'image-left' | 'image-right'
+  /** Affiche le bouton CTA. true par défaut (undefined = affiché, rétrocompat). */
+  showButton?: boolean
+}
+
 export type FunnelBlockConfig =
   | HeroBlockConfig
   | VideoBlockConfig
@@ -822,6 +904,10 @@ export type FunnelBlockConfig =
   | FunnelImageBlockConfig
   | SpacerBlockConfig
   | FunnelFooterBlockConfig
+  | ProblemsBlockConfig
+  | ProgramBlockConfig
+  | QualifierBlockConfig
+  | AboutCoachBlockConfig
 
 export interface FunnelBlock {
   id: string
@@ -1759,3 +1845,46 @@ export interface SourceConfigEntry {
 // Ordered array — position = display order
 export type StatusConfig = StatusConfigEntry[]
 export type SourceConfig = SourceConfigEntry[]
+
+// Process de setting : remplace progressivement les templates statiques de
+// src/lib/dm-sessions/templates.ts par des étapes éditables en base.
+export interface SettingProcess {
+  id: string
+  workspace_id: string
+  name: string
+  description: string | null
+  status: 'active' | 'inactive'
+  created_at: string
+  updated_at: string
+}
+
+export type SettingProcessStepType = 'message' | 'relance'
+
+export interface SettingProcessStepTransition {
+  id: string
+  step_id: string
+  outcome_label: string
+  target_step_id: string
+  created_at: string
+}
+
+export type SettingProcessStepCategory = 'premier_contact' | 'relance_en_retard' | 'jamais_recontacte' | 'any'
+
+export interface SettingProcessStep {
+  id: string
+  process_id: string
+  position: number
+  title: string
+  step_type: SettingProcessStepType
+  content: string
+  delay_days: number | null
+  next_step_id: string | null
+  applies_to_category: SettingProcessStepCategory | null
+  created_at: string
+  updated_at: string
+  transitions?: SettingProcessStepTransition[]
+}
+
+export interface SettingProcessWithSteps extends SettingProcess {
+  steps: SettingProcessStep[]
+}

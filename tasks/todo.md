@@ -13,14 +13,19 @@
 - [x] Agenda, Dashboard, Statistiques/Finance, Publicités (parité web)
 - [x] Funnels / Emails / Automations / Messages
 - [x] Viewers de stories via la session Instagram du coach (comme Insyder)
-- [ ] Réseaux sociaux / Paramètres / Équipe (agent en cours)
+- [x] Réseaux sociaux / Paramètres / Équipe
+- [x] Cache Electron (stale-while-revalidate) + endpoints agrégés (fiche lead, dashboard)
+- [x] Spectateurs nominatifs des stories à la une
+- [x] Fusion develop + renumérotation des migrations (102–115)
 
 ## À faire par Pierre (prod — non fait par Claude)
 - [x] 104 et 105 appliquées par Pierre (2026-09-25)
-- [ ] Appliquer 106_story_viewers.sql
+- [x] 106/108/109 appliquées (numéros 112/113/114 après renumérotation)
+- [ ] Appliquer 115_highlight_story_viewers.sql
 - [ ] Déployer le code web (routes /api/instagram/*) AVANT de relancer une analyse Hiker
 - [ ] Relancer l'analyse @rebmann_pierre (crédits Hiker) — le run du 20/09 n'a rien enregistré
 
 ## Avant PR
-- [ ] Rebase sur origin/develop (67+ commits de retard) ; renuméroter 096–105 de cette branche après 101 ; supprimer 107 (doublon de develop 100)
-- [ ] Ajouter 'electron/**' à l'exclude de vitest.config.mts
+- [x] Fusion origin/develop, migrations renumérotées, doublon supprimé, electron exclu de vitest
+- [ ] Dashboard Desktop : brancher l'écran sur GET /api/desktop/dashboard (snapshot serveur) au lieu des ~12 requêtes
+- [ ] Dashboard serveur (v2-queries) : 3,7 s, à optimiser

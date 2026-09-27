@@ -1,5 +1,5 @@
 // Persists a DiscoveryResult as OBSERVATIONS only — into discovery_profiles
-// (migration 102), never creating a lead automatically. This replaces
+// (migration 108), never creating a lead automatically. This replaces
 // persist.ts's persistDiscoveryResult for the "Ciblage" (renamed from
 // "Instagram Discovery") flow per explicit product feedback: scanning an
 // account must show who reacted to it (with their like/comment counts,
@@ -57,7 +57,7 @@ export async function persistDiscoveryProfiles(supabase: any, workspaceId: strin
 
   let alreadyLeadsCount = 0
   // One row per observed profile per run — deliberately not deduped across
-  // runs (see migration 102 comment: "les analyses sont gardées en backup",
+  // runs (see migration 108 comment: "les analyses sont gardées en backup",
   // each run's observations are its own historical record).
   const rows = result.users.map((profile) => {
     const matchedLeadId = (profile.instagramUserId && leadIdByUserId.get(profile.instagramUserId)) || leadIdByHandle.get(profile.username) || null

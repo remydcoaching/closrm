@@ -1,6 +1,6 @@
 // Story viewers of the coach's own account, pushed by ClosRM Desktop (which
 // reads them from the coach's Instagram session while stories are live).
-// Persists into story_view_stories / story_viewers (migration 106) and, for
+// Persists into story_view_stories / story_viewers (migration 112) and, for
 // viewers who are already leads, a 'story_view' row in instagram_interactions
 // so the view feeds the engagement score, the lead timeline and audience.
 import { z } from 'zod'
@@ -181,7 +181,7 @@ export async function persistStoryViews(supabase: SupabaseClient, workspaceId: s
     for (const batch of [okStories, errStories]) {
       if (batch.length === 0) continue
       let { error } = await supabase.from('story_view_stories').upsert(batch, { onConflict: 'workspace_id,story_pk' })
-      // Migration 110 not applied yet: store the base columns.
+      // Migration 115 not applied yet: store the base columns.
       if (error && /highlight_|like_count|fetch_/.test(error.message)) {
         ;({ error } = await supabase
           .from('story_view_stories')
@@ -194,7 +194,7 @@ export async function persistStoryViews(supabase: SupabaseClient, workspaceId: s
     // Merge-upsert: first_seen_at is not sent, so the first sighting is kept.
     const chunk = rows.viewers.slice(i, i + WRITE_CHUNK)
     let { error } = await supabase.from('story_viewers').upsert(chunk, { onConflict: 'workspace_id,story_pk,instagram_user_id' })
-    // Migration 108 (has_liked) not applied yet: store the rest anyway.
+    // Migration 113 (has_liked) not applied yet: store the rest anyway.
     if (error && /has_liked|is_private/.test(error.message)) {
       ;({ error } = await supabase
         .from('story_viewers')

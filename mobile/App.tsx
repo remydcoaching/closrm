@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import RootNavigator from './src/navigation/RootNavigator'
 import { ScheduleSheetProvider } from './src/components/schedule/ScheduleSheetProvider'
 import { CreateLeadSheetProvider } from './src/components/leads/CreateLeadSheet'
+import { DelaySheetProvider } from './src/components/dm-session/DelaySheetProvider'
 import { useExpoPush } from './src/hooks/useExpoPush'
 import { useAgendaReminders } from './src/hooks/useAgendaReminders'
 import { ThemeProvider } from './src/theme/ThemeProvider'
@@ -71,8 +72,10 @@ export default function App() {
             >
               <ScheduleSheetProvider>
                 <CreateLeadSheetProvider>
-                  <PushHandler navRef={navRef} />
-                  <RootNavigator />
+                  <DelaySheetProvider>
+                    <PushHandler navRef={navRef} />
+                    <RootNavigator />
+                  </DelaySheetProvider>
                 </CreateLeadSheetProvider>
               </ScheduleSheetProvider>
             </NavigationContainer>

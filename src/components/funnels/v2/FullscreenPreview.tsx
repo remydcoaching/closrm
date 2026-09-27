@@ -34,6 +34,10 @@ import TextBlock from '../blocks/TextBlock'
 import ImageBlock from '../blocks/ImageBlock'
 import SpacerBlock from '../blocks/SpacerBlock'
 import FooterBlock from '../blocks/FooterBlock'
+import ProblemsBlock from '../blocks/ProblemsBlock'
+import ProgramBlock from '../blocks/ProgramBlock'
+import QualifierBlock from '../blocks/QualifierBlock'
+import AboutCoachBlock from '../blocks/AboutCoachBlock'
 import { getBlockEffectsClasses } from '@/lib/funnels/apply-preset'
 
 // CSS du design system
@@ -79,6 +83,10 @@ function renderBlockContent(block: FunnelBlock): React.ReactNode {
     case 'image': return <ImageBlock key={block.id} config={block.config as Parameters<typeof ImageBlock>[0]['config']} />
     case 'spacer': return <SpacerBlock key={block.id} config={block.config as Parameters<typeof SpacerBlock>[0]['config']} />
     case 'footer': return <FooterBlock key={block.id} config={block.config as Parameters<typeof FooterBlock>[0]['config']} />
+    case 'problems': return <ProblemsBlock key={block.id} config={block.config as Parameters<typeof ProblemsBlock>[0]['config']} />
+    case 'program': return <ProgramBlock key={block.id} config={block.config as Parameters<typeof ProgramBlock>[0]['config']} />
+    case 'qualifier': return <QualifierBlock key={block.id} config={block.config as Parameters<typeof QualifierBlock>[0]['config']} />
+    case 'about_coach': return <AboutCoachBlock key={block.id} config={block.config as Parameters<typeof AboutCoachBlock>[0]['config']} />
     default: return null
   }
 }

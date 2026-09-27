@@ -1,6 +1,6 @@
 // A stateful in-memory Supabase-shaped mock, built to honestly stand in for
 // a real Postgres instance in this session — Docker was not available to run
-// `supabase start` locally, so migrations 096/097 could not be exercised
+// `supabase start` locally, so migrations 102/097 could not be exercised
 // against a real engine. This mock enforces the SAME dedup rules the real
 // unique indexes enforce (workspace scoping, leads.workspace_id+instagram_user_id
 // uniqueness, instagram_interactions expression-index dedup), so tests here

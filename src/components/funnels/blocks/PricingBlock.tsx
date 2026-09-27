@@ -55,6 +55,20 @@ export default function PricingBlock({ config }: Props) {
             {config.title}
           </h3>
         )}
+        {config.originalPrice && (
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 600,
+              color: 'var(--fnl-text-secondary)',
+              textDecoration: 'line-through',
+              margin: '0 0 2px',
+            }}
+          >
+            {config.originalPrice}
+            {config.currency}
+          </div>
+        )}
         <div style={{ margin: '0 0 8px', display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 4 }}>
           <span
             style={{
@@ -131,7 +145,7 @@ export default function PricingBlock({ config }: Props) {
             ))}
           </ul>
         )}
-        {config.ctaText && (
+        {config.showButton !== false && config.ctaText && (
           <a
             href={resolveFunnelUrl(config.ctaUrl)}
             className="fnl-btn"
@@ -139,6 +153,18 @@ export default function PricingBlock({ config }: Props) {
           >
             {config.ctaText}
           </a>
+        )}
+        {config.footnote && (
+          <p
+            style={{
+              fontSize: 12,
+              fontStyle: 'italic',
+              color: 'var(--fnl-text-secondary)',
+              margin: '12px 0 0',
+            }}
+          >
+            {config.footnote}
+          </p>
         )}
       </div>
     </div>

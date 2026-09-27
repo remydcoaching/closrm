@@ -53,7 +53,7 @@ export interface DiscoveryResponse {
   errors: string[]
 }
 
-// ─── Discovery profiles ("Ciblage" results, migration 102) ────────────────
+// ─── Discovery profiles ("Ciblage" results, migration 108) ────────────────
 // One row per Instagram profile OBSERVED during a run — never a lead by
 // itself. matched_lead_id is set if it was already a lead at scan time, or
 // once the coach clicks "Cibler" (see POST .../target).
@@ -98,7 +98,7 @@ export interface InstagramInteraction {
   lead?: { id: string; first_name: string; last_name: string; instagram_handle: string | null; status: string } | null
 }
 
-// ─── Content aggregation (instagram_content_summary view, migration 099) ──
+// ─── Content aggregation (instagram_content_summary view, migration 105) ──
 export interface InstagramContentSummary {
   workspace_id: string
   source_post_id: string

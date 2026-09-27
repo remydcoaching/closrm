@@ -38,6 +38,16 @@ export default function PricingConfig({ config, onChange, pages, blocks }: Props
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 1 }}>
+          <label style={labelStyle}>Prix barré (optionnel)</label>
+          <input
+            type="text"
+            value={config.originalPrice || ''}
+            onChange={e => onChange({ ...config, originalPrice: e.target.value || undefined })}
+            placeholder="1497"
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
           <label style={labelStyle}>Prix</label>
           <input
             type="text"
@@ -101,6 +111,14 @@ export default function PricingConfig({ config, onChange, pages, blocks }: Props
         </button>
       </div>
 
+      <label style={toggleRowStyle}>
+        <input
+          type="checkbox"
+          checked={config.showButton !== false}
+          onChange={e => onChange({ ...config, showButton: e.target.checked })}
+        />
+        <span>Afficher le bouton</span>
+      </label>
       <div>
         <label style={labelStyle}>Texte du bouton</label>
         <input
@@ -119,6 +137,17 @@ export default function PricingConfig({ config, onChange, pages, blocks }: Props
         label="Lien du bouton"
         required
       />
+
+      <div>
+        <label style={labelStyle}>Précisions (optionnel)</label>
+        <textarea
+          value={config.footnote || ''}
+          onChange={e => onChange({ ...config, footnote: e.target.value || undefined })}
+          placeholder="Sans engagement, résiliable à tout moment"
+          rows={2}
+          style={{ ...inputStyle, resize: 'vertical' }}
+        />
+      </div>
 
       <label style={{ fontSize: 12, color: '#aaa', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
         <input
@@ -141,4 +170,9 @@ const inputStyle: React.CSSProperties = {
   width: '100%', padding: '7px 10px', fontSize: 13,
   background: '#0a0a0a', border: '1px solid #333', borderRadius: 8,
   color: '#fff', outline: 'none',
+}
+
+const toggleRowStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8,
+  fontSize: 12, color: '#aaa', cursor: 'pointer',
 }

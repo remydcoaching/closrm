@@ -35,7 +35,7 @@ export async function loadStoryDetail(supabase: SupabaseClient, workspaceId: str
 
   const cols = 'instagram_user_id, instagram_username, full_name, profile_pic_url, is_verified, matched_lead_id, first_seen_at'
   let res = await supabase.from('story_viewers').select(`${cols}, has_liked`).eq('workspace_id', workspaceId).eq('story_pk', storyPk).limit(10000)
-  // Migration 108 not applied yet: read without has_liked.
+  // Migration 113 not applied yet: read without has_liked.
   if (res.error && /has_liked/.test(res.error.message)) {
     res = (await supabase.from('story_viewers').select(cols).eq('workspace_id', workspaceId).eq('story_pk', storyPk).limit(10000)) as typeof res
   }

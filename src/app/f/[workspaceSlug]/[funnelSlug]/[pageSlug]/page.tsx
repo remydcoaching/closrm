@@ -34,6 +34,10 @@ import type {
   FunnelImageBlockConfig,
   SpacerBlockConfig,
   FunnelFooterBlockConfig,
+  ProblemsBlockConfig,
+  ProgramBlockConfig,
+  QualifierBlockConfig,
+  AboutCoachBlockConfig,
 } from '@/types'
 
 import HeroBlock from '@/components/funnels/blocks/HeroBlock'
@@ -50,6 +54,10 @@ import TextBlock from '@/components/funnels/blocks/TextBlock'
 import ImageBlock from '@/components/funnels/blocks/ImageBlock'
 import SpacerBlock from '@/components/funnels/blocks/SpacerBlock'
 import FooterBlock from '@/components/funnels/blocks/FooterBlock'
+import ProblemsBlock from '@/components/funnels/blocks/ProblemsBlock'
+import ProgramBlock from '@/components/funnels/blocks/ProgramBlock'
+import QualifierBlock from '@/components/funnels/blocks/QualifierBlock'
+import AboutCoachBlock from '@/components/funnels/blocks/AboutCoachBlock'
 import FunnelTracker from '@/components/funnels/FunnelTracker'
 import { FunnelRenderProvider } from '@/components/funnels/FunnelRenderContext'
 import { loadFunnelDesign } from '@/lib/funnels/load-funnel-design'
@@ -193,6 +201,14 @@ function renderBlock(block: FunnelBlock) {
       content = <SpacerBlock config={block.config as SpacerBlockConfig} />; break
     case 'footer':
       content = <FooterBlock config={block.config as FunnelFooterBlockConfig} />; break
+    case 'problems':
+      content = <ProblemsBlock config={block.config as ProblemsBlockConfig} />; break
+    case 'program':
+      content = <ProgramBlock config={block.config as ProgramBlockConfig} />; break
+    case 'qualifier':
+      content = <QualifierBlock config={block.config as QualifierBlockConfig} />; break
+    case 'about_coach':
+      content = <AboutCoachBlock config={block.config as AboutCoachBlockConfig} />; break
     default:
       return null
   }

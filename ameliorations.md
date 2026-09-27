@@ -921,3 +921,41 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 | A-D6 | ✅ Décidé par Pierre le 2026-09-26 (« fais comme Insyder ») et implémenté : session Instagram du coach dans le desktop, collecte des viewers de stories (migration 106) | Risque de vérification du compte accepté ; requêtes espacées, arrêt au premier challenge | Fait |
 | A-D7 | Monitoring continu : relancer automatiquement une analyse légère (derniers contenus) toutes les X heures via cron | Couche "Monitoring" de la vision Insyder ; coût Hiker à arbitrer | Moyenne |
 | A-D8 | Filtre "niveau de confiance" sur la page Contenu (répartition des leads touchés par niveau) | Demandé dans la spec ; nécessite le score par lead côté serveur en masse | Moyenne |
+### A-FUN-04 · Registry central des types de blocs de funnel
+- **Contexte :** Tâche 048 — ajouter un type de bloc touche aujourd'hui 7 fichiers différents à chaque fois (aucun registry factorisé, pattern répété pour les 17 types désormais). Décision prise avec Rémy de garder le pattern existant pour cette tâche plutôt que de refactorer.
+- **Description :** Factoriser l'enregistrement d'un bloc (type, config par défaut, label, icône, composant config, composant rendu public, composant rendu preview) dans un unique fichier registry, pour qu'ajouter un futur type de bloc ne touche qu'un seul endroit.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Élevé (touche les 17 blocs existants, gros diff, risque de régression sur de l'existant qui fonctionne)
+- **Statut :** En attente de validation
+
+### A-FUN-05 · Layouts alternatifs pour le bloc Programme / Méthode
+- **Contexte :** Tâche 048 — la demande initiale mentionnait plusieurs dispositions possibles (vertical, horizontal, timeline, cartes). V1 livrée avec cartes uniquement (décision validée avec Rémy).
+- **Description :** Ajouter un sélecteur de layout dans `ProgramConfig` (vertical/horizontal/timeline en plus de cartes), en réutilisant `config.items` tel quel.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation (V2 si besoin)
+
+### A-FUN-06 · Vérification tactile du drag & drop intra-liste sur mobile
+- **Contexte :** Tâche 048 — `ReorderableItemList` utilise `PointerSensor` de dnd-kit (supporte en théorie souris + tactile), mais le builder est surtout utilisé desktop. Pas de test manuel effectué sur device tactile réel pour le reorder de cartes/étapes/points en config.
+- **Description :** Tester sur un vrai device tactile (tablette/mobile) que le drag & drop des items en config fonctionne correctement ; ajuster `activationConstraint` si besoin.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-049-1 · Alléger le coût du middleware sur les requêtes de prefetch
+- **Contexte :** T-049 — incident prod : rafale de prefetch de la sidebar × appel Supabase (`auth.getUser()` + `workspace_members`) dans `updateSession()` à chaque requête, y compris les prefetch RSC. Le fix `prefetch={false}` supprime la rafale automatique, mais le middleware reste coûteux par requête (2 appels Supabase) et rien n'empêche une future rafale similaire (ex : hover sur plusieurs liens, `router.prefetch()` manuel ailleurs).
+- **Description :** Mettre en cache le résultat de `getUser()`/`workspace_members` sur la durée d'une requête (déjà fait ?) et/ou sur une courte fenêtre (ex: cookie de session déjà décodé côté edge sans round-trip Supabase), pour rendre le middleware résilient à des rafales de requêtes plutôt que de compter uniquement sur l'absence de prefetch.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### A-049-2 · Corriger la doc obsolète sur la branche de déploiement Vercel
+- **Contexte :** T-049 — `docs/passage-sur-vercel.md` et `CLAUDE.md` indiquent que Vercel déploie depuis `main`, alors que `etat.md` (à jour) et la prod observée confirment que c'est `develop` qui est déployée. Source de confusion potentielle pour un futur diagnostic d'incident.
+- **Description :** Mettre à jour `docs/passage-sur-vercel.md` (et la section Workflow GitHub de `CLAUDE.md`) pour refléter que `develop` est la branche de prod actuelle.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+---
+
+*Mis à jour le 2026-09-14 par Claude Code — ClosRM*

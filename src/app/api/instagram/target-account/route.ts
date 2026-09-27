@@ -6,7 +6,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 /**
  * The coach's own Instagram account used by Hiker features (header pill +
  * onboarding in ClosRM Desktop). Stored on workspaces.instagram_username
- * (migration 105). Until that column exists, falls back to the Meta-connected
+ * (migration 111). Until that column exists, falls back to the Meta-connected
  * account (ig_accounts) then to the last scanned account (discovery_runs).
  */
 const HANDLE = /^[a-zA-Z0-9._]{1,30}$/

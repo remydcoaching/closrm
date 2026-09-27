@@ -32,6 +32,7 @@ export interface PermissionSet {
   manageAutomations: boolean
   manageEmails: boolean
   manageFunnels: boolean
+  manageProcesses: boolean
 
   // Stats
   viewGlobalStats: boolean
@@ -60,6 +61,7 @@ const ADMIN_PERMISSIONS: PermissionSet = {
   manageAutomations: true,
   manageEmails: true,
   manageFunnels: true,
+  manageProcesses: true,
   viewGlobalStats: true,
   viewPersonalStats: true,
   useAiAssistant: true,
@@ -84,6 +86,7 @@ const SETTER_PERMISSIONS: PermissionSet = {
   manageAutomations: false,
   manageEmails: false,
   manageFunnels: false,
+  manageProcesses: false,
   viewGlobalStats: false,
   viewPersonalStats: true,
   useAiAssistant: true,
@@ -108,6 +111,7 @@ const CLOSER_PERMISSIONS: PermissionSet = {
   manageAutomations: false,
   manageEmails: false,
   manageFunnels: false,
+  manageProcesses: false,
   viewGlobalStats: false,
   viewPersonalStats: true,
   useAiAssistant: true,
@@ -132,6 +136,7 @@ const MONTEUR_PERMISSIONS: PermissionSet = {
   manageAutomations: false,
   manageEmails: false,
   manageFunnels: false,
+  manageProcesses: false,
   viewGlobalStats: false,
   viewPersonalStats: false,
   useAiAssistant: false,
@@ -175,6 +180,7 @@ export const ROUTE_VISIBILITY: Record<string, WorkspaceRole[]> = {
   '/base-de-donnees': ['admin'],
   '/acquisition/funnels': ['admin'],
   '/acquisition/automations': ['admin'],
+  '/acquisition/process-setting': ['admin', 'setter', 'closer'],
   '/acquisition/lead-magnets': ['admin', 'setter', 'closer'],
   '/acquisition/emails': ['admin'],
   '/acquisition/reseaux-sociaux': ['admin'],

@@ -4,7 +4,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 
 /**
  * Content-centric view of Instagram engagement (Instagram > Content).
- * Reads instagram_content_summary (migration 099), a read-only aggregation
+ * Reads instagram_content_summary (migration 105), a read-only aggregation
  * over instagram_interactions — no duplicated storage, no second source of
  * truth. See CLOSRM_DESKTOP_FINAL_VISION.md §4.3 for why thumbnails are not
  * part of this response (Hiker does not persist them today).

@@ -27,6 +27,9 @@ export type MessagesStackParamList = {
 export type FollowUpsStackParamList = {
   FollowUpsList: undefined
   LeadDetail: { leadId: string }
+  DmSessionConfig: undefined
+  DmSessionLead: { sessionId: string }
+  DmSessionComplete: { sessionId: string }
 }
 
 export type MoreStackParamList = {
@@ -34,6 +37,7 @@ export type MoreStackParamList = {
   Notifications: undefined
   NotificationSettings: undefined
   Branding: undefined
+  DebugLog: undefined
   TournageSessions: undefined
   SocialPosts: undefined
   SocialPostDetail: { postId: string }

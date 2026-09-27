@@ -7,7 +7,7 @@ import { buildContentMetrics, latestPerContent, type ContentMetrics, type Discov
 
 const CONTENT_COLS = 'discovery_run_id, content_id, content_type, content_url, thumbnail_url, published_at, view_count, reported_like_count, reported_comment_count, created_at'
 
-/** discovery_contents select with caption, retried without it until migration 109 is applied. */
+/** discovery_contents select with caption, retried without it until migration 114 is applied. */
 async function selectContents(build: (cols: string) => PromiseLike<{ data: unknown; error: { message: string } | null }>) {
   let res = await build(`${CONTENT_COLS}, caption`)
   if (res.error && /caption/.test(res.error.message)) res = await build(CONTENT_COLS)
@@ -27,7 +27,7 @@ interface InteractionRow {
   interaction_type: 'like' | 'comment'
 }
 
-// discovery_interactions (migration 104) may not be applied yet on a given
+// discovery_interactions (migration 110) may not be applied yet on a given
 // database — the page must keep working (with 0 identified profiles).
 function isMissingTable(message: string | undefined): boolean {
   return !!message && /does not exist|Could not find the table|schema cache/i.test(message)
@@ -92,7 +92,7 @@ export async function loadContentMetrics(supabase: SupabaseClient, workspaceId: 
   ])
 
   if (!rpc.error) {
-    // Grouped in Postgres (migration 109).
+    // Grouped in Postgres (migration 114).
     for (const r of (rpc.data ?? []) as { discovery_run_id: string; content_id: string; likers: number; commenters: number; leads: number }[]) {
       if (latestRunByContent.get(r.content_id) !== r.discovery_run_id) continue
       observed.set(r.content_id, { likers: Number(r.likers), commenters: Number(r.commenters), leads: Number(r.leads) })
@@ -267,7 +267,7 @@ export type ConfidenceCounts = Partial<Record<ConfidenceLevel, number>>
 
 /**
  * Leads reached by each content, counted by confidence level (Contenu page
- * filter). Uses instagram_content_leads (migration 109); returns null when
+ * filter). Uses instagram_content_leads (migration 114); returns null when
  * that function isn't deployed yet so the UI can say so.
  */
 export async function loadContentConfidence(

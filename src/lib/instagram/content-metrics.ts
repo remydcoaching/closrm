@@ -2,7 +2,7 @@
 // be unit-tested. Sources:
 //  - discovery_contents: one row per (Ciblage run, content) with Instagram's
 //    own public counters (views, likes, comments) at scan time;
-//  - discovery_interactions: who liked/commented, per run (migration 104);
+//  - discovery_interactions: who liked/commented, per run (migration 110);
 //  - instagram_content_summary: observed interactions attached to leads
 //    (Apify + legacy Hiker flow).
 // The most recent scan of a content is the reference snapshot.

@@ -34,7 +34,7 @@ async function loadEngagedLeadsUncached(supabase: SupabaseClient, workspaceId: s
   const lastSeenByLead = new Map<string, string>()
   const countByLead = new Map<string, number>()
 
-  // Grouped in Postgres (migration 109); falls back to paging raw rows if
+  // Grouped in Postgres (migration 114); falls back to paging raw rows if
   // the function isn't deployed yet.
   const { data: grouped, error: rpcError } = await supabase.rpc('instagram_engaged_leads', { p_workspace: workspaceId })
   if (!rpcError) {

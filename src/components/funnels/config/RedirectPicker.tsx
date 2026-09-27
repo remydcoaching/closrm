@@ -45,6 +45,10 @@ const BLOCK_TYPE_LABELS: Record<FunnelBlockType, string> = {
   booking: 'Réservation',
   booking_actions: 'Actions calendrier',
   form: 'Formulaire',
+  problems: 'Problèmes',
+  program: 'Programme / Méthode',
+  qualifier: 'C\'est pour toi / Pas pour toi',
+  about_coach: 'Présentation du coach',
 }
 
 export default function RedirectPicker({

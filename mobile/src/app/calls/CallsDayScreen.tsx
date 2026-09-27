@@ -64,7 +64,10 @@ export function CallsDayScreen() {
       .subscribe()
     return () => {
       cancelled = true
-      void supabase.removeChannel(channel)
+      // channel.unsubscribe() plutôt que supabase.removeChannel() : ce
+      // dernier peut crasher natif (Hermes SIGSEGV) au démontage rapide
+      // de l'écran (ex: replace de navigation juste après le montage).
+      void channel.unsubscribe()
     }
   }, [])
 

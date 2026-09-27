@@ -53,3 +53,4 @@ supabase/.branches
 *.tsbuildinfo
 next-env.d.ts
 closrm-build.ipa
+scripts/hiker-poc/hiker-poc-results.json
