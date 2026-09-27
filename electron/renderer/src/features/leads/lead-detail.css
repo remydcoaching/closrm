@@ -131,12 +131,6 @@
   font-weight: 700;
 }
 
-.lead-detail-avatar-img {
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
 .lead-detail-score-trigger {
   background: none;
   border: none;

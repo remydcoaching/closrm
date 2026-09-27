@@ -48,12 +48,15 @@ export function StoryCard({
   rank,
   collected,
   subtitle,
+  viewerNote,
   onClick,
 }: {
   story: ArchivedStory
   rank?: number
   collected?: number
   subtitle?: string
+  /** Replaces the "N spectateurs identifiés" line (e.g. out of Instagram's 48 h window). */
+  viewerNote?: string
   onClick: () => void
 }) {
   const [broken, setBroken] = useState(false)
@@ -78,7 +81,11 @@ export function StoryCard({
           <span className="ds-num">{story.viewerCount !== null ? `${formatNumber(story.viewerCount)} vues` : '—'}</span>
         )}
         {subtitle && <span className="story-card-sub">{subtitle}</span>}
-        {collected !== undefined && <span className="story-card-sub">{formatNumber(collected)} spectateurs identifiés</span>}
+        {viewerNote !== undefined ? (
+          <span className="story-card-sub">{viewerNote}</span>
+        ) : (
+          collected !== undefined && <span className="story-card-sub">{formatNumber(collected)} spectateurs identifiés</span>
+        )}
       </div>
     </button>
   )

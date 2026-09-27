@@ -254,11 +254,7 @@ export function LeadDetailPage() {
       </div>
 
       <div className="lead-detail-header">
-        {lead.instagram_profile_pic_url ? (
-          <img className="lead-detail-avatar-img" src={lead.instagram_profile_pic_url} alt={name} width={56} height={56} />
-        ) : (
-          <Avatar name={name} size={56} />
-        )}
+        <Avatar name={name} size={56} src={lead.instagram_profile_pic_url} />
         <div className="lead-detail-header-info">
           <div className="lead-detail-name">
             {name}

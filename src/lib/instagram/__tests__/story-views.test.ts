@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { interactionKey, planStoryViewRows, storyViewsPayloadSchema, type StoryViewsPayload } from '../story-views'
+import { interactionKey, planLeadEnrichment, planStoryViewRows, storyViewsPayloadSchema, type StoryViewsPayload } from '../story-views'
 
 const NOW = '2026-09-26T10:00:00.000Z'
 
@@ -108,5 +108,39 @@ describe('persistStoryViews with a missing optional column', () => {
     const last = viewerWrites[viewerWrites.length - 1][0]
     expect(last).not.toHaveProperty('is_private')
     expect(last).toMatchObject({ has_liked: true })
+  })
+})
+
+describe('re-reads never erase stored data', () => {
+  it('a re-read expired story (no media, no highlight) omits those columns instead of nulling them', () => {
+    const rows = planStoryViewRows('ws', { accountUsername: 'me', stories: [{ pk: 's9', takenAt: '2026-09-26T08:00:00.000Z', status: 'ok', viewers: [{ pk: '1', username: 'a' }] }] }, { byUserId: new Map(), byHandle: new Map() }, new Set(), NOW)
+    const st = rows.stories[0]
+    for (const k of ['thumbnail_url', 'media_type', 'expiring_at', 'viewer_count', 'highlight_id', 'highlight_title', 'like_count']) expect(st).not.toHaveProperty(k)
+    expect(st).toMatchObject({ viewers_collected: 1, fetch_status: 'ok' })
+  })
+  it('an explicit null is still written (the client said "none")', () => {
+    const rows = planStoryViewRows('ws', { accountUsername: 'me', stories: [{ pk: 's9', takenAt: '2026-09-26T08:00:00.000Z', thumbnailUrl: null, status: 'ok', viewers: [] }] }, { byUserId: new Map(), byHandle: new Map() }, new Set(), NOW)
+    expect(rows.stories[0]).toHaveProperty('thumbnail_url', null)
+  })
+})
+
+describe('planLeadEnrichment', () => {
+  const pay = (viewers: StoryViewsPayload['stories'][number]['viewers'], status: 'ok' | 'error' = 'ok'): StoryViewsPayload => ({
+    accountUsername: 'me',
+    stories: [{ pk: 's1', takenAt: '2026-09-26T08:00:00.000Z', status, viewers }],
+  })
+  const pic = 'https://scontent.cdninstagram.com/p.jpg'
+
+  it('gives a handle-matched lead its Instagram id and picture', () => {
+    const out = planLeadEnrichment(pay([{ pk: '42', username: 'Bob', profilePicUrl: pic }]), { byUserId: new Map(), byHandle: new Map([['bob', 'lead-b']]) }, new Map([['lead-b', { userId: null, picUrl: null }]]))
+    expect(out).toEqual([{ leadId: 'lead-b', patch: { instagram_user_id: '42', instagram_profile_pic_url: pic } }])
+  })
+  it('writes nothing when the lead is already up to date', () => {
+    const out = planLeadEnrichment(pay([{ pk: '42', username: 'bob', profilePicUrl: pic }]), { byUserId: new Map([['42', 'lead-b']]), byHandle: new Map() }, new Map([['lead-b', { userId: '42', picUrl: pic }]]))
+    expect(out).toEqual([])
+  })
+  it('ignores unreadable lists and viewers who are not leads', () => {
+    expect(planLeadEnrichment(pay([{ pk: '42', username: 'bob', profilePicUrl: pic }], 'error'), { byUserId: new Map([['42', 'l']]), byHandle: new Map() }, new Map([['l', { userId: null, picUrl: null }]]))).toEqual([])
+    expect(planLeadEnrichment(pay([{ pk: '7', username: 'x', profilePicUrl: pic }]), { byUserId: new Map(), byHandle: new Map() }, new Map())).toEqual([])
   })
 })

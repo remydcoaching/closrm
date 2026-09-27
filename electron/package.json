@@ -42,10 +42,13 @@
       "target": [
         "dmg"
       ],
-      "category": "public.app-category.business"
+      "category": "public.app-category.business",
+      "icon": "build/icon.icns"
     },
     "directories": {
-      "output": "release"
-    }
+      "output": "release",
+      "buildResources": "build"
+    },
+    "icon": "build/icon.png"
   }
 }

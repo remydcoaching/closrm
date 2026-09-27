@@ -109,25 +109,56 @@ export function planStoryViewRows(
         })
       }
     }
+    // Fields the client didn't send (a re-read of an expired story carries
+    // no media; the live collector knows nothing about highlights) are left
+    // out so the upsert keeps what was stored — never overwritten with null.
+    const optional = (key: string, v: unknown) => (v === undefined ? {} : { [key]: v ?? null })
     stories.push({
       workspace_id: workspaceId,
       story_pk: story.pk,
       instagram_account_username: payload.accountUsername,
       taken_at: story.takenAt,
-      expiring_at: story.expiringAt ?? null,
-      media_type: story.mediaType ?? null,
-      thumbnail_url: story.thumbnailUrl ?? null,
-      viewer_count: story.viewerCount ?? null,
+      ...optional('expiring_at', story.expiringAt),
+      ...optional('media_type', story.mediaType),
+      ...optional('thumbnail_url', story.thumbnailUrl),
+      ...optional('viewer_count', story.viewerCount),
       viewers_collected: seen.size,
       last_collected_at: now,
-      highlight_id: story.highlightId ?? null,
-      highlight_title: story.highlightTitle ?? null,
-      like_count: story.likeCount ?? null,
+      ...optional('highlight_id', story.highlightId),
+      ...optional('highlight_title', story.highlightId === undefined ? undefined : story.highlightTitle),
+      ...optional('like_count', story.likeCount),
       fetch_status: readable ? 'ok' : 'error',
       fetch_error: readable ? null : (story.error ?? 'Liste des spectateurs illisible'),
     })
   }
   return { stories, viewers, interactions }
+}
+
+export interface LeadIgState {
+  userId: string | null
+  picUrl: string | null
+}
+
+/** Pure: Instagram id / profile picture to write on matched leads (only what changes). */
+export function planLeadEnrichment(
+  payload: StoryViewsPayload,
+  leads: LeadMatch,
+  current: Map<string, LeadIgState>,
+): { leadId: string; patch: Record<string, string> }[] {
+  const out = new Map<string, Record<string, string>>()
+  for (const story of payload.stories) {
+    if (story.status === 'error') continue
+    for (const v of story.viewers) {
+      const leadId = leads.byUserId.get(v.pk) ?? leads.byHandle.get(v.username.toLowerCase())
+      const state = leadId ? current.get(leadId) : undefined
+      if (!leadId || !state || out.has(leadId)) continue
+      const patch: Record<string, string> = {}
+      if (!state.userId) patch.instagram_user_id = v.pk
+      if (v.profilePicUrl && v.profilePicUrl !== state.picUrl) patch.instagram_profile_pic_url = v.profilePicUrl
+      if (Object.keys(patch).length > 0) out.set(leadId, patch)
+    }
+  }
+  return [...out].map(([leadId, patch]) => ({ leadId, patch }))
 }
 
 const CHUNK = 200
@@ -140,21 +171,32 @@ export async function persistStoryViews(supabase: SupabaseClient, workspaceId: s
   const handles = [...new Set(allViewers.map((v) => v.username.toLowerCase()))]
 
   const leads: LeadMatch = { byUserId: new Map(), byHandle: new Map() }
+  const current = new Map<string, LeadIgState>()
   for (let i = 0; i < userIds.length; i += CHUNK) {
     const { data } = await supabase
       .from('leads')
-      .select('id, instagram_user_id')
+      .select('id, instagram_user_id, instagram_profile_pic_url')
       .eq('workspace_id', workspaceId)
       .in('instagram_user_id', userIds.slice(i, i + CHUNK))
-    for (const l of data ?? []) if (l.instagram_user_id) leads.byUserId.set(l.instagram_user_id, l.id)
+    for (const l of data ?? []) {
+      if (!l.instagram_user_id) continue
+      leads.byUserId.set(l.instagram_user_id, l.id)
+      current.set(l.id, { userId: l.instagram_user_id, picUrl: l.instagram_profile_pic_url ?? null })
+    }
   }
   for (let i = 0; i < handles.length; i += CHUNK) {
     const { data } = await supabase
       .from('leads')
-      .select('id, instagram_handle')
+      .select('id, instagram_handle, instagram_user_id, instagram_profile_pic_url')
       .eq('workspace_id', workspaceId)
       .in('instagram_handle', handles.slice(i, i + CHUNK))
-    for (const l of data ?? []) if (l.instagram_handle) leads.byHandle.set((l.instagram_handle as string).toLowerCase(), l.id)
+    for (const l of data ?? []) {
+      // A lead already tied to another Instagram id is someone else who
+      // used this username before: the id wins, never the handle.
+      if (!l.instagram_handle || l.instagram_user_id) continue
+      leads.byHandle.set((l.instagram_handle as string).toLowerCase(), l.id)
+      current.set(l.id, { userId: null, picUrl: l.instagram_profile_pic_url ?? null })
+    }
   }
 
   const matchedLeadIds = [...new Set([...leads.byUserId.values(), ...leads.byHandle.values()])]
@@ -180,8 +222,14 @@ export async function persistStoryViews(supabase: SupabaseClient, workspaceId: s
     const errStories = rows.stories
       .filter((r) => r.fetch_status === 'error')
       .map(({ viewers_collected: _v, ...r }) => r)
-    for (const batch of [okStories, errStories]) {
-      if (batch.length === 0) continue
+    // One upsert per set of columns: rows sent together must carry the same
+    // keys, or PostgREST would write null into the ones a row lacks.
+    const bySignature = new Map<string, Record<string, unknown>[]>()
+    for (const r of [...okStories, ...errStories]) {
+      const sig = Object.keys(r).sort().join(',')
+      bySignature.set(sig, [...(bySignature.get(sig) ?? []), r])
+    }
+    for (const batch of bySignature.values()) {
       let rowsToWrite = batch
       let { error } = await supabase.from('story_view_stories').upsert(rowsToWrite, { onConflict: 'workspace_id,story_pk' })
       for (let attempt = 0; error && attempt < 6; attempt++) {
@@ -212,10 +260,22 @@ export async function persistStoryViews(supabase: SupabaseClient, workspaceId: s
     if (error) errors.push(`interactions ${i}: ${error.message}`)
   }
 
+  // Leads seen in a viewer list get their Instagram id (stable, unlike the
+  // username) and a fresh profile picture.
+  const updates = planLeadEnrichment(payload, leads, current)
+  for (let i = 0; i < updates.length; i += 10) {
+    const results = await Promise.all(
+      updates.slice(i, i + 10).map(({ leadId, patch }) => supabase.from('leads').update(patch).eq('workspace_id', workspaceId).eq('id', leadId)),
+    )
+    const failed = results.find((r) => r.error)
+    if (failed?.error) errors.push(`leads: ${failed.error.message}`)
+  }
+
   return {
     stories: rows.stories.length,
     storiesUnreadable: rows.stories.filter((r) => r.fetch_status === 'error').length,
     viewers: rows.viewers.length,
+    leadsEnriched: updates.length,
     leadsMatched: new Set(rows.viewers.map((v) => v.matched_lead_id).filter(Boolean)).size,
     interactionsAdded: errors.some((e) => e.startsWith('interactions')) ? 0 : rows.interactions.length,
     errors,

@@ -956,6 +956,27 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible
 - **Statut :** En attente de validation
 
+### A-049-3 · J'aime des stories à la une (parité Insyder)
+- **Contexte :** T-049 — Instagram ne donne plus les spectateurs d'une story à la une après 48 h ; Insyder affiche à la place les personnes qui ont **aimé** chaque story à la une.
+- **Description :** Tester (session réelle, 1 requête) si `/api/v1/media/{story_pk}/likers/` renvoie les likers d'une story à la une ancienne depuis la page Instagram cachée ; si oui, les stocker comme interactions `like` sur la story et les afficher dans « Vos stories à la une ». Ne rien stocker si l'endpoint ne répond pas.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### A-049-4 · Copie des photos de profil IG dans Supabase Storage
+- **Contexte :** T-049 — les URL du CDN Instagram expirent (paramètre `oe`) ; la photo retombe alors sur les initiales jusqu'à la prochaine collecte.
+- **Description :** Copier la photo (150 px, ~8 Ko) dans un bucket au moment de l'enrichissement du lead, comme `story-media`.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-049-5 · Photos IG sur le web
+- **Contexte :** T-049 — le même en-tête CORP bloque les photos sur closrm.vercel.app (le correctif Electron ne s'applique pas au navigateur).
+- **Description :** Servir les photos via Storage (A-049-4) ou un proxy image authentifié.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
 ---
 
-*Mis à jour le 2026-09-14 par Claude Code — ClosRM*
+*Mis à jour le 2026-09-27 par Claude Code — ClosRM*

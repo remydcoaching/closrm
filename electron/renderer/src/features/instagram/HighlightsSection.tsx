@@ -10,8 +10,11 @@ import { api } from '../../lib/api-client'
 import { useStoryCollector } from '../../lib/story-collector'
 import { LoadingState, EmptyState } from '../../design-system/States'
 import type { ArchivedStory, HighlightCollection } from '../../lib/electron-bridge'
-import { StoryCard } from './StoriesPage'
-import { finalStoryPks, type KnownStory } from './story-scan'
+import { StoryCard, StoryCarousel } from './StoriesPage'
+import { effectiveState, finalStoryPks, storyViewerNote, viewersOfStories, type HighlightViewersReport, type KnownStory, type StoryViewerState } from './story-scan'
+import { TableCard, ContactCell } from '../../design-system/TableCard'
+import { Avatar } from '../../design-system/Avatar'
+import { shortDate } from '../leads/status'
 import { invalidate } from '../../lib/query-cache'
 import './stories.css'
 
@@ -31,7 +34,6 @@ export function HighlightsSection() {
   const [items, setItems] = useState<Record<string, ArchivedStory[]>>({})
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [collected, setCollected] = useState<Map<string, number>>(new Map())
   const { status } = useStoryCollector()
   const connected = !!status?.connected
 
@@ -63,12 +65,40 @@ export function HighlightsSection() {
     }
   }, [bridge, connected])
 
+  // Once the collections' stories are known: tag the stored stories with
+  // their collection, then read who ClosRM saw viewing each of them.
+  const [report, setReport] = useState<HighlightViewersReport | null>(null)
+  const [reportVersion, setReportVersion] = useState(0)
+  const allPks = useMemo(() => [...new Set(Object.values(items).flatMap((list) => list.map((st) => st.pk)))].sort(), [items])
+  const allPksKey = allPks.join(',')
   useEffect(() => {
-    api
-      .get<{ data: { stories: { story_pk: string; viewers_collected: number }[] } }>('/api/instagram/story-views?stories=100')
-      .then((res) => setCollected(new Map(res.data.stories.map((s) => [s.story_pk, s.viewers_collected]))))
-      .catch(() => setCollected(new Map()))
-  }, [])
+    if (!collections || allPks.length === 0) return
+    let cancelled = false
+    const tags = Object.entries(items).flatMap(([id, list]) => list.map((st) => ({ pk: st.pk, highlightId: id, highlightTitle: collections.find((c) => c.id === id)?.title ?? null })))
+    ;(async () => {
+      await api.post('/api/instagram/story-views/highlights', { items: tags }).catch(() => null)
+      const res = await api
+        .get<{ data: HighlightViewersReport }>(`/api/instagram/story-views/highlights?pks=${allPksKey}`)
+        .catch(() => null)
+      if (!cancelled) setReport(res?.data ?? { stories: [], viewers: [] })
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allPksKey, collections, reportVersion])
+
+  const stateOf = useMemo(() => new Map((report?.stories ?? []).map((st) => [st.pk, st])), [report])
+  const noteOf = (st: ArchivedStory): string | undefined => {
+    if (!report) return undefined
+    const r = stateOf.get(st.pk)
+    return storyViewerNote(effectiveState(r?.state, st.takenAt), r?.viewersCollected ?? null)
+  }
+  const countStates = (list: ArchivedStory[]) => {
+    const c: Record<StoryViewerState, number> = { collected: 0, out_of_window: 0, error: 0, unknown: 0 }
+    for (const st of list) c[effectiveState(stateOf.get(st.pk)?.state, st.takenAt)] += 1
+    return c
+  }
 
   const titleOf = useMemo(() => new Map((collections ?? []).map((c) => [c.id, c.title])), [collections])
   const collectionOf = useMemo(() => {
@@ -84,7 +114,6 @@ export function HighlightsSection() {
   }, [items])
 
   const selectedItems = selected ? items[selected] : undefined
-  const topSelected = useMemo(() => [...(selectedItems ?? [])].sort((a, b) => rankValue(b) - rankValue(a)).slice(0, 5), [selectedItems])
 
   // ─── Nominative viewers of highlight stories ───
   const [scanning, setScanning] = useState(false)
@@ -103,14 +132,9 @@ export function HighlightsSection() {
       }
       if (res.stories.length === 0) {
         setScanReport(
-          [
-            res.tooOld > 0
-              ? `${res.tooOld} stories à la une publiées il y a plus de 48 h : Instagram ne donne plus leurs spectateurs (vérifié : il renvoie une liste vide). Les spectateurs de vos prochaines stories sont collectés automatiquement pendant leurs 48 h, puis gardés.`
-              : null,
-            res.skipped > 0 ? `${res.skipped} déjà collectées.` : null,
-          ]
-            .filter(Boolean)
-            .join(' ') || 'Aucune story à la une accessible.',
+          res.tooOld > 0 || res.skipped > 0
+            ? `Aucune story à la une n'est dans sa fenêtre de 48 h : Instagram ne fournit plus leurs spectateurs (il renvoie une liste vide, même à vous). Les spectateurs de vos prochaines stories sont collectés automatiquement pendant 48 h et restent attachés à la story quand vous la mettez à la une.`
+            : 'Aucune story à la une accessible.',
         )
         return
       }
@@ -142,7 +166,6 @@ export function HighlightsSection() {
           `${withViewers} avec des spectateurs (${d.viewers} vues, ${d.leadsMatched} leads reconnus)`,
           readableEmpty > 0 ? `${readableEmpty} sans spectateur visible (Instagram ne les liste que 48 h après publication)` : null,
           d.storiesUnreadable > 0 ? `${d.storiesUnreadable} illisibles (erreur Instagram, réessayées au prochain scan)` : null,
-          res.skipped > 0 ? `${res.skipped} déjà collectées, non relues` : null,
           res.tooOld > 0 ? `${res.tooOld} de plus de 48 h : spectateurs plus fournis par Instagram` : null,
           res.stoppedEarly ? `arrêt anticipé : ${FAILURE[res.stoppedEarly] ?? res.stoppedEarly}` : null,
           d.errors.length > 0 ? `enregistrement partiel : ${d.errors[0]}` : null,
@@ -151,6 +174,7 @@ export function HighlightsSection() {
           .join(' · '),
       )
       invalidate((k) => k.startsWith('/api/instagram/story-views') || k.startsWith('/api/desktop/leads/'))
+      setReportVersion((v) => v + 1)
     } catch (err) {
       setScanReport(err instanceof Error ? err.message : 'Récupération impossible')
     } finally {
@@ -198,7 +222,7 @@ export function HighlightsSection() {
                   story={st}
                   rank={i + 1}
                   subtitle={collectionOf.get(st.pk) ? `dans ${titleOf.get(collectionOf.get(st.pk) as string)}` : undefined}
-                  collected={collected.get(st.pk)}
+                  viewerNote={noteOf(st)}
                   onClick={() => open(st)}
                 />
               ))}
@@ -220,21 +244,107 @@ export function HighlightsSection() {
           {selected && (
             <>
               <div className="story-section-title story-section-title--sub">
-                Top 5 de « {titleOf.get(selected) || 'Sans titre'} » <span>{selectedItems ? `${selectedItems.length} stories dans la collection` : 'chargement…'}</span>
+                « {titleOf.get(selected) || 'Sans titre'} » <span>{selectedItems ? `${selectedItems.length} stories — cliquez une story pour voir ses spectateurs` : 'chargement…'}</span>
               </div>
               {!selectedItems ? (
                 <LoadingState label="Chargement de la collection…" />
               ) : (
-                <div className="story-row">
-                  {topSelected.map((st, i) => (
-                    <StoryCard key={st.pk} story={st} rank={i + 1} collected={collected.get(st.pk)} onClick={() => open(st)} />
-                  ))}
-                </div>
+                <>
+                  {report && <CollectionSummary counts={countStates(selectedItems)} />}
+                  <StoryCarousel>
+                    {[...selectedItems]
+                      .sort((a, b) => b.takenAt.localeCompare(a.takenAt))
+                      .map((st) => (
+                        <StoryCard key={st.pk} story={st} viewerNote={noteOf(st)} onClick={() => open(st)} />
+                      ))}
+                  </StoryCarousel>
+                  <CollectionViewers
+                    title={titleOf.get(selected) || 'Sans titre'}
+                    viewers={report ? viewersOfStories(report.viewers, selectedItems.map((st) => st.pk)) : null}
+                    storyCount={selectedItems.length}
+                    onOpenLead={(id) => navigate(`/leads/${id}`)}
+                  />
+                </>
               )}
             </>
           )}
         </>
       )}
     </section>
+  )
+}
+
+function CollectionSummary({ counts }: { counts: Record<StoryViewerState, number> }) {
+  const parts = [
+    counts.collected > 0 ? `${counts.collected} avec spectateurs collectés` : null,
+    counts.out_of_window > 0
+      ? `${counts.out_of_window} publiée${counts.out_of_window > 1 ? 's' : ''} avant la collecte : Instagram ne donne les spectateurs que pendant 48 h, il ne les fournit plus (même dans l'app Instagram)`
+      : null,
+    counts.error > 0 ? `${counts.error} illisible${counts.error > 1 ? 's' : ''} (réessayée${counts.error > 1 ? 's' : ''} au prochain scan)` : null,
+    counts.unknown > 0 ? `${counts.unknown} en attente de collecte` : null,
+  ].filter(Boolean)
+  return <p className="ds-muted story-scan-report">{parts.join(' · ')}</p>
+}
+
+type CollectionViewer = ReturnType<typeof viewersOfStories>[number]
+
+function CollectionViewers({
+  title,
+  viewers,
+  storyCount,
+  onOpenLead,
+}: {
+  title: string
+  viewers: CollectionViewer[] | null
+  storyCount: number
+  onOpenLead: (leadId: string) => void
+}) {
+  return (
+    <TableCard title={`Spectateurs de « ${title} »`} subtitle={viewers ? `${viewers.length} personne${viewers.length > 1 ? 's' : ''} identifiée${viewers.length > 1 ? 's' : ''}` : undefined}>
+      {viewers === null && <LoadingState label="Chargement des spectateurs…" />}
+      {viewers && viewers.length === 0 && (
+        <EmptyState
+          title="Aucun spectateur identifié pour cette collection"
+          description="Instagram ne liste les spectateurs d'une story que pendant les 48 h qui suivent sa publication. Les stories publiées depuis que ClosRM Desktop est ouvert sont collectées automatiquement, et leurs spectateurs apparaîtront ici quand vous les mettrez à la une."
+        />
+      )}
+      {viewers && viewers.length > 0 && (
+        <table className="ds-table">
+          <thead>
+            <tr>
+              <th>Contact</th>
+              <th className="ds-num-cell">Stories vues</th>
+              <th className="ds-num-cell">♥</th>
+              <th>Lead</th>
+              <th className="ds-num-cell">Dernière observation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {viewers.map((v) => {
+              const name = v.leadName || v.fullName || v.username
+              return (
+                <tr key={v.instagramUserId} className={v.leadId ? 'ds-row-clickable' : undefined} onClick={() => v.leadId && onOpenLead(v.leadId)}>
+                  <td>
+                    <ContactCell name={name} handle={v.username} avatar={<Avatar name={name} size={28} src={v.profilePicUrl} />} />
+                  </td>
+                  <td className="ds-num-cell">
+                    <span className="ds-num">
+                      {v.storiesSeen} sur {storyCount}
+                    </span>
+                  </td>
+                  <td className="ds-num-cell">
+                    <span className="ds-num">{v.liked > 0 ? v.liked : '—'}</span>
+                  </td>
+                  <td>{v.leadId ? 'Oui' : <span className="ds-muted">Pas encore</span>}</td>
+                  <td className="ds-num-cell">
+                    <span className="ds-num">{shortDate(v.lastObservedAt)}</span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
+    </TableCard>
   )
 }

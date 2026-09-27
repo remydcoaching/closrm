@@ -26,6 +26,9 @@ const IG = 'https://www.instagram.com'
 // Public app id of Instagram's own web client (sent by instagram.com itself).
 const IG_WEB_APP_ID = '936619743392459'
 const MAX_VIEWER_PAGES_PER_STORY = 40
+// Instagram lists a story's viewers during its first 48 h only (verified
+// live: older stories answer 0 users / viewer_count null).
+const VIEWER_WINDOW_MS = 48 * 3_600_000
 
 export interface InstagramSessionStatus {
   connected: boolean
@@ -33,8 +36,16 @@ export interface InstagramSessionStatus {
   username: string | null
 }
 
+/** A live story (full media) or a re-read expired one (pk + viewers only: the rest stays as stored). */
+export type CollectedStory = (Omit<OwnStory, 'viewers' | 'likeCount'> | { pk: string; takenAt: string }) & {
+  likeCount?: number | null
+  viewers: StoryViewer[]
+  status: 'ok' | 'error'
+  error?: string
+}
+
 export type CollectResult =
-  | { ok: true; accountUsername: string; stories: OwnStory[] }
+  | { ok: true; accountUsername: string; stories: CollectedStory[]; stoppedEarly: InstagramFailure | null }
   | { ok: false; reason: InstagramFailure; message: string }
 
 let cachedUsername: { userId: string; username: string } | null = null
@@ -250,8 +261,28 @@ export async function logout(): Promise<void> {
   await igSession().clearStorageData()
 }
 
-/** Reads the coach's live stories and every viewer of each. */
-export async function collectStoryViewers(): Promise<CollectResult> {
+/** Every page of one story's viewer list (pages stay sequential). */
+async function readViewers(storyPk: string, pauseFirst: boolean): Promise<StoryViewer[]> {
+  const viewers: StoryViewer[] = []
+  let maxId: string | null = null
+  for (let page = 0; page < MAX_VIEWER_PAGES_PER_STORY; page++) {
+    if (page > 0 || pauseFirst) await humanPause()
+    const parsed = parseViewersPage(await igGet(viewersPath(storyPk, maxId)))
+    viewers.push(...parsed.viewers)
+    if (!parsed.nextMaxId || parsed.viewers.length === 0) break
+    maxId = parsed.nextMaxId
+  }
+  return viewers
+}
+
+/**
+ * Reads the coach's live stories and every viewer of each, plus `recheck`:
+ * stories ClosRM already stores that are no longer live (> 24 h) but still
+ * inside Instagram's 48 h viewer window — their list keeps growing until
+ * then. A story whose list can't be read comes back with status 'error'
+ * (never as 0 viewers); a throttle/checkpoint stops the run.
+ */
+export async function collectStoryViewers(recheck: { pk: string; takenAt: string }[] = []): Promise<CollectResult> {
   if (collecting) return { ok: false, reason: 'error', message: 'Collecte déjà en cours' }
   collecting = true
   try {
@@ -261,28 +292,35 @@ export async function collectStoryViewers(): Promise<CollectResult> {
     const reel = await igGet(`/api/v1/feed/reels_media/?reel_ids=${status.userId}`)
     const owner = reelOwnerUsername(reel, status.userId)
     if (owner) cachedUsername = { userId: status.userId, username: owner }
-    const items = parseOwnReel(reel, status.userId)
-    // Two stories at a time (pages of one story stay sequential).
-    const stories: OwnStory[] = new Array(items.length)
+    const live = parseOwnReel(reel, status.userId)
+    const livePks = new Set(live.map((s) => s.pk))
+    const queue: (Omit<OwnStory, 'viewers'> | { pk: string; takenAt: string })[] = [
+      ...live,
+      ...recheck.filter((r) => !livePks.has(r.pk) && Date.now() - new Date(r.takenAt).getTime() < VIEWER_WINDOW_MS),
+    ]
+    const stories: CollectedStory[] = []
+    let stoppedEarly: InstagramFailure | null = null
     let next = 0
+    // Two stories at a time.
     const worker = async () => {
-      while (next < items.length) {
+      while (next < queue.length && !stoppedEarly) {
         const i = next++
-        const item = items[i]
-        const viewers: StoryViewer[] = []
-        let maxId: string | null = null
-        for (let page = 0; page < MAX_VIEWER_PAGES_PER_STORY; page++) {
-          if (page > 0 || i > 1) await humanPause()
-          const parsed = parseViewersPage(await igGet(viewersPath(item.pk, maxId)))
-          viewers.push(...parsed.viewers)
-          if (!parsed.nextMaxId || parsed.viewers.length === 0) break
-          maxId = parsed.nextMaxId
+        const item = queue[i]
+        try {
+          const viewers = await readViewers(item.pk, i > 1)
+          stories.push({ ...item, likeCount: viewers.filter((v) => v.hasLiked).length, viewers, status: 'ok' })
+        } catch (err) {
+          const reason = err instanceof IgError ? err.reason : 'error'
+          stories.push({ ...item, viewers: [], status: 'error', error: err instanceof Error ? err.message : String(err) })
+          if (reason === 'rate_limited' || reason === 'checkpoint' || reason === 'not_connected') stoppedEarly = reason
         }
-        stories[i] = { ...item, likeCount: viewers.filter((v) => v.hasLiked).length, viewers }
       }
     }
     await Promise.all([worker(), worker()])
-    return { ok: true, accountUsername: owner ?? status.username ?? status.userId, stories }
+    if (stoppedEarly && !stories.some((s) => s.status === 'ok')) {
+      return { ok: false, reason: stoppedEarly, message: stories.find((s) => s.error)?.error ?? 'Instagram a interrompu la collecte' }
+    }
+    return { ok: true, accountUsername: owner ?? status.username ?? status.userId, stories, stoppedEarly }
   } catch (err) {
     if (err instanceof IgError) return { ok: false, reason: err.reason, message: err.message }
     return { ok: false, reason: 'error', message: err instanceof Error ? err.message : 'Erreur inconnue' }
@@ -409,7 +447,6 @@ export type HighlightViewersResult =
   | { ok: false; reason: InstagramFailure; message: string }
 
 const VIEWER_CONCURRENCY = 2
-const VIEWER_WINDOW_MS = 48 * 3_600_000
 
 /**
  * Viewers of every story in the coach's highlights. Incremental: stories in
@@ -463,16 +500,9 @@ export async function collectHighlightViewers(skipPks: string[]): Promise<Highli
   const worker = async () => {
     while (next < queue.length && !stoppedEarly) {
       const story = queue[next++]
-      const viewers: StoryViewer[] = []
+      let viewers: StoryViewer[] = []
       try {
-        let maxId: string | null = null
-        for (let page = 0; page < MAX_VIEWER_PAGES_PER_STORY; page++) {
-          await humanPause()
-          const parsed = parseViewersPage(await igGet(viewersPath(story.pk, maxId)))
-          viewers.push(...parsed.viewers)
-          if (!parsed.nextMaxId || parsed.viewers.length === 0) break
-          maxId = parsed.nextMaxId
-        }
+        viewers = await readViewers(story.pk, true)
         results.push({ ...story, likeCount: story.likeCount ?? viewers.filter((v) => v.hasLiked).length, status: 'ok', error: null, viewers })
       } catch (err) {
         const reason = err instanceof IgError ? err.reason : 'error'

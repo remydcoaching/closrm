@@ -19,9 +19,23 @@ import * as instagramSession from './instagram-session'
 
 
 const DEEP_LINK_SCHEME = 'closrm'
+const INSTAGRAM_CDN = /(^|\.)(cdninstagram\.com|fbcdn\.net)$/i
+
+function isInstagramCdn(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' && INSTAGRAM_CDN.test(u.hostname)
+  } catch {
+    return false
+  }
+}
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 
 let mainWindow: BrowserWindow | null = null
+let quitting = false
+app.on('before-quit', () => {
+  quitting = true
+})
 /** A deep link received before the window exists (cold start) — replayed once the renderer is ready. */
 let pendingDeepLink: string | null = null
 
@@ -47,6 +61,7 @@ app.on('second-instance', (_event, argv) => {
   if (link) forwardDeepLink(link)
   else if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
     mainWindow.focus()
   }
 })
@@ -124,6 +139,15 @@ function createWindow() {
     win.loadFile(path.join(__dirname, '../renderer/index.html'))
   }
 
+  // macOS: closing the window hides it (the app keeps running in the Dock),
+  // so the story-viewer collection keeps capturing stories during their
+  // 48 h window. Cmd+Q really quits.
+  win.on('close', (e) => {
+    if (process.platform === 'darwin' && !quitting) {
+      e.preventDefault()
+      win.hide()
+    }
+  })
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
   })
@@ -144,7 +168,16 @@ const SESSION_FILE = path.join(app.getPath('userData'), 'session.enc')
 ipcMain.handle('closrm:ig:status', () => instagramSession.getStatus())
 ipcMain.handle('closrm:ig:login', () => instagramSession.login(mainWindow))
 ipcMain.handle('closrm:ig:logout', () => instagramSession.logout())
-ipcMain.handle('closrm:ig:collect-stories', () => instagramSession.collectStoryViewers())
+ipcMain.handle('closrm:ig:collect-stories', (_e, recheck: unknown) =>
+  instagramSession.collectStoryViewers(
+    Array.isArray(recheck)
+      ? recheck
+          .slice(0, 50)
+          .filter((r): r is { pk: string; takenAt: string } => !!r && /^\d{1,30}$/.test(String(r.pk)) && !Number.isNaN(Date.parse(String(r.takenAt))))
+          .map((r) => ({ pk: String(r.pk), takenAt: String(r.takenAt) }))
+      : [],
+  ),
+)
 ipcMain.handle('closrm:ig:highlights', (_e, force?: boolean) => instagramSession.highlightsTray(!!force))
 ipcMain.handle('closrm:ig:highlight-items', (_e, ids: string[]) => instagramSession.highlightItems(Array.isArray(ids) ? ids.slice(0, 40).map(String) : []))
 ipcMain.handle('closrm:ig:collect-highlight-viewers', (_e, skipPks: unknown) =>
@@ -193,9 +226,17 @@ app.whenReady().then(() => {
   // Strict CSP on the renderer — no inline scripts beyond what Vite's dev
   // server requires, no remote script sources besides the ClosRM API/Supabase.
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const headers = { ...details.responseHeaders }
+    // Instagram's CDN answers every image with
+    // Cross-Origin-Resource-Policy: same-origin, so Chromium refuses to
+    // display profile pictures and story media anywhere outside
+    // instagram.com (ERR_BLOCKED_BY_RESPONSE). Dropped for those hosts only.
+    if (isInstagramCdn(details.url)) {
+      for (const k of Object.keys(headers)) if (k.toLowerCase() === 'cross-origin-resource-policy') delete headers[k]
+    }
     callback({
       responseHeaders: {
-        ...details.responseHeaders,
+        ...headers,
         'Content-Security-Policy': [
           "default-src 'self'; " +
             "script-src 'self' 'unsafe-inline'; " + // 'unsafe-inline' relaxed only for Vite HMR in dev; tighten before production build
@@ -211,6 +252,12 @@ app.whenReady().then(() => {
     })
   })
 
+  // Dev runs the stock Electron binary: show ClosRM's icon in the Dock
+  // (packaged builds take build/icon.icns from electron-builder).
+  if (!app.isPackaged && process.platform === 'darwin') {
+    app.dock?.setIcon(path.join(__dirname, '../../build/icon.png'))
+  }
+
   createWindow()
 
   // Cold start on Windows/Linux: the deep link is in our own argv.
@@ -218,7 +265,8 @@ app.whenReady().then(() => {
   if (startupLink) forwardDeepLink(startupLink)
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show()
+    else createWindow()
   })
 })
 

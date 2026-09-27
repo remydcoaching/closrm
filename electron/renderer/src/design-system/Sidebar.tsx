@@ -188,7 +188,13 @@ export function Sidebar() {
     <nav className="ds-sidebar-rail">
       <div className="ds-sidebar-card ds-sidebar-card--flex">
         <div className="ds-sidebar-brand">
-          <div className="ds-sidebar-logo">C</div>
+          <div className="ds-sidebar-logo" aria-label="ClosRM">
+            {/* Same mark as the app icon (electron/build/icon.png). */}
+            <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+              <path d="M19.55 20.05 A6.8 6.8 0 1 1 19.55 9.95" fill="none" stroke="#fff" strokeWidth="3.35" strokeLinecap="round" />
+              <circle cx="15" cy="15" r="2.1" fill="#fff" />
+            </svg>
+          </div>
         </div>
 
         <div className="ds-sidebar-group">

@@ -6,6 +6,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from './api-client'
 import type { CollectStoriesResult, InstagramSessionStatus } from './electron-bridge'
+import { storiesToRecheck, type KnownStory } from '../features/instagram/story-scan'
+import { invalidate } from './query-cache'
 
 const INTERVAL_MS = 30 * 60_000
 const BACKOFF_MS = 60 * 60_000
@@ -77,7 +79,9 @@ export function StoryCollectorProvider({ children }: { children: ReactNode }) {
     running.current = true
     setCollecting(true)
     try {
-      const result: CollectStoriesResult = await bridge.collectStories()
+      // Stories stored earlier that are still in Instagram's 48 h viewer window.
+      const known = await api.get<{ data: KnownStory[] }>('/api/instagram/story-views?known=1').catch(() => ({ data: [] as KnownStory[] }))
+      const result: CollectStoriesResult = await bridge.collectStories(storiesToRecheck(known.data))
       if (!result.ok) {
         if (result.reason === 'checkpoint' || result.reason === 'rate_limited') {
           const until = Date.now() + BACKOFF_MS
@@ -91,7 +95,7 @@ export function StoryCollectorProvider({ children }: { children: ReactNode }) {
       setPausedUntil(null)
       writeJson(PAUSED_UNTIL_KEY, null)
       if (result.stories.length === 0) {
-        record({ at: new Date().toISOString(), ok: true, stories: 0, viewers: 0, leadsMatched: 0, message: 'Aucune story en ligne en ce moment.' })
+        record({ at: new Date().toISOString(), ok: true, stories: 0, viewers: 0, leadsMatched: 0, message: 'Aucune story en ligne ni dans sa fenêtre de 48 h en ce moment.' })
         return
       }
       const res = await api.post<{ data: { stories: number; viewers: number; leadsMatched: number; errors: string[] } }>('/api/instagram/story-views', {
@@ -104,8 +108,14 @@ export function StoryCollectorProvider({ children }: { children: ReactNode }) {
         stories: res.data.stories,
         viewers: res.data.viewers,
         leadsMatched: res.data.leadsMatched,
-        message: res.data.errors.length > 0 ? `Enregistrement partiel : ${res.data.errors[0]}` : null,
+        message:
+          res.data.errors.length > 0
+            ? `Enregistrement partiel : ${res.data.errors[0]}`
+            : result.stoppedEarly
+              ? `Collecte interrompue : ${FAILURE_MESSAGE[result.stoppedEarly] ?? result.stoppedEarly}`
+              : null,
       })
+      invalidate((k) => k.startsWith('/api/instagram/story-views') || k.startsWith('/api/desktop/leads'))
     } catch (err) {
       record({ at: new Date().toISOString(), ok: false, stories: 0, viewers: 0, leadsMatched: 0, message: err instanceof Error ? err.message : 'La collecte a échoué.' })
     } finally {

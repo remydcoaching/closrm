@@ -32,18 +32,24 @@ export type HighlightViewersResult =
   | { ok: true; accountUsername: string; stories: HighlightStoryResult[]; skipped: number; tooOld: number; stoppedEarly: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error' | null }
   | { ok: false; reason: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error'; message: string }
 
+/** A live story (full media) or a re-read expired one (pk + viewers only). */
 export interface CollectedStory {
   pk: string
   takenAt: string
-  expiringAt: string | null
-  mediaType: 'image' | 'video' | null
-  thumbnailUrl: string | null
-  viewerCount: number | null
+  expiringAt?: string | null
+  mediaType?: 'image' | 'video' | null
+  thumbnailUrl?: string | null
+  videoUrl?: string | null
+  viewerCount?: number | null
+  likeCount?: number | null
   viewers: StoryViewerData[]
+  /** 'error' = the list could not be read (never shown as 0 viewers). */
+  status: 'ok' | 'error'
+  error?: string
 }
 
 export type CollectStoriesResult =
-  | { ok: true; accountUsername: string; stories: CollectedStory[] }
+  | { ok: true; accountUsername: string; stories: CollectedStory[]; stoppedEarly: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error' | null }
   | { ok: false; reason: 'not_connected' | 'checkpoint' | 'rate_limited' | 'error'; message: string }
 
 export interface ArchivedStory {
@@ -80,7 +86,8 @@ export interface ClosRMBridge {
     status: () => Promise<InstagramSessionStatus>
     login: () => Promise<InstagramSessionStatus>
     logout: () => Promise<void>
-    collectStories: () => Promise<CollectStoriesResult>
+    /** Live stories + `recheck` (expired stories still inside the 48 h viewer window). */
+    collectStories: (recheck?: { pk: string; takenAt: string }[]) => Promise<CollectStoriesResult>
     storyArchive: (force?: boolean) => Promise<StoryArchiveResult>
     highlights: (force?: boolean) => Promise<HighlightsResult>
     collectHighlightViewers: (skipPks: string[]) => Promise<HighlightViewersResult>
