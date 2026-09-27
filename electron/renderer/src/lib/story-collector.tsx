@@ -9,7 +9,12 @@ import type { CollectStoriesResult, InstagramSessionStatus } from './electron-br
 import { storiesToRecheck, type KnownStory } from '../features/instagram/story-scan'
 import { invalidate } from './query-cache'
 
-const INTERVAL_MS = 30 * 60_000
+// Randomized wake-ups between 15 and 60 min (same policy as Insyder's
+// "réveils cookie 15–60 min randomisés"): no fixed rhythm for Instagram to
+// spot, and a story is still read many times within its 48 h window.
+const MIN_INTERVAL_MS = 15 * 60_000
+const MAX_INTERVAL_MS = 60 * 60_000
+export const nextWakeUpMs = (rand = Math.random()) => MIN_INTERVAL_MS + rand * (MAX_INTERVAL_MS - MIN_INTERVAL_MS)
 const BACKOFF_MS = 60 * 60_000
 const LAST_RUN_KEY = 'closrm:story-collector:last-run'
 const PAUSED_UNTIL_KEY = 'closrm:story-collector:paused-until'
@@ -128,19 +133,28 @@ export function StoryCollectorProvider({ children }: { children: ReactNode }) {
     bridge?.status().then(setStatus).catch(() => setStatus({ connected: false, userId: null, username: null }))
   }, [bridge])
 
-  // Auto-collect: right away if the last run is older than the interval,
-  // then every INTERVAL_MS — unless paused after a challenge/rate limit.
+  // Auto-collect: right away if the last run is older than the minimum
+  // interval, then at a random 15–60 min wake-up — unless paused after a
+  // challenge/rate limit.
   useEffect(() => {
     if (!status?.connected) return
-    const tick = () => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let stopped = false
+    const schedule = (ms: number) => {
+      if (!stopped) timer = setTimeout(tick, ms)
+    }
+    const tick = async () => {
       const paused = readJson<number>(PAUSED_UNTIL_KEY)
-      if (paused && paused > Date.now()) return
       const last = readJson<CollectorRun>(LAST_RUN_KEY)
-      if (!last || Date.now() - new Date(last.at).getTime() >= INTERVAL_MS - 60_000) collectNow()
+      if (paused && paused > Date.now()) return schedule(paused - Date.now() + 60_000)
+      if (!last || Date.now() - new Date(last.at).getTime() >= MIN_INTERVAL_MS) await collectNow()
+      schedule(nextWakeUpMs())
     }
     tick()
-    const id = setInterval(tick, INTERVAL_MS)
-    return () => clearInterval(id)
+    return () => {
+      stopped = true
+      if (timer) clearTimeout(timer)
+    }
   }, [status?.connected, collectNow])
 
   const connect = useCallback(async () => {

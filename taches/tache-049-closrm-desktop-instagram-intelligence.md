@@ -45,5 +45,15 @@ L'ancien 107_backfill_setting_processes (copie de develop 100) est supprimé.
 - Frise Parcours : miniature de story contrainte au rond de 26 px (elle s'affichait en plein écran une fois les images débloquées).
 - Logo : `electron/build/icon.png` + `icon.icns` (dégradé de marque, « C » + pastille), icône Dock en dev, même marque dans la sidebar.
 
+## Analyse d'Insyder (app installée, 2026-09-27)
+- **Architecture** : le desktop capture les cookies IG (sessionid…), l'UA et le pays → envoyés au backend (« cookie chiffré en vault », Aurora). Les scans tournent côté serveur (AWS Lambda + Step Functions) derrière un proxy résidentiel Evomi du pays de l'utilisateur. La lecture en page cachée (`fetchStats`) n'est qu'un chemin local.
+- **Données publiques** (likers, commentaires, profils, abonnés) : **HikerAPI**, « scan public toutes les ~60 min », 1 007 appels ≈ 1 $ par scan (88 % commentaires), ≈ 56 $/mois/compte.
+- **Session (cookie)** : seulement les données réservées au propriétaire (spectateurs de stories), « réveils cookie 15–60 min randomisés, à la une à sa propre cadence », seuils en base (scan_policy).
+- **Réponses/réactions aux stories** : webhook Meta (API Instagram officielle, OAuth), horodatage exact.
+- **Stories à la une** : aucune vue ni compteur (leur doc) — seulement les j'aime.
+- **Notifications du compte** : non lues par Insyder.
+- **Repris dans ClosRM** : réveils aléatoires 15–60 min, cache des à la une sur disque (un redémarrage ne relit rien), pause Instagram conservée sur disque, photos des leads via Hiker (bouton « Photos manquantes », confirmé, plafonné à 300, chaque résultat enregistré aussitôt).
+- **Non repris (décision Pierre)** : envoyer la session au serveur + proxy (contraire à la règle « le backend ne reçoit pas les secrets Instagram », mais permettrait la collecte app fermée).
+
 ## Tâches liées
 T-046 lead journey, T-047 meta capi, Session DM (develop).

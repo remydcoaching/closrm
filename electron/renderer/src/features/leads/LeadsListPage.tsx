@@ -18,6 +18,7 @@ import { Chips } from '../../design-system/Tabs'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
 import { STATUS_CONFIG, SOURCE_CONFIG, statusEntry, sourceEntry, displayName, shortDate } from './status'
 import { LeadCreateModal } from './LeadCreateModal'
+import { LeadPicturesButton } from './LeadPicturesButton'
 import { useStoryLurkers } from '../instagram/StoryViewersSection'
 import type { Lead, LeadsListResponse } from './types'
 import './leads-list.css'
@@ -232,6 +233,7 @@ export function LeadsListPage() {
             <button type="button" className="ds-pill-button" onClick={exportCsv} disabled={exporting || !leads?.length}>
               {exporting ? 'Export…' : 'Exporter'}
             </button>
+            <LeadPicturesButton onDone={load} />
           </>
         }
       >

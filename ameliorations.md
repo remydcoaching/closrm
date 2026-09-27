@@ -963,6 +963,13 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Moyen
 - **Statut :** En attente de validation
 
+### A-049-6 · Collecte serveur de la session Instagram (modèle Insyder)
+- **Contexte :** T-049 — Insyder chiffre le cookie IG en base et scanne depuis AWS via un proxy résidentiel du pays de l'utilisateur ; la collecte continue app fermée.
+- **Description :** Vault chiffré (pgsodium) pour la session, job serveur toutes les 15–60 min via proxy résidentiel. Contraire à la règle actuelle « le backend ne reçoit pas les secrets Instagram » : décision à prendre.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Élevé
+- **Statut :** En attente de validation
+
 ### A-049-4 · Copie des photos de profil IG dans Supabase Storage
 - **Contexte :** T-049 — les URL du CDN Instagram expirent (paramètre `oe`) ; la photo retombe alors sur les initiales jusqu'à la prochaine collecte.
 - **Description :** Copier la photo (150 px, ~8 Ko) dans un bucket au moment de l'enrichissement du lead, comme `story-media`.

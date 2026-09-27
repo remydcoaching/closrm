@@ -88,12 +88,24 @@ class IgError extends Error {
 // places can't make things worse.
 const COOLDOWN_MS = 30 * 60_000
 let cooldownUntil = 0
+// Kept on disk too: restarting the app must not lift the pause.
+const cooldownFile = () => path.join(app.getPath('userData'), 'instagram-cooldown.json')
+let cooldownLoaded: Promise<void> | null = null
+function loadCooldown(): Promise<void> {
+  cooldownLoaded ??= readFile(cooldownFile(), 'utf8')
+    .then((raw) => {
+      cooldownUntil = Math.max(cooldownUntil, Number(JSON.parse(raw).until) || 0)
+    })
+    .catch(() => {})
+  return cooldownLoaded
+}
 
 export function cooldownRemainingMs(): number {
   return Math.max(0, cooldownUntil - Date.now())
 }
 
 async function igGet(path: string): Promise<unknown> {
+  await loadCooldown()
   if (Date.now() < cooldownUntil) {
     throw new IgError('rate_limited', `Pause Instagram encore ${Math.ceil(cooldownRemainingMs() / 60_000)} min`)
   }
@@ -102,6 +114,7 @@ async function igGet(path: string): Promise<unknown> {
   } catch (err) {
     if (err instanceof IgError && (err.reason === 'rate_limited' || err.reason === 'checkpoint')) {
       cooldownUntil = Date.now() + COOLDOWN_MS
+      await writeFile(cooldownFile(), JSON.stringify({ until: cooldownUntil })).catch(() => {})
       console.error(`[instagram] cooldown ${COOLDOWN_MS / 60_000} min after: ${err.message}`)
     }
     throw err
@@ -259,6 +272,9 @@ export function login(parent: BrowserWindow | null): Promise<InstagramSessionSta
 
 export async function logout(): Promise<void> {
   cachedUsername = null
+  trayCache = null
+  itemsCache.clear()
+  highlightsLoaded = false
   closeInstagramPage()
   await igSession().clearStorageData()
 }
@@ -381,6 +397,29 @@ const HIGHLIGHTS_TTL_MS = 6 * 60 * 60_000
 let trayCache: { at: number; collections: HighlightCollection[] } | null = null
 const itemsCache = new Map<string, { at: number; items: ArchivedStory[] }>()
 
+// Highlights change rarely: their cache survives app restarts (a disk file,
+// public CDN URLs only) so relaunching the app never re-reads them — repeated
+// restarts re-reading everything is what got the account throttled.
+const highlightsFile = () => path.join(app.getPath('userData'), 'instagram-highlights.json')
+let highlightsLoaded = false
+
+async function loadHighlightsCache(userId: string) {
+  if (highlightsLoaded) return
+  highlightsLoaded = true
+  try {
+    const d = JSON.parse(await readFile(highlightsFile(), 'utf8')) as { userId: string; tray: typeof trayCache; items: [string, { at: number; items: ArchivedStory[] }][] }
+    if (d.userId !== userId) return
+    trayCache = d.tray
+    for (const [id, v] of d.items) itemsCache.set(id, v)
+  } catch {
+    // no cache yet
+  }
+}
+
+async function saveHighlightsCache(userId: string) {
+  await writeFile(highlightsFile(), JSON.stringify({ userId, tray: trayCache, items: [...itemsCache] })).catch(() => {})
+}
+
 function failure(err: unknown): { ok: false; reason: InstagramFailure; message: string } {
   if (err instanceof IgError) return { ok: false, reason: err.reason, message: err.message }
   return { ok: false, reason: 'error', message: err instanceof Error ? err.message : 'Erreur inconnue' }
@@ -388,6 +427,8 @@ function failure(err: unknown): { ok: false; reason: InstagramFailure; message: 
 
 /** The coach's highlight collections (1 request, cached 6 h). */
 export async function highlightsTray(force = false): Promise<HighlightsResult> {
+  const st = await getStatus()
+  if (st.userId) await loadHighlightsCache(st.userId)
   if (!force && trayCache && Date.now() - trayCache.at < HIGHLIGHTS_TTL_MS) return { ok: true, collections: trayCache.collections }
   try {
     const status = await getStatus()
@@ -396,6 +437,7 @@ export async function highlightsTray(force = false): Promise<HighlightsResult> {
     // highlights_tray isn't served to the web client; the profile GraphQL query is.
     const collections = parseGraphqlHighlights(await igGet(`/graphql/query/?query_hash=${HIGHLIGHTS_QUERY_HASH}&variables=${encodeURIComponent(JSON.stringify(variables))}`))
     trayCache = { at: Date.now(), collections }
+    await saveHighlightsCache(status.userId)
     return { ok: true, collections }
   } catch (err) {
     return failure(err)
@@ -404,6 +446,8 @@ export async function highlightsTray(force = false): Promise<HighlightsResult> {
 
 /** Stories of the given collections (≤ 4 per request, spaced, cached 6 h each). */
 export async function highlightItems(ids: string[]): Promise<HighlightItemsResult> {
+  const st = await getStatus()
+  if (st.userId) await loadHighlightsCache(st.userId)
   const items: Record<string, ArchivedStory[]> = {}
   const missing: string[] = []
   for (const id of ids) {
@@ -423,6 +467,7 @@ export async function highlightItems(ids: string[]): Promise<HighlightItemsResul
         items[id] = list
       }
     }
+    if (missing.length > 0 && st.userId) await saveHighlightsCache(st.userId)
     return { ok: true, items }
   } catch (err) {
     // Return what we have; the caller shows partial results.

@@ -51,3 +51,6 @@ Constat : les stories à la une du compte ont > 48 h → Instagram ne liste plus
 - [x] Photos partout où un avatar est affiché (pipeline, deals, dashboard, finance, RDV) + ta photo IG dans la barre du haut
 - [ ] Pierre : appliquer 117_backfill_lead_instagram_pictures.sql (remplit les photos des leads depuis spectateurs + DM)
 - [ ] À valider : j'aime des stories à la une (A-049-3), photos IG en Storage (A-049-4/5)
+- [x] Insyder analysé (Hiker pour le public, session pour les stories, webhook Meta pour les réponses) ; réveils aléatoires + caches disque repris
+- [ ] Pierre : lancer « Photos manquantes » dans Leads (Hiker, ~1 requête par lead, confirmation demandée)
+- [ ] À décider : collecte serveur (session en vault + proxy, comme Insyder) pour collecter app fermée
