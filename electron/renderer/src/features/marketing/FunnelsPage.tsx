@@ -24,6 +24,7 @@ import { formatDate, formatPercent, normalizeWorkspaceSlug, percent, publicFunne
 import type { FunnelDetail, FunnelListItem, FunnelStats } from './types'
 import './marketing.css'
 import '../leads/lead-create-modal.css'
+import { swrGet } from '../../lib/query-cache'
 
 type Period = '7' | '30' | '90'
 type StatusFilter = 'all' | 'published' | 'draft'
@@ -76,8 +77,7 @@ export function FunnelsPage() {
   const load = useCallback(async () => {
     setError(null)
     try {
-      const res = await api.get<{ data: FunnelListItem[] }>('/api/funnels')
-      setFunnels(Array.isArray(res.data) ? res.data : [])
+      await swrGet<{ data: FunnelListItem[] }>('/api/funnels', (res) => setFunnels(Array.isArray(res.data) ? res.data : []))
     } catch (err) {
       setError(errorMessage(err))
     }

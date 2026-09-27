@@ -17,6 +17,7 @@ import { Field, NoticeBanner, useNotice } from '../social/ui'
 import { errMsg, http } from '../social/http'
 import { hexToRgba } from '../social/social-utils'
 import '../social/social.css'
+import { swrGet } from '../../lib/query-cache'
 
 interface UserData {
   id: string
@@ -131,9 +132,11 @@ export function SettingsAccountPage() {
   const load = useCallback(async () => {
     setError(null)
     try {
-      const r = await api.get<{ data: { user: UserData; workspace: WorkspaceData } }>('/api/user/profile')
-      setUser(r.data.user)
-      setWorkspace(r.data.workspace)
+      await swrGet<{ data: { user: UserData; workspace: WorkspaceData } }>('/api/user/profile', (r) => {
+        setUser(r.data.user)
+        setWorkspace(r.data.workspace)
+        setLoading(false)
+      })
     } catch (e) {
       setError(errMsg(e))
     } finally {

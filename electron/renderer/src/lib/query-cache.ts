@@ -175,3 +175,17 @@ export function revalidate<T>(key: string, fetcher?: () => Promise<T>): Promise<
 export function isStale(entry: CacheEntry | undefined, staleMs: number) {
   return !entry || Date.now() - entry.at > staleMs
 }
+
+/**
+ * Stale-while-revalidate for screens that keep their own state: `apply` runs
+ * at once with the cached value (if any), then again with the fresh one if
+ * it changed. Resolves with the fresh value.
+ */
+export async function swrGet<T>(key: string, apply: (data: T) => void): Promise<T> {
+  const cached = getCached<T>(key)
+  if (cached) apply(cached.data)
+  const before = cached?.sig
+  const fresh = await revalidate<T>(key)
+  if (getCached<T>(key)?.sig !== before || !cached) apply(fresh)
+  return fresh
+}

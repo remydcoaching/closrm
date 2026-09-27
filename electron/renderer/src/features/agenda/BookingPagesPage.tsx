@@ -13,6 +13,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../design-system/States
 import '../leads/lead-create-modal.css'
 import './agenda.css'
 import type { BookingCalendar, CalendarPurpose, ListResponse } from './types'
+import { swrGet } from '../../lib/query-cache'
 
 export const PURPOSE_LABELS: Record<CalendarPurpose, string> = {
   setting: 'Appel découverte',
@@ -56,12 +57,13 @@ export function BookingPagesPage() {
     setLoading(true)
     setError(null)
     try {
-      const [cals, slug] = await Promise.all([
-        api.get<ListResponse<BookingCalendar>>('/api/booking-calendars'),
-        api.get<{ slug: string | null }>('/api/workspaces/slug').catch(() => ({ slug: null })),
+      await Promise.all([
+        swrGet<ListResponse<BookingCalendar>>('/api/booking-calendars', (cals) => {
+          setCalendars(cals.data ?? [])
+          setLoading(false)
+        }),
+        swrGet<{ slug: string | null }>('/api/workspaces/slug', (slug) => setWorkspaceSlug(slug.slug ?? null)).catch(() => setWorkspaceSlug(null)),
       ])
-      setCalendars(cals.data ?? [])
-      setWorkspaceSlug(slug.slug ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de charger les calendriers')
     } finally {

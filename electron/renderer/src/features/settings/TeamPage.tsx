@@ -20,6 +20,7 @@ import { errMsg } from '../social/http'
 import { isoDay } from '../social/social-utils'
 import '../social/social.css'
 import '../../design-system/status-pill.css'
+import { swrGet } from '../../lib/query-cache'
 
 type Role = 'admin' | 'setter' | 'closer' | 'monteur'
 type MemberStatus = 'active' | 'invited' | 'suspended'
@@ -163,8 +164,10 @@ function MembersTab({ me, notify }: { me: { userId: string; role: Role } | null;
   const load = useCallback(async () => {
     setError(null)
     try {
-      const r = await api.get<{ data: Member[] }>('/api/workspaces/members')
-      setMembers(r.data ?? [])
+      await swrGet<{ data: Member[] }>('/api/workspaces/members', (r) => {
+        setMembers(r.data ?? [])
+        setLoading(false)
+      })
     } catch (e) {
       setError(errMsg(e))
     } finally {

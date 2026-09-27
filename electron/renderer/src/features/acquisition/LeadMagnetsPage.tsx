@@ -12,6 +12,7 @@ import type { LeadMagnet, LeadMagnetPlatform, LeadMagnetStats } from './types'
 import './acquisition.css'
 import { TableCard } from '../../design-system/TableCard'
 import { StatCard } from '../../design-system/StatCard'
+import { swrGet } from '../../lib/query-cache'
 
 export function LeadMagnetsPage() {
   const navigate = useNavigate()
@@ -25,8 +26,7 @@ export function LeadMagnetsPage() {
   async function load() {
     setError(null)
     try {
-      const res = await api.get<{ lead_magnets: LeadMagnet[] }>('/api/lead-magnets')
-      setMagnets(res.lead_magnets)
+      await swrGet<{ lead_magnets: LeadMagnet[] }>('/api/lead-magnets', (res) => setMagnets(res.lead_magnets))
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
     }

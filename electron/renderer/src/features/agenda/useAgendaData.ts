@@ -1,6 +1,7 @@
 // Port of the web's src/lib/agenda/use-agenda-data.ts — same endpoints, same
 // window per view, same Google Calendar sync on mount (throttled to 1× every
 // 5 min via localStorage), same bookings/calls dedup.
+import { getCached, revalidate } from '../../lib/query-cache'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../../lib/api-client'
 import { getDateRange, mergeEvents, perPageFor } from './agenda-utils'
@@ -32,10 +33,18 @@ export function useAgendaData(view: AgendaViewMode, currentDate: Date) {
 
   useEffect(() => {
     let cancelled = false
+    // Cached settings first (instant), then fresh.
+    const cachedCal = getCached<ListResponse<BookingCalendar>>('/api/booking-calendars')
+    if (cachedCal) {
+      setCalendars(cachedCal.data.data ?? [])
+      setLocations(getCached<ListResponse<BookingLocation>>('/api/booking-locations')?.data.data ?? [])
+      setGoogleAccounts(getCached<ListResponse<GoogleCalendarAccount>>('/api/google-calendar-accounts')?.data.data ?? [])
+      setCalendarsLoaded(true)
+    }
     Promise.allSettled([
-      api.get<ListResponse<BookingCalendar>>('/api/booking-calendars'),
-      api.get<ListResponse<BookingLocation>>('/api/booking-locations'),
-      api.get<ListResponse<GoogleCalendarAccount>>('/api/google-calendar-accounts'),
+      revalidate<ListResponse<BookingCalendar>>('/api/booking-calendars'),
+      revalidate<ListResponse<BookingLocation>>('/api/booking-locations'),
+      revalidate<ListResponse<GoogleCalendarAccount>>('/api/google-calendar-accounts'),
     ]).then(([cal, loc, gca]) => {
       if (cancelled) return
       if (cal.status === 'fulfilled') setCalendars(cal.value.data ?? [])
@@ -94,10 +103,18 @@ export function useAgendaData(view: AgendaViewMode, currentDate: Date) {
       scheduled_before: end.toISOString(),
       per_page: String(perPage),
     })
+    const bookingsKey = `/api/bookings?${params.toString()}`
+    const callsKey = `/api/calls?${callParams.toString()}`
+    // Week/month already seen: show it at once, refresh behind.
+    const cachedBookings = getCached<ListResponse<BookingWithCalendar>>(bookingsKey)
+    if (cachedBookings) {
+      setEvents(mergeEvents(cachedBookings.data.data ?? [], getCached<ListResponse<AgendaCall>>(callsKey)?.data.data ?? []))
+      setLoading(false)
+    }
     try {
       const [bookingsRes, callsRes] = await Promise.allSettled([
-        api.get<ListResponse<BookingWithCalendar>>(`/api/bookings?${params.toString()}`),
-        api.get<ListResponse<AgendaCall>>(`/api/calls?${callParams.toString()}`),
+        revalidate<ListResponse<BookingWithCalendar>>(bookingsKey),
+        revalidate<ListResponse<AgendaCall>>(callsKey),
       ])
       if (id !== requestId.current) return
       if (bookingsRes.status === 'rejected') throw bookingsRes.reason

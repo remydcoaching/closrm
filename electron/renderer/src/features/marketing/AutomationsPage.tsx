@@ -23,6 +23,7 @@ import { AssetsTab } from './automations/AssetsTab'
 import type { Workflow, WorkflowListResponse, WorkflowStatus, WorkflowTemplate } from './types'
 import './marketing.css'
 import '../leads/lead-create-modal.css'
+import { swrGet } from '../../lib/query-cache'
 
 type View = 'workflows' | 'assets'
 type Filter = 'all' | WorkflowStatus
@@ -46,8 +47,7 @@ export function AutomationsPage() {
   const load = useCallback(async () => {
     setError(null)
     try {
-      const r = await api.get<WorkflowListResponse>('/api/workflows?per_page=100')
-      setWorkflows(r.data ?? [])
+      await swrGet<WorkflowListResponse>('/api/workflows?per_page=100', (r) => setWorkflows(r.data ?? []))
     } catch (err) {
       setError(errorMessage(err))
     }

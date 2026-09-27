@@ -18,6 +18,7 @@ import { ConfirmButton, Field, NoticeBanner, useNotice } from '../social/ui'
 import { errMsg } from '../social/http'
 import '../social/social.css'
 import '../../design-system/status-pill.css'
+import { swrGet } from '../../lib/query-cache'
 
 type Notify = (text: string, tone?: 'success' | 'danger' | 'info' | 'warning') => void
 
@@ -90,12 +91,13 @@ export function IntegrationsPage() {
   const load = useCallback(async () => {
     setError(null)
     try {
-      const [r, yt] = await Promise.all([
-        api.get<{ data: IntegrationRow[] }>('/api/integrations'),
-        api.get<{ data: IntegrationRow | null }>('/api/integrations/youtube').catch(() => ({ data: null })),
+      await Promise.all([
+        swrGet<{ data: IntegrationRow[] }>('/api/integrations', (r) => {
+          setRows(r.data ?? [])
+          setLoading(false)
+        }),
+        swrGet<{ data: IntegrationRow | null }>('/api/integrations/youtube', (yt) => setYoutube(yt.data)).catch(() => setYoutube(null)),
       ])
-      setRows(r.data ?? [])
-      setYoutube(yt.data)
     } catch (e) {
       setError(errMsg(e))
     } finally {
