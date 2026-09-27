@@ -157,10 +157,19 @@ async function igGetOn(_host: string, path: string): Promise<unknown> {
       return { status: 0, text: '', networkError: String(e && e.message || e) };
     }
   })()`
-  const res = (await win.webContents.executeJavaScript(script, true)) as { status: number; text: string; networkError?: string }
+  let res = (await win.webContents.executeJavaScript(script, true)) as { status: number; text: string; networkError?: string }
   if (res.networkError) {
-    console.error(`[instagram] ${path.split('?')[0]} → network error`)
-    throw new IgError('rate_limited', 'Connexion refusée par Instagram')
+    // A failed fetch is usually a stale hidden page (not a throttle): reload
+    // the page once and retry before giving up.
+    console.error(`[instagram] ${path.split('?')[0]} → network error, retrying with a fresh page`)
+    closeInstagramPage()
+    try {
+      win = await instagramPage()
+      res = (await win.webContents.executeJavaScript(script, true)) as typeof res
+    } catch {
+      // fall through
+    }
+    if (res.networkError) throw new IgError('error', 'Instagram injoignable pour le moment')
   }
   let body: unknown = null
   try {

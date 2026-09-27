@@ -97,8 +97,8 @@ export function StorySessionPanel() {
             </p>
           </div>
           <div className="ig-story-session-actions">
-            <button type="button" className="ds-pill-button" onClick={collectNow} disabled={collecting || !!paused} title={paused ? 'En pause pour protéger votre compte' : undefined}>
-              {collecting ? 'Collecte…' : paused ? 'En pause' : 'Collecter maintenant'}
+            <button type="button" className="ds-pill-button" onClick={collectNow} disabled={collecting} title={paused ? 'Collecte automatique en pause — vous pouvez quand même lancer une collecte' : undefined}>
+              {collecting ? 'Collecte…' : 'Collecter maintenant'}
             </button>
             <button type="button" className="ds-pill-button" onClick={disconnect}>
               Déconnecter

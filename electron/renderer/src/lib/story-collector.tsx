@@ -8,7 +8,7 @@ import { api } from './api-client'
 import type { CollectStoriesResult, InstagramSessionStatus } from './electron-bridge'
 
 const INTERVAL_MS = 30 * 60_000
-const BACKOFF_MS = 6 * 60 * 60_000
+const BACKOFF_MS = 60 * 60_000
 const LAST_RUN_KEY = 'closrm:story-collector:last-run'
 const PAUSED_UNTIL_KEY = 'closrm:story-collector:paused-until'
 
@@ -54,8 +54,8 @@ function writeJson(key: string, value: unknown) {
 
 const FAILURE_MESSAGE: Record<string, string> = {
   not_connected: 'Session Instagram déconnectée — reconnectez-vous.',
-  checkpoint: 'Instagram demande une vérification : ouvrez Instagram, validez, puis reconnectez la session. Collecte en pause 6 h.',
-  rate_limited: 'Instagram limite les requêtes. Collecte en pause 6 h.',
+  checkpoint: 'Instagram demande une vérification : ouvrez Instagram, validez, puis reconnectez la session. Collecte en pause 1 h.',
+  rate_limited: 'Instagram limite les requêtes. Collecte en pause 1 h.',
   error: 'La collecte a échoué.',
 }
 
