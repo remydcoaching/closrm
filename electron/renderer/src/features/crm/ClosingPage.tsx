@@ -16,6 +16,7 @@ import './crm.css'
 import '../leads/lead-create-modal.css'
 import '../leads/leads-list.css'
 import { TableCard } from '../../design-system/TableCard'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 type Tab = 'today' | 'upcoming' | 'overdue' | 'done' | 'cancelled'
 
@@ -79,10 +80,6 @@ export function ClosingPage() {
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [calls, setCalls] = useState<CallWithLead[] | null>(null)
-  const [meta, setMeta] = useState({ total: 0, total_pages: 1 })
-  const [counts, setCounts] = useState<Partial<Record<Tab, number>>>({})
-  const [error, setError] = useState<string | null>(null)
   const [treatTarget, setTreatTarget] = useState<CallWithLead | null>(null)
 
   useEffect(() => {
@@ -92,46 +89,39 @@ export function ClosingPage() {
 
   useEffect(() => setPage(1), [tab, type, search])
 
-  const load = useCallback(async () => {
-    setError(null)
-    setCalls(null)
-    try {
-      const p = closingTabParams(tab)
-      p.set('page', String(page))
-      p.set('per_page', String(PER_PAGE))
-      if (type) p.set('type', type)
-      if (search) p.set('search', search)
-      const res = await api.get<CallsListResponse>(`/api/calls?${p.toString()}`)
-      setCalls(res.data)
-      setMeta({ total: res.meta.total, total_pages: res.meta.total_pages })
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }, [tab, page, type, search])
+  // Cache first: each tab/page/filter keeps its last list; switching back is instant.
+  const listParams = closingTabParams(tab)
+  listParams.set('page', String(page))
+  listParams.set('per_page', String(PER_PAGE))
+  if (type) listParams.set('type', type)
+  if (search) listParams.set('search', search)
+  const listQuery = useCachedQuery<CallsListResponse>(`/api/calls?${listParams.toString()}`, { screen: 'Closing', staleMs: 15_000, keepPrevious: true })
+  const calls = listQuery.data?.data ?? null
+  const meta = { total: listQuery.data?.meta.total ?? 0, total_pages: listQuery.data?.meta.total_pages ?? 1 }
+  const error = listQuery.error
+  const load = listQuery.refresh
 
-  const loadCounts = useCallback(async () => {
-    const entries = await Promise.all(
-      TABS.map(async ({ key }) => {
-        const p = closingTabParams(key)
-        p.set('per_page', '1')
-        try {
-          const res = await api.get<CallsListResponse>(`/api/calls?${p.toString()}`)
-          return [key, res.meta.total] as const
-        } catch {
-          return [key, undefined] as const
-        }
-      }),
-    )
-    setCounts(Object.fromEntries(entries))
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  useEffect(() => {
-    loadCounts()
-  }, [loadCounts])
+  const countsQuery = useCachedQuery<Partial<Record<Tab, number>>>('desktop:closing-counts', {
+    screen: 'ClosingCounts',
+    staleMs: 30_000,
+    fetcher: async () => {
+      const entries = await Promise.all(
+        TABS.map(async ({ key }) => {
+          const p = closingTabParams(key)
+          p.set('per_page', '1')
+          try {
+            const res = await api.get<CallsListResponse>(`/api/calls?${p.toString()}`)
+            return [key, res.meta.total] as const
+          } catch {
+            return [key, undefined] as const
+          }
+        }),
+      )
+      return Object.fromEntries(entries)
+    },
+  })
+  const counts = countsQuery.data ?? {}
+  const loadCounts = countsQuery.refresh
 
   function refresh() {
     load()
