@@ -284,3 +284,50 @@
   margin: -4px 0 12px;
   line-height: 1.5;
 }
+
+/* ─── One row of 5, scrollable ─── */
+.story-carousel {
+  position: relative;
+}
+
+.story-carousel-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 4 * 14px) / 5);
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.story-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.story-carousel-track > * {
+  scroll-snap-align: start;
+}
+
+.story-carousel-arrow {
+  position: absolute;
+  top: 40%;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 4px 14px rgba(20, 20, 30, 0.12);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-text-strong);
+}
+
+.story-carousel-arrow--left {
+  left: -14px;
+}
+
+.story-carousel-arrow--right {
+  right: -14px;
+}

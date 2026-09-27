@@ -1,7 +1,7 @@
 // Stories gallery (Audience page) — your stories, big, from your own Instagram archive
 // (fresh media URLs), with what ClosRM collected on each (views, identified
 // viewers). Click a story to open its page.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api-client'
 import { formatNumber } from '../../design-system/StatCard'
@@ -23,6 +23,25 @@ interface CollectedStory {
 }
 
 type Sort = 'recent' | 'views'
+
+/** One row of 5 stories, scrolled left/right with the arrows (or trackpad). */
+export function StoryCarousel({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const scroll = (dir: -1 | 1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth, behavior: 'smooth' })
+  return (
+    <div className="story-carousel">
+      <button type="button" className="story-carousel-arrow story-carousel-arrow--left" onClick={() => scroll(-1)} aria-label="Précédentes">
+        ‹
+      </button>
+      <div className="story-carousel-track" ref={ref}>
+        {children}
+      </div>
+      <button type="button" className="story-carousel-arrow story-carousel-arrow--right" onClick={() => scroll(1)} aria-label="Suivantes">
+        ›
+      </button>
+    </div>
+  )
+}
 
 export function StoryCard({
   story,
@@ -154,11 +173,11 @@ export function StoriesGallery() {
               onChange={setSort}
             />
           </div>
-          <div className="story-grid">
+          <StoryCarousel>
             {sorted.map((s) => (
               <StoryCard key={s.pk} story={s} collected={collected.get(s.pk)?.viewers_collected} onClick={() => open(s)} />
             ))}
-          </div>
+          </StoryCarousel>
         </>
       )}
     </section>
