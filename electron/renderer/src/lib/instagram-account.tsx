@@ -1,8 +1,10 @@
 // The coach's Instagram account used by every Hiker feature — asked once
 // after login (InstagramOnboarding), shown in the top bar, editable there.
 // Backed by GET/PUT /api/instagram/target-account.
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { api } from './api-client'
+import { setCached } from './query-cache'
+import { useCachedQuery } from './use-cached-query'
 
 export interface TargetAccount {
   username: string
@@ -24,7 +26,10 @@ interface InstagramAccountValue {
 const Ctx = createContext<InstagramAccountValue | null>(null)
 
 export function InstagramAccountProvider({ children }: { children: ReactNode }) {
-  const [account, setAccount] = useState<TargetAccount | null | undefined>(undefined)
+  // Cache first: the header and onboarding decision render instantly on launch.
+  const query = useCachedQuery<{ data: TargetAccount | null }>('/api/instagram/target-account', { screen: 'TargetAccount', staleMs: 10 * 60_000 })
+  const account: TargetAccount | null | undefined = query.data ? query.data.data : query.error ? null : undefined
+
   const [skipped, setSkipped] = useState(() => {
     try {
       return localStorage.getItem(SKIP_KEY) === '1'
@@ -43,22 +48,14 @@ export function InstagramAccountProvider({ children }: { children: ReactNode }) 
   }, [])
 
   const reload = useCallback(async () => {
-    try {
-      const res = await api.get<{ data: TargetAccount | null }>('/api/instagram/target-account')
-      setAccount(res.data)
-    } catch {
-      setAccount(null)
-    }
+    await query.refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const save = useCallback(async (username: string) => {
     const res = await api.put<{ data: TargetAccount }>('/api/instagram/target-account', { username })
-    setAccount(res.data)
+    setCached('/api/instagram/target-account', { data: res.data })
   }, [])
-
-  useEffect(() => {
-    reload()
-  }, [reload])
 
   return <Ctx.Provider value={{ account, skipped, skip, save, reload }}>{children}</Ctx.Provider>
 }

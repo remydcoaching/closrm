@@ -37,21 +37,11 @@ const PERIODS: { key: string; label: string }[] = [
 ]
 
 export function DashboardPage() {
-  const [member, setMember] = useState<CurrentMember | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setError(null)
-    try {
-      setMember(await fetchCurrentMember())
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  // Role rarely changes: cached 10 min, shown instantly on every visit.
+  const memberQuery = useCachedQuery<CurrentMember>('desktop:current-member', { screen: 'DashboardRole', staleMs: 10 * 60_000, fetcher: fetchCurrentMember })
+  const member = memberQuery.data ?? null
+  const error = memberQuery.error
+  const load = memberQuery.refresh
 
   if (error)
     return (

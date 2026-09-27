@@ -18,6 +18,7 @@ import { countLeads, fetchDeals } from '../stats/stats-api'
 import { formatEuro, ratePct, startOfDay, sumBy } from '../stats/metrics'
 import './dashboard.css'
 import '../stats/stats.css'
+import { useCachedQuery } from '../../lib/use-cached-query'
 
 const GOALS = { callsPerDay: 15, bookingsPerWeek: 5 } as const
 
@@ -82,32 +83,28 @@ interface SetterData {
 
 export function SetterDashboard({ firstName, userId }: { firstName: string; userId: string }) {
   const navigate = useNavigate()
-  const [data, setData] = useState<SetterData | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setError(null)
+  // Cache first (instant on revisit), refreshed in the background.
+  const query = useCachedQuery<SetterData>(`desktop:setter-dashboard:${userId}`, {
+    screen: 'SetterDashboard',
+    staleMs: 30_000,
+    fetcher: async () => {
     const { today, tomorrow } = dayRange()
     const monday = new Date(today)
     monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
     const t = today.toISOString()
     const tm = tomorrow.toISOString()
-    try {
       const [leads, callsToday, followUps, weekCalls] = await Promise.all([
         api.get<LeadsListResponse>(`/api/leads?assigned_to=${userId}&per_page=10&sort=created_at&order=desc`),
         api.get<CallsListResponse>(`/api/calls?scheduled_after=${t}&scheduled_before=${tm}&sort=scheduled_at&order=asc&per_page=100`),
         api.get<FollowUpsListResponse>(`/api/follow-ups?status=en_attente&scheduled_before=${tm}&sort=scheduled_at&order=asc`),
         api.get<CallsListResponse>(`/api/calls?scheduled_after=${monday.toISOString()}&scheduled_before=${tm}&per_page=100`),
       ])
-      setData({ leads: leads.data, callsToday: callsToday.data, followUps: followUps.data, weekCalls: weekCalls.data })
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }, [userId])
-
-  useEffect(() => {
-    load()
-  }, [load])
+      return { leads: leads.data, callsToday: callsToday.data, followUps: followUps.data, weekCalls: weekCalls.data }
+    },
+  })
+  const data = query.data ?? null
+  const error = query.error
+  const load = query.refresh
 
   if (error)
     return (
@@ -235,16 +232,15 @@ interface CloserData {
 
 export function CloserDashboard({ firstName, userId }: { firstName: string; userId: string }) {
   const navigate = useNavigate()
-  const [data, setData] = useState<CloserData | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setError(null)
+  // Cache first (instant on revisit), refreshed in the background.
+  const query = useCachedQuery<CloserData>(`desktop:closer-dashboard:${userId}`, {
+    screen: 'CloserDashboard',
+    staleMs: 30_000,
+    fetcher: async () => {
     const { today, tomorrow } = dayRange()
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
     const t = today.toISOString()
     const tm = tomorrow.toISOString()
-    try {
       const [closings, pipeline, closedThisMonth, deals, noShows] = await Promise.all([
         api.get<{ data: CallWithBrief[] }>(`/api/calls?type=closing&scheduled_after=${t}&scheduled_before=${tm}&sort=scheduled_at&order=asc&per_page=50`),
         api.get<LeadsListResponse>(`/api/leads?assigned_to=${userId}&status=closing_planifie,no_show_closing&per_page=50&sort=updated_at&order=desc`),
@@ -252,21 +248,18 @@ export function CloserDashboard({ firstName, userId }: { firstName: string; user
         fetchDeals({ closer_id: userId, date_from: monthStart.toISOString() }),
         api.get<CallsListResponse>(`/api/calls?type=closing&outcome=no_show&scheduled_after=${monthStart.toISOString()}&scheduled_before=${tm}&per_page=100`),
       ])
-      setData({
+      return {
         closingsToday: closings.data,
         pipeline: pipeline.data,
         closedThisMonth,
         revenueThisMonth: sumBy(deals, (d) => d.amount),
         noShowsThisMonth: noShows.data.length,
-      })
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }, [userId])
-
-  useEffect(() => {
-    load()
-  }, [load])
+      }
+    },
+  })
+  const data = query.data ?? null
+  const error = query.error
+  const load = query.refresh
 
   if (error)
     return (
