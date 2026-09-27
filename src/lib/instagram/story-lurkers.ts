@@ -21,6 +21,7 @@ export interface StoryRow {
 
 export interface ViewerRow {
   story_pk: string
+  has_liked?: boolean | null
   instagram_user_id: string
   instagram_username: string
   full_name: string | null
@@ -123,19 +124,26 @@ async function loadStoryLurkersUncached(supabase: SupabaseClient, workspaceId: s
   const pks = storyRows.map((s) => s.story_pk)
 
   const viewers: ViewerRow[] = []
+  const vcols = 'story_pk, instagram_user_id, instagram_username, full_name, profile_pic_url, is_verified, matched_lead_id'
   if (pks.length > 0) {
+    let withLikes = true
     for (let from = 0; ; from += PAGE) {
-      const { data, error: vErr } = await supabase
-        .from('story_viewers')
-        .select('story_pk, instagram_user_id, instagram_username, full_name, profile_pic_url, is_verified, matched_lead_id')
-        .eq('workspace_id', workspaceId)
-        .in('story_pk', pks)
-        .range(from, from + PAGE - 1)
-      if (vErr) throw new Error(vErr.message)
-      viewers.push(...((data ?? []) as ViewerRow[]))
-      if (!data || data.length < PAGE) break
+      const q = (cols: string) => supabase.from('story_viewers').select(cols).eq('workspace_id', workspaceId).in('story_pk', pks).range(from, from + PAGE - 1)
+      let res = await q(withLikes ? `${vcols}, has_liked` : vcols)
+      if (res.error && withLikes) {
+        withLikes = false
+        res = await q(vcols)
+      }
+      if (res.error) throw new Error(res.error.message)
+      const data = (res.data ?? []) as unknown as ViewerRow[]
+      viewers.push(...data)
+      if (data.length < PAGE) break
     }
   }
+  // Likes per story = viewers who sent a heart (like_count column may be absent).
+  const likesByStory = new Map<string, number>()
+  for (const v of viewers) if (v.has_liked) likesByStory.set(v.story_pk, (likesByStory.get(v.story_pk) ?? 0) + 1)
+  for (const st of storyRows) st.like_count = st.like_count ?? likesByStory.get(st.story_pk) ?? 0
 
   const leadIds = [...new Set(viewers.map((v) => v.matched_lead_id).filter((id): id is string => !!id))]
   const userIds = [...new Set(viewers.map((v) => v.instagram_user_id))]

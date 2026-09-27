@@ -182,28 +182,28 @@ export async function persistStoryViews(supabase: SupabaseClient, workspaceId: s
       .map(({ viewers_collected: _v, ...r }) => r)
     for (const batch of [okStories, errStories]) {
       if (batch.length === 0) continue
-      let { error } = await supabase.from('story_view_stories').upsert(batch, { onConflict: 'workspace_id,story_pk' })
-      // Migration 115 not applied yet: store the base columns.
-      if (error && /highlight_|like_count|fetch_/.test(error.message)) {
-        ;({ error } = await supabase
-          .from('story_view_stories')
-          .upsert(batch.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !['highlight_id', 'highlight_title', 'like_count', 'fetch_status', 'fetch_error'].includes(k)))), { onConflict: 'workspace_id,story_pk' }))
+      let rowsToWrite = batch
+      let { error } = await supabase.from('story_view_stories').upsert(rowsToWrite, { onConflict: 'workspace_id,story_pk' })
+      for (let attempt = 0; error && attempt < 6; attempt++) {
+        const missing = ['highlight_id', 'highlight_title', 'like_count', 'fetch_status', 'fetch_error'].find((c) => error!.message.includes(c))
+        if (!missing) break
+        rowsToWrite = rowsToWrite.map(({ [missing]: _drop, ...rest }) => rest)
+        ;({ error } = await supabase.from('story_view_stories').upsert(rowsToWrite, { onConflict: 'workspace_id,story_pk' }))
       }
       if (error) errors.push(`stories: ${error.message}`)
     }
   }
   for (let i = 0; i < rows.viewers.length; i += WRITE_CHUNK) {
     // Merge-upsert: first_seen_at is not sent, so the first sighting is kept.
-    const chunk = rows.viewers.slice(i, i + WRITE_CHUNK)
+    let chunk = rows.viewers.slice(i, i + WRITE_CHUNK)
     let { error } = await supabase.from('story_viewers').upsert(chunk, { onConflict: 'workspace_id,story_pk,instagram_user_id' })
-    // Migration 113 (has_liked) not applied yet: store the rest anyway.
-    if (error && /has_liked|is_private/.test(error.message)) {
-      ;({ error } = await supabase
-        .from('story_viewers')
-        .upsert(
-          chunk.map(({ has_liked: _h, is_private: _p, ...rest }) => rest),
-          { onConflict: 'workspace_id,story_pk,instagram_user_id' },
-        ))
+    // Optional columns whose migration isn't applied yet: drop only the one
+    // named in the error and retry (never lose has_liked because of is_private).
+    for (let attempt = 0; error && attempt < 3; attempt++) {
+      const missing = ['is_private', 'has_liked'].find((c) => error!.message.includes(c))
+      if (!missing) break
+      chunk = chunk.map(({ [missing]: _drop, ...rest }) => rest)
+      ;({ error } = await supabase.from('story_viewers').upsert(chunk, { onConflict: 'workspace_id,story_pk,instagram_user_id' }))
     }
     if (error) errors.push(`viewers ${i}: ${error.message}`)
   }

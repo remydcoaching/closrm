@@ -76,3 +76,37 @@ describe('highlight story viewers', () => {
     for (const r of [...rows.stories, ...rows.viewers, ...rows.interactions]) expect(r.workspace_id).toBe('ws-B')
   })
 })
+
+import { vi } from 'vitest'
+import { persistStoryViews } from '../story-views'
+
+describe('persistStoryViews with a missing optional column', () => {
+  it('keeps has_liked when only is_private is missing (regression)', async () => {
+    const viewerWrites: Record<string, unknown>[][] = []
+    const table = (name: string) => {
+      const q: Record<string, unknown> = {}
+      const chain = () => q
+      Object.assign(q, {
+        select: chain,
+        eq: chain,
+        in: () => Promise.resolve({ data: [], error: null }),
+        upsert: (rows: Record<string, unknown>[]) => {
+          if (name !== 'story_viewers') return Promise.resolve({ error: null })
+          viewerWrites.push(rows)
+          const bad = rows[0] && 'is_private' in rows[0]
+          return Promise.resolve({ error: bad ? { message: "Could not find the 'is_private' column" } : null })
+        },
+        insert: () => Promise.resolve({ error: null }),
+      })
+      return q
+    }
+    const supabase = { from: vi.fn(table) }
+    await persistStoryViews(supabase as never, 'ws', {
+      accountUsername: 'me',
+      stories: [{ pk: '1', takenAt: '2026-09-26T08:00:00.000Z', status: 'ok', viewers: [{ pk: '9', username: 'fan', hasLiked: true, isPrivate: false }] }],
+    })
+    const last = viewerWrites[viewerWrites.length - 1][0]
+    expect(last).not.toHaveProperty('is_private')
+    expect(last).toMatchObject({ has_liked: true })
+  })
+})
