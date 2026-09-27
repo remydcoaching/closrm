@@ -4,6 +4,7 @@
 // anyone ever contacted them. A lurker = watches, never contacted
 // (not a lead, or a lead nobody called/DMed — see audience-segments.ts).
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { mapLimit } from '@/lib/supabase/limit'
 import { wasContacted } from './audience-segments'
 
 export interface StoryRow {
@@ -138,23 +139,19 @@ async function loadStoryLurkersUncached(supabase: SupabaseClient, workspaceId: s
 
   // All lead / DM / follow lookups at once instead of chunk after chunk.
   const [leadChunks, followChunks] = await Promise.all([
-    Promise.all(
-      chunks(leadIds).map((ids) =>
+    mapLimit(chunks(leadIds), 3, async (ids) =>
         Promise.all([
           supabase.from('leads').select('id, status, first_name, last_name, call_attempts, dm_conversation_active_at').eq('workspace_id', workspaceId).in('id', ids),
           supabase.from('dm_session_items').select('lead_id').in('lead_id', ids).in('outcome', ['relaunched', 'replied']),
         ]),
-      ),
     ),
-    Promise.all(
-      chunks(userIds).map((ids) =>
-        supabase
+    mapLimit(chunks(userIds), 3, async (ids) =>
+        await supabase
           .from('discovery_profiles')
           .select('instagram_user_id, follows_target, created_at')
           .eq('workspace_id', workspaceId)
           .in('instagram_user_id', ids)
           .order('created_at', { ascending: false }),
-      ),
     ),
   ])
 
