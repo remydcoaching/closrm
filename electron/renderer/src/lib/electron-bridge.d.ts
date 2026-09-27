@@ -89,6 +89,8 @@ export interface ClosRMBridge {
     /** Live stories + `recheck` (expired stories still inside the 48 h viewer window). */
     collectStories: (recheck?: { pk: string; takenAt: string }[]) => Promise<CollectStoriesResult>
     storyArchive: (force?: boolean) => Promise<StoryArchiveResult>
+    /** Profile picture of the connected Instagram account (cached a day, null when not connected). */
+    ownPicture: (username?: string | null) => Promise<string | null>
     highlights: (force?: boolean) => Promise<HighlightsResult>
     collectHighlightViewers: (skipPks: string[]) => Promise<HighlightViewersResult>
     highlightItems: (ids: string[]) => Promise<HighlightItemsResult>

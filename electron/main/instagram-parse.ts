@@ -63,6 +63,20 @@ export function reelOwnerUsername(body: unknown, userId: string): string | null 
   return asStr(asObj(reel?.user)?.username)
 }
 
+/** Profile picture of the reel owner in a feed/reels_media response. */
+export function reelOwnerPicture(body: unknown, userId: string): string | null {
+  const root = asObj(body)
+  const reel = asObj(root?.reel) ?? asObj(asObj(root?.reels)?.[userId]) ?? asObj(Array.isArray(root?.reels_media) ? root.reels_media[0] : null)
+  const user = asObj(reel?.user)
+  return httpsUrl(user?.profile_pic_url_hd) ?? httpsUrl(user?.profile_pic_url)
+}
+
+/** Profile picture from GET /api/v1/users/web_profile_info/?username=… */
+export function parseWebProfilePicture(body: unknown): string | null {
+  const user = asObj(asObj(asObj(body)?.data)?.user)
+  return httpsUrl(user?.profile_pic_url_hd) ?? httpsUrl(user?.profile_pic_url)
+}
+
 /** Items of the coach's own live reel from GET /api/v1/feed/reels_media/?reel_ids=<id>. */
 export function parseOwnReel(body: unknown, userId: string): Omit<OwnStory, 'viewers'>[] {
   const root = asObj(body)

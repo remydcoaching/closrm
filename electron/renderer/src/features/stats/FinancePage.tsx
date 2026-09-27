@@ -202,7 +202,7 @@ export function FinancePage() {
                     <td>
                       {name ? (
                         <div className="ds-contact">
-                          <Avatar name={name} size={30} />
+                          <Avatar name={name} size={30} src={d.lead?.instagram_profile_pic_url} />
                           <div className="ds-contact-text">
                             <div className="ds-contact-name">{name}</div>
                           </div>

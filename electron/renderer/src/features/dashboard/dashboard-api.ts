@@ -26,6 +26,7 @@ export interface PriorityLead {
   name: string
   context: string
   status: Lead['status']
+  picUrl?: string | null
 }
 
 export interface AdminDashboardData {
@@ -60,6 +61,7 @@ async function fetchRiskLeads(now: Date): Promise<PriorityLead[]> {
       name: `${lead.first_name} ${lead.last_name}`.trim() || 'Sans nom',
       context: `Inactif ${daysSince(lastActivity as string, now)}j`,
       status: lead.status,
+      picUrl: lead.instagram_profile_pic_url,
     }))
 }
 
@@ -79,6 +81,7 @@ async function fetchHotLeads(now: Date): Promise<PriorityLead[]> {
       name: `${lead.first_name} ${lead.last_name}`.trim() || 'Sans nom',
       context: hotContext(lastActivity as string, now),
       status: lead.status,
+      picUrl: lead.instagram_profile_pic_url,
     }))
 }
 

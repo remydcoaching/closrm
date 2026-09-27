@@ -11,7 +11,7 @@ import { createBookingReminders } from '@/lib/bookings/reminders'
 import { formatBookingDateFR, formatBookingTimeFR } from '@/lib/bookings/format'
 import type { CalendarReminder } from '@/types'
 
-const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, purpose, location_ids, reminders), lead:leads(id, first_name, last_name, phone, email), location:booking_locations(id, name, address, location_type)'
+const BOOKING_SELECT = '*, booking_calendar:booking_calendars(name, color, purpose, location_ids, reminders), lead:leads(id, first_name, last_name, phone, email, instagram_profile_pic_url), location:booking_locations(id, name, address, location_type)'
 
 export async function GET(request: NextRequest) {
   try {

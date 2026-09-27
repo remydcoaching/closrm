@@ -183,6 +183,7 @@ ipcMain.handle('closrm:ig:highlight-items', (_e, ids: string[]) => instagramSess
 ipcMain.handle('closrm:ig:collect-highlight-viewers', (_e, skipPks: unknown) =>
   instagramSession.collectHighlightViewers(Array.isArray(skipPks) ? skipPks.slice(0, 5000).map(String) : []),
 )
+ipcMain.handle('closrm:ig:own-picture', (_e, username: unknown) => instagramSession.ownProfilePicture(typeof username === 'string' ? username.slice(0, 30) : null))
 ipcMain.handle('closrm:ig:story-archive', (_e, force?: boolean) => instagramSession.storyArchive(!!force))
 
 ipcMain.handle('closrm:open-external', async (_event, url: string) => {

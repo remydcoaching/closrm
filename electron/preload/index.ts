@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('closrm', {
     collectStories: (recheck?: { pk: string; takenAt: string }[]) => ipcRenderer.invoke('closrm:ig:collect-stories', recheck ?? []),
     storyArchive: (force?: boolean) => ipcRenderer.invoke('closrm:ig:story-archive', force),
     collectHighlightViewers: (skipPks: string[]) => ipcRenderer.invoke('closrm:ig:collect-highlight-viewers', skipPks),
+    ownPicture: (username?: string | null): Promise<string | null> => ipcRenderer.invoke('closrm:ig:own-picture', username ?? null),
     highlights: (force?: boolean) => ipcRenderer.invoke('closrm:ig:highlights', force),
     highlightItems: (ids: string[]) => ipcRenderer.invoke('closrm:ig:highlight-items', ids),
   },

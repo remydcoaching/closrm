@@ -285,7 +285,7 @@ function PriorityCard({ title, tone, emptyLabel, leads, onLead }: { title: strin
             return (
               <li key={l.id}>
                 <button type="button" className="dash-list-item" onClick={() => onLead(l.id)}>
-                  <Avatar name={l.name} size={26} />
+                  <Avatar name={l.name} size={26} src={l.picUrl} />
                   <span className="dash-list-name">{l.name}</span>
                   <StatusPill label={s.label} color={s.color} bg={s.bg} />
                   <span className={`dash-list-context dash-list-context--${tone}`}>{l.context}</span>
@@ -453,7 +453,7 @@ function RecentBookingsTable({ data, onLead }: { data: AdminDashboardData; onLea
                 <tr key={b.id} className={b.lead_id ? 'ds-row-clickable' : undefined} onClick={() => b.lead_id && onLead(b.lead_id)}>
                   <td>
                     <div className="ds-contact">
-                      <Avatar name={name} size={28} />
+                      <Avatar name={name} size={28} src={b.lead?.instagram_profile_pic_url} />
                       <div className="ds-contact-text">
                         <div className="ds-contact-name">{name}</div>
                         {b.booking_calendar?.name && <div className="ds-muted">{b.booking_calendar.name}</div>}

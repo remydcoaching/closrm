@@ -81,7 +81,7 @@ export function DealsPage() {
                 return (
                   <tr key={deal.id} className="ds-row-clickable" onClick={() => deal.lead && navigate(`/leads/${deal.lead.id}`)}>
                     <td>
-                      <ContactCell name={name} avatar={<Avatar name={name} size={28} />} />
+                      <ContactCell name={name} avatar={<Avatar name={name} size={28} src={deal.lead?.instagram_profile_pic_url} />} />
                     </td>
                     <td>{STATUS_LABELS[deal.status] ?? deal.status}</td>
                     <td className="ds-num-cell">

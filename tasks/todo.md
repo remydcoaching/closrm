@@ -48,4 +48,6 @@ Constat : les stories à la une du compte ont > 48 h → Instagram ne liste plus
 - [x] Leads enrichis par les spectateurs (instagram_user_id, photo) quand absents
 - [x] Logo de l'app (icône Dock/.icns + sidebar)
 - [x] Tests + typecheck + docs (etat, ameliorations, tâche)
+- [x] Photos partout où un avatar est affiché (pipeline, deals, dashboard, finance, RDV) + ta photo IG dans la barre du haut
+- [ ] Pierre : appliquer 117_backfill_lead_instagram_pictures.sql (remplit les photos des leads depuis spectateurs + DM)
 - [ ] À valider : j'aime des stories à la une (A-049-3), photos IG en Storage (A-049-4/5)

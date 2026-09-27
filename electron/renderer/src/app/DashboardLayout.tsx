@@ -8,7 +8,7 @@ import { Sidebar } from '../design-system/Sidebar'
 import { Avatar } from '../design-system/Avatar'
 import { useAuth } from '../lib/auth-context'
 import { InstagramAccountProvider, useInstagramAccount } from '../lib/instagram-account'
-import { StoryCollectorProvider } from '../lib/story-collector'
+import { StoryCollectorProvider, useStoryCollector } from '../lib/story-collector'
 import { InstagramAccountModal, InstagramOnboarding } from './InstagramOnboarding'
 import { LoadingState } from '../design-system/States'
 import './dashboard-layout.css'
@@ -44,12 +44,17 @@ function Shell() {
         <header className="app-topbar">
           <div className="app-topbar-left">
             <span className="app-brand">
-              <span className="app-brand-logo">C</span>
+              <span className="app-brand-logo" aria-hidden="true">
+                <svg width="100%" height="100%" viewBox="0 0 30 30">
+                  <path d="M19.55 20.05 A6.8 6.8 0 1 1 19.55 9.95" fill="none" stroke="#fff" strokeWidth="3.35" strokeLinecap="round" />
+                  <circle cx="15" cy="15" r="2.1" fill="#fff" />
+                </svg>
+              </span>
               ClosRM
             </span>
             {account ? (
               <button type="button" className="app-ig-pill" onClick={() => setEditing(true)} title="Changer de compte Instagram">
-                <Avatar name={account.username} size={30} />
+                <OwnInstagramAvatar username={account.username} />
                 <span className="app-ig-pill-text">
                   <span className="app-ig-pill-handle">@{account.username}</span>
                   <span className="app-ig-pill-status">
@@ -110,4 +115,15 @@ function UserMenu() {
       )}
     </div>
   )
+}
+
+/** The coach's own Instagram picture, read from their session (main process). */
+function OwnInstagramAvatar({ username }: { username: string }) {
+  const { status } = useStoryCollector()
+  const [src, setSrc] = useState<string | null>(null)
+  useEffect(() => {
+    if (!status?.connected) return
+    window.closrm?.instagram?.ownPicture(username).then(setSrc).catch(() => setSrc(null))
+  }, [status?.connected, username])
+  return <Avatar name={username} size={30} src={src} />
 }

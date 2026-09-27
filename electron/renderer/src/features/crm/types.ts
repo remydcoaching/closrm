@@ -52,7 +52,7 @@ export interface DealWithLead {
   notes: string | null
   created_at: string
   updated_at: string
-  lead: { id: string; first_name: string; last_name: string; email: string | null; phone: string } | null
+  lead: { id: string; first_name: string; last_name: string; email: string | null; phone: string; instagram_profile_pic_url?: string | null } | null
 }
 
 // ─── Call (closing) — mirrors GET /api/calls ───────────────────────────

@@ -147,7 +147,7 @@ export interface BookingRow {
   is_personal: boolean
   created_at: string
   booking_calendar: { name: string; color: string | null } | null
-  lead: { id: string; first_name: string; last_name: string; phone: string | null; email: string | null } | null
+  lead: { id: string; first_name: string; last_name: string; phone: string | null; email: string | null; instagram_profile_pic_url?: string | null } | null
   location: { id: string; name: string; address: string | null; location_type: string | null } | null
 }
 

@@ -48,7 +48,7 @@ export function PipelinePage() {
                   const name = displayName(lead.first_name, lead.last_name, lead.instagram_handle ?? 'Sans nom')
                   return (
                     <button key={lead.id} className="pipeline-card" onClick={() => navigate(`/leads/${lead.id}`)}>
-                      <Avatar name={name} size={26} />
+                      <Avatar name={name} size={26} src={lead.instagram_profile_pic_url} />
                       <div className="pipeline-card-body">
                         <div className="pipeline-card-name">{name}</div>
                         {lead.instagram_handle && <div className="pipeline-card-handle">@{lead.instagram_handle}</div>}

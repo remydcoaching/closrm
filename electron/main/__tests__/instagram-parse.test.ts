@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifyFailure, parseOwnReel, parseViewersPage } from '../instagram-parse'
+import { classifyFailure, parseOwnReel, parseViewersPage, parseWebProfilePicture, reelOwnerPicture } from '../instagram-parse'
 
 describe('parseOwnReel', () => {
   it('reads items from reels[userId] with pk, dates, type, thumbnail and viewer count', () => {
@@ -142,5 +142,20 @@ describe('parseGraphqlHighlights', () => {
   it('reads highlight reels as highlight:<id>', () => {
     const out = parseGraphqlHighlights({ data: { user: { edge_highlight_reels: { edges: [{ node: { id: '182', title: 'QUI SUIS-JE', cover_media_cropped_thumbnail: { url: 'https://c/x.jpg' } } }] } } } })
     expect(out).toEqual([{ id: 'highlight:182', title: 'QUI SUIS-JE', coverUrl: 'https://c/x.jpg', mediaCount: null }])
+  })
+})
+
+describe('own profile picture', () => {
+  it('reads the HD picture of the reel owner, then the standard one', () => {
+    expect(reelOwnerPicture({ reels: { '9': { user: { profile_pic_url_hd: 'https://x.cdninstagram.com/hd.jpg', profile_pic_url: 'https://x/s.jpg' } } } }, '9')).toBe('https://x.cdninstagram.com/hd.jpg')
+    expect(reelOwnerPicture({ reel: { user: { profile_pic_url: 'https://x/s.jpg' } } }, '9')).toBe('https://x/s.jpg')
+  })
+  it('never returns a non-https URL or a missing picture', () => {
+    expect(reelOwnerPicture({ reel: { user: { profile_pic_url: 'http://x/s.jpg' } } }, '9')).toBeNull()
+    expect(reelOwnerPicture({}, '9')).toBeNull()
+    expect(parseWebProfilePicture({ data: { user: {} } })).toBeNull()
+  })
+  it('reads web_profile_info', () => {
+    expect(parseWebProfilePicture({ data: { user: { profile_pic_url_hd: 'https://a/hd.jpg' } } })).toBe('https://a/hd.jpg')
   })
 })

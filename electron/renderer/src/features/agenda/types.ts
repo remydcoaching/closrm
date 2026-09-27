@@ -96,6 +96,7 @@ export interface LeadRef {
   last_name: string
   phone: string | null
   email: string | null
+  instagram_profile_pic_url?: string | null
 }
 
 export interface Booking {

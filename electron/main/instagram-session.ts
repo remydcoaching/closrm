@@ -11,8 +11,10 @@
 // - Requests are few, sequential and spaced out (a normal person opening
 //   their story viewers list), and collection stops at the first sign of a
 //   challenge or rate limit.
-import { BrowserWindow, session, type Session } from 'electron'
-import { classifyFailure, parseGraphqlHighlights, parseHighlightItems, type HighlightCollection, parseOwnReel, parseReelsMediaItems, parseViewersPage, reelOwnerUsername, type ArchivedStory, type InstagramFailure, type OwnStory, type StoryViewer } from './instagram-parse'
+import { app, BrowserWindow, session, type Session } from 'electron'
+import path from 'node:path'
+import { readFile, writeFile } from 'node:fs/promises'
+import { parseWebProfilePicture, reelOwnerPicture, classifyFailure, parseGraphqlHighlights, parseHighlightItems, type HighlightCollection, parseOwnReel, parseReelsMediaItems, parseViewersPage, reelOwnerUsername, type ArchivedStory, type InstagramFailure, type OwnStory, type StoryViewer } from './instagram-parse'
 
 const PARTITION = 'persist:instagram'
 // Profile query of Instagram's web client (returns edge_highlight_reels).
@@ -292,6 +294,8 @@ export async function collectStoryViewers(recheck: { pk: string; takenAt: string
     const reel = await igGet(`/api/v1/feed/reels_media/?reel_ids=${status.userId}`)
     const owner = reelOwnerUsername(reel, status.userId)
     if (owner) cachedUsername = { userId: status.userId, username: owner }
+    const pic = reelOwnerPicture(reel, status.userId)
+    if (pic) await saveOwnProfile({ userId: status.userId, username: owner ?? null, picUrl: pic, at: Date.now() })
     const live = parseOwnReel(reel, status.userId)
     const livePks = new Set(live.map((s) => s.pk))
     const queue: (Omit<OwnStory, 'viewers'> | { pk: string; takenAt: string })[] = [
@@ -513,4 +517,59 @@ export async function collectHighlightViewers(skipPks: string[]): Promise<Highli
   }
   await Promise.all(Array.from({ length: VIEWER_CONCURRENCY }, worker))
   return { ok: true, accountUsername: status.username ?? status.userId, stories: results, skipped, tooOld, stoppedEarly }
+}
+
+
+// ─── The coach's own profile picture (top bar) ───────────────────────────
+// Read once a day at most (one request) or for free from the stories
+// response; kept on disk (not a secret: a public CDN URL) so the top bar
+// shows it on launch without any Instagram call.
+interface OwnProfile {
+  userId: string
+  username: string | null
+  picUrl: string
+  at: number
+}
+const OWN_PROFILE_TTL_MS = 24 * 3_600_000
+const ownProfileFile = () => path.join(app.getPath('userData'), 'instagram-profile.json')
+let ownProfileMem: OwnProfile | null = null
+let ownProfileInFlight: Promise<string | null> | null = null
+
+async function loadOwnProfile(): Promise<OwnProfile | null> {
+  if (ownProfileMem) return ownProfileMem
+  try {
+    ownProfileMem = JSON.parse(await readFile(ownProfileFile(), 'utf8')) as OwnProfile
+  } catch {
+    ownProfileMem = null
+  }
+  return ownProfileMem
+}
+
+async function saveOwnProfile(p: OwnProfile) {
+  ownProfileMem = p
+  await writeFile(ownProfileFile(), JSON.stringify(p)).catch(() => {})
+}
+
+/** Picture of the connected account; `username` (from ClosRM) is only used when nothing fresh is cached. */
+export async function ownProfilePicture(username: string | null): Promise<string | null> {
+  const status = await getStatus()
+  if (!status.connected || !status.userId) return null
+  const cached = await loadOwnProfile()
+  const sameAccount = cached?.userId === status.userId
+  if (cached && sameAccount && Date.now() - cached.at < OWN_PROFILE_TTL_MS) return cached.picUrl
+  const handle = status.username ?? (sameAccount ? cached?.username : null) ?? username
+  if (!handle || !/^[A-Za-z0-9._]{1,30}$/.test(handle) || cooldownRemainingMs() > 0) return sameAccount ? (cached?.picUrl ?? null) : null
+  if (ownProfileInFlight) return ownProfileInFlight
+  ownProfileInFlight = (async () => {
+    try {
+      const pic = parseWebProfilePicture(await igGet(`/api/v1/users/web_profile_info/?username=${encodeURIComponent(handle)}`))
+      if (pic) await saveOwnProfile({ userId: status.userId as string, username: handle, picUrl: pic, at: Date.now() })
+      return pic ?? (sameAccount ? (cached?.picUrl ?? null) : null)
+    } catch {
+      return sameAccount ? (cached?.picUrl ?? null) : null
+    } finally {
+      ownProfileInFlight = null
+    }
+  })()
+  return ownProfileInFlight
 }
