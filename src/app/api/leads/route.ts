@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // correctness matters more than the marginal latency saved.
     let query = supabase
       .from('leads')
-      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, assigned_to, instagram_handle, meta_campaign_id, meta_adset_id, meta_ad_id, created_at, updated_at', { count: 'exact' })
+      .select('id, first_name, last_name, phone, email, status, source, tags, reached, call_attempts, notes, assigned_to, instagram_handle, meta_campaign_id, meta_adset_id, meta_ad_id, instagram_profile_pic_url, last_activity_at, created_at, updated_at', { count: 'exact' })
       .eq('workspace_id', workspaceId)
       .order(filters.sort, { ascending: filters.order === 'asc' })
 

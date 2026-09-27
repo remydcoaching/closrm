@@ -44,20 +44,15 @@ export interface AdminDashboardData {
 
 const OPEN_STATUSES = 'nouveau,scripte,setting_planifie,no_show_setting,closing_planifie,no_show_closing,pas_qualifie'
 
-/** The list endpoint doesn't return last_activity_at — read it from GET /api/leads/:id. */
-async function withLastActivity(leads: Lead[]): Promise<{ lead: Lead; lastActivity: string | null }[]> {
-  return Promise.all(
-    leads.map(async (lead) => {
-      const res = await api.get<{ data: Lead }>(`/api/leads/${lead.id}`)
-      return { lead, lastActivity: res.data.last_activity_at }
-    }),
-  )
+/** The list endpoint returns last_activity_at: no extra request per lead. */
+function withLastActivity(leads: Lead[]): { lead: Lead; lastActivity: string | null }[] {
+  return leads.map((lead) => ({ lead, lastActivity: lead.last_activity_at ?? null }))
 }
 
 /** getRiskLeads(): open leads inactive for 7+ days, oldest activity first, 5 max. */
 async function fetchRiskLeads(now: Date): Promise<PriorityLead[]> {
   const res = await api.get<LeadsListResponse>(`/api/leads?status=${OPEN_STATUSES}&sort=last_activity_at&order=asc&per_page=5`)
-  const detailed = await withLastActivity(res.data)
+  const detailed = withLastActivity(res.data)
   return detailed
     .filter((d) => d.lastActivity && daysSince(d.lastActivity, now) >= 7)
     .map(({ lead, lastActivity }) => ({
@@ -75,7 +70,7 @@ async function fetchRiskLeads(now: Date): Promise<PriorityLead[]> {
  */
 async function fetchHotLeads(now: Date): Promise<PriorityLead[]> {
   const res = await api.get<LeadsListResponse>(`/api/leads?status=${OPEN_STATUSES}&tags=chaud,VIP&sort=last_activity_at&order=desc&per_page=8`)
-  const detailed = await withLastActivity(res.data)
+  const detailed = withLastActivity(res.data)
   return detailed
     .filter((d) => d.lastActivity && now.getTime() - new Date(d.lastActivity).getTime() <= 2 * 86_400_000)
     .slice(0, 5)
