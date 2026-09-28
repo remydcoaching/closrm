@@ -1,19 +1,19 @@
 // Pure scan policy of the publication monitor (no I/O, unit-tested).
-// Same idea as Insyder's hourly scans: recent publications are re-read
-// often (that's when people react), older ones less, and a publication
-// whose comment counter didn't move doesn't get its comments re-read.
+// Same idea as Insyder's scans, at a daily pace (Insyder: hourly — ~24× the
+// HikerAPI cost): publications up to 60 days old are re-read every daily
+// pass, older ones weekly, and a publication whose comment counter didn't
+// move doesn't get its comments re-read.
 
 const H = 3_600_000
 const D = 24 * H
 
 /** How long to wait before re-reading a publication, by age. */
 export function scanIntervalMs(publishedAt: string | null, now: number): number {
-  if (!publishedAt) return D
+  // Slightly under a day / a week so the next daily pass always picks it up.
+  if (!publishedAt) return D - H
   const age = now - new Date(publishedAt).getTime()
-  if (age < 3 * D) return H
-  if (age < 14 * D) return 6 * H
-  if (age < 60 * D) return D
-  return 7 * D
+  if (age < 60 * D) return D - H
+  return 7 * D - H
 }
 
 export interface MonitoredContent {

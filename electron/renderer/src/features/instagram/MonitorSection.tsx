@@ -1,5 +1,5 @@
 // "Suivi de vos publications" (modèle Insyder): HikerAPI re-reads likers and
-// comments of the coach's recent posts/reels every hour; every gesture that
+// comments of the coach's recent posts/reels once a day (Insyder: hourly); every gesture that
 // appeared between two passes shows up here and in the lead's Parcours.
 // Paid — off until the coach turns it on, capped per day.
 import { useCallback, useEffect, useState } from 'react'
@@ -107,7 +107,7 @@ export function MonitorSection() {
       const max = state.settings.max_requests_per_day
       const ok = window.confirm(
         `Activer le suivi de vos publications ?\n\n` +
-          `Toutes les heures, ClosRM relit via HikerAPI les j'aime et commentaires de vos posts et réels récents, et enregistre chaque nouveau geste dans le parcours des leads.\n\n` +
+          `Une fois par jour, ClosRM relit via HikerAPI les j'aime et commentaires de vos posts et réels récents, et enregistre chaque nouveau geste dans le parcours des leads.\n\n` +
           `Service payant : au plus ${max} requêtes par jour (≈ ${(max * 0.001).toFixed(2).replace('.', ',')} $ / jour au tarif mesuré par Insyder). Les commentaires ne sont relus que si leur nombre a changé.`,
       )
       if (!ok) return
@@ -136,7 +136,7 @@ export function MonitorSection() {
       subtitle={
         state
           ? state.settings.enabled
-            ? `Actif · relu toutes les heures · ${state.requestsUsedToday} / ${state.settings.max_requests_per_day} requêtes aujourd'hui`
+            ? `Actif · un passage par jour (6 h) · ${state.requestsUsedToday} / ${state.settings.max_requests_per_day} requêtes aujourd'hui`
             : "Désactivé · qui like et commente vos posts et réels, au fil de l'eau (HikerAPI, payant)"
           : undefined
       }

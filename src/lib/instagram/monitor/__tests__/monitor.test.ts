@@ -19,11 +19,10 @@ const content = (o: Partial<MonitoredContent>): MonitoredContent => ({
 })
 
 describe('scanIntervalMs', () => {
-  it('re-reads recent publications hourly, older ones less often', () => {
-    expect(scanIntervalMs(ago(10), NOW)).toBe(H)
-    expect(scanIntervalMs(ago(5 * 24), NOW)).toBe(6 * H)
-    expect(scanIntervalMs(ago(30 * 24), NOW)).toBe(24 * H)
-    expect(scanIntervalMs(ago(200 * 24), NOW)).toBe(7 * 24 * H)
+  it('daily pace: every pass up to 60 days, weekly after (just under, so the next daily pass catches it)', () => {
+    expect(scanIntervalMs(ago(10), NOW)).toBe(23 * H)
+    expect(scanIntervalMs(ago(30 * 24), NOW)).toBe(23 * H)
+    expect(scanIntervalMs(ago(200 * 24), NOW)).toBe(7 * 24 * H - H)
   })
 })
 
