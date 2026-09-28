@@ -101,7 +101,11 @@ export function buildActivity(calls: Call[], followUps: FollowUp[], journeyEvent
         title: kindLabel
           ? `${kindLabel}${publishedAt ? ` · publié${contentKind === 'story' || contentKind === 'post' ? 'e' : ''} le ${new Date(publishedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`
           : INSTAGRAM_EVENT_TITLE[event.event_type],
-        detail: kindLabel ? GESTURE[event.event_type] : username ? `@${username}` : undefined,
+        detail: (() => {
+          const text = event.metadata?.comment_text as string | undefined
+          const base = kindLabel ? GESTURE[event.event_type] : username ? `@${username}` : undefined
+          return text ? `${base ?? 'a commenté'} : « ${text.length > 140 ? `${text.slice(0, 140)}…` : text} »` : base
+        })(),
       })
     } else if (event.event_type === 'view' || event.event_type === 'form_submit' || event.event_type === 'button_click') {
       const label: Record<string, string> = {

@@ -7,6 +7,8 @@
 
 ## Session 2026-09-25 → 27 — ClosRM Desktop + Instagram Intelligence (Pierre, PR #561)
 
+- **2026-09-28 — suivi des publications (modèle Insyder)** : passage horaire HikerAPI (désactivé par défaut, budget/jour) qui détecte chaque nouveau j'aime / commentaire et l'ajoute au parcours des leads. Migration 118 à appliquer. Photos manquantes des leads via Hiker (bouton, confirmé).
+
 - **2026-09-27 soir — stories à la une** : spectateurs = ceux collectés pendant les 48 h de chaque story (limite Instagram, identique chez Insyder qui n'affiche que les j'aime des à la une). Collecte étendue à la fenêtre de 48 h, rattachement aux collections, tableau des spectateurs par collection, états honnêtes (jamais « 0 » pour une liste non fournie). Photos IG visibles dans l'app (en-tête CORP du CDN retiré côté Electron), leads enrichis (id IG + photo). Nouveau logo (Dock + sidebar).
 
 - **Desktop (Electron)** à parité web : tous les modules, design compact façon Insyder, cache d'affichage (stale-while-revalidate) sur tous les écrans principaux et la plupart des secondaires.

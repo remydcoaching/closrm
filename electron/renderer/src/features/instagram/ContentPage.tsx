@@ -19,6 +19,7 @@ import { ContentThumb } from './ContentThumb'
 import type { ContentChartPoint, ConfidenceKey } from './types'
 import { Tabs } from '../../design-system/Tabs'
 import { SearchInput } from '../../design-system/SearchInput'
+import { MonitorSection } from './MonitorSection'
 import './instagram.css'
 import { usePaged, PaginationBar } from '../../design-system/Pagination'
 import { useCachedQuery } from '../../lib/use-cached-query'
@@ -174,6 +175,8 @@ export function ContentPage() {
         </div>
         <Chips items={PERIODS} active={period} onChange={setPeriod} />
       </div>
+
+      <MonitorSection />
 
       {items === null && !error && <LoadingState label="Chargement des contenus…" />}
       {error && <ErrorState message={error} onRetry={load} />}

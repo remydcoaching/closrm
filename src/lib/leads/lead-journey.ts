@@ -121,6 +121,12 @@ export async function loadLeadJourney(supabase: SupabaseClient, workspaceId: str
       supabase.from('discovery_contents').select('content_id, thumbnail_url, content_type, published_at, created_at').eq('workspace_id', workspaceId).in('content_id', postIds),
     ])
     for (const c of contentRows ?? []) thumbs.set(c.content_id, { url: c.thumbnail_url, kind: c.content_type === 'clip' ? 'reel' : 'post', publishedAt: c.published_at })
+    // Publications followed by the monitor (migration 118) that no scan stored.
+    const missing = postIds.filter((id) => !thumbs.has(id))
+    if (missing.length > 0) {
+      const { data: monitored } = await supabase.from('instagram_monitored_contents').select('content_id, thumbnail_url, content_type, published_at').eq('workspace_id', workspaceId).in('content_id', missing)
+      for (const c of monitored ?? []) thumbs.set(c.content_id, { url: c.thumbnail_url, kind: c.content_type === 'clip' ? 'reel' : 'post', publishedAt: c.published_at })
+    }
     for (const st of storyRows ?? []) thumbs.set(st.story_pk, { url: st.thumbnail_url, kind: 'story', publishedAt: st.taken_at })
   }
 

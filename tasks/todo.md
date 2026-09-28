@@ -54,3 +54,13 @@ Constat : les stories à la une du compte ont > 48 h → Instagram ne liste plus
 - [x] Insyder analysé (Hiker pour le public, session pour les stories, webhook Meta pour les réponses) ; réveils aléatoires + caches disque repris
 - [ ] Pierre : lancer « Photos manquantes » dans Leads (Hiker, ~1 requête par lead, confirmation demandée)
 - [ ] À décider : collecte serveur (session en vault + proxy, comme Insyder) pour collecter app fermée
+
+## Suivi des publications (modèle Insyder) — 2026-09-28
+Hiker relit périodiquement likers + commentaires des publications récentes ; les nouveaux gestes entre deux passages sont datés de l'intervalle.
+- [x] Migration 118 : réglages (désactivé par défaut, budget/jour), contenus suivis (état de scan), observations (toutes personnes), journal des passages, cron pg_cron horaire + purge
+- [x] Politique pure : cadence par âge, sélection sous budget, relecture seulement si compteurs changés, diff des observations
+- [x] Passage : liste des contenus récents → likers/commentaires des contenus dus → observations → interactions des leads connus
+- [x] Routes : /api/instagram/monitor (état, réglages, lancer) + /api/cron/instagram-monitor
+- [x] UI desktop : carte « Suivi des publications » + derniers gestes détectés
+- [x] Tests + docs
+- [ ] Pierre : appliquer 118_instagram_monitoring.sql (projet hsnqmjsckekbmmwneybb), déployer le code (route /api/cron/instagram-monitor) AVANT d'activer le suivi, puis Contenu › Activer le suivi

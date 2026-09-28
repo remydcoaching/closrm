@@ -644,3 +644,12 @@
 .ig-target-button:disabled {
   opacity: 0.6;
 }
+
+/* Publication thumbnail in the monitor's gesture table. */
+.monitor-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+}

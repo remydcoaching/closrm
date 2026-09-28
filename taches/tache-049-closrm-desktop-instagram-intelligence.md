@@ -55,5 +55,11 @@ L'ancien 107_backfill_setting_processes (copie de develop 100) est supprimé.
 - **Repris dans ClosRM** : réveils aléatoires 15–60 min, cache des à la une sur disque (un redémarrage ne relit rien), pause Instagram conservée sur disque, photos des leads via Hiker (bouton « Photos manquantes », confirmé, plafonné à 300, chaque résultat enregistré aussitôt).
 - **Non repris (décision Pierre)** : envoyer la session au serveur + proxy (contraire à la règle « le backend ne reçoit pas les secrets Instagram », mais permettrait la collecte app fermée).
 
+## Suivi des publications (2026-09-28, modèle Insyder)
+- Migration 118 : `instagram_monitor_settings` (désactivé par défaut, 100/300/1 000 requêtes/jour), `instagram_monitored_contents` (état de scan), `instagram_engagement_observations` (toute personne, clé instagram_user_id, commentaires par id), `instagram_monitor_runs` (coût, résultat, sauvegarde brute), cron pg_cron horaire (`:17`) + purge quotidienne des journaux.
+- Passage (`src/lib/instagram/monitor/`) : liste des derniers posts + réels (2 req) → publications dues selon leur âge (1 h < 3 j, 6 h < 14 j, 24 h < 60 j, 7 j sinon) sous le budget restant → likers (1 req) + commentaires seulement si leur compteur a bougé → nouveaux gestes = observations ; gestes des leads connus → `instagram_interactions` (j'aime daté de la publication au premier passage, de l'intervalle ensuite ; commentaire daté par Instagram).
+- UI : Contenu › « Suivi de vos publications » (activation confirmée avec le coût, budget, scanner maintenant, derniers gestes « entre 10:05 et 11:05 ») ; Parcours du lead : miniature + texte du commentaire.
+- Pas de création automatique de leads : les non-leads restent dans les observations (ciblables ensuite).
+
 ## Tâches liées
 T-046 lead journey, T-047 meta capi, Session DM (develop).
