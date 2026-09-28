@@ -144,3 +144,10 @@ describe('planLeadEnrichment', () => {
     expect(planLeadEnrichment(pay([{ pk: '7', username: 'x', profilePicUrl: pic }]), { byUserId: new Map(), byHandle: new Map() }, new Map())).toEqual([])
   })
 })
+
+describe('dates as Postgres returns them', () => {
+  it('accepts "+00:00" offsets (re-read stories come from the database)', () => {
+    const p = { accountUsername: 'me', stories: [{ pk: '1', takenAt: '2026-09-26T18:55:00+00:00', status: 'ok', viewers: [] }] }
+    expect(storyViewsPayloadSchema.safeParse(p).success).toBe(true)
+  })
+})

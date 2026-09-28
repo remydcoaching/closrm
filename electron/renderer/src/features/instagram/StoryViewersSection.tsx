@@ -86,7 +86,7 @@ export function StorySessionPanel() {
       ) : (
         <>
           <div>
-            <strong>Session Instagram @{status.username ?? account?.username ?? '…'} · collecte automatique toutes les 30 min tant que l&apos;app est ouverte</strong>
+            <strong>Session Instagram @{status.username ?? account?.username ?? '…'} · collecte automatique toutes les 15 à 60 min (au hasard, comme Insyder) tant que l&apos;app est ouverte</strong>
             <p>
               {collecting
                 ? 'Collecte en cours…'

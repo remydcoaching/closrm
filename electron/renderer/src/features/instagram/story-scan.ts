@@ -38,7 +38,8 @@ export function storiesToRecheck(known: KnownStory[], now = Date.now()): { pk: s
     })
     .sort((a, b) => a.taken_at.localeCompare(b.taken_at))
     .slice(0, 50)
-    .map((k) => ({ pk: k.story_pk, takenAt: k.taken_at }))
+    // Postgres answers '…+00:00'; always hand over a canonical ISO string.
+    .map((k) => ({ pk: k.story_pk, takenAt: new Date(k.taken_at).toISOString() }))
 }
 
 // ─── Highlights: what ClosRM knows about each story's viewers ─────────────

@@ -206,7 +206,7 @@ export function StoryDetailPage() {
             description={
               takenAt && Date.now() - new Date(takenAt).getTime() > 48 * 3_600_000
                 ? "Instagram ne fournit les spectateurs d'une story que pendant 48 h après sa publication (vérifié : pour cette story il renvoie une liste vide). Elle a été publiée avant que ClosRM ne collecte : ses spectateurs ne sont plus récupérables. Pour vos prochaines stories, ils sont collectés automatiquement puis conservés."
-                : 'Les spectateurs sont collectés automatiquement toutes les 30 min tant que la story est en ligne, que l’app est ouverte et que la session Instagram est connectée.'
+                : 'Les spectateurs sont collectés automatiquement (toutes les 15 à 60 min) pendant les 48 h où Instagram les fournit, que l’app est ouverte et que la session Instagram est connectée.'
             }
           />
         )}

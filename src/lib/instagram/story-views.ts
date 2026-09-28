@@ -19,8 +19,8 @@ const viewerSchema = z.object({
 
 const storySchema = z.object({
   pk: z.string().min(1).max(40),
-  takenAt: z.string().datetime(),
-  expiringAt: z.string().datetime().nullish(),
+  takenAt: z.string().datetime({ offset: true }),
+  expiringAt: z.string().datetime({ offset: true }).nullish(),
   mediaType: z.enum(['image', 'video']).nullish(),
   thumbnailUrl: z.string().url().max(2000).nullish(),
   videoUrl: z.string().url().max(4000).nullish(),

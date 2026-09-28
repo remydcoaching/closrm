@@ -58,3 +58,11 @@ describe('highlight story states', () => {
     expect(out.map((o) => [o.instagramUserId, o.storiesSeen])).toEqual([['2', 2], ['1', 1]])
   })
 })
+
+describe('storiesToRecheck date format', () => {
+  it('hands over canonical ISO dates even when Postgres answers with an offset', () => {
+    const now = Date.parse('2026-09-27T12:00:00Z')
+    const out = storiesToRecheck([{ story_pk: 'a', taken_at: '2026-09-26T08:00:00+00:00', last_collected_at: '2026-09-26T20:00:00+00:00', viewers_collected: 3, fetch_status: 'ok' }], now)
+    expect(out).toEqual([{ pk: 'a', takenAt: '2026-09-26T08:00:00.000Z' }])
+  })
+})
