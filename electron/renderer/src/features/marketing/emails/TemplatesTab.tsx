@@ -4,6 +4,7 @@
 // The drag & drop block editor stays on the web: openWeb('/acquisition/emails/templates/:id').
 import { useEffect, useState } from 'react'
 import { api } from '../../../lib/api-client'
+import { swrGet } from '../../../lib/query-cache'
 import { openWeb } from '../../../lib/web-link'
 import { Button } from '../../../design-system/Button'
 import { Input } from '../../../design-system/Input'
@@ -31,10 +32,11 @@ export function TemplatesTab({ onCount }: { onCount: (n: number) => void }) {
   async function load() {
     setError(null)
     try {
-      const data = await api.get<EmailTemplate[]>('/api/emails/templates')
-      const arr = Array.isArray(data) ? data : []
-      setTemplates(arr)
-      onCount(arr.length)
+      await swrGet<EmailTemplate[]>('/api/emails/templates', (data) => {
+        const arr = Array.isArray(data) ? data : []
+        setTemplates(arr)
+        onCount(arr.length)
+      })
     } catch (err) {
       setError(errorMessage(err))
     }

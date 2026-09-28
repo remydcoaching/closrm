@@ -4,6 +4,7 @@
 // GET/PUT /api/instagram/sequences/:id/items.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { swrGet } from '../../lib/query-cache'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
 import { TableCard } from '../../design-system/TableCard'
 import { Chips } from '../../design-system/Tabs'
@@ -405,9 +406,11 @@ function SequenceDetail({
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const r = await api.get<ListResponse<StorySequenceItem>>(`/api/instagram/sequences/${sequence.id}/items`)
-      setItems(r.data ?? [])
-      setSelected(new Set((r.data ?? []).map((i) => i.story_id)))
+      await swrGet<ListResponse<StorySequenceItem>>(`/api/instagram/sequences/${sequence.id}/items`, (r) => {
+        setItems(r.data ?? [])
+        setSelected(new Set((r.data ?? []).map((i) => i.story_id)))
+        setLoading(false)
+      })
     } catch (e) {
       notify(errMsg(e), 'danger')
     } finally {

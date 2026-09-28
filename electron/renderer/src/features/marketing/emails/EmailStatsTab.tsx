@@ -3,6 +3,7 @@
 // sequences, automations, booking reminders, direct messages.
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../../lib/api-client'
+import { swrGet } from '../../../lib/query-cache'
 import { StatCard, StatGrid, formatNumber } from '../../../design-system/StatCard'
 import { TableCard } from '../../../design-system/TableCard'
 import { Tabs } from '../../../design-system/Tabs'
@@ -19,10 +20,11 @@ export function EmailStatsTab() {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    setStats(null)
     setError(null)
     try {
-      setStats(await api.get<EmailGlobalStats>(`/api/emails/stats?days=${days}`))
+      // Cached value of this period at once (none → loading), fresh one after.
+      setStats(null)
+      await swrGet<EmailGlobalStats>(`/api/emails/stats?days=${days}`, setStats)
     } catch (err) {
       setError(errorMessage(err))
     }

@@ -4,6 +4,7 @@
 // fully native (email step = template, delay step = N min/heures/jours).
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../../lib/api-client'
+import { swrGet } from '../../../lib/query-cache'
 import { Button } from '../../../design-system/Button'
 import { Input } from '../../../design-system/Input'
 import { Drawer } from '../../../design-system/Drawer'
@@ -35,10 +36,11 @@ export function SequencesTab({ onCount }: { onCount: (n: number) => void }) {
   async function load() {
     setError(null)
     try {
-      const data = await api.get<SequenceWorkflow[]>('/api/emails/sequences')
-      const arr = Array.isArray(data) ? data : []
-      setSequences(arr)
-      onCount(arr.length)
+      await swrGet<SequenceWorkflow[]>('/api/emails/sequences', (data) => {
+        const arr = Array.isArray(data) ? data : []
+        setSequences(arr)
+        onCount(arr.length)
+      })
     } catch (err) {
       setError(errorMessage(err))
     }

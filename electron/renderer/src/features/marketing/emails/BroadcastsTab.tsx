@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../../lib/api-client'
+import { swrGet } from '../../../lib/query-cache'
 import { openWeb } from '../../../lib/web-link'
 import { Button } from '../../../design-system/Button'
 import { Input, Textarea } from '../../../design-system/Input'
@@ -51,10 +52,11 @@ export function BroadcastsTab({ onCount }: { onCount: (n: number) => void }) {
   async function load() {
     setError(null)
     try {
-      const data = await api.get<EmailBroadcast[]>('/api/emails/broadcasts')
-      const arr = Array.isArray(data) ? data : []
-      setBroadcasts(arr)
-      onCount(arr.length)
+      await swrGet<EmailBroadcast[]>('/api/emails/broadcasts', (data) => {
+        const arr = Array.isArray(data) ? data : []
+        setBroadcasts(arr)
+        onCount(arr.length)
+      })
     } catch (err) {
       setError(errorMessage(err))
     }

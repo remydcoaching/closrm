@@ -6,6 +6,7 @@
 // POST /api/social/trame/generate (window=range).
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { swrGet } from '../../lib/query-cache'
 import { Chips, Tabs } from '../../design-system/Tabs'
 import { ErrorState, LoadingState } from '../../design-system/States'
 import { Field, Modal } from './ui'
@@ -86,8 +87,10 @@ export function PlanningView({ notify }: { notify: Notify }) {
       if (!silent) setPostsLoading(true)
       try {
         const w = planningWindow(cursor.year, cursor.month)
-        const r = await api.get<ListResponse<SocialPost>>(`/api/social/posts?plan_date_from=${w.from}&plan_date_to=${w.to}&per_page=500&slim=true`)
-        setPosts(r.data ?? [])
+        await swrGet<ListResponse<SocialPost>>(`/api/social/posts?plan_date_from=${w.from}&plan_date_to=${w.to}&per_page=500&slim=true`, (r) => {
+          setPosts(r.data ?? [])
+          if (!silent) setPostsLoading(false)
+        })
       } catch (e) {
         notify(errMsg(e), 'danger')
       } finally {

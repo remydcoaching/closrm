@@ -28,7 +28,7 @@
 ## Avant PR
 - [x] Fusion origin/develop, migrations renumérotées, doublon supprimé, electron exclu de vitest
 - [x] Dashboard Desktop : cache + 13 appels par lead supprimés (liste leads renvoie last_activity_at)
-- [ ] Emails / Réseaux sociaux : passer au cache (encore en appels directs)
+- [x] Emails / Réseaux sociaux : cache stale-while-revalidate (swrGet) sur les 9 listes
 - [ ] Dashboard serveur (v2-queries) : 3,7 s, à optimiser
 
 ## Stories (2026-09-27, vérifié en live sur le compte)
@@ -64,3 +64,4 @@ Hiker relit périodiquement likers + commentaires des publications récentes ; l
 - [x] UI desktop : carte « Suivi des publications » + derniers gestes détectés
 - [x] Tests + docs
 - [ ] Pierre : appliquer 118_instagram_monitoring.sql (projet hsnqmjsckekbmmwneybb), déployer le code (route /api/cron/instagram-monitor) AVANT d'activer le suivi, puis Contenu › Activer le suivi
+- [x] App compilée : electron/release/ClosRM-0.1.0-arm64.dmg (logo ClosRM, signée localement, non notarisée, API = localhost:3000)

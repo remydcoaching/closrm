@@ -3,6 +3,7 @@
 // /snapshots?days=30, /comments?limit=, /sync.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { swrGet } from '../../lib/query-cache'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
 import { TableCard } from '../../design-system/TableCard'
 import { Chips } from '../../design-system/Tabs'
@@ -171,8 +172,10 @@ export function YtInboxTab({ notify }: { notify: Notify }) {
     setLoading(true)
     setError(null)
     try {
-      const r = await api.get<ListResponse<YtComment>>('/api/youtube/comments?limit=200')
-      setComments(r.data ?? [])
+      await swrGet<ListResponse<YtComment>>('/api/youtube/comments?limit=200', (r) => {
+        setComments(r.data ?? [])
+        setLoading(false)
+      })
     } catch (e) {
       setError(errMsg(e))
     } finally {

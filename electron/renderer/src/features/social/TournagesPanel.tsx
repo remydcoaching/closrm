@@ -5,6 +5,7 @@
 // "Brief" screens (PrepView/BriefView, teleprompter-like) open on the web.
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { swrGet } from '../../lib/query-cache'
 import { openWeb } from '../../lib/web-link'
 import { Chips } from '../../design-system/Tabs'
 import { Input } from '../../design-system/Input'
@@ -55,8 +56,10 @@ export function TournagesPanel({ notify, onClose }: { notify: Notify; onClose: (
     setLoading(true)
     setError(null)
     try {
-      const r = await api.get<ListResponse<TournageSession>>('/api/tournage-sessions')
-      setSessions(r.data ?? [])
+      await swrGet<ListResponse<TournageSession>>('/api/tournage-sessions', (r) => {
+        setSessions(r.data ?? [])
+        setLoading(false)
+      })
     } catch (e) {
       setError(errMsg(e))
     } finally {

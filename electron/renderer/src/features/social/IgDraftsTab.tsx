@@ -6,6 +6,7 @@
 // /api/instagram/hashtag-groups, /api/instagram/caption-templates.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { swrGet } from '../../lib/query-cache'
 import { supabase } from '../../lib/supabase'
 import { TableCard } from '../../design-system/TableCard'
 import { Chips } from '../../design-system/Tabs'
@@ -82,8 +83,10 @@ function DraftsList({ status, notify }: { status: IgDraft['status']; notify: Not
     setLoading(true)
     setError(null)
     try {
-      const r = await api.get<ListResponse<IgDraft>>(`/api/instagram/drafts?status=${status}&per_page=100`)
-      setDrafts(r.data ?? [])
+      await swrGet<ListResponse<IgDraft>>(`/api/instagram/drafts?status=${status}&per_page=100`, (r) => {
+        setDrafts(r.data ?? [])
+        setLoading(false)
+      })
     } catch (e) {
       setError(errMsg(e))
     } finally {
@@ -391,8 +394,10 @@ function HashtagGroups({ notify }: { notify: Notify }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const r = await api.get<ListResponse<IgHashtagGroup>>('/api/instagram/hashtag-groups')
-      setGroups(r.data ?? [])
+      await swrGet<ListResponse<IgHashtagGroup>>('/api/instagram/hashtag-groups', (r) => {
+        setGroups(r.data ?? [])
+        setLoading(false)
+      })
     } catch (e) {
       notify(errMsg(e), 'danger')
     } finally {
@@ -509,8 +514,10 @@ function CaptionTemplates({ notify }: { notify: Notify }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const r = await api.get<ListResponse<IgCaptionTemplate>>('/api/instagram/caption-templates')
-      setTemplates(r.data ?? [])
+      await swrGet<ListResponse<IgCaptionTemplate>>('/api/instagram/caption-templates', (r) => {
+        setTemplates(r.data ?? [])
+        setLoading(false)
+      })
     } catch (e) {
       notify(errMsg(e), 'danger')
     } finally {
