@@ -3,6 +3,7 @@
 // lead). Always launched by the coach after a confirmation, capped per run.
 import { useEffect, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { formatDollars, HIKER_PRICE_USD } from '../../lib/hiker-price'
 
 interface EnrichResult {
   requested: number
@@ -22,6 +23,8 @@ const STOPPED: Record<string, string> = {
 export function LeadPicturesButton({ onDone }: { onDone: () => void }) {
   const [missing, setMissing] = useState<number | null>(null)
   const [maxPerRun, setMaxPerRun] = useState(300)
+  // At 0,02 € a request, runs are kept small: the coach can launch again.
+  const perRun = Math.min(maxPerRun, 100)
   const [running, setRunning] = useState(false)
   const [report, setReport] = useState<string | null>(null)
 
@@ -41,10 +44,10 @@ export function LeadPicturesButton({ onDone }: { onDone: () => void }) {
   if (!missing) return null
 
   async function run() {
-    const n = Math.min(missing as number, maxPerRun)
+    const n = Math.min(missing as number, perRun)
     const ok = window.confirm(
       `Récupérer la photo Instagram de ${n} lead${n > 1 ? 's' : ''} via HikerAPI ?\n\n` +
-        `Service payant : environ 1 requête facturée par lead (${n} requêtes).` +
+        `Service payant : 1 requête facturée par lead, soit ${n} requêtes ≈ ${formatDollars(n * HIKER_PRICE_USD)}.` +
         ((missing as number) > n ? `\n${(missing as number) - n} autres resteront pour un prochain lancement.` : ''),
     )
     if (!ok) return

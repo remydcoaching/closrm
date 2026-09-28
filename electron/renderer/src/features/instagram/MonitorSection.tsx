@@ -9,6 +9,7 @@ import { TableCard, ContactCell } from '../../design-system/TableCard'
 import { Avatar } from '../../design-system/Avatar'
 import { Chips } from '../../design-system/Tabs'
 import { EmptyState, LoadingState } from '../../design-system/States'
+import { formatDollars, HIKER_PRICE_USD } from '../../lib/hiker-price'
 
 interface MonitorRun {
   id: string
@@ -47,9 +48,9 @@ interface MonitorState {
 }
 
 const BUDGETS = [
-  { key: '100', label: '100 / jour' },
-  { key: '300', label: '300 / jour' },
-  { key: '1000', label: '1 000 / jour' },
+  { key: '20', label: `20 / jour (${formatDollars(20 * HIKER_PRICE_USD)})` },
+  { key: '50', label: `50 / jour (${formatDollars(50 * HIKER_PRICE_USD)})` },
+  { key: '100', label: `100 / jour (${formatDollars(100 * HIKER_PRICE_USD)})` },
 ]
 
 const REASON: Record<string, string> = {
@@ -108,11 +109,11 @@ export function MonitorSection() {
       const ok = window.confirm(
         `Activer le suivi de vos publications ?\n\n` +
           `Une fois par jour, ClosRM relit via HikerAPI les j'aime et commentaires de vos posts et réels récents, et enregistre chaque nouveau geste dans le parcours des leads.\n\n` +
-          `Service payant : au plus ${max} requêtes par jour (≈ ${(max * 0.001).toFixed(2).replace('.', ',')} $ / jour au tarif mesuré par Insyder). Les commentaires ne sont relus que si leur nombre a changé.`,
+          `Service payant : au plus ${max} requêtes par jour à ${formatDollars(HIKER_PRICE_USD)} l'une, soit au plus ${formatDollars(max * HIKER_PRICE_USD)} par jour (≈ ${formatDollars(max * HIKER_PRICE_USD * 30)} par mois). Les commentaires ne sont relus que si leur nombre a changé.`,
       )
       if (!ok) return
     }
-    await save({ enabled: !state.settings.enabled })
+    await save({ enabled: !state.settings.enabled, maxRequestsPerDay: state.settings.max_requests_per_day })
   }
 
   async function scanNow() {

@@ -62,7 +62,7 @@ export async function runMonitor(
 ): Promise<MonitorOutcome> {
   const { data: settings } = await supabase.from('instagram_monitor_settings').select('*').eq('workspace_id', workspaceId).maybeSingle()
   if (!settings?.enabled && trigger === 'cron') return skipped('disabled')
-  const maxPerDay = settings?.max_requests_per_day ?? 300
+  const maxPerDay = settings?.max_requests_per_day ?? 50
   const budget = remainingBudget(maxPerDay, await requestsUsedToday(supabase, workspaceId))
   if (budget < 3) return skipped('budget')
 

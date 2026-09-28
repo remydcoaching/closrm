@@ -39,7 +39,7 @@ export async function GET() {
       : { data: [] }
     return NextResponse.json({
       data: {
-        settings: settings.data ?? { enabled: false, instagram_username: null, max_requests_per_day: 300 },
+        settings: settings.data ?? { enabled: false, instagram_username: null, max_requests_per_day: 50 },
         requestsUsedToday: used,
         hikerConfigured: !!process.env.HIKER_API_KEY,
         runs: runs.data ?? [],
