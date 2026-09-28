@@ -63,5 +63,5 @@ Hiker relit périodiquement likers + commentaires des publications récentes ; l
 - [x] Routes : /api/instagram/monitor (état, réglages, lancer) + /api/cron/instagram-monitor
 - [x] UI desktop : carte « Suivi des publications » + derniers gestes détectés
 - [x] Tests + docs
-- [ ] Pierre : appliquer 119_instagram_monitor_daily.sql (cron quotidien) — 118 déjà appliquée ; (projet hsnqmjsckekbmmwneybb), déployer le code (route /api/cron/instagram-monitor) AVANT d'activer le suivi, puis Contenu › Activer le suivi
+- [x] 118 + 119 appliquées (cron quotidien, job 14) ; (projet hsnqmjsckekbmmwneybb), déployer le code (route /api/cron/instagram-monitor) AVANT d'activer le suivi, puis Contenu › Activer le suivi
 - [x] App compilée : electron/release/ClosRM-0.1.0-arm64.dmg (logo ClosRM, signée localement, non notarisée, API = localhost:3000)
