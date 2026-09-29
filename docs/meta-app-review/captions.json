@@ -1,0 +1,67 @@
+{
+  "_comment": "Sous-titres anglais incrustés par scripts/meta-review/build_video.py. Un chapitre = un clip enregistré dans docs/meta-app-review/clips/<clip>. Les étapes s'affichent l'une après l'autre, réparties sur la durée du clip ; le titre (permissions) reste affiché en haut pendant tout le clip.",
+  "chapters": [
+    {
+      "clip": "1-connexion.mov",
+      "title": "Facebook Login — permissions: pages_show_list, pages_read_engagement",
+      "steps": [
+        "ClosRM is a CRM for coaches who get clients from Instagram. The coach opens Settings › Integrations.",
+        "The Meta card shows 'not connected'. The coach clicks 'Connect Meta' (Connecter Meta).",
+        "Facebook Login opens. The coach is logged in to their own Facebook account.",
+        "pages_show_list: ClosRM lists the Pages the coach manages. The coach selects their Page…",
+        "…and the Instagram professional account linked to it (@account visible here).",
+        "The coach reviews the requested permissions and clicks 'Continue / Allow' to grant them.",
+        "Back in ClosRM: connected. pages_read_engagement lets ClosRM read the selected Page to find its linked Instagram account."
+      ]
+    },
+    {
+      "clip": "2-profil.mov",
+      "title": "Permission: instagram_basic",
+      "steps": [
+        "The coach opens Acquisition › Social networks (Réseaux sociaux) › Instagram.",
+        "instagram_basic: ClosRM shows the connected account's profile — username, picture, follower count.",
+        "It lists the account's own posts and reels, so each lead can be linked to the content that brought them.",
+        "Same account, as shown on Instagram."
+      ]
+    },
+    {
+      "clip": "3-messages.mov",
+      "title": "Permission: instagram_manage_messages",
+      "steps": [
+        "Step 1 — Asset: the connected Instagram account (@account) is visible in ClosRM Messages.",
+        "The coach opens the conversation with a prospect (test account).",
+        "Step 2 — The coach types a reply in ClosRM and clicks Send (Envoyer).",
+        "Step 3 — The message is delivered in the native Instagram client (instagram.com, prospect's inbox).",
+        "The prospect replies on Instagram; the reply appears in ClosRM, next to the lead's record."
+      ]
+    },
+    {
+      "clip": "4-commentaires.mov",
+      "title": "Permission: instagram_manage_comments",
+      "steps": [
+        "The coach opens a post of the connected account in ClosRM.",
+        "instagram_manage_comments: ClosRM lists the comments on the coach's own post.",
+        "The coach replies to a comment from ClosRM and clicks Reply (Répondre).",
+        "The reply is published under the post on Instagram."
+      ]
+    },
+    {
+      "clip": "5-statistiques.mov",
+      "title": "Permission: instagram_manage_insights",
+      "steps": [
+        "The coach opens the Reels tab of the connected account in ClosRM.",
+        "instagram_manage_insights: plays, reach, saves and shares of the coach's own reels.",
+        "The coach compares them to see which content brings leads."
+      ]
+    },
+    {
+      "clip": "6-publication.mov",
+      "title": "Permission: instagram_content_publish",
+      "steps": [
+        "The coach prepares a post in ClosRM's content planner: image + caption.",
+        "The coach clicks Publish (Publier). ClosRM publishes it to the connected Instagram account.",
+        "The post is live on the coach's Instagram profile."
+      ]
+    }
+  ]
+}
