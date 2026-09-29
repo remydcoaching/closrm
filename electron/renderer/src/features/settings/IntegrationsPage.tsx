@@ -51,11 +51,26 @@ interface Suppression {
   created_at: string
 }
 
-function StatusBadge({ connected, label }: { connected: boolean; label?: string }) {
+interface MetaStatus {
+  connected: boolean
+  connectedAt: string | null
+  pageName: string | null
+  igUsername: string | null
+  /** Meta refuses the token (Facebook password changed, session expired): reconnect. */
+  needsReconnect: boolean
+}
+
+function StatusBadge({ connected, label, danger }: { connected: boolean; label?: string; danger?: boolean }) {
   return (
     <span
       className="ds-status-pill"
-      style={connected ? { color: 'var(--color-success)', background: 'var(--color-success-soft)' } : { color: 'var(--color-text-tertiary)', background: 'var(--color-bg-muted)' }}
+      style={
+        danger
+          ? { color: 'var(--color-danger)', background: 'var(--color-danger-soft)' }
+          : connected
+            ? { color: 'var(--color-success)', background: 'var(--color-success-soft)' }
+            : { color: 'var(--color-text-tertiary)', background: 'var(--color-bg-muted)' }
+      }
     >
       {label ?? (connected ? 'Connecté' : 'Non connecté')}
     </span>
@@ -84,6 +99,7 @@ function since(iso: string | null): string {
 export function IntegrationsPage() {
   const [rows, setRows] = useState<IntegrationRow[]>([])
   const [youtube, setYoutube] = useState<IntegrationRow | null>(null)
+  const [metaStatus, setMetaStatus] = useState<MetaStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notice, notify, clearNotice] = useNotice()
@@ -97,6 +113,8 @@ export function IntegrationsPage() {
           setLoading(false)
         }),
         swrGet<{ data: IntegrationRow | null }>('/api/integrations/youtube', (yt) => setYoutube(yt.data)).catch(() => setYoutube(null)),
+        // Live check: is the Meta token still accepted? (web server does the Graph call)
+        swrGet<{ data: MetaStatus }>('/api/integrations/meta/status', (m) => setMetaStatus(m.data)).catch(() => setMetaStatus(null)),
       ])
     } catch (e) {
       setError(errMsg(e))
@@ -126,6 +144,7 @@ export function IntegrationsPage() {
 
   const meta = get('meta')
   const metaOn = !!meta?.is_active
+  const metaBroken = metaOn && !!metaStatus?.needsReconnect
   const ytOn = !!youtube?.is_active
 
   return (
@@ -145,11 +164,31 @@ export function IntegrationsPage() {
       </div>
 
       <div className="soc-grid-2">
-        <Card name="Facebook Meta Ads + Instagram" description="Import automatique des leads Ads, DMs & stats Instagram." badge={<StatusBadge connected={metaOn} />}>
-          {metaOn && <span className="soc-muted">{since(meta?.connected_at ?? null)}</span>}
+        <Card
+          name="Facebook Meta Ads + Instagram"
+          description="Import automatique des leads Ads, DMs & stats Instagram."
+          badge={<StatusBadge connected={metaOn} danger={metaBroken} label={metaBroken ? 'À reconnecter' : undefined} />}
+        >
+          {metaOn && (
+            <span className="soc-muted">
+              {[metaStatus?.pageName ? `Page : ${metaStatus.pageName}` : null, metaStatus?.igUsername ? `Instagram : @${metaStatus.igUsername}` : null, since(meta?.connected_at ?? null)]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          )}
+          {metaBroken && (
+            <span style={{ color: 'var(--color-danger)', fontSize: 12 }}>
+              Meta n'accepte plus la connexion (mot de passe Facebook changé ou session expirée) : Instagram, DM et leads ne se synchronisent plus. Reconnectez dans le navigateur, puis « Actualiser ».
+            </span>
+          )}
           <div className="soc-row">
             {metaOn ? (
               <>
+                {metaBroken && (
+                  <button type="button" className="ds-pill-button ds-pill-button--dark" onClick={() => void openWeb('/parametres/integrations')}>
+                    Reconnecter Meta ↗
+                  </button>
+                )}
                 <button type="button" className="ds-pill-button" onClick={() => void openWeb('/parametres/integrations')}>
                   Pixel & CAPI ↗
                 </button>

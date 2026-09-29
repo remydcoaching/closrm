@@ -18,6 +18,7 @@ Une seule vidéo pour toutes les autorisations, tournée sur **ClosRM web (closr
 
 - [ ] Contrôle app › Demandes : retirer **Page Public Metadata Access**, **instagram_business_basic**, **instagram_business_manage_messages**.
 - [ ] Garder : pages_show_list, pages_read_engagement, instagram_basic, instagram_manage_messages, instagram_manage_comments, instagram_manage_insights, instagram_content_publish.
+- [ ] **Facebook Login › Paramètres › URI de redirection OAuth valides** : `https://closrm.fr/api/integrations/meta/callback` **et** `https://closrm.vercel.app/api/integrations/meta/callback` (la connexion revient désormais à l'adresse d'où elle part). Domaines de l'app : `closrm.fr`, `closrm.vercel.app`.
 - [ ] Paramètres › Général : URL de politique de confidentialité, URL de suppression des données, icône, catégorie, e-mail de contact.
 - [ ] Vérification de l'entreprise : faite ou lancée.
 - [ ] Rôles d'app › Rôles › Ajouter › **Testeur Instagram** : ton compte Instagram testeur.

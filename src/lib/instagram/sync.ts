@@ -3,6 +3,7 @@ import {
   fetchIgMedia, fetchReelInsights, fetchIgStories,
   fetchStoryInsights, fetchIgProfile, fetchIgConversations,
 } from './api'
+import { MetaTokenInvalidError } from '@/lib/meta/token-error'
 
 interface SyncContext {
   supabase: SupabaseClient
@@ -193,5 +194,8 @@ export async function syncAll(ctx: SyncContext) {
     snapshot: getValue(results[2], 'snapshot', { followers: 0, newFollowers: 0 }),
     convosCount: getValue(results[3], 'conversations', 0),
     errors: errors.length > 0 ? errors : undefined,
+    // Meta refused the token (expired, revoked, password changed): the
+    // caller must mark the account as needing a reconnection.
+    tokenInvalid: results.some((r) => r.status === 'rejected' && r.reason instanceof MetaTokenInvalidError),
   }
 }

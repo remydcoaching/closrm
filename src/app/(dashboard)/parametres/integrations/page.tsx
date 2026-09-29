@@ -7,9 +7,10 @@ import YoutubeCard from './youtube-card'
 import ApifyCard from './apify-card'
 import DomainWizardCard from '@/components/emails/DomainWizardCard'
 import SuppressionList from '@/components/emails/SuppressionList'
+import { metaConnectionStatus } from '@/lib/meta/connection-status'
 
 interface PageProps {
-  searchParams: Promise<{ success?: string; error?: string }>
+  searchParams: Promise<{ success?: string; error?: string; warning?: string }>
 }
 
 export default async function IntegrationsPage({ searchParams }: PageProps) {
@@ -26,6 +27,20 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
   const telegramIntegration = integrations?.find(i => i.type === 'telegram')
   const youtubeIntegration = integrations?.find(i => i.type === 'youtube')
   const apifyIntegration = integrations?.find(i => i.type === 'apify')
+  // Live check (is the token still accepted by Meta?) + linked Page / @account.
+  const metaStatus = metaIntegration?.is_active
+    ? await metaConnectionStatus(supabase, workspaceId, metaIntegration.credentials_encrypted ?? null)
+    : null
+  // The card is a client component: never send it the (encrypted) credentials.
+  const metaForCard = metaIntegration
+    ? {
+        is_active: metaIntegration.is_active,
+        connected_at: metaIntegration.connected_at,
+        meta_page_id: metaIntegration.meta_page_id,
+        meta_pixel_id: metaIntegration.meta_pixel_id,
+        capi_enabled: metaIntegration.capi_enabled,
+      }
+    : null
 
   const successMessage: Record<string, string> = {
     meta_connected: 'Facebook Meta Ads + Instagram connecté avec succès ! Les leads arrivent maintenant automatiquement.',
@@ -38,6 +53,9 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
     no_pages: 'Aucune page Facebook trouvée sur ce compte Meta.',
     oauth_failed: 'Erreur lors de la connexion Meta. Vérifiez votre compte et réessayez.',
     db_error: 'Erreur lors de la sauvegarde. Veuillez réessayer.',
+  }
+  const warningMessage: Record<string, string> = {
+    instagram_not_linked: "Meta est connecté, mais le compte Instagram n'a pas pu être relié : vérifiez qu'un compte Instagram professionnel est lié à la Page choisie, puis reconnectez.",
   }
 
   return (
@@ -77,9 +95,23 @@ export default async function IntegrationsPage({ searchParams }: PageProps) {
         </div>
       )}
 
+      {params.warning && warningMessage[params.warning] && (
+        <div style={{
+          background: 'rgba(214, 158, 46, 0.08)',
+          border: '1px solid rgba(214, 158, 46, 0.3)',
+          borderRadius: 10,
+          padding: '12px 16px',
+          marginBottom: 24,
+          fontSize: 13,
+          color: '#D69E2E',
+        }}>
+          {warningMessage[params.warning]}
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Meta Ads */}
-        <MetaIntegrationCard integration={metaIntegration ?? null} />
+        <MetaIntegrationCard integration={metaForCard} status={metaStatus} />
 
         {/* Google Agenda (multi-comptes) */}
         <GoogleCalendarCard />
