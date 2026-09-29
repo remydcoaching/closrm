@@ -23,10 +23,11 @@ export async function GET(request: NextRequest) {
 
   let synced = 0
   let errors = 0
+  let needsReconnect = 0
 
   for (const account of accounts) {
     try {
-      await syncAll({
+      const result = await syncAll({
         supabase,
         workspaceId: account.workspace_id,
         accessToken: account.access_token,
@@ -34,6 +35,12 @@ export async function GET(request: NextRequest) {
         pageId: account.page_id ?? undefined,
         pageAccessToken: account.page_access_token ?? undefined,
       })
+      if (result.tokenInvalid) {
+        // Dead token: stop syncing silently, show "reconnect" to the coach.
+        await supabase.from('ig_accounts').update({ is_connected: false }).eq('workspace_id', account.workspace_id)
+        needsReconnect++
+        continue
+      }
       synced++
     } catch (err) {
       console.error(`[Cron instagram-sync] Failed workspace ${account.workspace_id}:`, err)
@@ -41,5 +48,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ synced, errors })
+  return NextResponse.json({ synced, errors, needsReconnect })
 }
