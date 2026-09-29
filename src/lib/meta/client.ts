@@ -12,11 +12,6 @@ function appSecret(): string {
   return s
 }
 
-function callbackUrl(): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL
-  if (!base) throw new Error('NEXT_PUBLIC_APP_URL not set')
-  return `${base}/api/integrations/meta/callback`
-}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -107,10 +102,11 @@ export interface InsightsParams {
 
 // ─── OAuth ───────────────────────────────────────────────────────────────────
 
-export function buildOAuthUrl(state: string): string {
+/** redirectUri: see src/lib/meta/oauth-origin.ts — the exchange must reuse the exact same value. */
+export function buildOAuthUrl(state: string, redirectUri: string): string {
   const params = new URLSearchParams({
     client_id: appId(),
-    redirect_uri: callbackUrl(),
+    redirect_uri: redirectUri,
     state,
     scope: 'leads_retrieval,pages_show_list,pages_manage_metadata,pages_read_engagement,business_management,ads_read,read_insights,instagram_basic,instagram_manage_messages,instagram_content_publish,instagram_manage_insights,instagram_manage_comments',
     response_type: 'code',
@@ -118,10 +114,10 @@ export function buildOAuthUrl(state: string): string {
   return `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`
 }
 
-export async function exchangeCodeForToken(code: string): Promise<string> {
+export async function exchangeCodeForToken(code: string, redirectUri: string): Promise<string> {
   const params = new URLSearchParams({
     client_id: appId(),
-    redirect_uri: callbackUrl(),
+    redirect_uri: redirectUri,
     client_secret: appSecret(),
     code,
   })

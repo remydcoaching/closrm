@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { cookies } from 'next/headers'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createClient } from '@/lib/supabase/server'
@@ -11,11 +11,21 @@ import {
   subscribePageToLeadgen,
   type MetaCredentials,
 } from '@/lib/meta/client'
-
-const REDIRECT_BASE = `${process.env.NEXT_PUBLIC_APP_URL}/parametres/integrations`
+import { integrationsUrl, META_REDIRECT_COOKIE, metaCallbackUrl, resolveAppOrigin } from '@/lib/meta/oauth-origin'
+import { linkInstagramAccount } from '@/lib/instagram/link-account'
+import { createServiceClient } from '@/lib/supabase/service'
+import { syncAll } from '@/lib/instagram/sync'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
+  // The redirect_uri used to open the login (same origin as this request);
+  // the code exchange must send exactly the same value.
+  const cookieStore = await cookies()
+  const storedRedirect = cookieStore.get(META_REDIRECT_COOKIE)?.value
+  cookieStore.delete(META_REDIRECT_COOKIE)
+  const origin = resolveAppOrigin(storedRedirect ?? request.nextUrl.origin)
+  const redirectUri = metaCallbackUrl(origin)
+  const REDIRECT_BASE = integrationsUrl(origin)
   const code = searchParams.get('code')
   const state = searchParams.get('state')
   const errorParam = searchParams.get('error')
@@ -30,7 +40,6 @@ export async function GET(request: NextRequest) {
   }
 
   // CSRF check
-  const cookieStore = await cookies()
   const storedState = cookieStore.get('meta_oauth_state')?.value
   cookieStore.delete('meta_oauth_state')
 
@@ -43,7 +52,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     // 1. Exchange code for short-lived token
-    const shortToken = await exchangeCodeForToken(code)
+    const shortToken = await exchangeCodeForToken(code, redirectUri)
 
     // 2. Get pages with short-lived token (before long-lived exchange)
     const pages = await getPages(shortToken)
@@ -107,6 +116,35 @@ export async function GET(request: NextRequest) {
       console.error('Supabase upsert error:', error)
       return NextResponse.redirect(`${REDIRECT_BASE}?error=db_error`)
     }
+
+    // Fresh tokens for every Instagram feature (ig_accounts), then a first
+    // sync right away so profile, posts and DMs show without waiting for the
+    // nightly cron. A failure here doesn't undo the Meta connection.
+    const linked = await linkInstagramAccount(supabase, workspaceId, {
+      userAccessToken: longToken,
+      tokenExpiresAt: expires_at,
+      pageId: page.id,
+      fallbackPageAccessToken: page.access_token,
+    }).catch((e: unknown) => ({ ok: false as const, status: 500, error: e instanceof Error ? e.message : String(e) }))
+    if (!linked.ok) {
+      console.error('[Meta OAuth] Instagram account not linked:', linked.error)
+      return NextResponse.redirect(`${REDIRECT_BASE}?success=meta_connected&warning=instagram_not_linked`)
+    }
+    const ig = linked.data as { ig_user_id: string; page_access_token: string | null }
+    after(async () => {
+      try {
+        await syncAll({
+          supabase: createServiceClient(),
+          workspaceId,
+          accessToken: longToken,
+          igUserId: ig.ig_user_id,
+          pageId: page.id,
+          pageAccessToken: ig.page_access_token ?? page.access_token,
+        })
+      } catch (e) {
+        console.error('[Meta OAuth] first sync failed:', e instanceof Error ? e.message : e)
+      }
+    })
 
     return NextResponse.redirect(`${REDIRECT_BASE}?success=meta_connected`)
   } catch (err) {

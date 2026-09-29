@@ -13,12 +13,17 @@ interface MetaIntegration {
 
 interface MetaIntegrationCardProps {
   integration: MetaIntegration | null
+  /** Live state from the server (src/lib/meta/connection-status.ts). */
+  status?: { pageName: string | null; igUsername: string | null; needsReconnect: boolean } | null
 }
 
-export default function MetaIntegrationCard({ integration }: MetaIntegrationCardProps) {
+export default function MetaIntegrationCard({ integration, status }: MetaIntegrationCardProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const isConnected = !!integration?.is_active
+  // Connected in ClosRM but Meta no longer accepts the token (e.g. Facebook
+  // password changed): shown as such, with a reconnect button.
+  const needsReconnect = isConnected && !!status?.needsReconnect
 
   // ── Workspace-level pixel state (only used when connected) ─────────────
   const [pixelDraft, setPixelDraft] = useState<string>(integration?.meta_pixel_id ?? '')
@@ -104,7 +109,7 @@ export default function MetaIntegrationCard({ integration }: MetaIntegrationCard
   return (
     <div style={{
       background: '#141414',
-      border: `1px solid ${isConnected ? 'rgba(24,119,242,0.3)' : '#262626'}`,
+      border: `1px solid ${needsReconnect ? 'rgba(229,62,62,0.45)' : isConnected ? 'rgba(24,119,242,0.3)' : '#262626'}`,
       borderRadius: 12,
       padding: '16px 20px',
     }}>
@@ -134,24 +139,52 @@ export default function MetaIntegrationCard({ integration }: MetaIntegrationCard
                 <span style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  color: '#00C853',
-                  background: 'rgba(0,200,83,0.1)',
-                  border: '1px solid rgba(0,200,83,0.25)',
+                  color: needsReconnect ? '#E53E3E' : '#00C853',
+                  background: needsReconnect ? 'rgba(229,62,62,0.1)' : 'rgba(0,200,83,0.1)',
+                  border: `1px solid ${needsReconnect ? 'rgba(229,62,62,0.3)' : 'rgba(0,200,83,0.25)'}`,
                   borderRadius: 4,
                   padding: '2px 7px',
                 }}>
-                  CONNECTÉ
+                  {needsReconnect ? 'À RECONNECTER' : 'CONNECTÉ'}
                 </span>
               )}
             </div>
             <div style={{ fontSize: 12, color: '#555' }}>
               {isConnected
-                ? `Page ID : ${integration?.meta_page_id ?? '—'} · Connecté le ${connectedAt}`
+                ? [
+                    `Page : ${status?.pageName ?? integration?.meta_page_id ?? '—'}`,
+                    status?.igUsername ? `Instagram : @${status.igUsername}` : null,
+                    `Connecté le ${connectedAt}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
                 : 'Import automatique des leads Facebook & Instagram Ads'}
             </div>
+            {needsReconnect && (
+              <div style={{ fontSize: 12, color: '#E53E3E', marginTop: 4 }}>
+                Meta n&apos;accepte plus la connexion (mot de passe Facebook changé ou session expirée) : Instagram, DM et leads ne se synchronisent plus. Reconnectez.
+              </div>
+            )}
           </div>
         </div>
 
+        {needsReconnect && (
+          <a
+            href="/api/integrations/meta"
+            style={{
+              background: '#1877F2',
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '7px 16px',
+              borderRadius: 8,
+              textDecoration: 'none',
+              flexShrink: 0,
+            }}
+          >
+            Reconnecter →
+          </a>
+        )}
         {isConnected ? (
           <button
             onClick={handleDisconnect}

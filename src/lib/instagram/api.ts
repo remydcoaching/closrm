@@ -1,3 +1,5 @@
+import { isInvalidTokenPayload, MetaTokenInvalidError, throwGraphError } from '@/lib/meta/token-error'
+
 const IG_API_VERSION = 'v25.0'
 const IG_BASE = `https://graph.instagram.com/${IG_API_VERSION}`
 const FB_BASE = `https://graph.facebook.com/${IG_API_VERSION}`
@@ -15,7 +17,7 @@ export async function fetchIgProfile(token: string, igUserId?: string) {
   const id = igUserId ?? 'me'
   const url = `${base}/${id}?fields=username,name,followers_count,follows_count,media_count,profile_picture_url&access_token=${token}`
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`IG profile fetch failed: ${res.status}`)
+  if (!res.ok) await throwGraphError(res, 'IG profile fetch')
   return res.json() as Promise<{
     id: string
     username: string
@@ -45,7 +47,7 @@ export async function fetchIgMedia(token: string, limit = 50, igUserId?: string)
   const id = igUserId ?? 'me'
   const url = `${base}/${id}/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`IG media fetch failed: ${res.status}`)
+  if (!res.ok) await throwGraphError(res, 'IG media fetch')
   const json = await res.json()
   return json.data ?? []
 }
@@ -88,7 +90,7 @@ export async function fetchIgStories(token: string, igUserId?: string): Promise<
   const id = igUserId ?? 'me'
   const url = `${base}/${id}/stories?fields=id,media_url,thumbnail_url,caption,media_type,timestamp&access_token=${token}`
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`IG stories fetch failed: ${res.status}`)
+  if (!res.ok) await throwGraphError(res, 'IG stories fetch')
   const json = await res.json()
   return json.data ?? []
 }
@@ -228,6 +230,7 @@ export async function fetchIgConversations(token: string, pageId: string, maxCon
     const listRes = await fetch(url)
     if (!listRes.ok) {
       const err = await listRes.json().catch(() => ({}))
+      if (isInvalidTokenPayload(err)) throw new MetaTokenInvalidError('IG conversations: token invalid')
       if (err?.error?.error_subcode === 2534084) break // Standard access limit reached
       const metaMsg = err?.error?.error_user_msg ?? err?.error?.message ?? `status ${listRes.status}`
       throw new Error(metaMsg)
@@ -278,7 +281,7 @@ export async function fetchConversationMessages(
 ): Promise<IgMessageRaw[]> {
   const url = `${FB_BASE}/${conversationId}/messages?fields=id,message,from,created_time,attachments&limit=${limit}&access_token=${token}`
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`IG messages fetch failed: ${res.status}`)
+  if (!res.ok) await throwGraphError(res, 'IG messages fetch')
   const json = await res.json()
   return json.data ?? []
 }
