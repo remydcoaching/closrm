@@ -37,18 +37,6 @@ describe('useDmSession', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.currentItem?.id).toBe('item-1')
 
-    // submitOutcome calls refetch() after the PATCH — a second api.get mock
-    // is required or the hook receives `undefined` on its post-submit refetch.
-    mockGet.mockResolvedValueOnce({
-      data: {
-        id: 'session-1',
-        items: [
-          { id: 'item-1', lead_id: 'lead-1', position: 0, outcome: 'relaunched' },
-          { id: 'item-2', lead_id: 'lead-2', position: 1, outcome: null },
-        ],
-      },
-    })
-
     await act(async () => {
       await result.current.submitOutcome('item-1', 'relaunched', { delayDays: 7 })
     })
@@ -56,6 +44,7 @@ describe('useDmSession', () => {
       '/api/dm-sessions/session-1/items/item-1',
       { outcome: 'relaunched', delay_days: 7 }
     )
+    expect(result.current.currentItem?.id).toBe('item-2')
   })
 
   it('submits a replied outcome for a transition, without a delay', async () => {

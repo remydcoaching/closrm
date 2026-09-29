@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, RotateCcw, MessageCircle, Plus, Check } from 'lucide-react'
+import { X, RotateCcw, MessageCircle, Send, Plus, Check } from 'lucide-react'
 import { LeadSource } from '@/types'
 import { WorkflowInlineStep } from '@/lib/leads/workflow-templates'
 
@@ -44,6 +44,17 @@ export default function InlineWorkflowEditor({ source, steps, onStepsChange }: P
     onStepsChange([...steps, { channel: defaultChannel, delay_days: d, template_text: nurturingReason || `Nurturing J+${d}` }])
     setNurturingDays(null)
     setNurturingReason('')
+  }
+
+  function addPostValueAsset() {
+    onStepsChange([
+      ...steps,
+      {
+        channel: 'instagram_dm',
+        delay_days: 2,
+        template_text: 'Hello {{prenom}}, alors t\'as pu check ta vidéo ?',
+      },
+    ])
   }
 
   function removeStep(index: number) {
@@ -163,6 +174,29 @@ export default function InlineWorkflowEditor({ source, steps, onStepsChange }: P
 
       {/* Separator */}
       <div style={{ height: 1, background: 'var(--border-primary)', margin: '14px 16px' }} />
+
+      {/* Post Value Asset */}
+      <div style={{ padding: '0 16px 16px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <div style={{ width: 26, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,182,212,0.12)' }}>
+            <Send size={13} color="#06b6d4" />
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.03em' }}>Relance post VA</span>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 10px' }}>
+          Relance Instagram J+2 après l&apos;envoi d&apos;un value asset.
+        </p>
+        <button type="button" onClick={addPostValueAsset} style={{
+          padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+          background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.35)',
+          color: '#06b6d4', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <Plus size={13} /> Ajouter à J+2
+        </button>
+      </div>
+
+      {/* Separator */}
+      <div style={{ height: 1, background: 'var(--border-primary)', margin: '0 16px 14px' }} />
 
       {/* Nurturing */}
       <div style={{ padding: '0 16px 16px 16px' }}>

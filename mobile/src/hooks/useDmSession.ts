@@ -142,9 +142,21 @@ export function useDmSession(sessionId: string | null) {
         ...(opts?.note ? { note: opts.note } : {}),
         ...(opts?.delayDays ? { delay_days: opts.delayDays } : {}),
       })
-      await refetch()
+      // Les templates des profils suivants sont déjà chargés avec la session.
+      // Mettre à jour l'item localement évite de recharger toute la file (et de
+      // recalculer chaque template) avant d'afficher le lead suivant.
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.map((item) =>
+                item.id === itemId ? { ...item, outcome, note: opts?.note ?? null } : item
+              ),
+            }
+          : current
+      )
     },
-    [sessionId, refetch]
+    [sessionId]
   )
 
   const abandon = useCallback(async () => {

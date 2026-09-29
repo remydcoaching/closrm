@@ -355,7 +355,7 @@ export function DmSessionLeadScreen() {
             setAbandoning(true)
             try {
               await abandon()
-              navigation.replace('FollowUpsList')
+              navigation.popToTop()
             } catch {
               setAbandoning(false)
             }
