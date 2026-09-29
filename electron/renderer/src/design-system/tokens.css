@@ -1,0 +1,115 @@
+/*
+  ClosRM Desktop — design tokens (M1E).
+
+  New visual direction, no obligation to preserve the current ClosRM web
+  palette (dark, #0A0A0A/red — see CLAUDE.md).
+
+  Palette/typography reference: color and font tokens observed in Insyder's
+  compiled frontend CSS (user-provided values), used here only as a REFERENCE
+  POINT for our own palette and type scale — no Insyder code, CSS file, or
+  asset is copied or reused. Every component in this design system is built
+  from scratch with ClosRM's own class names, structure and behavior.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* Surfaces — bright, near-white, layered grays (reference: Insyder light UI tokens) */
+  --color-bg: #ffffff;
+  --color-bg-subtle: #f7f7f8;
+  --color-bg-muted: #f2f1f2;
+  --color-surface: #ffffff;
+  --color-surface-hover: #fbfbfc;
+  --color-surface-sunken: #edf0f4;
+  --color-border: rgba(20, 20, 30, 0.09);
+  --color-border-strong: rgba(20, 20, 30, 0.16);
+
+  /* Text */
+  --color-text-primary: #171b20;
+  --color-text-strong: #101012;
+  --color-text-secondary: #4a4e55;
+  --color-text-tertiary: #6b6f76;
+  --color-text-muted: #8a8e96;
+  --color-text-faint: #9aa0a6;
+  --color-text-on-accent: #ffffff;
+
+  /* Accent — Instagram-inspired gradient (reference tokens) */
+  --color-accent-solid: #c837ab;
+  --color-accent-solid-hover: #b02f97;
+  --color-accent-bright: #f261d5;
+  --color-accent-soft: #fdf1f6;
+  --gradient-accent: linear-gradient(135deg, #ffdd55 0%, #ff994a 28%, #f24962 55%, #d6249f 80%, #c837ab 100%);
+
+  /* Semantic */
+  --color-success: #1a7f4e;
+  --color-success-soft: #e8f7ee;
+  --color-warning: #d9820b;
+  --color-warning-soft: #fdf3e2;
+  --color-danger: #d63447;
+  --color-danger-soft: #fceced;
+  --color-info: #3b82f6;
+  --color-info-soft: #eaf2fe;
+
+  /* Typography — IBM Plex Sans as the primary UI face, IBM Plex Mono for
+     numeric/data-heavy content (amounts, counts, timestamps). Inter kept as
+     a fallback secondary face. Clash/Satoshi are NOT bundled here — reserved
+     for a later branding pass on wordmark/marketing headers, not the CRM UI. */
+  --font-sans: 'IBM Plex Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+  --font-size-xs: 10.5px;
+  --font-size-sm: 11.5px;
+  --font-size-base: 12.5px;
+  --font-size-lg: 14px;
+  --font-size-xl: 16px;
+  --font-size-2xl: 20px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Radius — generous, in the spirit of a soft/rounded reference language */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 28px;
+  --radius-full: 999px;
+
+  /* Shadows — soft, light-mode oriented */
+  --shadow-sm: 0 1px 2px rgba(16, 16, 18, 0.04);
+  --shadow-md: 0 4px 12px rgba(16, 16, 18, 0.06);
+  --shadow-lg: 0 12px 32px rgba(16, 16, 18, 0.10);
+
+  /* Sidebar — own ClosRM values, not a copy of any reference layout */
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 76px;
+  --sidebar-bg: #f2f1f2;
+  --sidebar-item-active-bg: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,258 @@
+.app-shell {
+  display: flex;
+  height: 100vh;
+  min-height: 0;
+  background: var(--color-bg);
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.app-content {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── Top bar (reference: Insyder) ─────────────────────── */
+.app-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px var(--space-6);
+  flex-shrink: 0;
+}
+
+.app-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.app-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--color-text-strong);
+  letter-spacing: -0.01em;
+}
+
+.app-brand-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-accent);
+  color: #fff;
+  font-size: 14px;
+}
+
+.app-ig-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px 4px 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-ig-pill:hover {
+  border-color: var(--color-border-strong);
+}
+
+.app-ig-pill-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.app-ig-pill-handle {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.app-ig-pill-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.app-ig-pill-status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.app-ig-pill-glyph {
+  display: inline-flex;
+  color: var(--color-text-strong);
+  margin-left: 4px;
+}
+
+.app-user {
+  position: relative;
+}
+
+.app-user-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-user-name {
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-strong);
+}
+
+.app-user-caret {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.app-user-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 220px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 12px 32px rgba(20, 20, 30, 0.12);
+  z-index: 50;
+}
+
+.app-user-menu-email {
+  padding: 6px 10px 10px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 6px;
+}
+
+.app-user-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.app-user-menu button:hover {
+  background: var(--color-bg-muted);
+}
+
+/* ─── Onboarding ───────────────────────────────────────── */
+.ig-onboarding {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-subtle);
+  padding: var(--space-6);
+}
+
+.ig-onboarding-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 36px;
+  border-radius: 24px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ig-onboarding-card h1 {
+  margin: var(--space-2) 0 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text-strong);
+}
+
+.ig-onboarding-card p {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.ig-onboarding-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ig-onboarding-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ig-onboarding-input > span {
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.ig-onboarding-input > * {
+  flex: 1;
+}
+
+.ig-onboarding-input > span {
+  flex: 0;
+}
+
+.ig-onboarding-logout {
+  align-self: center;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.app-ig-pill--empty {
+  padding: 8px 14px;
+}
+
+.app-ig-pill--empty .app-ig-pill-glyph {
+  margin-left: 0;
+}
+
+.ig-onboarding-note {
+  font-size: var(--font-size-xs) !important;
+  text-align: center;
+}

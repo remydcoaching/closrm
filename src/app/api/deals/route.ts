@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     let query = supabase
       .from('deals')
-      .select('*, lead:leads(id, first_name, last_name, email, phone)')
+      .select('*, lead:leads(id, first_name, last_name, email, phone, instagram_profile_pic_url)')
       .eq('workspace_id', workspaceId)
       .order('started_at', { ascending: false })
 

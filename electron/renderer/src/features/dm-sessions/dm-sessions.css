@@ -1,0 +1,213 @@
+.dm-page {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.dm-page--center {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-3);
+}
+
+.dm-config-card {
+  max-width: 480px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dm-config-card h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-base);
+}
+
+.dm-config-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-top: var(--space-2);
+}
+
+.dm-config-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.dm-config-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.dm-session-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dm-progress-info {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+}
+
+.dm-progress-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-bg-muted);
+  overflow: hidden;
+}
+
+.dm-progress-bar-fill {
+  height: 100%;
+  background: var(--color-accent-solid);
+  transition: width 0.2s ease;
+}
+
+.dm-session-body {
+  flex: 1;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dm-session-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dm-category-badge {
+  display: inline-flex;
+  margin-top: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dm-template-card {
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.dm-template-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.dm-template-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.dm-template-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.dm-error {
+  color: var(--color-danger);
+  font-size: var(--font-size-xs);
+}
+
+.dm-session-footer {
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}
+
+.dm-transitions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dm-transitions-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+}
+
+.dm-transitions-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dm-transition-chip {
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dm-session-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.dm-session-buttons > * {
+  flex: 1;
+}
+
+.dm-skip {
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  padding: var(--space-1);
+}
+
+.dm-delay-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.dm-delay-option {
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-accent-solid);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-solid);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+}

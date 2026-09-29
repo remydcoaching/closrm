@@ -1,0 +1,65 @@
+# Tâche 049 — ClosRM Desktop + Instagram Intelligence (Insyder)
+
+**Dev :** Pierre · **Branche :** feature/pierre-lead-journey (worktree ../closrm-lead-journey) · **Statut :** 🟡 prêt pour PR
+
+## Objectif
+App desktop Electron à parité avec ClosRM web + couche Instagram Intelligence inspirée d'Insyder (Analyse/ciblage, Audience, Contenu, fiche lead avec score/confiance/parcours).
+
+## Fait (2026-09-25)
+Voir tasks/todo.md. Commits : 25c2f50, 8675273, 967c0da, f2886e5, 6b63047 (+ suivants).
+
+## Migrations de cette branche (renumérotées après la fusion de develop, 2026-09-27)
+| Fichier | Ancien n° | Appliquée en prod |
+|---|---|---|
+| 102_instagram_interactions_source_content | 096 | oui |
+| 103_hiker_discovery_runs | 097 | oui |
+| 104_lead_instagram_profile | 098 | oui |
+| 105_instagram_content_view | 099 | oui |
+| 106_lead_status_history | 100 | oui |
+| 107_merge_duplicate_ig_leads | 101 | oui |
+| 108_discovery_profiles | 102 | oui |
+| 109_discovery_contents | 103 | oui |
+| 110_discovery_interactions | 104 | oui |
+| 111_workspace_instagram_username | 105 | oui |
+| 112_story_viewers | 106 | oui |
+| 113_story_viewer_likes | 108 | oui |
+| 114_instagram_aggregates | 109 | oui |
+| 115_highlight_story_viewers | 110 | oui (vérifié 2026-09-27) |
+
+L'ancien 107_backfill_setting_processes (copie de develop 100) est supprimé.
+
+## Performance (2026-09-27)
+- Cause de la panne/lenteur Supabase : `cron.job_run_details` = 288 Mo sur 326 Mo (cron booking-reminders chaque minute depuis mars, journal jamais purgé). Purgé + cron `purge-cron-logs` quotidien. Base 31 Mo, API 0,2 s.
+- Fiche lead : 914 ms (4 appels séquentiels) → 382-557 ms (1 appel agrégé), revisite instantanée (cache Electron).
+
+## Stories à la une, photos IG, logo (2026-09-27 soir)
+- **Constat vérifié** : Instagram ne liste les spectateurs d'une story que 48 h après publication. Les 29 stories à la une du compte (juin 2026 → oct. 2024) ont été lues après ce délai → liste vide. Insyder a la même limite (sa page Méthode : « sur une à la une, Instagram n'expose ni vues ni compteur ») : il ne montre que les **j'aime** des stories à la une, jamais des vues.
+- Collecte sur toute la fenêtre de 48 h : les stories expirées (> 24 h) mais < 48 h sont relues toutes les 2 h + lecture finale après 44 h (`storiesToRecheck`, `collectStoryViewers(recheck)`), erreur isolée par story (`status: 'error'`, jamais 0).
+- Une relecture n'écrase plus vignette / collection / compteurs (colonnes omises au lieu de null, upsert groupé par jeu de colonnes).
+- `POST/GET /api/instagram/story-views/highlights` : rattache les stories stockées à leur collection ; spectateurs agrégés par personne (clé instagram_user_id), nb de stories vues, lead.
+- UI « Vos stories à la une » : état par story (N spectateurs / non fournis par Instagram > 48 h / lecture échouée / en attente), toutes les stories de la collection, tableau « Spectateurs de « X » ».
+- Leads enrichis depuis les listes de spectateurs (instagram_user_id + photo) ; un handle déjà lié à un autre id n'est plus rattaché.
+- Photos IG : le CDN renvoie `Cross-Origin-Resource-Policy: same-origin` → images bloquées dans l'app. En-tête retiré pour cdninstagram/fbcdn dans le main (vérifié : bloquée sans, 150 px avec).
+- macOS : fermer la fenêtre la masque (collecte continue), Cmd+Q quitte.
+- Photos : pipeline, deals, dashboard, finance, RDV reçoivent `instagram_profile_pic_url` ; photo du compte connecté dans la barre du haut (web_profile_info 1×/jour max ou gratuite via la réponse stories, cache disque `instagram-profile.json`) ; migration 117 = remplissage des photos depuis story_viewers + ig_conversations (à appliquer).
+- Frise Parcours : miniature de story contrainte au rond de 26 px (elle s'affichait en plein écran une fois les images débloquées).
+- Logo : `electron/build/icon.png` + `icon.icns` (dégradé de marque, « C » + pastille), icône Dock en dev, même marque dans la sidebar.
+
+## Analyse d'Insyder (app installée, 2026-09-27)
+- **Architecture** : le desktop capture les cookies IG (sessionid…), l'UA et le pays → envoyés au backend (« cookie chiffré en vault », Aurora). Les scans tournent côté serveur (AWS Lambda + Step Functions) derrière un proxy résidentiel Evomi du pays de l'utilisateur. La lecture en page cachée (`fetchStats`) n'est qu'un chemin local.
+- **Données publiques** (likers, commentaires, profils, abonnés) : **HikerAPI**, « scan public toutes les ~60 min », 1 007 appels ≈ 1 $ par scan (88 % commentaires), ≈ 56 $/mois/compte.
+- **Session (cookie)** : seulement les données réservées au propriétaire (spectateurs de stories), « réveils cookie 15–60 min randomisés, à la une à sa propre cadence », seuils en base (scan_policy).
+- **Réponses/réactions aux stories** : webhook Meta (API Instagram officielle, OAuth), horodatage exact.
+- **Stories à la une** : aucune vue ni compteur (leur doc) — seulement les j'aime.
+- **Notifications du compte** : non lues par Insyder.
+- **Repris dans ClosRM** : réveils aléatoires 15–60 min, cache des à la une sur disque (un redémarrage ne relit rien), pause Instagram conservée sur disque, photos des leads via Hiker (bouton « Photos manquantes », confirmé, plafonné à 300, chaque résultat enregistré aussitôt).
+- **Non repris (décision Pierre)** : envoyer la session au serveur + proxy (contraire à la règle « le backend ne reçoit pas les secrets Instagram », mais permettrait la collecte app fermée).
+
+## Suivi des publications (2026-09-28, modèle Insyder)
+- Migration 118 : `instagram_monitor_settings` (désactivé par défaut, 100/300/1 000 requêtes/jour), `instagram_monitored_contents` (état de scan), `instagram_engagement_observations` (toute personne, clé instagram_user_id, commentaires par id), `instagram_monitor_runs` (coût, résultat, sauvegarde brute), cron pg_cron horaire (`:17`) + purge quotidienne des journaux.
+- Passage (`src/lib/instagram/monitor/`) : liste des derniers posts + réels (2 req) → publications dues selon leur âge (1 h < 3 j, 6 h < 14 j, 24 h < 60 j, 7 j sinon) sous le budget restant → likers (1 req) + commentaires seulement si leur compteur a bougé → nouveaux gestes = observations ; gestes des leads connus → `instagram_interactions` (j'aime daté de la publication au premier passage, de l'intervalle ensuite ; commentaire daté par Instagram).
+- UI : Contenu › « Suivi de vos publications » (activation confirmée avec le coût, budget, scanner maintenant, derniers gestes « entre 10:05 et 11:05 ») ; Parcours du lead : miniature + texte du commentaire.
+- Pas de création automatique de leads : les non-leads restent dans les observations (ciblables ensuite).
+
+## Tâches liées
+T-046 lead journey, T-047 meta capi, Session DM (develop).

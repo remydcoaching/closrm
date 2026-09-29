@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { createDmSessionSchema, updateDmSessionItemSchema } from '../dm-sessions'
 
 describe('createDmSessionSchema', () => {
-  it('accepts a valid target_count and defaults stale_threshold_days to 30', () => {
+  it('accepts a valid target_count and defaults stale_threshold_days to 30 and every category on', () => {
     const result = createDmSessionSchema.parse({ target_count: 30 })
-    expect(result).toEqual({ target_count: 30, stale_threshold_days: 30 })
+    expect(result).toEqual({ target_count: 30, stale_threshold_days: 30, relance_en_retard: true, premier_contact: true, jamais_recontacte: true })
   })
 
   it('rejects a target_count of 0', () => {

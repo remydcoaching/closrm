@@ -1,0 +1,48 @@
+/* Page-level density (reference: Insyder) — content centred in a ~1240px
+   column with generous side margins, compact headers. Applies to every
+   feature page root so they all share one rhythm. */
+.pub-page,
+.crm-page,
+.ig-page,
+.leads-page,
+.lead-detail-page,
+.mk-page,
+.soc-page,
+.stats-page,
+.agenda-page,
+.dm-page {
+  padding-block: 20px 32px !important;
+  padding-inline: max(28px, calc((100% - 1240px) / 2)) !important;
+  gap: 14px !important;
+}
+
+.crm-relances-switch {
+  padding-inline: max(28px, calc((100% - 1240px) / 2)) !important;
+}
+
+.pub-page h1,
+.crm-page h1,
+.ig-page h1,
+.leads-page h1,
+.mk-page h1,
+.soc-page h1,
+.stats-page h1,
+.agenda-page h1,
+.dm-page h1 {
+  font-size: 16px !important;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pub-page h1 + p,
+.crm-page h1 + p,
+.ig-page h1 + p,
+.leads-page h1 + p,
+.mk-page h1 + p,
+.soc-page h1 + p,
+.stats-page h1 + p,
+.agenda-page h1 + p,
+.dm-page h1 + p {
+  font-size: 11px !important;
+  margin-top: 2px;
+}

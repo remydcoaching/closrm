@@ -905,6 +905,22 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 
 ---
 
+*Mis à jour le 2026-06-01 par Claude Code — ClosRM*
+
+---
+
+## Session 2026-09-25 — ClosRM Desktop / Instagram Intelligence (Pierre)
+
+| # | Proposition | Justification | Priorité |
+|---|-------------|---------------|----------|
+| A-D1 | `GET /api/instagram/account` ne doit plus renvoyer `access_token` / `page_access_token` (select explicite) | Le jeton Meta part au client (web et desktop) | Haute |
+| A-D2 | Endpoints agrégés `GET /api/dashboard/v2` et `/api/stats` exposant les requêtes serveur existantes | Le desktop recalcule le dashboard avec des dizaines de requêtes paginées | Moyenne |
+| A-D3 | Corriger les bugs web trouvés en portant les pages : Dashboard v2 (outcomes `fait/closed/present` inexistants → show/close rate à 0), leads chauds (statut `nouveau_lead` inexistant), Publicités (closés lus sur `json.total`, ROAS toujours 0, dates CRM figées à 7 j, attribution vide, KPI CPC inexistant, delta budget faux +100 %) | Chiffres faux affichés en prod | Haute |
+| A-D4 | `POST /api/booking-calendars` renvoie un objet d'erreur (flatten) au lieu d'un message ; `PATCH /api/bookings/:id` ignore calendar_id/lead_id/location_id | Erreurs illisibles, édition web cassée | Moyenne |
+| A-D5 | Stocker les miniatures des contenus analysés dans Supabase Storage au moment du scan | Les URLs CDN Instagram expirent en quelques jours (images vides dans Contenu) | Moyenne |
+| A-D6 | ✅ Décidé par Pierre le 2026-09-26 (« fais comme Insyder ») et implémenté : session Instagram du coach dans le desktop, collecte des viewers de stories (migration 106) | Risque de vérification du compte accepté ; requêtes espacées, arrêt au premier challenge | Fait |
+| A-D7 | Monitoring continu : relancer automatiquement une analyse légère (derniers contenus) toutes les X heures via cron | Couche "Monitoring" de la vision Insyder ; coût Hiker à arbitrer | Moyenne |
+| A-D8 | Filtre "niveau de confiance" sur la page Contenu (répartition des leads touchés par niveau) | Demandé dans la spec ; nécessite le score par lead côté serveur en masse | Moyenne |
 ### A-FUN-04 · Registry central des types de blocs de funnel
 - **Contexte :** Tâche 048 — ajouter un type de bloc touche aujourd'hui 7 fichiers différents à chaque fois (aucun registry factorisé, pattern répété pour les 17 types désormais). Décision prise avec Rémy de garder le pattern existant pour cette tâche plutôt que de refactorer.
 - **Description :** Factoriser l'enregistrement d'un bloc (type, config par défaut, label, icône, composant config, composant rendu public, composant rendu preview) dans un unique fichier registry, pour qu'ajouter un futur type de bloc ne touche qu'un seul endroit.
@@ -940,6 +956,34 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible
 - **Statut :** En attente de validation
 
+### A-049-3 · J'aime des stories à la une (parité Insyder)
+- **Contexte :** T-049 — Instagram ne donne plus les spectateurs d'une story à la une après 48 h ; Insyder affiche à la place les personnes qui ont **aimé** chaque story à la une.
+- **Description :** Tester (session réelle, 1 requête) si `/api/v1/media/{story_pk}/likers/` renvoie les likers d'une story à la une ancienne depuis la page Instagram cachée ; si oui, les stocker comme interactions `like` sur la story et les afficher dans « Vos stories à la une ». Ne rien stocker si l'endpoint ne répond pas.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### A-049-6 · Collecte serveur de la session Instagram (modèle Insyder)
+- **Contexte :** T-049 — Insyder chiffre le cookie IG en base et scanne depuis AWS via un proxy résidentiel du pays de l'utilisateur ; la collecte continue app fermée.
+- **Description :** Vault chiffré (pgsodium) pour la session, job serveur toutes les 15–60 min via proxy résidentiel. Contraire à la règle actuelle « le backend ne reçoit pas les secrets Instagram » : décision à prendre.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Élevé
+- **Statut :** En attente de validation
+
+### A-049-4 · Copie des photos de profil IG dans Supabase Storage
+- **Contexte :** T-049 — les URL du CDN Instagram expirent (paramètre `oe`) ; la photo retombe alors sur les initiales jusqu'à la prochaine collecte.
+- **Description :** Copier la photo (150 px, ~8 Ko) dans un bucket au moment de l'enrichissement du lead, comme `story-media`.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-049-5 · Photos IG sur le web
+- **Contexte :** T-049 — le même en-tête CORP bloque les photos sur closrm.vercel.app (le correctif Electron ne s'applique pas au navigateur).
+- **Description :** Servir les photos via Storage (A-049-4) ou un proxy image authentifié.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
 ---
 
-*Mis à jour le 2026-09-14 par Claude Code — ClosRM*
+*Mis à jour le 2026-09-27 par Claude Code — ClosRM*

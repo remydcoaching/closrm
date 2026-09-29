@@ -1,0 +1,25 @@
+.ds-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 0 6px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 4px;
+}
+
+.ds-pagination-size,
+.ds-pagination-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.ds-pagination-range {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}

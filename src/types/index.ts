@@ -80,6 +80,16 @@ export interface Lead {
   meta_adset_id: string | null
   meta_ad_id: string | null
   instagram_handle: string | null
+  // Instagram profile snapshot — populated by a Hiker discovery targeting
+  // this lead's own account (migration 104). Never real-time: always paired
+  // with instagram_profile_synced_at in the UI, never presented as live.
+  instagram_followers_count: number | null
+  instagram_following_count: number | null
+  instagram_is_verified: boolean | null
+  instagram_is_private: boolean | null
+  instagram_profile_pic_url: string | null
+  instagram_bio: string | null
+  instagram_profile_synced_at: string | null
   email_unsubscribed: boolean
   email_unsubscribed_at: string | null
   last_activity_at: string | null

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const connectIntegrationSchema = z.object({
-  type: z.enum(['google_calendar', 'meta', 'whatsapp', 'stripe', 'telegram']),
+  type: z.enum(['google_calendar', 'meta', 'whatsapp', 'stripe', 'telegram', 'apify']),
   credentials: z.record(z.string(), z.unknown()),
 })
 

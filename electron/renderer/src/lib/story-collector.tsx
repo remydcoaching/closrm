@@ -1,0 +1,185 @@
+// Background collection of the coach's own story viewers while the app is
+// open (stories — and their viewer lists — disappear after 24h, so they must
+// be read while live). Talks to the main process through
+// window.closrm.instagram (the Instagram session never reaches the renderer)
+// and pushes parsed viewers to POST /api/instagram/story-views.
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { api } from './api-client'
+import type { CollectStoriesResult, InstagramSessionStatus } from './electron-bridge'
+import { storiesToRecheck, type KnownStory } from '../features/instagram/story-scan'
+import { invalidate } from './query-cache'
+
+// Randomized wake-ups between 15 and 60 min (same policy as Insyder's
+// "réveils cookie 15–60 min randomisés"): no fixed rhythm for Instagram to
+// spot, and a story is still read many times within its 48 h window.
+const MIN_INTERVAL_MS = 15 * 60_000
+const MAX_INTERVAL_MS = 60 * 60_000
+export const nextWakeUpMs = (rand = Math.random()) => MIN_INTERVAL_MS + rand * (MAX_INTERVAL_MS - MIN_INTERVAL_MS)
+const BACKOFF_MS = 60 * 60_000
+const LAST_RUN_KEY = 'closrm:story-collector:last-run'
+const PAUSED_UNTIL_KEY = 'closrm:story-collector:paused-until'
+
+export interface CollectorRun {
+  at: string
+  ok: boolean
+  stories: number
+  viewers: number
+  leadsMatched: number
+  message: string | null
+}
+
+interface StoryCollectorValue {
+  available: boolean
+  status: InstagramSessionStatus | null
+  collecting: boolean
+  lastRun: CollectorRun | null
+  pausedUntil: number | null
+  connect: () => Promise<void>
+  disconnect: () => Promise<void>
+  collectNow: () => Promise<void>
+}
+
+const Ctx = createContext<StoryCollectorValue | null>(null)
+
+function readJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : null
+  } catch {
+    return null
+  }
+}
+
+function writeJson(key: string, value: unknown) {
+  try {
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // storage unavailable: collection still works, just not remembered
+  }
+}
+
+const FAILURE_MESSAGE: Record<string, string> = {
+  not_connected: 'Session Instagram déconnectée — reconnectez-vous.',
+  checkpoint: 'Instagram demande une vérification : ouvrez Instagram, validez, puis reconnectez la session. Collecte en pause 1 h.',
+  rate_limited: 'Instagram limite les requêtes. Collecte en pause 1 h.',
+  error: 'La collecte a échoué.',
+}
+
+export function StoryCollectorProvider({ children }: { children: ReactNode }) {
+  const bridge = typeof window !== 'undefined' ? window.closrm?.instagram : undefined
+  const [status, setStatus] = useState<InstagramSessionStatus | null>(null)
+  const [collecting, setCollecting] = useState(false)
+  const [lastRun, setLastRun] = useState<CollectorRun | null>(() => readJson<CollectorRun>(LAST_RUN_KEY))
+  const [pausedUntil, setPausedUntil] = useState<number | null>(() => readJson<number>(PAUSED_UNTIL_KEY))
+  const running = useRef(false)
+
+  const record = useCallback((run: CollectorRun) => {
+    setLastRun(run)
+    writeJson(LAST_RUN_KEY, run)
+  }, [])
+
+  const collectNow = useCallback(async () => {
+    if (!bridge || running.current) return
+    running.current = true
+    setCollecting(true)
+    try {
+      // Stories stored earlier that are still in Instagram's 48 h viewer window.
+      const known = await api.get<{ data: KnownStory[] }>('/api/instagram/story-views?known=1').catch(() => ({ data: [] as KnownStory[] }))
+      const result: CollectStoriesResult = await bridge.collectStories(storiesToRecheck(known.data))
+      if (!result.ok) {
+        if (result.reason === 'checkpoint' || result.reason === 'rate_limited') {
+          const until = Date.now() + BACKOFF_MS
+          setPausedUntil(until)
+          writeJson(PAUSED_UNTIL_KEY, until)
+        }
+        if (result.reason === 'not_connected') setStatus({ connected: false, userId: null, username: null })
+        record({ at: new Date().toISOString(), ok: false, stories: 0, viewers: 0, leadsMatched: 0, message: FAILURE_MESSAGE[result.reason] ?? result.message })
+        return
+      }
+      setPausedUntil(null)
+      writeJson(PAUSED_UNTIL_KEY, null)
+      if (result.stories.length === 0) {
+        record({ at: new Date().toISOString(), ok: true, stories: 0, viewers: 0, leadsMatched: 0, message: 'Aucune story en ligne ni dans sa fenêtre de 48 h en ce moment.' })
+        return
+      }
+      const res = await api.post<{ data: { stories: number; viewers: number; leadsMatched: number; errors: string[] } }>('/api/instagram/story-views', {
+        accountUsername: result.accountUsername,
+        stories: result.stories,
+      })
+      record({
+        at: new Date().toISOString(),
+        ok: res.data.errors.length === 0,
+        stories: res.data.stories,
+        viewers: res.data.viewers,
+        leadsMatched: res.data.leadsMatched,
+        message:
+          res.data.errors.length > 0
+            ? `Enregistrement partiel : ${res.data.errors[0]}`
+            : result.stoppedEarly
+              ? `Collecte interrompue : ${FAILURE_MESSAGE[result.stoppedEarly] ?? result.stoppedEarly}`
+              : null,
+      })
+      invalidate((k) => k.startsWith('/api/instagram/story-views') || k.startsWith('/api/desktop/leads'))
+    } catch (err) {
+      record({ at: new Date().toISOString(), ok: false, stories: 0, viewers: 0, leadsMatched: 0, message: err instanceof Error ? err.message : 'La collecte a échoué.' })
+    } finally {
+      running.current = false
+      setCollecting(false)
+    }
+  }, [bridge, record])
+
+  useEffect(() => {
+    bridge?.status().then(setStatus).catch(() => setStatus({ connected: false, userId: null, username: null }))
+  }, [bridge])
+
+  // Auto-collect: right away if the last run is older than the minimum
+  // interval, then at a random 15–60 min wake-up — unless paused after a
+  // challenge/rate limit.
+  useEffect(() => {
+    if (!status?.connected) return
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let stopped = false
+    const schedule = (ms: number) => {
+      if (!stopped) timer = setTimeout(tick, ms)
+    }
+    const tick = async () => {
+      const paused = readJson<number>(PAUSED_UNTIL_KEY)
+      const last = readJson<CollectorRun>(LAST_RUN_KEY)
+      if (paused && paused > Date.now()) return schedule(paused - Date.now() + 60_000)
+      if (!last || Date.now() - new Date(last.at).getTime() >= MIN_INTERVAL_MS) await collectNow()
+      schedule(nextWakeUpMs())
+    }
+    tick()
+    return () => {
+      stopped = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [status?.connected, collectNow])
+
+  const connect = useCallback(async () => {
+    if (!bridge) return
+    const s = await bridge.login()
+    setStatus(s)
+    if (s.connected) {
+      setPausedUntil(null)
+      writeJson(PAUSED_UNTIL_KEY, null)
+    }
+  }, [bridge])
+
+  const disconnect = useCallback(async () => {
+    if (!bridge) return
+    await bridge.logout()
+    setStatus({ connected: false, userId: null, username: null })
+  }, [bridge])
+
+  return (
+    <Ctx.Provider value={{ available: !!bridge, status, collecting, lastRun, pausedUntil, connect, disconnect, collectNow }}>{children}</Ctx.Provider>
+  )
+}
+
+export function useStoryCollector(): StoryCollectorValue {
+  const v = useContext(Ctx)
+  if (!v) throw new Error('useStoryCollector must be used inside StoryCollectorProvider')
+  return v
+}

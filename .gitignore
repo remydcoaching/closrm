@@ -53,3 +53,6 @@ supabase/.branches
 *.tsbuildinfo
 next-env.d.ts
 closrm-build.ipa
+scripts/hiker-poc/hiker-poc-results.json
+docs/meta-app-review/clips/
+docs/meta-app-review/videos/
