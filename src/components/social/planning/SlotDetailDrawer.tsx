@@ -959,15 +959,17 @@ export default function SlotDetailDrawer({ slotId, pillars, onClose, onChange }:
         {!readOnly && (
           <button
             onClick={handleDelete}
-            title={confirmDelete ? 'Cliquer à nouveau pour confirmer' : 'Supprimer'}
+            title={confirmDelete ? 'Cliquer à nouveau pour confirmer' : 'Supprimer ce créneau'}
             style={{
-              width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              height: 28, padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
               background: confirmDelete ? 'var(--color-danger, #ef4444)' : 'transparent',
-              color: confirmDelete ? '#fff' : 'var(--text-tertiary)',
-              border: '1px solid var(--border-primary)', borderRadius: 6, cursor: 'pointer',
+              color: confirmDelete ? '#fff' : 'var(--text-secondary)',
+              border: `1px solid ${confirmDelete ? 'var(--color-danger, #ef4444)' : 'var(--border-primary)'}`, borderRadius: 6, cursor: 'pointer',
             }}
           >
-            <Trash2 size={14} />
+            <Trash2 size={13} />
+            {confirmDelete ? 'Confirmer ?' : 'Supprimer'}
           </button>
         )}
         <button

@@ -111,6 +111,46 @@ export function PlanningView({ notify }: { notify: Notify }) {
     await Promise.all([reloadStructure(), reloadPosts()])
   }, [reloadStructure, reloadPosts])
 
+  // Deleting a slot (a deleted trame slot is remembered server-side: the
+  // next "Générer des slots" doesn't recreate it).
+  const deleteSlot = useCallback(
+    async (id: string) => {
+      const slot = posts.find((p) => p.id === id)
+      const when = slot?.plan_date ? ` du ${new Date(slot.plan_date.slice(0, 10) + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}` : ''
+      if (!window.confirm(`Supprimer ce créneau${when} ?`)) return
+      setPosts((prev) => prev.filter((p) => p.id !== id))
+      setSelectedSlot((cur) => (cur === id ? null : cur))
+      try {
+        await api.delete(`/api/social/posts/${id}`)
+        notify('Créneau supprimé')
+      } catch (e) {
+        notify(errMsg(e), 'danger')
+        void reloadPosts(true)
+      }
+    },
+    [posts, notify, reloadPosts],
+  )
+
+  const [clearing, setClearing] = useState(false)
+  const clearEmptySlots = useCallback(async () => {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const from = `${cursor.year}-${pad(cursor.month)}-01`
+    const to = `${cursor.year}-${pad(cursor.month)}-${pad(new Date(cursor.year, cursor.month, 0).getDate())}`
+    const monthLabel = new Date(cursor.year, cursor.month - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    if (!window.confirm(`Supprimer tous les créneaux vides de ${monthLabel} ?\n\nSeuls les créneaux jamais travaillés (brouillon, sans titre, accroche, légende, script, notes ni média) sont supprimés. La prochaine génération ne les recréera pas.`)) return
+    setClearing(true)
+    try {
+      const r = await api.post<{ data: { deleted: number } }>('/api/social/posts/bulk-delete', { from, to, only_empty: true })
+      const n = r.data.deleted
+      notify(`${n} créneau${n > 1 ? 'x' : ''} vide${n > 1 ? 's' : ''} supprimé${n > 1 ? 's' : ''}`)
+      void reloadPosts(true)
+    } catch (e) {
+      notify(errMsg(e), 'danger')
+    } finally {
+      setClearing(false)
+    }
+  }, [cursor, notify, reloadPosts])
+
   async function createPost(planDate?: string) {
     try {
       const r = await api.post<{ data?: { id: string } }>('/api/social/posts', {
@@ -196,6 +236,11 @@ export function PlanningView({ notify }: { notify: Notify }) {
         <button type="button" className="ds-pill-button ds-pill-button--dark" onClick={() => (trame ? setPlanOpen(true) : setTrameOpen(true))}>
           Générer des slots
         </button>
+        {view === 'calendar' && trame && (
+          <button type="button" className="ds-pill-button" onClick={() => void clearEmptySlots()} disabled={clearing} title="Supprimer les créneaux jamais travaillés du mois affiché">
+            {clearing ? 'Suppression…' : 'Vider les créneaux vides'}
+          </button>
+        )}
       </div>
 
       {structureLoading ? (
@@ -222,6 +267,7 @@ export function PlanningView({ notify }: { notify: Notify }) {
               cursor={cursor}
               onCursorChange={setCursor}
               onSelect={setSelectedSlot}
+              onDelete={(id) => void deleteSlot(id)}
               onCreate={(d) => void createPost(d)}
               onMove={(id, d) => void moveSlot(id, d)}
             />
@@ -272,6 +318,7 @@ function CalendarView({
   cursor,
   onCursorChange,
   onSelect,
+  onDelete,
   onCreate,
   onMove,
 }: {
@@ -280,6 +327,8 @@ function CalendarView({
   cursor: { year: number; month: number }
   onCursorChange: (c: { year: number; month: number }) => void
   onSelect: (id: string) => void
+  /** Confirmation handled by the parent. Never offered on published / publishing slots. */
+  onDelete: (id: string) => void
   onCreate: (date: string) => void
   onMove: (id: string, date: string) => void
 }) {
@@ -390,8 +439,8 @@ function CalendarView({
                 const published = p.status === 'published'
                 const draggable = !published && p.status !== 'publishing'
                 return (
+                  <div key={p.id} className="soc-chip-wrap">
                   <button
-                    key={p.id}
                     type="button"
                     className="soc-chip-slot"
                     style={{ ['--pillar-color' as string]: pillar?.color ?? '#9aa0a6', opacity: published ? 0.7 : 1 }}
@@ -418,6 +467,8 @@ function CalendarView({
                     </span>
                     {(p.hook || p.title) && <span className="soc-chip-slot-hook">{p.hook || p.title}</span>}
                   </button>
+                  {draggable && <ChipDelete onClick={() => onDelete(p.id)} />}
+                  </div>
                 )
               })}
               {dayPosts.length > 4 && (
@@ -435,8 +486,8 @@ function CalendarView({
                   {stories.slice(0, 4).map((s) => {
                     const pillar = pillarOf(s.pillar_id)
                     return (
+                      <span key={s.id} className="soc-chip-wrap soc-chip-wrap--inline">
                       <button
-                        key={s.id}
                         type="button"
                         className="soc-story-chip"
                         style={{ ['--pillar-color' as string]: pillar?.color ?? '#ec4899', opacity: s.status === 'published' ? 0.6 : 1 }}
@@ -445,6 +496,8 @@ function CalendarView({
                       >
                         {pillar?.name?.slice(0, 6) ?? 'Story'}
                       </button>
+                      {s.status !== 'published' && s.status !== 'publishing' && <ChipDelete small onClick={() => onDelete(s.id)} />}
+                      </span>
                     )
                   })}
                   {stories.length > 4 && (
@@ -466,12 +519,13 @@ function CalendarView({
           <div className="soc-stack">
             {(byDate.get(dayPopover) ?? []).map((p) => {
               const pillar = pillarOf(p.pillar_id)
+              const deletable = p.status !== 'published' && p.status !== 'publishing'
               return (
+                <div key={p.id} className="soc-row" style={{ alignItems: 'stretch', gap: 6 }}>
                 <button
-                  key={p.id}
                   type="button"
                   className="soc-chip-slot"
-                  style={{ ['--pillar-color' as string]: pillar?.color ?? '#9aa0a6' }}
+                  style={{ ['--pillar-color' as string]: pillar?.color ?? '#9aa0a6', flex: 1, minWidth: 0 }}
                   onClick={() => {
                     setDayPopover(null)
                     onSelect(p.id)
@@ -482,12 +536,36 @@ function CalendarView({
                   </span>
                   <span className="soc-chip-slot-hook">{p.hook || p.title || '(sans accroche)'}</span>
                 </button>
+                {deletable && (
+                  <button type="button" className="ds-pill-button" title="Supprimer ce créneau" aria-label="Supprimer ce créneau" onClick={() => onDelete(p.id)}>
+                    Supprimer
+                  </button>
+                )}
+                </div>
               )
             })}
           </div>
         </Modal>
       )}
     </div>
+  )
+}
+
+/** Small "×" shown on hover over a calendar chip. */
+function ChipDelete({ onClick, small }: { onClick: () => void; small?: boolean }) {
+  return (
+    <button
+      type="button"
+      className={`soc-chip-delete ${small ? 'soc-chip-delete--small' : ''}`}
+      title="Supprimer ce créneau"
+      aria-label="Supprimer ce créneau"
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+    >
+      ×
+    </button>
   )
 }
 

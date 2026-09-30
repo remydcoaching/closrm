@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateSocialPostSchema } from '@/lib/validations/social-posts'
 import { notifyMonteurFilmed, notifyCoachEdited, notifyMonteurValidated, notifyMonteurRevisionRequested } from '@/lib/social/monteur-notifications'
+import { recordSkips } from '@/lib/social/slot-skips'
 
 export async function GET(
   _request: NextRequest,
@@ -60,9 +61,18 @@ export async function PATCH(
     const supabase = await createClient()
     const { data: existing } = await supabase
       .from('social_posts')
-      .select('id, production_status, monteur_id, monteur_notified_at, coach_notified_at')
+      .select('id, production_status, monteur_id, monteur_notified_at, coach_notified_at, plan_date, content_kind, slot_index, pillar_id')
       .eq('id', id).eq('workspace_id', workspaceId).single()
     if (!existing) return NextResponse.json({ error: 'Post introuvable' }, { status: 404 })
+
+    // A trame slot moved to another date (or detached from its position)
+    // frees its original place: remember it so the next generation doesn't
+    // create a new slot there.
+    const leavesTramePlace =
+      existing.slot_index !== null &&
+      ((bodyKeys.has('plan_date') && filteredPost.plan_date !== existing.plan_date) ||
+        (bodyKeys.has('slot_index') && filteredPost.slot_index !== existing.slot_index))
+    if (leavesTramePlace) await recordSkips(supabase, workspaceId, [existing])
 
     // Si filteredPost est vide (= seuls publications/revision_feedback dans
     // le body), on ne touche pas a la table social_posts — sinon
@@ -218,12 +228,15 @@ export async function DELETE(
     const { id } = await params
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
-    const { error } = await supabase
+    const { data: deleted, error } = await supabase
       .from('social_posts')
       .delete()
       .eq('id', id)
       .eq('workspace_id', workspaceId)
+      .select('plan_date, content_kind, slot_index, pillar_id')
     if (error) throw error
+    // A trame slot deleted by the coach must not come back at the next generation.
+    await recordSkips(supabase, workspaceId, deleted ?? [])
 
     // Hard-delete des fichiers R2 du slot (final/media/rush). Best-effort:
     // si ca echoue le slot DB est deja supprime, le cron cleanup-r2-orphans
