@@ -18,6 +18,16 @@ import * as instagramSession from './instagram-session'
 // us the plain __dirname below instead of fileURLToPath(import.meta.url).
 
 
+// ClosRM API origins the renderer may call: the local web server in dev,
+// production (closrm.fr) in the packaged app — see electron/.env.production.
+const API_ORIGINS = [
+  'http://localhost:3000',
+  'https://closrm.fr',
+  'https://www.closrm.fr',
+  'https://closrm.vercel.app',
+  ...(process.env.CLOSRM_API_BASE_URL ? [process.env.CLOSRM_API_BASE_URL] : []),
+]
+
 const DEEP_LINK_SCHEME = 'closrm'
 const INSTAGRAM_CDN = /(^|\.)(cdninstagram\.com|fbcdn\.net)$/i
 
@@ -247,7 +257,7 @@ app.whenReady().then(() => {
             // Story videos are played straight from Instagram's CDN.
             "media-src 'self' https: blob:; " +
             "connect-src 'self' https://*.supabase.co wss://*.supabase.co " +
-            (process.env.CLOSRM_API_BASE_URL ?? 'http://localhost:3000'),
+            API_ORIGINS.join(' '),
         ],
       },
     })
