@@ -1,9 +1,16 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-09-27
+> Derniere mise a jour : 2026-09-30
 
 ---
+
+## 2026-09-29 → 30 — Mise en production + audit ClosRM Desktop (Pierre)
+- **Mergé et en prod** : #561 (Desktop + Instagram Intelligence), #562 (reconnexion Meta depuis closrm.fr, jetons morts détectés), #563 (suppression des créneaux du calendrier éditorial, web + app), #564 (fonctions Vercel à Francfort), #565 (app compilée → production).
+- **Vitesse** : les fonctions Vercel tournaient à Washington (iad1) alors que Supabase est à Francfort (eu-central-1) → 0 lecture sur 61 sous 500 ms. Passage en fra1 → 46/57 sous 500 ms, fiche lead desktop 2,4 s → 0,35 s.
+- **App desktop** : les sauvegardes en PUT (trame, funnels, e-mails, réglages…) échouaient (CORS) — corrigé ; 189 appels API vérifiés (tous ont une route et la bonne méthode) ; l'app compilée utilise closrm.fr (CSP + .env.production).
+- **Rangement du Mac** : 11 dossiers ClosRM → 2 (`~/closrm`, `~/closrm-lead-journey`), ~6,5 Go libérés ; travail non commité sauvé sur `wip/pierre-relance-post-va`.
+- **À faire (Pierre)** : migration 120 ; URI de redirection closrm.fr dans l'app Meta puis reconnexion ; App Review (kit `docs/meta-app-review/`).
 
 ## Session 2026-09-25 → 27 — ClosRM Desktop + Instagram Intelligence (Pierre, PR #561)
 
