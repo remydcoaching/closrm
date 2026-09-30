@@ -43,5 +43,8 @@ export default defineConfig({
   },
   build: {
     outDir: path.resolve(__dirname, 'dist-electron/renderer'),
+    // outDir is outside the Vite root, so Vite doesn't empty it by default:
+    // every past build's bundles piled up and were packaged into the app.
+    emptyOutDir: true,
   },
 })
