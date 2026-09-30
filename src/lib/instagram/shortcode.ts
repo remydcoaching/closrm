@@ -22,3 +22,16 @@ export function mediaIdToShortcode(mediaId: string): string {
   }
   return out || mediaId
 }
+
+/** Inverse of mediaIdToShortcode: the numeric media pk behind a shortcode ('' if not a shortcode). */
+export function shortcodeToMediaId(shortcode: string): string {
+  if (!shortcode || !/^[A-Za-z0-9_-]+$/.test(shortcode)) return ''
+  let n = BigInt(0)
+  const SIX = BigInt(6)
+  for (const ch of shortcode) {
+    const v = ALPHABET.indexOf(ch)
+    if (v < 0) return ''
+    n = (n << SIX) + BigInt(v)
+  }
+  return n.toString()
+}

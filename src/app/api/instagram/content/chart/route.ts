@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     data.sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
     // ?confidence=1: leads reached per content by confidence level (on demand — heavier).
     if (request.nextUrl.searchParams.get('confidence') === '1') {
-      const confidence = await loadContentConfidence(supabase, workspaceId, [...new Set(data.map((d) => d.runId))])
+      const confidence = await loadContentConfidence(supabase, workspaceId, [...new Set(data.map((d) => d.runId).filter(Boolean))])
       return NextResponse.json({
         data: data.map((d) => ({ ...d, confidence: confidence?.get(d.contentId) ?? {} })),
         confidenceAvailable: confidence !== null,

@@ -66,6 +66,11 @@ export async function runMonitor(
   const budget = remainingBudget(maxPerDay, await requestsUsedToday(supabase, workspaceId))
   if (budget < 3) return skipped('budget')
 
+  // With the Meta API connected, comments come from the nightly Meta sync
+  // (free, exact dates): Hiker only reads likers — what Meta never gives.
+  const { data: igAccount } = await supabase.from('ig_accounts').select('is_connected').eq('workspace_id', workspaceId).maybeSingle()
+  const commentsFromMeta = !!igAccount?.is_connected
+
   let username = settings?.instagram_username as string | null
   if (!username) {
     const { data: ws } = await supabase.from('workspaces').select('instagram_username').eq('id', workspaceId).maybeSingle()
@@ -125,7 +130,7 @@ export async function runMonitor(
       .eq('workspace_id', workspaceId)
       .limit(1000)
     const now = Date.now()
-    const due = pickDueContents((all ?? []) as MonitoredContent[], now, Math.max(0, budget - requests))
+    const due = pickDueContents((all ?? []) as MonitoredContent[], now, Math.max(0, budget - requests), commentsFromMeta)
     const stateOf = new Map(((all ?? []) as (MonitoredContent & { likers_seen: number; comments_seen: number })[]).map((c) => [c.content_id, c]))
 
     const known = new Set<string>()
@@ -163,7 +168,7 @@ export async function runMonitor(
         }
         let commentsRead = false
         let commentError: string | null = null
-        if (needsCommentsRead(c)) {
+        if (needsCommentsRead(c, commentsFromMeta)) {
           let pageId: string | null = null
           for (let page = 0; page < MAX_COMMENT_PAGES; page++) {
             const res = await client.getMediaCommentsPage(c.content_id, pageId)

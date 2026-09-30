@@ -4,8 +4,9 @@ import {
   fetchStoryInsights, fetchIgProfile, fetchIgConversations,
 } from './api'
 import { MetaTokenInvalidError } from '@/lib/meta/token-error'
+import { syncComments } from './meta-comments-sync'
 
-interface SyncContext {
+export interface SyncContext {
   supabase: SupabaseClient
   workspaceId: string
   accessToken: string
@@ -30,9 +31,12 @@ export async function syncReels(ctx: SyncContext) {
       ? ((likes + comments + saves + shares) / reach) * 100
       : 0
 
-    await ctx.supabase.from('ig_reels').upsert({
+    const row = {
       workspace_id: ctx.workspaceId,
       ig_media_id: reel.id,
+      // Links this Graph media to Hiker's pk (see migration 121).
+      shortcode: reel.shortcode ?? null,
+      permalink: reel.permalink ?? null,
       caption: reel.caption ?? null,
       thumbnail_url: reel.thumbnail_url ?? null,
       video_url: reel.media_url ?? null,
@@ -45,7 +49,13 @@ export async function syncReels(ctx: SyncContext) {
       plays: views,
       engagement_rate: Math.round(engagementRate * 100) / 100,
       published_at: reel.timestamp,
-    }, { onConflict: 'ig_media_id' })
+    }
+    const { error } = await ctx.supabase.from('ig_reels').upsert(row, { onConflict: 'ig_media_id' })
+    // Migration 121 not applied yet: store the rest.
+    if (error && /shortcode|permalink/.test(error.message)) {
+      const { shortcode: _s, permalink: _p, ...legacy } = row
+      await ctx.supabase.from('ig_reels').upsert(legacy, { onConflict: 'ig_media_id' })
+    }
   }
 
   return reels.length
@@ -178,6 +188,7 @@ export async function syncAll(ctx: SyncContext) {
     syncStories(ctx),
     syncSnapshot(ctx),
     syncConversations(ctx),
+    syncComments(ctx),
   ])
 
   const errors: string[] = []
@@ -193,6 +204,7 @@ export async function syncAll(ctx: SyncContext) {
     storiesCount: getValue(results[1], 'stories', 0),
     snapshot: getValue(results[2], 'snapshot', { followers: 0, newFollowers: 0 }),
     convosCount: getValue(results[3], 'conversations', 0),
+    commentsCount: getValue(results[4], 'comments', 0),
     errors: errors.length > 0 ? errors : undefined,
     // Meta refused the token (expired, revoked, password changed): the
     // caller must mark the account as needing a reconnection.
