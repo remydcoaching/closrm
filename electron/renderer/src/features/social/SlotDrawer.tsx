@@ -146,6 +146,8 @@ export function SlotDrawer({
   )
 
   async function remove() {
+    const when = slot?.plan_date ? ` du ${new Date(slot.plan_date.slice(0, 10) + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}` : ''
+    if (!window.confirm(`Supprimer ce créneau${when} ?`)) return
     try {
       await api.delete(`/api/social/posts/${slotId}`)
       notify('Slot supprimé')
@@ -222,7 +224,11 @@ export function SlotDrawer({
               Préparer le tournage ↗
             </button>
           )}
-          {!readOnly && <ConfirmButton label="Supprimer" confirmLabel="Confirmer la suppression" onConfirm={() => void remove()} />}
+          {!readOnly && (
+            <button type="button" className="ds-pill-button" onClick={() => void remove()} title="Supprimer ce créneau">
+              Supprimer
+            </button>
+          )}
         </div>
         <Field label="Titre">
           <BlurText value={slot.title ?? ''} placeholder="Titre du post…" disabled={readOnly} onCommit={(v) => void update({ title: v })} />
