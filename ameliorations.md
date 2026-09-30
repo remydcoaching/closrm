@@ -970,6 +970,20 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Élevé
 - **Statut :** En attente de validation
 
+### A-049-7 · Signature Apple et notarisation de ClosRM Desktop
+- **Contexte :** 2026-09-30 — electron-builder échoue en boucle à signer l'app (une signature isolée avec la même identité marche) ; le .dmg est livré non signé.
+- **Description :** diagnostiquer avec `DEBUG=electron-osx-sign*`, puis notariser (compte Apple Developer) pour une installation sans avertissement.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible à moyen
+- **Statut :** En attente de validation
+
+### A-049-8 · Découpage du code de ClosRM Desktop
+- **Contexte :** 2026-09-30 — un seul fichier JS de 1,1 Mo chargé au démarrage.
+- **Description :** `React.lazy` par page (routes de `App.tsx`) pour ne charger que l'écran ouvert.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
 ### A-049-4 · Copie des photos de profil IG dans Supabase Storage
 - **Contexte :** T-049 — les URL du CDN Instagram expirent (paramètre `oe`) ; la photo retombe alors sur les initiales jusqu'à la prochaine collecte.
 - **Description :** Copier la photo (150 px, ~8 Ko) dans un bucket au moment de l'enrichissement du lead, comme `story-media`.

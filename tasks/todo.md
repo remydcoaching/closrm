@@ -71,3 +71,13 @@ Hiker relit périodiquement likers + commentaires des publications récentes ; l
 - [x] « Vider les créneaux vides » du mois (brouillons jamais travaillés) — POST /api/social/posts/bulk-delete
 - [x] Un créneau de trame supprimé ou déplacé n'est plus recréé par « Générer des slots » (table social_slot_skips)
 - [ ] Pierre : appliquer 120_social_slot_skips.sql (sans elle, la suppression marche mais un créneau supprimé peut revenir à la génération)
+
+## Audit ClosRM Desktop (2026-09-30)
+- [x] 189 appels API de l'app ↔ routes serveur : tous présents, bonnes méthodes
+- [x] CORS : PUT autorisé (sauvegardes desktop) ; app compilée sans contrôle CORS (vérifié)
+- [x] Vitesse : Vercel en fra1 (à côté de Supabase eu-central-1) — 46/57 lectures < 500 ms
+- [x] App compilée → closrm.fr (CSP, .env.production, dossier de build vidé)
+- [x] Suppression d'un créneau : un clic + confirmation
+- [ ] Signature Apple du .dmg : échoue en boucle dans electron-builder (une signature isolée marche) → .dmg actuel non signé (clic droit › Ouvrir). À investiguer (DEBUG=electron-osx-sign*)
+- [ ] Découpage du code de l'app (bundle unique 1,1 Mo) pour un démarrage plus rapide
+- [ ] 57 apostrophes non échappées + 40 variables inutilisées + 28 setState dans des effets (lint, pas des bugs)
