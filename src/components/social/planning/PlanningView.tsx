@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { KanbanSquare, Calendar as CalIcon, Plus, CalendarRange, Video } from 'lucide-react'
+import { KanbanSquare, Calendar as CalIcon, Plus, CalendarRange, Video, Eraser } from 'lucide-react'
 import TournagesModal from '@/components/social/tournages/TournagesModal'
 import type { ContentPillar, ContentTrame, SocialPostWithPublications } from '@/types'
 import BoardView from './BoardView'
@@ -118,6 +118,48 @@ export default function PlanningView() {
     }
   }
 
+  // ─── Delete slots ───────────────────────────────────────────────────────
+  // A deleted trame slot is remembered server-side: the next "Générer slots"
+  // doesn't recreate it.
+  const deleteSlot = async (id: string) => {
+    const slot = posts.find((p) => p.id === id)
+    const when = slot?.plan_date ? ` du ${new Date(slot.plan_date.slice(0, 10) + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}` : ''
+    if (!confirm(`Supprimer ce créneau${when} ?`)) return
+    setPosts((prev) => prev.filter((p) => p.id !== id))
+    if (selectedSlotId === id) setSelectedSlotId(null)
+    const res = await fetch(`/api/social/posts/${id}`, { method: 'DELETE' })
+    if (res.ok) toast.success('Créneau supprimé')
+    else {
+      toast.error('Erreur suppression')
+      await reloadPosts(true)
+    }
+  }
+
+  const [clearing, setClearing] = useState(false)
+  const clearEmptySlots = async () => {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const from = `${cursor.year}-${pad(cursor.month)}-01`
+    const to = `${cursor.year}-${pad(cursor.month)}-${pad(new Date(cursor.year, cursor.month, 0).getDate())}`
+    const monthLabel = new Date(cursor.year, cursor.month - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    if (!confirm(`Supprimer tous les créneaux vides de ${monthLabel} ?\n\nSeuls les créneaux jamais travaillés (brouillon, sans titre, accroche, légende, script, notes ni média) sont supprimés. La prochaine génération ne les recréera pas.`)) return
+    setClearing(true)
+    try {
+      const res = await fetch('/api/social/posts/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to, only_empty: true }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Erreur')
+      toast.success(`${json.data.deleted} créneau${json.data.deleted > 1 ? 'x' : ''} vide${json.data.deleted > 1 ? 's' : ''} supprimé${json.data.deleted > 1 ? 's' : ''}`)
+      await reloadPosts(true)
+    } catch (e) {
+      toast.error('Erreur', (e as Error).message)
+    } finally {
+      setClearing(false)
+    }
+  }
+
   const planRange = async ({ kinds, start_date, end_date }: { kinds: ('post' | 'story')[]; start_date: string; end_date: string }) => {
     if (!trame) {
       setTrameModalOpen(true)
@@ -209,6 +251,23 @@ export default function PlanningView() {
             <CalendarRange size={13} />
             {generating ? '…' : 'Générer slots'}
           </button>
+          {view === 'calendar' && trame && (
+            <button
+              onClick={clearEmptySlots}
+              disabled={clearing}
+              title="Supprimer les créneaux jamais travaillés du mois affiché"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 14px', fontSize: 12, fontWeight: 600,
+                color: 'var(--text-secondary)', background: 'transparent',
+                border: '1px solid var(--border-primary)', borderRadius: 8,
+                cursor: clearing ? 'wait' : 'pointer', opacity: clearing ? 0.7 : 1,
+              }}
+            >
+              <Eraser size={13} />
+              {clearing ? '…' : 'Vider les créneaux vides'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -242,6 +301,7 @@ export default function PlanningView() {
               cursor={cursor}
               onCursorChange={setCursor}
               onSelectSlot={setSelectedSlotId}
+              onDeleteSlot={deleteSlot}
               onCreateSlot={createPost}
               onMoveSlot={async (slotId, newDate) => {
                 // Optimistic update: on patch UNIQUEMENT le slot deplace

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { generateMonthSchema } from '@/lib/validations/content-trame'
 import type { Weekday } from '@/types'
+import { loadSkipKeys } from '@/lib/social/slot-skips'
 
 const WEEKDAY_FROM_JS: Record<number, Weekday> = {
   0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat',
@@ -152,12 +153,12 @@ export async function POST(request: NextRequest) {
         (e) => `${e.plan_date}|${e.content_kind}|${e.slot_index}|${e.pillar_id ?? ''}`
       )
     )
-    const toInsert = rows.filter(
-      (r) =>
-        !existingKeys.has(
-          `${r.plan_date}|${r.content_kind}|${r.slot_index}|${r.pillar_id ?? ''}`
-        )
-    )
+    // Slots the coach deleted stay deleted (social_slot_skips, migration 120).
+    const skipKeys = await loadSkipKeys(supabase, workspaceId, planDates)
+    const toInsert = rows.filter((r) => {
+      const key = `${r.plan_date}|${r.content_kind}|${r.slot_index}|${r.pillar_id ?? ''}`
+      return !existingKeys.has(key) && !skipKeys.has(key)
+    })
 
     let createdCount = 0
     if (toInsert.length > 0) {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Camera, FileText, Film, X, Check, Lightbulb, Clapperboard, Scissors, Sparkles, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Camera, FileText, Film, X, Check, Lightbulb, Clapperboard, Scissors, Sparkles, CheckCircle2, Trash2 } from 'lucide-react'
 import type {
   ContentPillar,
   SocialPostWithPublications,
@@ -15,6 +15,8 @@ interface Props {
   cursor: { year: number; month: number }
   onCursorChange: (c: { year: number; month: number }) => void
   onSelectSlot: (id: string) => void
+  /** Deletes a slot (confirmation handled by the parent). Published / publishing slots never show it. */
+  onDeleteSlot?: (id: string) => void
   onCreateSlot?: (planDate: string) => void
   /** Drag & drop: deplacer un slot vers une autre date. Optionnel. */
   onMoveSlot?: (slotId: string, newPlanDate: string) => void | Promise<void>
@@ -39,7 +41,7 @@ const KIND_ICON: Record<SocialContentKind, typeof Camera> = {
 
 const MAX_VISIBLE_PER_CELL = 4
 
-export default function PlanningCalendarView({ posts, pillars, cursor, onCursorChange, onSelectSlot, onCreateSlot, onMoveSlot }: Props) {
+export default function PlanningCalendarView({ posts, pillars, cursor, onCursorChange, onSelectSlot, onDeleteSlot, onCreateSlot, onMoveSlot }: Props) {
   const [hoverCell, setHoverCell] = useState<string | null>(null)
   const [dayPopover, setDayPopover] = useState<string | null>(null)
   // Drag & drop state. dragOverKey = la cellule survolee pendant le drag,
@@ -231,8 +233,8 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                 const draggable = !!onMoveSlot && !isPublished && p.status !== 'publishing'
                 const isBeingDragged = draggingId === p.id
                 return (
+                  <div key={p.id} className="group" style={{ position: 'relative' }}>
                   <button
-                    key={p.id}
                     onClick={() => onSelectSlot(p.id)}
                     draggable={draggable}
                     onDragStart={(e) => {
@@ -280,6 +282,10 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                       </span>
                     )}
                   </button>
+                  {onDeleteSlot && !isPublished && p.status !== 'publishing' && (
+                    <DeleteSlotButton onClick={() => onDeleteSlot(p.id)} />
+                  )}
+                  </div>
                 )
               })}
 
@@ -340,8 +346,8 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                       const color = pillar?.color ?? '#ec4899'
                       const statusColor = isPublished ? '#10b981' : meta.color
                       return (
+                        <span key={s.id} className="group" style={{ position: 'relative', display: 'inline-flex' }}>
                         <button
-                          key={s.id}
                           onClick={(e) => { e.stopPropagation(); onSelectSlot(s.id) }}
                           title={`${pillar?.name ?? 'Story'} · ${isPublished ? 'Publié' : isScheduled ? 'Programmé' : meta.label}`}
                           style={{
@@ -367,6 +373,10 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
                             <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 4px #a78bfa' }} />
                           )}
                         </button>
+                        {onDeleteSlot && !isPublished && s.status !== 'publishing' && (
+                          <DeleteSlotButton small onClick={() => onDeleteSlot(s.id)} />
+                        )}
+                        </span>
                       )
                     })}
                     {stories.length > 4 && (
@@ -395,18 +405,20 @@ export default function PlanningCalendarView({ posts, pillars, cursor, onCursorC
           pillars={pillars}
           onClose={() => setDayPopover(null)}
           onSelectSlot={(id) => { setDayPopover(null); onSelectSlot(id) }}
+          onDeleteSlot={onDeleteSlot}
         />
       )}
     </div>
   )
 }
 
-function DayPopover({ dateKey, posts, pillars, onClose, onSelectSlot }: {
+function DayPopover({ dateKey, posts, pillars, onClose, onSelectSlot, onDeleteSlot }: {
   dateKey: string
   posts: SocialPostWithPublications[]
   pillars: ContentPillar[]
   onClose: () => void
   onSelectSlot: (id: string) => void
+  onDeleteSlot?: (id: string) => void
 }) {
   const date = new Date(dateKey + 'T00:00:00')
   const label = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -438,9 +450,10 @@ function DayPopover({ dateKey, posts, pillars, onClose, onSelectSlot }: {
           {posts.map((p) => {
             const pillar = pillars.find((x) => x.id === p.pillar_id)
             const Icon = KIND_ICON[(p.content_kind ?? 'post') as SocialContentKind]
+            const deletable = !!onDeleteSlot && p.status !== 'published' && p.status !== 'publishing'
             return (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'stretch', gap: 6, marginBottom: 4 }}>
               <button
-                key={p.id}
                 onClick={() => onSelectSlot(p.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -449,8 +462,8 @@ function DayPopover({ dateKey, posts, pillars, onClose, onSelectSlot }: {
                   borderLeft: `3px solid ${pillar?.color ?? '#666'}`,
                   border: '1px solid var(--border-primary)',
                   borderRadius: 8, cursor: 'pointer',
-                  marginBottom: 4,
                   textAlign: 'left',
+                  flex: 1, minWidth: 0,
                 }}
               >
                 <Icon size={14} color={pillar?.color ?? 'var(--text-tertiary)'} />
@@ -466,6 +479,21 @@ function DayPopover({ dateKey, posts, pillars, onClose, onSelectSlot }: {
                   {STATUS_META[(p.production_status ?? 'idea') as SocialProductionStatus].label}
                 </span>
               </button>
+              {deletable && (
+                <button
+                  onClick={() => onDeleteSlot?.(p.id)}
+                  title="Supprimer ce créneau"
+                  aria-label="Supprimer ce créneau"
+                  style={{
+                    width: 36, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 8,
+                    color: 'var(--text-tertiary)', cursor: 'pointer',
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+              </div>
             )
           })}
         </div>
@@ -479,4 +507,30 @@ const navBtnStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
   borderRadius: 6, color: 'var(--text-secondary)', cursor: 'pointer',
+}
+
+/** Small "×" shown on hover over a calendar chip. */
+function DeleteSlotButton({ onClick, small }: { onClick: () => void; small?: boolean }) {
+  const size = small ? 12 : 16
+  return (
+    <button
+      type="button"
+      className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      title="Supprimer ce créneau"
+      aria-label="Supprimer ce créneau"
+      style={{
+        position: 'absolute', top: -5, right: -5, width: size, height: size,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0,
+        background: '#ef4444', color: '#fff', zIndex: 2,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+      }}
+    >
+      <X size={small ? 8 : 10} strokeWidth={3} />
+    </button>
+  )
 }

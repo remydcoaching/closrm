@@ -65,3 +65,9 @@ Hiker relit périodiquement likers + commentaires des publications récentes ; l
 - [x] Tests + docs
 - [x] 118 + 119 appliquées (cron quotidien, job 14) ; (projet hsnqmjsckekbmmwneybb), déployer le code (route /api/cron/instagram-monitor) AVANT d'activer le suivi, puis Contenu › Activer le suivi
 - [x] App compilée : electron/release/ClosRM-0.1.0-arm64.dmg (logo ClosRM, signée localement, non notarisée, API = localhost:3000)
+
+## Calendrier éditorial — suppression de créneaux (2026-09-30)
+- [x] Croix au survol sur chaque créneau (web + desktop), suppression dans la liste du jour, bouton « Supprimer » lisible dans le panneau web
+- [x] « Vider les créneaux vides » du mois (brouillons jamais travaillés) — POST /api/social/posts/bulk-delete
+- [x] Un créneau de trame supprimé ou déplacé n'est plus recréé par « Générer des slots » (table social_slot_skips)
+- [ ] Pierre : appliquer 120_social_slot_skips.sql (sans elle, la suppression marche mais un créneau supprimé peut revenir à la génération)
