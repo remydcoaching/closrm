@@ -3,7 +3,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { scoreLeads } from '@/lib/leads/engagement-score'
 import { confidenceLevel, type ConfidenceLevel } from '@/lib/leads/confidence'
-import { buildContentMetrics, latestPerContent, type ContentMetrics, type DiscoveryContentRow, type ObservedCounts } from './content-metrics'
+import { applyMeta, buildContentMetrics, latestPerContent, rowFromMeta, withMeta, type ContentMetrics, type DiscoveryContentRow, type MetaReelRow, type ObservedCounts } from './content-metrics'
+import { mediaIdToShortcode, shortcodeToMediaId } from './shortcode'
 
 const CONTENT_COLS = 'discovery_run_id, content_id, content_type, content_url, thumbnail_url, published_at, view_count, reported_like_count, reported_comment_count, created_at'
 
@@ -75,6 +76,33 @@ async function loadMatchedLeads(supabase: SupabaseClient, workspaceId: string, r
   return map
 }
 
+// ─── Official Meta figures (ig_reels, nightly sync) ───────────────────────
+const META_COLS = 'ig_media_id, shortcode, permalink, caption, thumbnail_url, views, likes, comments, reach, saves, shares, published_at'
+
+/** Reels synced from the Meta API, by shortcode ([] until migration 121 or without a Meta connection). */
+async function loadMetaReels(supabase: SupabaseClient, workspaceId: string, sinceIso: string | null): Promise<Map<string, MetaReelRow>> {
+  let q = supabase.from('ig_reels').select(META_COLS).eq('workspace_id', workspaceId).not('shortcode', 'is', null)
+  if (sinceIso) q = q.gte('published_at', sinceIso)
+  const { data, error } = await q.limit(1000)
+  if (error) return new Map()
+  return new Map(((data ?? []) as MetaReelRow[]).filter((r) => r.shortcode).map((r) => [r.shortcode as string, r]))
+}
+
+/** Distinct commenters per Graph media id, from the comments synced via the Meta API. */
+async function loadMetaCommenters(supabase: SupabaseClient, workspaceId: string, graphIds: string[]): Promise<Map<string, Set<string>>> {
+  const out = new Map<string, Set<string>>()
+  for (let i = 0; i < graphIds.length; i += CHUNK) {
+    const { data } = await supabase.from('ig_comments').select('ig_media_id, username').eq('workspace_id', workspaceId).in('ig_media_id', graphIds.slice(i, i + CHUNK))
+    for (const c of data ?? []) {
+      if (!c.username) continue
+      const set = out.get(c.ig_media_id) ?? new Set<string>()
+      set.add(String(c.username).toLowerCase())
+      out.set(c.ig_media_id, set)
+    }
+  }
+  return out
+}
+
 export async function loadContentMetrics(supabase: SupabaseClient, workspaceId: string, sinceIso: string | null): Promise<ContentMetrics[]> {
   const raw = await selectContents((c) => {
     let q = supabase.from('discovery_contents').select(c).eq('workspace_id', workspaceId)
@@ -113,15 +141,32 @@ export async function loadContentMetrics(supabase: SupabaseClient, workspaceId: 
   }
   const apifyLeads = new Map((summaries.data ?? []).map((s) => [s.source_post_id as string, s.leads_count as number]))
 
-  return rows.map((r) => {
+  // Official Meta figures on scanned contents, and the recent publications
+  // Hiker never scanned (so the page is current without paying a scan).
+  const metaByCode = await loadMetaReels(supabase, workspaceId, sinceIso)
+  const scannedCodes = new Set(rows.map((r) => mediaIdToShortcode(r.content_id)))
+  const metaOnly = [...metaByCode.entries()].filter(([code]) => !scannedCodes.has(code))
+  const commenters = await loadMetaCommenters(supabase, workspaceId, [...metaByCode.values()].map((m) => m.ig_media_id))
+
+  const fromHiker = rows.map((r) => {
+    const meta = metaByCode.get(mediaIdToShortcode(r.content_id))
     const o = observed.get(r.content_id)
     const counts: ObservedCounts = {
       likers: o?.likers ?? 0,
-      commenters: o?.commenters ?? 0,
+      commenters: Math.max(o?.commenters ?? 0, meta ? (commenters.get(meta.ig_media_id)?.size ?? 0) : 0),
       leads: Math.max(o?.leads ?? 0, apifyLeads.get(r.content_id) ?? 0),
     }
-    return buildContentMetrics(r, counts)
+    return withMeta(buildContentMetrics(meta ? applyMeta(r, meta) : r, counts), meta, true)
   })
+  const fromMeta = metaOnly
+    .map(([code, meta]) => {
+      const pk = shortcodeToMediaId(code)
+      if (!pk) return null
+      const counts: ObservedCounts = { likers: 0, commenters: commenters.get(meta.ig_media_id)?.size ?? 0, leads: apifyLeads.get(pk) ?? 0 }
+      return withMeta(buildContentMetrics(rowFromMeta(meta, pk), counts), meta, false)
+    })
+    .filter((m): m is ContentMetrics => !!m)
+  return [...fromHiker, ...fromMeta]
 }
 
 export interface ContentProfile {
@@ -148,10 +193,14 @@ export interface ContentDetail {
 
 export async function loadContentDetail(supabase: SupabaseClient, workspaceId: string, contentId: string): Promise<ContentDetail | null> {
   const raw = await selectContents((c) => supabase.from('discovery_contents').select(c).eq('workspace_id', workspaceId).eq('content_id', contentId))
-  const [row] = latestPerContent(raw)
-  if (!row) return null
+  const [scanned] = latestPerContent(raw)
+  const code = mediaIdToShortcode(contentId)
+  const { data: metaRow } = await supabase.from('ig_reels').select(META_COLS).eq('workspace_id', workspaceId).eq('shortcode', code).maybeSingle()
+  const meta = (metaRow ?? undefined) as MetaReelRow | undefined
+  if (!scanned && !meta) return null
+  const row = scanned ? (meta ? applyMeta(scanned, meta) : scanned) : rowFromMeta(meta as MetaReelRow, contentId)
 
-  const interactions = await loadInteractions(supabase, workspaceId, [row.discovery_run_id], [contentId])
+  const interactions = scanned ? await loadInteractions(supabase, workspaceId, [row.discovery_run_id], [contentId]) : []
   const byUser = new Map<string, ContentProfile>()
   for (const i of interactions) {
     const p =
@@ -205,6 +254,33 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
     byUser.set(li.instagram_username, p)
   }
 
+  // Commenters read from the Meta API (exact, free).
+  if (meta) {
+    const { data: metaComments } = await supabase.from('ig_comments').select('username').eq('workspace_id', workspaceId).eq('ig_media_id', meta.ig_media_id)
+    for (const c of metaComments ?? []) {
+      if (!c.username) continue
+      const p =
+        byUser.get(c.username) ??
+        ({
+          username: c.username,
+          fullName: null,
+          instagramUserId: null,
+          profilePicUrl: null,
+          isVerified: null,
+          followsTarget: null,
+          liked: false,
+          commented: false,
+          totalLikes: null,
+          totalComments: null,
+          discoveryProfileId: null,
+          runId: null,
+          lead: null,
+        } satisfies ContentProfile)
+      p.commented = true
+      byUser.set(c.username, p)
+    }
+  }
+
   const usernames = [...byUser.keys()]
   const leadIds = new Set<string>((leadInteractions ?? []).map((l) => l.lead_id as string))
   const leadIdByUser = new Map<string, string>((leadInteractions ?? []).map((l) => [l.instagram_username as string, l.lead_id as string]))
@@ -252,11 +328,15 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
 
   const profiles = [...byUser.values()]
   const leadsCount = profiles.filter((p) => p.lead).length
-  const metrics = buildContentMetrics(row, {
-    likers: profiles.filter((p) => p.liked).length,
-    commenters: profiles.filter((p) => p.commented).length,
-    leads: leadsCount,
-  })
+  const metrics = withMeta(
+    buildContentMetrics(row, {
+      likers: profiles.filter((p) => p.liked).length,
+      commenters: profiles.filter((p) => p.commented).length,
+      leads: leadsCount,
+    }),
+    meta,
+    !!scanned,
+  )
   // Commenters first (stronger intent), then by account-wide activity.
   profiles.sort((a, b) => Number(b.commented) - Number(a.commented) || (b.totalLikes ?? 0) + (b.totalComments ?? 0) - ((a.totalLikes ?? 0) + (a.totalComments ?? 0)))
   return { metrics, profiles }

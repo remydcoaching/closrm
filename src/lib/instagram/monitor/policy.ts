@@ -26,16 +26,21 @@ export interface MonitoredContent {
   last_status: 'ok' | 'error' | 'not_found' | null
 }
 
-/** Comments are re-read only when their counter moved (or were never read / last read failed). */
-export function needsCommentsRead(c: MonitoredContent): boolean {
+/**
+ * Comments are re-read only when their counter moved (or were never read /
+ * last read failed) — and never when the Meta API already syncs them
+ * (commentsFromMeta: free, exact dates), leaving Hiker for likers only.
+ */
+export function needsCommentsRead(c: MonitoredContent, commentsFromMeta = false): boolean {
+  if (commentsFromMeta) return false
   if (c.last_status === 'error' || c.comments_read_at_count === null) return true
   if (c.reported_comment_count === null) return true
   return c.reported_comment_count !== c.comments_read_at_count
 }
 
 /** Billed requests a publication will cost this pass (likers = 1, comments ≈ 1 per 20 new). */
-export function estimatedCost(c: MonitoredContent): number {
-  if (!needsCommentsRead(c)) return 1
+export function estimatedCost(c: MonitoredContent, commentsFromMeta = false): number {
+  if (!needsCommentsRead(c, commentsFromMeta)) return 1
   const fresh = Math.max(0, (c.reported_comment_count ?? 20) - (c.comments_read_at_count ?? 0))
   return 1 + Math.min(MAX_COMMENT_PAGES, Math.max(1, Math.ceil(fresh / 20)))
 }
@@ -47,7 +52,7 @@ export const MAX_COMMENT_PAGES = 5
  * then most recent), while the estimated cost fits in `budget` requests.
  * Deleted publications are never re-read.
  */
-export function pickDueContents(contents: MonitoredContent[], now: number, budget: number): MonitoredContent[] {
+export function pickDueContents(contents: MonitoredContent[], now: number, budget: number, commentsFromMeta = false): MonitoredContent[] {
   const due = contents
     .filter((c) => c.last_status !== 'not_found' && new Date(c.next_scan_at).getTime() <= now)
     .sort((a, b) => {
@@ -58,7 +63,7 @@ export function pickDueContents(contents: MonitoredContent[], now: number, budge
   const out: MonitoredContent[] = []
   let spent = 0
   for (const c of due) {
-    const cost = estimatedCost(c)
+    const cost = estimatedCost(c, commentsFromMeta)
     if (spent + cost > budget) continue
     out.push(c)
     spent += cost

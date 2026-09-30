@@ -33,6 +33,8 @@ export async function fetchIgProfile(token: string, igUserId?: string) {
 
 interface IgMediaItem {
   id: string
+  shortcode?: string
+  permalink?: string
   caption?: string
   media_type: string
   media_url?: string
@@ -45,7 +47,7 @@ interface IgMediaItem {
 export async function fetchIgMedia(token: string, limit = 50, igUserId?: string): Promise<IgMediaItem[]> {
   const base = igUserId ? FB_BASE : IG_BASE
   const id = igUserId ?? 'me'
-  const url = `${base}/${id}/media?fields=id,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`
+  const url = `${base}/${id}/media?fields=id,shortcode,permalink,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count&limit=${limit}&access_token=${token}`
   const res = await fetch(url)
   if (!res.ok) await throwGraphError(res, 'IG media fetch')
   const json = await res.json()
@@ -336,6 +338,28 @@ export async function sendIgMessage(
 }
 
 // ── Comments ──
+
+export interface IgCommentRaw {
+  id: string
+  text: string
+  username: string
+  timestamp: string
+  parent_id?: string
+}
+
+/** Every comment of one of the account's media (all pages, capped), dead token → MetaTokenInvalidError. */
+export async function fetchAllMediaComments(token: string, mediaId: string, maxPages = 10): Promise<IgCommentRaw[]> {
+  const out: IgCommentRaw[] = []
+  let url: string | null = `${FB_BASE}/${mediaId}/comments?fields=id,text,username,timestamp,parent_id&limit=100&access_token=${token}`
+  for (let page = 0; url && page < maxPages; page++) {
+    const res: Response = await fetch(url)
+    if (!res.ok) await throwGraphError(res, 'IG comments fetch')
+    const json = (await res.json()) as { data?: IgCommentRaw[]; paging?: { next?: string } }
+    out.push(...(json.data ?? []))
+    url = json.paging?.next ?? null
+  }
+  return out
+}
 
 export async function fetchMediaComments(
   token: string,

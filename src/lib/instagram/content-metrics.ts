@@ -45,6 +45,63 @@ export interface ContentMetrics {
   identifiedLikers: number
   identifiedCommenters: number
   leadsCount: number
+  /** Official Meta figures when the publication is synced from the Meta API (null otherwise). */
+  reach?: number | null
+  saves?: number | null
+  shares?: number | null
+  /** Where the figures come from: Meta API (official), Hiker scan, or both merged. */
+  source?: 'meta' | 'hiker' | 'meta+hiker'
+}
+
+/** A publication synced from the official Meta API (ig_reels). */
+export interface MetaReelRow {
+  ig_media_id: string
+  shortcode: string | null
+  permalink: string | null
+  caption: string | null
+  thumbnail_url: string | null
+  views: number | null
+  likes: number | null
+  comments: number | null
+  reach: number | null
+  saves: number | null
+  shares: number | null
+  published_at: string | null
+}
+
+/** Pure: Meta's official counters replace Hiker's (Hiker's like_count is unreliable). */
+export function applyMeta(row: DiscoveryContentRow, meta: MetaReelRow): DiscoveryContentRow {
+  return {
+    ...row,
+    view_count: meta.views ?? row.view_count,
+    reported_like_count: meta.likes ?? row.reported_like_count,
+    reported_comment_count: meta.comments ?? row.reported_comment_count,
+    thumbnail_url: row.thumbnail_url ?? meta.thumbnail_url,
+    caption: row.caption ?? meta.caption,
+  }
+}
+
+/** Pure: a publication Hiker never scanned, from Meta only (content_id = Instagram media pk). */
+export function rowFromMeta(meta: MetaReelRow, mediaPk: string): DiscoveryContentRow {
+  return {
+    discovery_run_id: '',
+    content_id: mediaPk,
+    content_type: 'clip',
+    content_url: meta.permalink,
+    thumbnail_url: meta.thumbnail_url,
+    published_at: meta.published_at,
+    view_count: meta.views,
+    caption: meta.caption,
+    reported_like_count: meta.likes,
+    reported_comment_count: meta.comments,
+    created_at: meta.published_at ?? '',
+  }
+}
+
+/** Pure: adds Meta-only figures and the source to a built metric. */
+export function withMeta(m: ContentMetrics, meta: MetaReelRow | undefined, fromHiker: boolean): ContentMetrics {
+  if (!meta) return { ...m, source: 'hiker' }
+  return { ...m, reach: meta.reach, saves: meta.saves, shares: meta.shares, source: fromHiker ? 'meta+hiker' : 'meta' }
 }
 
 /** Keeps the latest scan row per content_id. */
