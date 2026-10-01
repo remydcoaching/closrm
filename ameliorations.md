@@ -998,6 +998,37 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible
 - **Statut :** En attente de validation
 
+
+## Session 2026-10-01 — Vitesse, likers, réels d'essai (Pierre)
+
+### A-050-1 · Vérifier les jetons sans appeler Supabase Auth
+- **Contexte :** 2026-10-01 — Supabase Auth du projet a cessé de répondre : chaque route API appelle `auth.getUser(token)` (aller-retour réseau), donc toute l'API connectée était bloquée alors que la base répondait.
+- **Description :** passer le projet aux clés de signature JWT asymétriques (Dashboard › JWT Keys), puis utiliser `auth.getClaims()` dans `getWorkspaceId` : vérification locale (JWKS en cache) → −1 aller-retour par requête et API qui survit à une panne Auth. Alternative : ajouter le secret JWT (HS256) en variable Vercel et vérifier avec `jose`.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Faible (code) + action dashboard
+- **Statut :** En attente de validation
+
+### A-050-2 · GET /api/ai/brief renvoie la clé API IA en clair
+- **Contexte :** 2026-10-01 — audit vitesse : la réponse contient `api_key` (empêche aussi de la mettre en cache côté app).
+- **Description :** renvoyer `has_api_key: true` + 4 derniers caractères ; ne garder la clé que côté serveur.
+- **Priorité estimée :** Haute
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-050-3 · HikerAPI palier Standard
+- **Contexte :** suivi des likers — palier Start à 0,02 $/requête ; Standard à 0,001 $ (100 $ prépayés).
+- **Description :** relecture quotidienne ~5–15 réels → ~3 $/mois en Start, ~0,15 $ en Standard ; utile surtout avec plusieurs coachs.
+- **Priorité estimée :** Basse (1 compte) / Haute (multi-coachs)
+- **Effort estimé :** Aucun (abonnement)
+- **Statut :** En attente de validation
+
+### A-050-4 · Démarrages à froid des routes rares
+- **Contexte :** 2026-10-01 — routes peu appelées (brief IA, statut Meta…) : 1,5–3 s au premier appel puis 150–300 ms.
+- **Description :** le cache de l'app les masque déjà ; côté serveur, regrouper les routes desktop dans une seule fonction (route agrégée) si ça gêne encore.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
 ---
 
-*Mis à jour le 2026-09-27 par Claude Code — ClosRM*
+*Mis à jour le 2026-10-01 par Claude Code — ClosRM*

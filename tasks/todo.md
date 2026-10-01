@@ -81,3 +81,12 @@ Hiker relit périodiquement likers + commentaires des publications récentes ; l
 - [ ] Signature Apple du .dmg : échoue en boucle dans electron-builder (une signature isolée marche) → .dmg actuel non signé (clic droit › Ouvrir). À investiguer (DEBUG=electron-osx-sign*)
 - [ ] Découpage du code de l'app (bundle unique 1,1 Mo) pour un démarrage plus rapide
 - [ ] 57 apostrophes non échappées + 40 variables inutilisées + 28 setState dans des effets (lint, pas des bugs)
+
+## 2026-10-01 — Likers Meta, Audience, vitesse
+- [x] Likers relus seulement si les j'aime Meta augmentent + bouton historique (#573, migration 122)
+- [x] Audience : « Qui like vos réels » (#574)
+- [x] Vitesse desktop : cache d'abord partout, préchargement, délai max (#575)
+- [ ] Réels d'essai + j'aime identifiés dans Contenu (#576, migration 123)
+- [ ] Pierre : appliquer 120, 122, 123 puis « Synchroniser » ; lancer l'historique des j'aime
+- [ ] Comparatif Insyder → liste de ce qui manque
+- [ ] Liste de tournage App Review Meta
