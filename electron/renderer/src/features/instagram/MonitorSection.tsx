@@ -42,6 +42,8 @@ interface MonitorState {
   settings: { enabled: boolean; instagram_username: string | null; max_requests_per_day: number }
   requestsUsedToday: number
   hikerConfigured: boolean
+  /** Reels whose likers were never read (history backfill cost). */
+  unreadReels?: number
   runs: MonitorRun[]
   gestures: Gesture[]
   contents: { content_id: string; content_type: 'media' | 'clip'; content_url: string | null; thumbnail_url: string | null }[]
@@ -108,8 +110,8 @@ export function MonitorSection() {
       const max = state.settings.max_requests_per_day
       const ok = window.confirm(
         `Activer le suivi de vos publications ?\n\n` +
-          `Une fois par jour, ClosRM relit via HikerAPI les j'aime et commentaires de vos posts et réels récents, et enregistre chaque nouveau geste dans le parcours des leads.\n\n` +
-          `Service payant : au plus ${max} requêtes par jour à ${formatDollars(HIKER_PRICE_USD)} l'une, soit au plus ${formatDollars(max * HIKER_PRICE_USD)} par jour (≈ ${formatDollars(max * HIKER_PRICE_USD * 30)} par mois). Les commentaires ne sont relus que si leur nombre a changé.`,
+          `Une fois par jour, ClosRM relit via HikerAPI qui a liké vos réels, et enregistre chaque nouveau j'aime dans le parcours des leads. Un réel n'est relu que si Meta indique que son nombre de j'aime a augmenté ; les commentaires viennent gratuitement de Meta.\n\n` +
+          `Service payant : au plus ${max} requêtes par jour à ${formatDollars(HIKER_PRICE_USD)} l'une, soit au plus ${formatDollars(max * HIKER_PRICE_USD)} par jour — en pratique bien moins, seuls les réels qui ont pris des j'aime sont relus.`,
       )
       if (!ok) return
     }
@@ -128,6 +130,26 @@ export function MonitorSection() {
     }
   }
 
+  async function readHistory() {
+    const n = state?.unreadReels ?? 0
+    if (n === 0) return
+    const ok = window.confirm(
+      `Récupérer l'historique des j'aime ?\n\n` +
+        `ClosRM lit une fois, via HikerAPI, qui a liké chacun de vos ${n} réels jamais lus. Ensuite, un réel n'est relu que si ses j'aime augmentent.\n\n` +
+        `Coût : ${n} requêtes, soit ≈ ${formatDollars(n * HIKER_PRICE_USD)} (une seule fois, hors budget du jour).`,
+    )
+    if (!ok) return
+    setBusy('history')
+    try {
+      await api.post('/api/instagram/monitor', { historic: true })
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Récupération impossible')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const thumbOf = new Map((state?.contents ?? []).map((c) => [c.content_id, c]))
   const last = state?.runs[0]
 
@@ -138,13 +160,18 @@ export function MonitorSection() {
         state
           ? state.settings.enabled
             ? `Actif · un passage par jour (6 h) · ${state.requestsUsedToday} / ${state.settings.max_requests_per_day} requêtes aujourd'hui`
-            : "Désactivé · qui like et commente vos posts et réels, au fil de l'eau (HikerAPI, payant)"
+            : "Désactivé · qui like vos réels, au fil de l'eau (HikerAPI, payant)"
           : undefined
       }
       toolbar={
         state && state.hikerConfigured ? (
           <>
             <Chips items={BUDGETS} active={String(state.settings.max_requests_per_day)} onChange={(k) => save({ maxRequestsPerDay: Number(k) })} />
+            {(state.unreadReels ?? 0) > 0 && (
+              <button type="button" className="ds-pill-button" onClick={readHistory} disabled={!!busy}>
+                {busy === 'history' ? 'Lecture de l’historique…' : `Historique des j'aime (${state.unreadReels} réels ≈ ${formatDollars((state.unreadReels ?? 0) * HIKER_PRICE_USD)})`}
+              </button>
+            )}
             {state.settings.enabled && (
               <button type="button" className="ds-pill-button" onClick={scanNow} disabled={!!busy}>
                 {busy === 'scan' ? 'Passage en cours…' : 'Scanner maintenant'}

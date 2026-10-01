@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { estimatedCost, needsCommentsRead, newGestures, observationKey, pickDueContents, remainingBudget, scanIntervalMs, type MonitoredContent, type ObservedGesture } from '../policy'
+import { estimatedCost, needsCommentsRead, newGestures, observationKey, pickDueByLikes, pickDueContents, remainingBudget, scanIntervalMs, type MonitoredContent, type ObservedGesture } from '../policy'
 import { interactionDate, runMonitor } from '../run'
 import type { HikerClient } from '@/lib/hiker/client'
 
@@ -54,6 +54,32 @@ describe('pickDueContents', () => {
   })
 })
 
+describe('pickDueByLikes (Meta connected: likers re-read only when likes grew)', () => {
+  it('never-read first (newest first), then biggest like gain; unchanged and deleted are skipped', () => {
+    const list = [
+      content({ content_id: 'same', reported_like_count: 40, likes_read_at_count: 40 }),
+      content({ content_id: 'small-gain', reported_like_count: 42, likes_read_at_count: 40 }),
+      content({ content_id: 'big-gain', reported_like_count: 90, likes_read_at_count: 40 }),
+      content({ content_id: 'old-unread', last_scanned_at: null, published_at: ago(500) }),
+      content({ content_id: 'new-unread', last_scanned_at: null, published_at: ago(5) }),
+      content({ content_id: 'gone', last_scanned_at: null, last_status: 'not_found' }),
+      content({ content_id: 'failed', last_status: 'error', reported_like_count: 10, likes_read_at_count: 10 }),
+    ]
+    const picked = pickDueByLikes(list, 100).map((c) => c.content_id)
+    expect(picked.slice(0, 2)).toEqual(['new-unread', 'old-unread'])
+    expect(picked).toContain('failed')
+    expect(picked.indexOf('big-gain')).toBeLessThan(picked.indexOf('small-gain'))
+    expect(picked).not.toContain('same')
+    expect(picked).not.toContain('gone')
+    expect(pickDueByLikes(list, 2).map((c) => c.content_id)).toEqual(['new-unread', 'old-unread'])
+    expect(pickDueByLikes(list, 0)).toEqual([])
+  })
+  it('read before migration 122 (no like count stored): re-read once to start tracking, unless it has no likes', () => {
+    expect(pickDueByLikes([content({ reported_like_count: 3, likes_read_at_count: null })], 10)).toHaveLength(1)
+    expect(pickDueByLikes([content({ reported_like_count: 0, likes_read_at_count: null })], 10)).toHaveLength(0)
+  })
+})
+
 describe('newGestures', () => {
   const g = (o: Partial<ObservedGesture>): ObservedGesture => ({ contentId: 'c', type: 'like', instagramUserId: '1', username: 'a', fullName: null, profilePicUrl: null, dedupKey: '', commentText: null, commentedAt: null, ...o })
   it('keeps only what was not seen before, keyed by Instagram id (a renamed user is the same person)', () => {
@@ -76,7 +102,7 @@ describe('remainingBudget', () => {
 })
 
 // Minimal fake: answers the settings / runs reads of runMonitor's guards.
-function fakeSupabase(settings: Record<string, unknown> | null, usedToday: number) {
+function fakeSupabase(settings: Record<string, unknown> | null, usedToday: number, igConnected = false) {
   const inserts: string[] = []
   const q = (table: string) => {
     const chain: Record<string, unknown> = {}
@@ -85,7 +111,8 @@ function fakeSupabase(settings: Record<string, unknown> | null, usedToday: numbe
       select: self,
       eq: self,
       gte: () => Promise.resolve({ data: table === 'instagram_monitor_runs' ? [{ requests: usedToday }] : [], error: null }),
-      maybeSingle: () => Promise.resolve({ data: table === 'instagram_monitor_settings' ? settings : null, error: null }),
+      maybeSingle: () =>
+        Promise.resolve({ data: table === 'instagram_monitor_settings' ? settings : table === 'ig_accounts' && igConnected ? { is_connected: true } : null, error: null }),
       insert: () => {
         inserts.push(table)
         return chain
@@ -106,6 +133,11 @@ describe('runMonitor guards (never spends when it must not)', () => {
   })
   it('daily budget used up → skipped', async () => {
     const { client } = fakeSupabase({ enabled: true, max_requests_per_day: 300, instagram_username: 'me' }, 299)
+    expect(await runMonitor(client, 'ws', makeClient, 'manual')).toMatchObject({ status: 'SKIPPED', reason: 'budget' })
+    expect(makeClient).not.toHaveBeenCalled()
+  })
+  it('Meta connected, nothing left today → skipped (no listing cost to cover, but still no read)', async () => {
+    const { client } = fakeSupabase({ enabled: true, max_requests_per_day: 300, instagram_username: 'me' }, 300, true)
     expect(await runMonitor(client, 'ws', makeClient, 'manual')).toMatchObject({ status: 'SKIPPED', reason: 'budget' })
     expect(makeClient).not.toHaveBeenCalled()
   })
