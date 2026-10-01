@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import {
-  fetchIgMedia, fetchReelInsights, fetchIgStories,
+  fetchIgMedia, fetchAllIgMedia, fetchReelInsights, fetchIgStories,
   fetchStoryInsights, fetchIgProfile, fetchIgConversations,
 } from './api'
 import { MetaTokenInvalidError } from '@/lib/meta/token-error'
@@ -16,49 +16,60 @@ export interface SyncContext {
 }
 
 export async function syncReels(ctx: SyncContext) {
-  const media = await fetchIgMedia(ctx.accessToken, 50, ctx.igUserId)
+  // Every reel, not just the latest 50: the API also returns reels kept out
+  // of the profile grid (trial reels, reels-tab only).
+  const media = await fetchAllIgMedia(ctx.accessToken, ctx.igUserId)
   const reels = media.filter(m => m.media_type === 'VIDEO' || m.media_type === 'REELS')
 
-  for (const reel of reels) {
-    const insights = await fetchReelInsights(ctx.accessToken, reel.id)
-    const likes = reel.like_count ?? 0
-    const comments = reel.comments_count ?? 0
-    const saves = insights.saved ?? 0
-    const shares = insights.shares ?? 0
-    const reach = insights.reach ?? 0
-    const views = insights.views ?? 0
-    const engagementRate = reach > 0
-      ? ((likes + comments + saves + shares) / reach) * 100
-      : 0
-
-    const row = {
-      workspace_id: ctx.workspaceId,
-      ig_media_id: reel.id,
-      // Links this Graph media to Hiker's pk (see migration 121).
-      shortcode: reel.shortcode ?? null,
-      permalink: reel.permalink ?? null,
-      caption: reel.caption ?? null,
-      thumbnail_url: reel.thumbnail_url ?? null,
-      video_url: reel.media_url ?? null,
-      views,
-      likes,
-      comments,
-      shares,
-      saves,
-      reach,
-      plays: views,
-      engagement_rate: Math.round(engagementRate * 100) / 100,
-      published_at: reel.timestamp,
-    }
-    const { error } = await ctx.supabase.from('ig_reels').upsert(row, { onConflict: 'ig_media_id' })
-    // Migration 121 not applied yet: store the rest.
-    if (error && /shortcode|permalink/.test(error.message)) {
-      const { shortcode: _s, permalink: _p, ...legacy } = row
-      await ctx.supabase.from('ig_reels').upsert(legacy, { onConflict: 'ig_media_id' })
+  // Insights a few at a time (one Graph call per reel).
+  let next = 0
+  const worker = async () => {
+    while (next < reels.length) {
+      const reel = reels[next++]
+      await syncOneReel(ctx, reel)
     }
   }
-
+  await Promise.all(Array.from({ length: 6 }, worker))
   return reels.length
+}
+
+async function syncOneReel(ctx: SyncContext, reel: Awaited<ReturnType<typeof fetchAllIgMedia>>[number]) {
+  const insights = await fetchReelInsights(ctx.accessToken, reel.id)
+  const likes = reel.like_count ?? 0
+  const comments = reel.comments_count ?? 0
+  const saves = insights.saved ?? 0
+  const shares = insights.shares ?? 0
+  const reach = insights.reach ?? 0
+  const views = insights.views ?? 0
+  const engagementRate = reach > 0
+    ? ((likes + comments + saves + shares) / reach) * 100
+    : 0
+
+  const row = {
+    workspace_id: ctx.workspaceId,
+    ig_media_id: reel.id,
+    // Links this Graph media to Hiker's pk (see migration 121).
+    shortcode: reel.shortcode ?? null,
+    permalink: reel.permalink ?? null,
+    caption: reel.caption ?? null,
+    thumbnail_url: reel.thumbnail_url ?? null,
+    video_url: reel.media_url ?? null,
+    views,
+    likes,
+    comments,
+    shares,
+    saves,
+    reach,
+    plays: views,
+    engagement_rate: Math.round(engagementRate * 100) / 100,
+    published_at: reel.timestamp,
+  }
+  const { error } = await ctx.supabase.from('ig_reels').upsert(row, { onConflict: 'ig_media_id' })
+  // Migration 121 not applied yet: store the rest.
+  if (error && /shortcode|permalink/.test(error.message)) {
+    const { shortcode: _s, permalink: _p, ...legacy } = row
+    await ctx.supabase.from('ig_reels').upsert(legacy, { onConflict: 'ig_media_id' })
+  }
 }
 
 export async function syncStories(ctx: SyncContext) {

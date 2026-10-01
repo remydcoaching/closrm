@@ -17,7 +17,7 @@ export interface ScatterPoint {
   id: string
   x: number // views, > 0
   y: number // engagement rate, 0..1+
-  radius: number // e.g. leads generated — bubble size
+  radius: number // bubble size (views on the Content page)
   color: string
   label: string
   tooltip: React.ReactNode
@@ -54,8 +54,9 @@ export function rateTicks(max: number): number[] {
 const formatViews = (v: number) => new Intl.NumberFormat('fr-FR').format(Math.round(v))
 const formatRate = (r: number) => `${(r * 100).toFixed(r < 0.01 && r > 0 ? 1 : 0).replace('.', ',')} %`
 
-const MIN_R = 6
-const MAX_R = 26
+// Same scale as Insyder: 4 px + 20 px × √(value / max).
+const MIN_R = 4
+const MAX_R = 24
 
 export function ScatterChart({ points, height = 380 }: { points: ScatterPoint[]; height?: number }) {
   const [hovered, setHovered] = useState<string | null>(null)

@@ -137,7 +137,8 @@ export function ContentPage() {
         id: c.contentId,
         x: c.views as number,
         y: c.engagementRate as number,
-        radius: conf === 'all' ? c.leadsCount : (c.confidence?.[conf] ?? 0),
+        // Bubble size follows views (sqrt scale in ScatterChart); leads are in the tooltip.
+        radius: c.views ?? 0,
         color: FUNNEL_STAGE_COLOR[st],
         label: c.contentId,
         onClick: () => navigate(`/instagram/content/${encodeURIComponent(c.contentId)}`),
@@ -210,7 +211,7 @@ export function ContentPage() {
             <StatCard label="Leads touchés" value={totals.leads} highlight caption={`${formatNumber(totals.identified)} interactions identifiées`} />
           </StatGrid>
 
-          <TableCard title="Quel contenu amène des leads" subtitle="Un contenu par bulle, taille = leads touchés. Cliquez pour l'ouvrir.">
+          <TableCard title="Quel contenu amène des leads" subtitle="Un contenu par bulle, taille = vues. Cliquez pour l'ouvrir.">
             <div className="ig-filter-rows">
               <span className="ig-filter-label">Forme</span>
               <Chips items={FORMATS} active={format} onChange={setFormat} />
