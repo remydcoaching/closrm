@@ -6,7 +6,11 @@
 // styling one. Y axis (engagement rate) stays linear: a rate is a ratio, so
 // a horizontal doubling of position must mean "twice the value", which only
 // holds on a linear scale.
-import { useState } from 'react'
+//
+// Drawn in real pixels at the measured container width: a stretched viewBox
+// (preserveAspectRatio="none") turned the bubbles into dashes and squashed
+// the axis labels.
+import { useEffect, useRef, useState } from 'react'
 import './scatter-chart.css'
 
 export interface ScatterPoint {
@@ -33,90 +37,136 @@ function linScale(value: number, min: number, max: number, rangeMin: number, ran
   return rangeMin + t * (rangeMax - rangeMin)
 }
 
+/** ~4–6 round percentage ticks covering 0..max (e.g. 0, 0.5 %, 1 %, 1.5 %, 2 %). */
+export function rateTicks(max: number): number[] {
+  const steps = [0.001, 0.0025, 0.005, 0.01, 0.02, 0.025, 0.05, 0.1, 0.2, 0.25, 0.5]
+  const step = steps.find((s) => max / s <= 5) ?? 1
+  const out: number[] = []
+  for (let t = 0; t <= max + step / 2; t += step) out.push(Number(t.toFixed(4)))
+  return out
+}
+
+const formatViews = (v: number) => (v >= 1_000_000 ? `${v / 1_000_000}M` : v >= 1000 ? `${v / 1000}k` : String(v))
+const formatRate = (r: number) => `${(r * 100).toFixed(r < 0.01 && r > 0 ? 1 : 0).replace('.', ',')} %`
+
+const MIN_R = 6
+const MAX_R = 26
+
 export function ScatterChart({ points, height = 380 }: { points: ScatterPoint[]; height?: number }) {
   const [hovered, setHovered] = useState<string | null>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const update = () => setWidth(Math.round(el.getBoundingClientRect().width))
+    update()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   if (points.length === 0) {
     return <div className="scatter-chart-empty">Aucune donnée à afficher.</div>
   }
 
-  const width = 100 // percentage-based viewBox, scales with container
-  const padding = { top: 10, right: 6, bottom: 14, left: 8 }
-  const plotW = width - padding.left - padding.right
+  const padding = { top: 16, right: 24, bottom: 40, left: 56 }
+  const plotW = Math.max(width - padding.left - padding.right, 10)
   const plotH = height - padding.top - padding.bottom
 
   const xs = points.map((p) => p.x)
   const ys = points.map((p) => p.y)
   const xMin = Math.min(...xs)
   const xMax = Math.max(...xs)
-  const yMax = Math.max(...ys, 0.01)
-  const maxRadius = Math.max(...points.map((p) => p.radius), 1)
+  const yTicks = rateTicks(Math.max(...ys, 0.005) * 1.1)
+  const yTop = yTicks[yTicks.length - 1] || 0.01
+  const maxRadius = Math.max(...points.map((p) => p.radius), 0)
 
-  // Log-scale tick marks at each power of ten spanned by the data.
+  // Log-scale tick marks at 1, 2 and 5 × each power of ten spanned by the data.
   const xTicks: number[] = []
-  const startExp = Math.floor(Math.log10(Math.max(xMin, 1)))
-  const endExp = Math.ceil(Math.log10(Math.max(xMax, 10)))
-  for (let e = startExp; e <= endExp; e++) xTicks.push(10 ** e)
+  for (let e = Math.floor(Math.log10(Math.max(xMin, 1))); e <= Math.ceil(Math.log10(Math.max(xMax, 10))); e++) {
+    for (const m of [1, 2, 5]) {
+      const t = m * 10 ** e
+      if (t >= xMin * 0.8 && t <= xMax * 1.25) xTicks.push(t)
+    }
+  }
 
-  const yTicks = [0, 0.02, 0.04, 0.06, 0.08].filter((t) => t <= yMax * 1.15)
+  const px = (x: number) => padding.left + logScale(x, xMin, xMax, 0, plotW)
+  const py = (y: number) => padding.top + plotH - linScale(y, 0, yTop, 0, plotH)
+  const pr = (r: number) => (maxRadius > 0 ? MIN_R + Math.sqrt(r / maxRadius) * (MAX_R - MIN_R) : MIN_R)
 
   const hoveredPoint = points.find((p) => p.id === hovered)
+  const tipLeft = hoveredPoint ? px(hoveredPoint.x) : 0
+  const tipTop = hoveredPoint ? py(hoveredPoint.y) : 0
 
   return (
-    <div className="scatter-chart" style={{ height }}>
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="scatter-chart-svg">
-        {/* Y gridlines + labels */}
-        {yTicks.map((t) => {
-          const y = padding.top + plotH - linScale(t, 0, yMax * 1.15, 0, plotH)
-          return (
+    <div className="scatter-chart" style={{ height }} ref={boxRef}>
+      {width > 0 && (
+        <svg width={width} height={height} className="scatter-chart-svg">
+          {yTicks.map((t) => (
             <g key={`y-${t}`}>
-              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="scatter-gridline" />
-              <text x={0} y={y} className="scatter-axis-label scatter-axis-label--y">
-                {(t * 100).toFixed(0)}%
+              <line x1={padding.left} x2={width - padding.right} y1={py(t)} y2={py(t)} className="scatter-gridline" />
+              <text x={padding.left - 8} y={py(t)} dy="0.32em" className="scatter-axis-label scatter-axis-label--y">
+                {formatRate(t)}
               </text>
             </g>
-          )
-        })}
-
-        {/* X gridlines + labels (log scale) */}
-        {xTicks.map((t) => {
-          const x = padding.left + logScale(t, xMin, xMax, 0, plotW)
-          return (
+          ))}
+          {xTicks.map((t) => (
             <g key={`x-${t}`}>
-              <line x1={x} x2={x} y1={padding.top} y2={padding.top + plotH} className="scatter-gridline" />
-              <text x={x} y={height - 2} className="scatter-axis-label scatter-axis-label--x">
-                {t >= 1000 ? `${t / 1000}k` : t}
+              <line x1={px(t)} x2={px(t)} y1={padding.top} y2={padding.top + plotH} className="scatter-gridline" />
+              <text x={px(t)} y={padding.top + plotH + 18} className="scatter-axis-label scatter-axis-label--x">
+                {formatViews(t)}
               </text>
             </g>
-          )
-        })}
+          ))}
+          <text x={padding.left + plotW / 2} y={height - 4} className="scatter-axis-title">
+            Vues (échelle log)
+          </text>
+          <text x={14} y={padding.top + plotH / 2} transform={`rotate(-90 14 ${padding.top + plotH / 2})`} className="scatter-axis-title">
+            Taux d&apos;engagement
+          </text>
 
-        {/* Points */}
-        {points.map((p) => {
-          const cx = padding.left + logScale(p.x, xMin, xMax, 0, plotW)
-          const cy = padding.top + plotH - linScale(p.y, 0, yMax * 1.15, 0, plotH)
-          const r = 0.6 + (p.radius / maxRadius) * 1.8
-          const isHovered = hovered === p.id
-          return (
-            <circle
-              key={p.id}
-              cx={cx}
-              cy={cy}
-              r={isHovered ? r * 1.3 : r}
-              fill={p.color}
-              fillOpacity={isHovered ? 0.9 : 0.6}
-              stroke={isHovered ? p.color : 'none'}
-              strokeWidth={0.3}
-              className="scatter-point"
-              onMouseEnter={() => setHovered(p.id)}
-              onMouseLeave={() => setHovered(null)}
-              onClick={p.onClick}
-            />
-          )
-        })}
-      </svg>
+          {/* Biggest bubbles first so small ones stay clickable on top. */}
+          {[...points]
+            .sort((a, b) => b.radius - a.radius)
+            .map((p) => {
+              const isHovered = hovered === p.id
+              const r = pr(p.radius)
+              return (
+                <circle
+                  key={p.id}
+                  cx={px(p.x)}
+                  cy={py(p.y)}
+                  r={isHovered ? r + 2 : r}
+                  fill={p.color}
+                  fillOpacity={isHovered ? 0.9 : 0.55}
+                  stroke={p.color}
+                  strokeWidth={isHovered ? 2 : 1}
+                  className="scatter-point"
+                  onMouseEnter={() => setHovered(p.id)}
+                  onMouseLeave={() => setHovered(null)}
+                  onClick={p.onClick}
+                >
+                  <title>{p.label}</title>
+                </circle>
+              )
+            })}
+        </svg>
+      )}
 
-      {hoveredPoint && <div className="scatter-tooltip">{hoveredPoint.tooltip}</div>}
+      {hoveredPoint && (
+        <div
+          className="scatter-tooltip"
+          style={{
+            left: Math.min(Math.max(tipLeft + 16, 8), Math.max(width - 240, 8)),
+            top: Math.min(Math.max(tipTop - 20, 4), height - 120),
+          }}
+        >
+          {hoveredPoint.tooltip}
+        </div>
+      )}
     </div>
   )
 }
