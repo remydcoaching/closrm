@@ -98,31 +98,9 @@ export async function runMonitor(
     // exact like counts come free from the nightly Meta sync (ig_reels).
     // Otherwise: Hiker's latest posts + reels (2 requests).
     if (commentsFromMeta) {
-      const { data: reels, error: reelsErr } = await supabase
-        .from('ig_reels')
-        .select('shortcode, permalink, thumbnail_url, caption, published_at, likes, comments')
-        .eq('workspace_id', workspaceId)
-        .not('shortcode', 'is', null)
-        .limit(2000)
-      if (reelsErr) throw new Error(`ig_reels: ${reelsErr.message}`)
-      const rows = (reels ?? [])
-        .map((r) => ({
-          workspace_id: workspaceId,
-          content_id: shortcodeToMediaId(r.shortcode as string),
-          content_type: 'clip',
-          content_url: r.permalink,
-          thumbnail_url: r.thumbnail_url,
-          caption: r.caption?.slice(0, 2000) ?? null,
-          published_at: r.published_at,
-          reported_like_count: r.likes,
-          reported_comment_count: r.comments,
-        }))
-        .filter((r) => r.content_id)
-      out.contentsListed = rows.length
-      for (let i = 0; i < rows.length; i += 500) {
-        const { error } = await supabase.from('instagram_monitored_contents').upsert(rows.slice(i, i + 500), { onConflict: 'workspace_id,content_id' })
-        if (error) errors.push(`contents: ${error.message}`)
-      }
+      const listing = await listReelsFromMeta(supabase, workspaceId)
+      out.contentsListed = listing.listed
+      errors.push(...listing.errors)
     }
     let userId = settings?.instagram_user_id as string | null
     if (!commentsFromMeta && (!userId || settings?.instagram_username !== username)) {
@@ -161,37 +139,17 @@ export async function runMonitor(
     }
 
     // ── 2. Due publications within the budget left ──
-    const COLS = 'content_id, published_at, next_scan_at, reported_like_count, reported_comment_count, comments_read_at_count, last_scanned_at, last_status, likers_seen, comments_seen'
-    let allRes = await supabase.from('instagram_monitored_contents').select(`${COLS}, likes_read_at_count`).eq('workspace_id', workspaceId).limit(2000)
-    // Migration 122 not applied: no like-driven selection, fall back to the schedule.
-    const likesTracked = !(allRes.error && /likes_read_at_count/.test(allRes.error.message))
-    if (!likesTracked) allRes = (await supabase.from('instagram_monitored_contents').select(COLS).eq('workspace_id', workspaceId).limit(2000)) as typeof allRes
-    const all = allRes.data
+    const { all, likesTracked } = await loadMonitored(supabase, workspaceId)
     const now = Date.now()
     const due =
       commentsFromMeta && likesTracked
-        ? pickDueByLikes((all ?? []) as MonitoredContent[], Math.max(0, budget - requests))
-        : pickDueContents((all ?? []) as MonitoredContent[], now, Math.max(0, budget - requests), commentsFromMeta)
-    const stateOf = new Map(((all ?? []) as (MonitoredContent & { likers_seen: number; comments_seen: number })[]).map((c) => [c.content_id, c]))
-
-    const known = new Set<string>()
-    for (let i = 0; i < due.length; i += 100) {
-      const ids = due.slice(i, i + 100).map((c) => c.content_id)
-      for (let from = 0; ; from += 1000) {
-        const { data } = await supabase
-          .from('instagram_engagement_observations')
-          .select('content_id, interaction_type, instagram_user_id, dedup_key')
-          .eq('workspace_id', workspaceId)
-          .in('content_id', ids)
-          .range(from, from + 999)
-        for (const r of data ?? []) known.add(observationKey({ contentId: r.content_id, type: r.interaction_type, instagramUserId: r.instagram_user_id, dedupKey: r.dedup_key }))
-        if (!data || data.length < 1000) break
-      }
-    }
+        ? pickDueByLikes(all, Math.max(0, budget - requests))
+        : pickDueContents(all, now, Math.max(0, budget - requests), commentsFromMeta)
+    const known = await loadKnown(supabase, workspaceId, due.map((c) => c.content_id))
 
     // ── 3. Read likers / comments ──
     const observed: ObservedGesture[] = []
-    const scanned: { c: MonitoredContent; status: 'ok' | 'error' | 'not_found'; error: string | null; commentsRead: boolean }[] = []
+    const scanned: ScannedContent[] = []
     let stop: string | null = null
     let next = 0
     const worker = async () => {
@@ -253,75 +211,13 @@ export async function runMonitor(
       out.reason = stop
     }
 
-    // ── 4. New gestures → observations (+ leads) ──
-    const fresh = newGestures(observed, known)
-    const nowIso = new Date(now).toISOString()
-    const prevScan = new Map(due.map((c) => [c.content_id, c.last_scanned_at]))
-    const leadOf = await matchLeads(supabase, workspaceId, fresh)
-    out.leadsMatched = new Set([...leadOf.values()].map((l) => l.id)).size
-
-    const rows = fresh.map((g) => ({
-      workspace_id: workspaceId,
-      content_id: g.contentId,
-      interaction_type: g.type,
-      instagram_user_id: g.instagramUserId,
-      instagram_username: g.username,
-      full_name: g.fullName,
-      profile_pic_url: g.profilePicUrl,
-      dedup_key: g.dedupKey,
-      comment_text: g.commentText,
-      commented_at: g.commentedAt,
-      first_observed_at: nowIso,
-      previous_scan_at: prevScan.get(g.contentId) ?? null,
-      matched_lead_id: leadOf.get(g.instagramUserId)?.id ?? null,
-    }))
-    let obsFailed = false
-    for (let i = 0; i < rows.length; i += 500) {
-      const { error } = await supabase
-        .from('instagram_engagement_observations')
-        .upsert(rows.slice(i, i + 500), { onConflict: 'workspace_id,content_id,interaction_type,instagram_user_id,dedup_key', ignoreDuplicates: true })
-      if (error) {
-        obsFailed = true
-        errors.push(`observations: ${error.message}`)
-      }
-    }
-    if (obsFailed) backup = fresh
-    out.newLikes = fresh.filter((g) => g.type === 'like').length
-    out.newComments = fresh.filter((g) => g.type === 'comment').length
-
-    const published = new Map(((all ?? []) as MonitoredContent[]).map((c) => [c.content_id, c.published_at]))
-    errors.push(...(await addLeadInteractions(supabase, workspaceId, fresh, leadOf, prevScan, published, nowIso)))
-
-    // ── 5. Scan state ──
-    const counts = new Map<string, { likes: number; comments: number }>()
-    for (const g of fresh) {
-      const e = counts.get(g.contentId) ?? { likes: 0, comments: 0 }
-      if (g.type === 'like') e.likes += 1
-      else e.comments += 1
-      counts.set(g.contentId, e)
-    }
-    for (let i = 0; i < scanned.length; i += 10) {
-      await Promise.all(
-        scanned.slice(i, i + 10).map(({ c, status, error, commentsRead }) => {
-          const prev = stateOf.get(c.content_id)
-          const n = counts.get(c.content_id) ?? { likes: 0, comments: 0 }
-          return supabase
-            .from('instagram_monitored_contents')
-            .update({
-              last_scanned_at: status === 'ok' || n.likes > 0 ? nowIso : c.last_scanned_at,
-              next_scan_at: new Date(now + (status === 'error' ? 3_600_000 : scanIntervalMs(c.published_at, now))).toISOString(),
-              last_status: status,
-              last_error: error,
-              likers_seen: (prev?.likers_seen ?? 0) + n.likes,
-              comments_seen: (prev?.comments_seen ?? 0) + n.comments,
-              ...(commentsRead ? { comments_read_at_count: c.reported_comment_count } : {}),
-              ...(status === 'ok' && likesTracked ? { likes_read_at_count: c.reported_like_count ?? null } : {}),
-            })
-            .eq('workspace_id', workspaceId)
-            .eq('content_id', c.content_id)
-        }),
-      )
-    }
+    // ── 4–5. New gestures → observations, leads, scan state ──
+    const saved = await saveScan(supabase, workspaceId, { scanned, observed, known, all, now, likesTracked })
+    out.newLikes = saved.newLikes
+    out.newComments = saved.newComments
+    out.leadsMatched = saved.leadsMatched
+    errors.push(...saved.errors)
+    backup = saved.backup
     if (errors.length > 0 && out.status === 'COMPLETED') out.status = 'PARTIAL'
   } catch (err) {
     out.status = 'FAILED'
@@ -347,6 +243,162 @@ export async function runMonitor(
       .eq('id', run.id)
   }
   return out
+}
+
+export interface ScannedContent {
+  c: MonitoredContent
+  status: 'ok' | 'error' | 'not_found'
+  error: string | null
+  commentsRead: boolean
+}
+
+type MonitoredState = MonitoredContent & { content_url?: string | null; likers_seen: number; comments_seen: number }
+
+/**
+ * Meta connected: the reels from the nightly Meta sync (ig_reels) become the
+ * monitored publications, with Meta's exact like / comment counts. Listing
+ * columns only: the scan state of known publications is kept.
+ */
+export async function listReelsFromMeta(supabase: SupabaseClient, workspaceId: string): Promise<{ listed: number; errors: string[] }> {
+  const { data: reels, error: reelsErr } = await supabase
+    .from('ig_reels')
+    .select('shortcode, permalink, thumbnail_url, caption, published_at, likes, comments')
+    .eq('workspace_id', workspaceId)
+    .not('shortcode', 'is', null)
+    .limit(2000)
+  if (reelsErr) throw new Error(`ig_reels: ${reelsErr.message}`)
+  const rows = (reels ?? [])
+    .map((r) => ({
+      workspace_id: workspaceId,
+      content_id: shortcodeToMediaId(r.shortcode as string),
+      content_type: 'clip',
+      content_url: r.permalink,
+      thumbnail_url: r.thumbnail_url,
+      caption: r.caption?.slice(0, 2000) ?? null,
+      published_at: r.published_at,
+      reported_like_count: r.likes,
+      reported_comment_count: r.comments,
+    }))
+    .filter((r) => r.content_id)
+  const errors: string[] = []
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabase.from('instagram_monitored_contents').upsert(rows.slice(i, i + 500), { onConflict: 'workspace_id,content_id' })
+    if (error) errors.push(`contents: ${error.message}`)
+  }
+  return { listed: rows.length, errors }
+}
+
+/** Every monitored publication with its scan state; `likesTracked` is false without migration 122. */
+export async function loadMonitored(supabase: SupabaseClient, workspaceId: string): Promise<{ all: MonitoredState[]; likesTracked: boolean }> {
+  const COLS = 'content_id, content_url, published_at, next_scan_at, reported_like_count, reported_comment_count, comments_read_at_count, last_scanned_at, last_status, likers_seen, comments_seen'
+  let res = await supabase.from('instagram_monitored_contents').select(`${COLS}, likes_read_at_count`).eq('workspace_id', workspaceId).limit(2000)
+  // Migration 122 not applied: no like-driven selection, fall back to the schedule.
+  const likesTracked = !(res.error && /likes_read_at_count/.test(res.error.message))
+  if (!likesTracked) res = (await supabase.from('instagram_monitored_contents').select(COLS).eq('workspace_id', workspaceId).limit(2000)) as typeof res
+  return { all: (res.data ?? []) as unknown as MonitoredState[], likesTracked }
+}
+
+/** Gestures already recorded on these publications (never recorded twice). */
+export async function loadKnown(supabase: SupabaseClient, workspaceId: string, contentIds: string[]): Promise<Set<string>> {
+  const known = new Set<string>()
+  for (let i = 0; i < contentIds.length; i += 100) {
+    const ids = contentIds.slice(i, i + 100)
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase
+        .from('instagram_engagement_observations')
+        .select('content_id, interaction_type, instagram_user_id, dedup_key')
+        .eq('workspace_id', workspaceId)
+        .in('content_id', ids)
+        .range(from, from + 999)
+      for (const r of data ?? []) known.add(observationKey({ contentId: r.content_id, type: r.interaction_type, instagramUserId: r.instagram_user_id, dedupKey: r.dedup_key }))
+      if (!data || data.length < 1000) break
+    }
+  }
+  return known
+}
+
+/**
+ * Records a pass, whatever read it (Hiker monitor, Apify history): new
+ * gestures → observations (+ matched leads, lead journey), then the scan
+ * state of every scanned publication.
+ */
+export async function saveScan(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  p: { scanned: ScannedContent[]; observed: ObservedGesture[]; known: Set<string>; all: MonitoredState[]; now: number; likesTracked: boolean },
+): Promise<{ newLikes: number; newComments: number; leadsMatched: number; errors: string[]; backup: ObservedGesture[] | null }> {
+  const errors: string[] = []
+  const fresh = newGestures(p.observed, p.known)
+  const nowIso = new Date(p.now).toISOString()
+  const prevScan = new Map(p.scanned.map(({ c }) => [c.content_id, c.last_scanned_at]))
+  const leadOf = await matchLeads(supabase, workspaceId, fresh)
+
+  const rows = fresh.map((g) => ({
+    workspace_id: workspaceId,
+    content_id: g.contentId,
+    interaction_type: g.type,
+    instagram_user_id: g.instagramUserId,
+    instagram_username: g.username,
+    full_name: g.fullName,
+    profile_pic_url: g.profilePicUrl,
+    dedup_key: g.dedupKey,
+    comment_text: g.commentText,
+    commented_at: g.commentedAt,
+    first_observed_at: nowIso,
+    previous_scan_at: prevScan.get(g.contentId) ?? null,
+    matched_lead_id: leadOf.get(g.instagramUserId)?.id ?? null,
+  }))
+  let obsFailed = false
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabase
+      .from('instagram_engagement_observations')
+      .upsert(rows.slice(i, i + 500), { onConflict: 'workspace_id,content_id,interaction_type,instagram_user_id,dedup_key', ignoreDuplicates: true })
+    if (error) {
+      obsFailed = true
+      errors.push(`observations: ${error.message}`)
+    }
+  }
+
+  const published = new Map(p.all.map((c) => [c.content_id, c.published_at]))
+  errors.push(...(await addLeadInteractions(supabase, workspaceId, fresh, leadOf, prevScan, published, nowIso)))
+
+  const stateOf = new Map(p.all.map((c) => [c.content_id, c]))
+  const counts = new Map<string, { likes: number; comments: number }>()
+  for (const g of fresh) {
+    const e = counts.get(g.contentId) ?? { likes: 0, comments: 0 }
+    if (g.type === 'like') e.likes += 1
+    else e.comments += 1
+    counts.set(g.contentId, e)
+  }
+  for (let i = 0; i < p.scanned.length; i += 10) {
+    await Promise.all(
+      p.scanned.slice(i, i + 10).map(({ c, status, error, commentsRead }) => {
+        const prev = stateOf.get(c.content_id)
+        const n = counts.get(c.content_id) ?? { likes: 0, comments: 0 }
+        return supabase
+          .from('instagram_monitored_contents')
+          .update({
+            last_scanned_at: status === 'ok' || n.likes > 0 ? nowIso : c.last_scanned_at,
+            next_scan_at: new Date(p.now + (status === 'error' ? 3_600_000 : scanIntervalMs(c.published_at, p.now))).toISOString(),
+            last_status: status,
+            last_error: error,
+            likers_seen: (prev?.likers_seen ?? 0) + n.likes,
+            comments_seen: (prev?.comments_seen ?? 0) + n.comments,
+            ...(commentsRead ? { comments_read_at_count: c.reported_comment_count } : {}),
+            ...(status === 'ok' && p.likesTracked ? { likes_read_at_count: c.reported_like_count ?? null } : {}),
+          })
+          .eq('workspace_id', workspaceId)
+          .eq('content_id', c.content_id)
+      }),
+    )
+  }
+  return {
+    newLikes: fresh.filter((g) => g.type === 'like').length,
+    newComments: fresh.filter((g) => g.type === 'comment').length,
+    leadsMatched: new Set([...leadOf.values()].map((l) => l.id)).size,
+    errors,
+    backup: obsFailed ? fresh : null,
+  }
 }
 
 interface LeadRef {
