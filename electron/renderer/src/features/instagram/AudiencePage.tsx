@@ -1,4 +1,5 @@
 // Instagram > Audience — "comment votre communauté interagit avec vous".
+// - Qui like vos réels: likes identified by the publication monitor (LikersSection);
 // - Segments (actifs / jamais contactés / ne vous suivent pas / lurkers) from
 //   GET /api/instagram/audience + drill-down /audience/leads (same
 //   definitions, src/lib/instagram/audience-segments.ts);
@@ -21,6 +22,7 @@ import { ContentThumb } from './ContentThumb'
 import { formatRate } from './ContentPage'
 import { publishTiming, bestSlots, SLOTS, WEEKDAYS, MIN_SAMPLES } from './publish-timing'
 import { StoryViewersSection } from './StoryViewersSection'
+import { LikersSection } from './LikersSection'
 import { StoriesGallery } from './StoriesPage'
 import { HighlightsSection } from './HighlightsSection'
 import type { ContentChartPoint } from './types'
@@ -125,6 +127,8 @@ export function AudiencePage() {
           <StatCard label="Lurkers" value={counts.lurkers} unit="profils" caption="ont interagi, jamais contactés" onClick={() => setSegment('lurkers')} />
         </StatGrid>
       )}
+
+      <LikersSection />
 
       <StoryViewersSection />
 
