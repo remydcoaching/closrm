@@ -18,17 +18,24 @@
 
 .scatter-gridline {
   stroke: var(--color-border);
-  stroke-width: 0.15;
+  stroke-width: 1;
 }
 
 .scatter-axis-label {
-  font-size: 2.4px;
+  font-size: 11px;
   fill: var(--color-text-muted);
   font-family: var(--font-mono);
 }
 
 .scatter-axis-label--y {
-  text-anchor: start;
+  text-anchor: end;
+}
+
+.scatter-axis-title {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--color-text-faint);
+  text-anchor: middle;
 }
 
 .scatter-axis-label--x {
@@ -37,13 +44,11 @@
 
 .scatter-point {
   cursor: pointer;
-  transition: r 0.12s ease, fill-opacity 0.12s ease;
+  transition: fill-opacity 0.12s ease;
 }
 
 .scatter-tooltip {
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
