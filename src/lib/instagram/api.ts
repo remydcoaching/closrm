@@ -54,6 +54,24 @@ export async function fetchIgMedia(token: string, limit = 50, igUserId?: string)
   return json.data ?? []
 }
 
+/**
+ * Every publication of the account, following the pages (the API returns
+ * more than the profile grid shows: reels kept out of the feed, trial
+ * reels). Capped at `max`.
+ */
+export async function fetchAllIgMedia(token: string, igUserId: string, max = 500): Promise<IgMediaItem[]> {
+  const out: IgMediaItem[] = []
+  let url: string | null = `${FB_BASE}/${igUserId}/media?fields=id,shortcode,permalink,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count&limit=100&access_token=${token}`
+  while (url && out.length < max) {
+    const res: Response = await fetch(url)
+    if (!res.ok) await throwGraphError(res, 'IG media fetch')
+    const json = (await res.json()) as { data?: IgMediaItem[]; paging?: { next?: string } }
+    out.push(...(json.data ?? []))
+    url = json.paging?.next ?? null
+  }
+  return out.slice(0, max)
+}
+
 interface IgInsights {
   views?: number
   reach?: number
