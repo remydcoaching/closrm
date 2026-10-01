@@ -13,12 +13,26 @@ export const maxDuration = 300
  * GET  — réglages, requêtes utilisées aujourd'hui, derniers passages, derniers gestes détectés.
  * PUT  — { enabled?, maxRequestsPerDay? }
  * POST — lance un passage maintenant (dans la limite du budget du jour).
+ *        { historic: true } : lit une fois les likers de chaque reel jamais lu
+ *        (coût confirmé par le coach, hors budget du jour).
  */
+
+const HISTORY_MAX = 500
+
+/** Reels (Meta) whose likers were never read — the cost of a history backfill. */
+async function unreadReels(supabase: Awaited<ReturnType<typeof createClient>>, workspaceId: string): Promise<number> {
+  const [reels, read] = await Promise.all([
+    supabase.from('ig_reels').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).not('shortcode', 'is', null),
+    supabase.from('instagram_monitored_contents').select('content_id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).not('last_scanned_at', 'is', null),
+  ])
+  return Math.max(0, (reels.count ?? 0) - (read.count ?? 0))
+}
+
 export async function GET() {
   try {
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
-    const [settings, runs, gestures, used] = await Promise.all([
+    const [settings, runs, gestures, used, unread] = await Promise.all([
       supabase.from('instagram_monitor_settings').select('enabled, instagram_username, max_requests_per_day').eq('workspace_id', workspaceId).maybeSingle(),
       supabase.from('instagram_monitor_runs').select('id, trigger, started_at, completed_at, status, requests, contents_scanned, new_likes, new_comments, leads_matched, stopped_reason').eq('workspace_id', workspaceId).order('started_at', { ascending: false }).limit(10),
       supabase
@@ -29,6 +43,7 @@ export async function GET() {
         .order('first_observed_at', { ascending: false })
         .limit(50),
       requestsUsedToday(supabase, workspaceId),
+      unreadReels(supabase, workspaceId),
     ])
     if (settings.error && /does not exist|schema cache/i.test(settings.error.message)) {
       return NextResponse.json({ error: 'Migration 118 non appliquée' }, { status: 503 })
@@ -42,6 +57,7 @@ export async function GET() {
         settings: settings.data ?? { enabled: false, instagram_username: null, max_requests_per_day: 50 },
         requestsUsedToday: used,
         hikerConfigured: !!process.env.HIKER_API_KEY,
+        unreadReels: unread,
         runs: runs.data ?? [],
         gestures: gestures.data ?? [],
         contents: contents ?? [],
@@ -74,12 +90,19 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const { workspaceId } = await getWorkspaceId()
     if (!process.env.HIKER_API_KEY) return NextResponse.json({ error: 'HikerAPI non configuré sur le serveur' }, { status: 503 })
+    const body = (await request.json().catch(() => null)) as { historic?: unknown } | null
+    let budgetOverride: number | undefined
+    if (body?.historic === true) {
+      const unread = await unreadReels(await createClient(), workspaceId)
+      if (unread === 0) return NextResponse.json({ error: 'Historique déjà récupéré' }, { status: 409 })
+      budgetOverride = Math.min(unread, HISTORY_MAX)
+    }
     // Service client, every query scoped by workspaceId (membership proven above).
-    const outcome = await runMonitor(createServiceClient(), workspaceId, (onCall) => new HikerClient({ onCall }), 'manual')
+    const outcome = await runMonitor(createServiceClient(), workspaceId, (onCall) => new HikerClient({ onCall }), 'manual', { budgetOverride })
     return NextResponse.json({ data: outcome })
   } catch (err) {
     return failure(err)

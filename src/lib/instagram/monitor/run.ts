@@ -10,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { estimatedBilledRequests, type HikerCallLogEntry, type HikerClient } from '@/lib/hiker/client'
 import { HikerApiError } from '@/lib/hiker/errors'
+import { shortcodeToMediaId } from '@/lib/instagram/shortcode'
 import { dedupeContents, normalizeContent, type NormalizedContent } from '@/lib/hiker/normalizer'
 import type { HikerUserShort } from '@/lib/hiker/types'
 import {
@@ -17,6 +18,7 @@ import {
   needsCommentsRead,
   newGestures,
   observationKey,
+  pickDueByLikes,
   pickDueContents,
   remainingBudget,
   scanIntervalMs,
@@ -59,17 +61,20 @@ export async function runMonitor(
   workspaceId: string,
   makeClient: (onCall: (e: HikerCallLogEntry) => void) => HikerClient,
   trigger: MonitorTrigger,
+  /** History backfill: read the likers of every never-read publication, up to this many requests (confirmed by the coach). */
+  opts: { budgetOverride?: number } = {},
 ): Promise<MonitorOutcome> {
   const { data: settings } = await supabase.from('instagram_monitor_settings').select('*').eq('workspace_id', workspaceId).maybeSingle()
   if (!settings?.enabled && trigger === 'cron') return skipped('disabled')
   const maxPerDay = settings?.max_requests_per_day ?? 50
-  const budget = remainingBudget(maxPerDay, await requestsUsedToday(supabase, workspaceId))
-  if (budget < 3) return skipped('budget')
+  const budget = opts.budgetOverride ?? remainingBudget(maxPerDay, await requestsUsedToday(supabase, workspaceId))
 
   // With the Meta API connected, comments come from the nightly Meta sync
   // (free, exact dates): Hiker only reads likers — what Meta never gives.
   const { data: igAccount } = await supabase.from('ig_accounts').select('is_connected').eq('workspace_id', workspaceId).maybeSingle()
   const commentsFromMeta = !!igAccount?.is_connected
+  // Without Meta, listing the publications costs 2 requests before any read.
+  if (budget < (commentsFromMeta ? 1 : 3)) return skipped('budget')
 
   let username = settings?.instagram_username as string | null
   if (!username) {
@@ -88,9 +93,39 @@ export async function runMonitor(
   let backup: ObservedGesture[] | null = null
 
   try {
-    // ── 1. The account and its latest publications ──
+    // ── 1. The publications ──
+    // Meta connected: the list (every reel, trial reels included) and the
+    // exact like counts come free from the nightly Meta sync (ig_reels).
+    // Otherwise: Hiker's latest posts + reels (2 requests).
+    if (commentsFromMeta) {
+      const { data: reels, error: reelsErr } = await supabase
+        .from('ig_reels')
+        .select('shortcode, permalink, thumbnail_url, caption, published_at, likes, comments')
+        .eq('workspace_id', workspaceId)
+        .not('shortcode', 'is', null)
+        .limit(2000)
+      if (reelsErr) throw new Error(`ig_reels: ${reelsErr.message}`)
+      const rows = (reels ?? [])
+        .map((r) => ({
+          workspace_id: workspaceId,
+          content_id: shortcodeToMediaId(r.shortcode as string),
+          content_type: 'clip',
+          content_url: r.permalink,
+          thumbnail_url: r.thumbnail_url,
+          caption: r.caption?.slice(0, 2000) ?? null,
+          published_at: r.published_at,
+          reported_like_count: r.likes,
+          reported_comment_count: r.comments,
+        }))
+        .filter((r) => r.content_id)
+      out.contentsListed = rows.length
+      for (let i = 0; i < rows.length; i += 500) {
+        const { error } = await supabase.from('instagram_monitored_contents').upsert(rows.slice(i, i + 500), { onConflict: 'workspace_id,content_id' })
+        if (error) errors.push(`contents: ${error.message}`)
+      }
+    }
     let userId = settings?.instagram_user_id as string | null
-    if (!userId || settings?.instagram_username !== username) {
+    if (!commentsFromMeta && (!userId || settings?.instagram_username !== username)) {
       const profile = await client.getUserByUsername(username)
       userId = String(profile.pk ?? profile.id ?? '')
       if (!userId) throw new Error('Compte Instagram introuvable')
@@ -98,12 +133,14 @@ export async function runMonitor(
         .from('instagram_monitor_settings')
         .upsert({ workspace_id: workspaceId, instagram_username: username, instagram_user_id: userId, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' })
     }
-    const [medias, clips] = await Promise.all([client.getUserMediaChunkPage(userId, null), client.getUserClipsChunkPage(userId, null)])
+    const [medias, clips] = commentsFromMeta
+      ? [{ items: [] }, { items: [] }]
+      : await Promise.all([client.getUserMediaChunkPage(userId as string, null), client.getUserClipsChunkPage(userId as string, null)])
     const listed: NormalizedContent[] = dedupeContents([
       ...medias.items.map((i) => normalizeContent(i, 'media', username as string)),
       ...clips.items.map((i) => normalizeContent(i, 'clip', username as string)),
     ].filter((c): c is NormalizedContent => !!c))
-    out.contentsListed = listed.length
+    if (!commentsFromMeta) out.contentsListed = listed.length
     if (listed.length > 0) {
       // Listing columns only: the scan state of known publications is kept.
       const { error } = await supabase.from('instagram_monitored_contents').upsert(
@@ -124,13 +161,17 @@ export async function runMonitor(
     }
 
     // ── 2. Due publications within the budget left ──
-    const { data: all } = await supabase
-      .from('instagram_monitored_contents')
-      .select('content_id, published_at, next_scan_at, reported_comment_count, comments_read_at_count, last_scanned_at, last_status, likers_seen, comments_seen')
-      .eq('workspace_id', workspaceId)
-      .limit(1000)
+    const COLS = 'content_id, published_at, next_scan_at, reported_like_count, reported_comment_count, comments_read_at_count, last_scanned_at, last_status, likers_seen, comments_seen'
+    let allRes = await supabase.from('instagram_monitored_contents').select(`${COLS}, likes_read_at_count`).eq('workspace_id', workspaceId).limit(2000)
+    // Migration 122 not applied: no like-driven selection, fall back to the schedule.
+    const likesTracked = !(allRes.error && /likes_read_at_count/.test(allRes.error.message))
+    if (!likesTracked) allRes = (await supabase.from('instagram_monitored_contents').select(COLS).eq('workspace_id', workspaceId).limit(2000)) as typeof allRes
+    const all = allRes.data
     const now = Date.now()
-    const due = pickDueContents((all ?? []) as MonitoredContent[], now, Math.max(0, budget - requests), commentsFromMeta)
+    const due =
+      commentsFromMeta && likesTracked
+        ? pickDueByLikes((all ?? []) as MonitoredContent[], Math.max(0, budget - requests))
+        : pickDueContents((all ?? []) as MonitoredContent[], now, Math.max(0, budget - requests), commentsFromMeta)
     const stateOf = new Map(((all ?? []) as (MonitoredContent & { likers_seen: number; comments_seen: number })[]).map((c) => [c.content_id, c]))
 
     const known = new Set<string>()
@@ -274,6 +315,7 @@ export async function runMonitor(
               likers_seen: (prev?.likers_seen ?? 0) + n.likes,
               comments_seen: (prev?.comments_seen ?? 0) + n.comments,
               ...(commentsRead ? { comments_read_at_count: c.reported_comment_count } : {}),
+              ...(status === 'ok' && likesTracked ? { likes_read_at_count: c.reported_like_count ?? null } : {}),
             })
             .eq('workspace_id', workspaceId)
             .eq('content_id', c.content_id)

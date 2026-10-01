@@ -20,6 +20,10 @@ export interface MonitoredContent {
   content_id: string
   published_at: string | null
   next_scan_at: string
+  /** Meta's exact like count when synced from the Meta API (Hiker's is unreliable). */
+  reported_like_count?: number | null
+  /** reported_like_count when likers were last read (migration 122). */
+  likes_read_at_count?: number | null
   reported_comment_count: number | null
   comments_read_at_count: number | null
   last_scanned_at: string | null
@@ -103,4 +107,23 @@ export function newGestures(observed: ObservedGesture[], known: Set<string>): Ob
 /** Requests left today under the daily cap. */
 export function remainingBudget(maxPerDay: number, usedToday: number): number {
   return Math.max(0, maxPerDay - usedToday)
+}
+
+/**
+ * With Meta's exact like counter: a publication is worth one paid likers read
+ * only if it was never read, or if its like count went up since the last
+ * read. Never-read ones first (newest first, the history backfill), then the
+ * biggest like increases. One request each.
+ */
+export function pickDueByLikes(contents: MonitoredContent[], budget: number): MonitoredContent[] {
+  const gain = (c: MonitoredContent) => (c.reported_like_count ?? 0) - (c.likes_read_at_count ?? 0)
+  const due = contents.filter((c) => c.last_status !== 'not_found' && (c.last_scanned_at === null || c.last_status === 'error' || gain(c) > 0))
+  due.sort((a, b) => {
+    const neverA = a.last_scanned_at === null ? 1 : 0
+    const neverB = b.last_scanned_at === null ? 1 : 0
+    if (neverA !== neverB) return neverB - neverA
+    if (neverA) return (b.published_at ?? '').localeCompare(a.published_at ?? '')
+    return gain(b) - gain(a)
+  })
+  return due.slice(0, Math.max(0, budget))
 }
