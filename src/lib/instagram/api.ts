@@ -42,6 +42,8 @@ interface IgMediaItem {
   timestamp: string
   like_count?: number
   comments_count?: number
+  /** Reels only: false = shown in the Reels tab only, not on the profile grid (trial reels). */
+  is_shared_to_feed?: boolean
 }
 
 export async function fetchIgMedia(token: string, limit = 50, igUserId?: string): Promise<IgMediaItem[]> {
@@ -61,7 +63,7 @@ export async function fetchIgMedia(token: string, limit = 50, igUserId?: string)
  */
 export async function fetchAllIgMedia(token: string, igUserId: string, max = 500): Promise<IgMediaItem[]> {
   const out: IgMediaItem[] = []
-  let url: string | null = `${FB_BASE}/${igUserId}/media?fields=id,shortcode,permalink,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count&limit=100&access_token=${token}`
+  let url: string | null = `${FB_BASE}/${igUserId}/media?fields=id,shortcode,permalink,caption,media_type,media_url,thumbnail_url,timestamp,like_count,comments_count,is_shared_to_feed&limit=100&access_token=${token}`
   while (url && out.length < max) {
     const res: Response = await fetch(url)
     if (!res.ok) await throwGraphError(res, 'IG media fetch')

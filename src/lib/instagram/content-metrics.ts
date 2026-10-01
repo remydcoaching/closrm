@@ -51,6 +51,8 @@ export interface ContentMetrics {
   shares?: number | null
   /** Where the figures come from: Meta API (official), Hiker scan, or both merged. */
   source?: 'meta' | 'hiker' | 'meta+hiker'
+  /** Reels (Meta): false = not on the profile grid, Reels tab only — a trial reel. null/undefined = unknown. */
+  onGrid?: boolean | null
 }
 
 /** A publication synced from the official Meta API (ig_reels). */
@@ -67,6 +69,8 @@ export interface MetaReelRow {
   saves: number | null
   shares: number | null
   published_at: string | null
+  /** false = Reels tab only (trial reel); null = unknown (migration 123 / not resynced). */
+  is_shared_to_feed?: boolean | null
 }
 
 /** Pure: Meta's official counters replace Hiker's (Hiker's like_count is unreliable). */
@@ -101,7 +105,7 @@ export function rowFromMeta(meta: MetaReelRow, mediaPk: string): DiscoveryConten
 /** Pure: adds Meta-only figures and the source to a built metric. */
 export function withMeta(m: ContentMetrics, meta: MetaReelRow | undefined, fromHiker: boolean): ContentMetrics {
   if (!meta) return { ...m, source: 'hiker' }
-  return { ...m, reach: meta.reach, saves: meta.saves, shares: meta.shares, source: fromHiker ? 'meta+hiker' : 'meta' }
+  return { ...m, reach: meta.reach, saves: meta.saves, shares: meta.shares, onGrid: meta.is_shared_to_feed ?? null, source: fromHiker ? 'meta+hiker' : 'meta' }
 }
 
 /** Keeps the latest scan row per content_id. */

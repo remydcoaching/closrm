@@ -27,6 +27,13 @@ describe('Content page figures', () => {
     const m = withMeta(buildContentMetrics(rowFromMeta(meta, shortcodeToMediaId(meta.shortcode as string)), { likers: 0, commenters: 3, leads: 0 }), meta, false)
     expect(m).toMatchObject({ contentId: '3985953780581736435', contentUrl: meta.permalink, views: 12866, identifiedLikers: 0, identifiedCommenters: 3, source: 'meta', runId: '' })
   })
+  it('trial reels: not shared to the feed → onGrid false; unknown stays unknown (never guessed)', () => {
+    const base = buildContentMetrics(rowFromMeta(meta, '1'), { likers: 0, commenters: 0, leads: 0 })
+    expect(withMeta(base, { ...meta, is_shared_to_feed: false }, false).onGrid).toBe(false)
+    expect(withMeta(base, { ...meta, is_shared_to_feed: true }, false).onGrid).toBe(true)
+    expect(withMeta(base, meta, false).onGrid).toBeNull()
+    expect(withMeta(base, undefined, true).onGrid).toBeUndefined()
+  })
 })
 
 describe('comments from the Meta API → lead journey', () => {

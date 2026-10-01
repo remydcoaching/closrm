@@ -135,6 +135,8 @@ export interface ContentChartPoint {
   saves?: number | null
   shares?: number | null
   source?: 'meta' | 'hiker' | 'meta+hiker'
+  /** Reels synced from Meta: false = Reels tab only, not on the grid (trial reel); null/undefined = unknown. */
+  onGrid?: boolean | null
   /** Leads reached per confidence level (only with ?confidence=1). */
   confidence?: Partial<Record<ConfidenceKey, number>>
 }
