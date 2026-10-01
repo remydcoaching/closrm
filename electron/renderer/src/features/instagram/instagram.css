@@ -653,3 +653,7 @@
   object-fit: cover;
   display: block;
 }
+
+/* Content table: Instagram counter + identified people underneath. */
+.ig-count-cell { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+.ig-count-identified { font-size: 10px; color: var(--color-text-faint); }
