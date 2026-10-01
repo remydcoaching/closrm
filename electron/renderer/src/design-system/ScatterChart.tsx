@@ -37,16 +37,16 @@ function linScale(value: number, min: number, max: number, rangeMin: number, ran
   return rangeMin + t * (rangeMax - rangeMin)
 }
 
-/** ~4–6 round percentage ticks covering 0..max (e.g. 0, 0.5 %, 1 %, 1.5 %, 2 %). */
+/** ~4–6 round percentage ticks covering 0..max (e.g. 0, 2 %, 4 %, 6 %, 8 %). */
 export function rateTicks(max: number): number[] {
-  const steps = [0.001, 0.0025, 0.005, 0.01, 0.02, 0.025, 0.05, 0.1, 0.2, 0.25, 0.5]
+  const steps = [0.001, 0.0025, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5]
   const step = steps.find((s) => max / s <= 5) ?? 1
   const out: number[] = []
   for (let t = 0; t <= max + step / 2; t += step) out.push(Number(t.toFixed(4)))
   return out
 }
 
-const formatViews = (v: number) => (v >= 1_000_000 ? `${v / 1_000_000}M` : v >= 1000 ? `${v / 1000}k` : String(v))
+const formatViews = (v: number) => new Intl.NumberFormat('fr-FR').format(Math.round(v))
 const formatRate = (r: number) => `${(r * 100).toFixed(r < 0.01 && r > 0 ? 1 : 0).replace('.', ',')} %`
 
 const MIN_R = 6
@@ -84,14 +84,12 @@ export function ScatterChart({ points, height = 380 }: { points: ScatterPoint[];
   const yTop = yTicks[yTicks.length - 1] || 0.01
   const maxRadius = Math.max(...points.map((p) => p.radius), 0)
 
-  // Log-scale tick marks at 1, 2 and 5 × each power of ten spanned by the data.
+  // Log-scale ticks at each power of ten inside the data, plus the maximum
+  // (100 · 1 000 · 10 000 · 100 000 · 414 700).
   const xTicks: number[] = []
-  for (let e = Math.floor(Math.log10(Math.max(xMin, 1))); e <= Math.ceil(Math.log10(Math.max(xMax, 10))); e++) {
-    for (const m of [1, 2, 5]) {
-      const t = m * 10 ** e
-      if (t >= xMin * 0.8 && t <= xMax * 1.25) xTicks.push(t)
-    }
-  }
+  for (let e = Math.ceil(Math.log10(Math.max(xMin, 1))); 10 ** e <= xMax; e++) xTicks.push(10 ** e)
+  const last = xTicks[xTicks.length - 1]
+  if (!last || logScale(xMax, xMin, xMax, 0, 1) - logScale(last, xMin, xMax, 0, 1) > 0.08) xTicks.push(xMax)
 
   const px = (x: number) => padding.left + logScale(x, xMin, xMax, 0, plotW)
   const py = (y: number) => padding.top + plotH - linScale(y, 0, yTop, 0, plotH)
@@ -122,7 +120,7 @@ export function ScatterChart({ points, height = 380 }: { points: ScatterPoint[];
             </g>
           ))}
           <text x={padding.left + plotW / 2} y={height - 4} className="scatter-axis-title">
-            Vues (échelle log)
+            Vues
           </text>
           <text x={14} y={padding.top + plotH / 2} transform={`rotate(-90 14 ${padding.top + plotH / 2})`} className="scatter-axis-title">
             Taux d&apos;engagement

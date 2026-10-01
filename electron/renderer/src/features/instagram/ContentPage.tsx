@@ -144,22 +144,25 @@ export function ContentPage() {
         tooltip: (
           <div>
             <div className="scatter-tooltip-title">{c.caption ? c.caption.slice(0, 80) : `${contentTypeLabel(c.contentType)} · ${FUNNEL_STAGE_LABEL[st]}`}</div>
-            <div>Vues : {formatNumber(c.views as number)}</div>
-            <div>Taux d&apos;engagement : {formatRate(c.engagementRate)}</div>
-            <div>
-              {formatNumber(c.identifiedLikers)} likers et {formatNumber(c.identifiedCommenters)} commentaires identifiés
+            <div className="scatter-tooltip-row">
+              <span>Vues</span>
+              <b>{formatNumber(c.views as number)}</b>
             </div>
-            {conf !== 'all' ? (
-              <div>
-                Niveau de confiance {CONF_LABEL[conf]} : {c.confidence?.[conf] ?? 0} lead{(c.confidence?.[conf] ?? 0) > 1 ? 's' : ''}
-              </div>
-            ) : (
-              <div>
-                {c.leadsCount} lead{c.leadsCount > 1 ? 's' : ''}
-              </div>
-            )}
-            <div>
-              {contentTypeLabel(c.contentType)} · {shortDate(c.publishedAt)}
+            <div className="scatter-tooltip-row">
+              <span>Taux Instagram</span>
+              <b>{formatRate(c.engagementRate)}</b>
+            </div>
+            <div className="scatter-tooltip-line">
+              {formatNumber(c.identifiedLikers)} liker{c.identifiedLikers > 1 ? 's' : ''} et {formatNumber(c.identifiedCommenters)} commentateur{c.identifiedCommenters > 1 ? 's' : ''} identifiés
+            </div>
+            <div className="scatter-tooltip-line">
+              {conf !== 'all'
+                ? `Niveau de confiance ${CONF_LABEL[conf]} : ${c.confidence?.[conf] ?? 0} lead${(c.confidence?.[conf] ?? 0) > 1 ? 's' : ''}`
+                : `${c.leadsCount} lead${c.leadsCount > 1 ? 's' : ''} touché${c.leadsCount > 1 ? 's' : ''}`}
+            </div>
+            <div className="scatter-tooltip-row">
+              <span>{contentTypeLabel(c.contentType)}</span>
+              <b>{shortDate(c.publishedAt)}</b>
             </div>
           </div>
         ),
