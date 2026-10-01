@@ -5,6 +5,7 @@
 // GET /api/workspaces/members, GET /api/auth/me.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { swrGet } from '../../lib/query-cache'
 import { Avatar } from '../../design-system/Avatar'
 import { Textarea } from '../../design-system/Input'
 import { EmptyState, LoadingState } from '../../design-system/States'
@@ -71,8 +72,11 @@ export function TeamChatPage() {
           p.set('channel', 'private')
           p.set('with_user_id', channel.userId)
         }
-        const r = await api.get<{ data?: TeamMessage[] }>(`/api/team-messages?${p.toString()}`)
-        if (r.data) setMessages(r.data)
+        // The last known messages of this channel show at once.
+        await swrGet<{ data?: TeamMessage[] }>(`/api/team-messages?${p.toString()}`, (r) => {
+          if (r.data) setMessages(r.data)
+          if (!silent) setLoading(false)
+        })
         setError(null)
       } catch (e) {
         if (!silent) setError(errMsg(e))

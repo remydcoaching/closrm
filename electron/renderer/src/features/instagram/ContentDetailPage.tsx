@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api-client'
+import { swrGet } from '../../lib/query-cache'
 import { safeExternalUrl } from '../../lib/safe-url'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
 import { TableCard, ContactCell } from '../../design-system/TableCard'
@@ -38,8 +39,8 @@ export function ContentDetailPage() {
   async function load() {
     setError(null)
     try {
-      const res = await api.get<{ data: ContentDetail }>(`/api/instagram/content/${encodeURIComponent(contentId)}`)
-      setDetail(res.data)
+      // A publication opened before shows at once.
+      await swrGet<{ data: ContentDetail }>(`/api/instagram/content/${encodeURIComponent(contentId)}`, (res) => setDetail(res.data))
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
     }

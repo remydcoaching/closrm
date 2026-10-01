@@ -17,7 +17,7 @@ import { Field, NoticeBanner, useNotice } from '../social/ui'
 import { errMsg, http } from '../social/http'
 import { hexToRgba } from '../social/social-utils'
 import '../social/social.css'
-import { swrGet } from '../../lib/query-cache'
+import { getCached, revalidate, swrGet } from '../../lib/query-cache'
 
 interface UserData {
   id: string
@@ -184,13 +184,12 @@ export function SettingsAccountPage() {
 }
 
 function PlanOverview() {
-  const [data, setData] = useState<PlanData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<PlanData | null>(() => getCached<PlanData>('/api/billing/plan')?.data ?? null)
+  const [loading, setLoading] = useState(() => !getCached('/api/billing/plan'))
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api
-      .get<PlanData>('/api/billing/plan')
+    revalidate<PlanData>('/api/billing/plan')
       .then(setData)
       .catch((e) => setError(errMsg(e)))
       .finally(() => setLoading(false))
@@ -444,14 +443,16 @@ function BrandingForm({ workspace, notify, onSaved }: { workspace: WorkspaceData
   )
 }
 
+type WorkspaceConfigResponse = { data: { status_config: LabelEntry[]; source_config: LabelEntry[] } }
+
 function LabelsSections({ notify }: { notify: (t: string, tone?: 'success' | 'danger') => void }) {
-  const [status, setStatus] = useState<LabelEntry[] | null>(null)
-  const [source, setSource] = useState<LabelEntry[] | null>(null)
+  const cachedConfig = getCached<WorkspaceConfigResponse>('/api/workspace/config')?.data.data
+  const [status, setStatus] = useState<LabelEntry[] | null>(cachedConfig?.status_config ?? null)
+  const [source, setSource] = useState<LabelEntry[] | null>(cachedConfig?.source_config ?? null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api
-      .get<{ data: { status_config: LabelEntry[]; source_config: LabelEntry[] } }>('/api/workspace/config')
+    revalidate<WorkspaceConfigResponse>('/api/workspace/config')
       .then((r) => {
         setStatus(r.data.status_config)
         setSource(r.data.source_config)

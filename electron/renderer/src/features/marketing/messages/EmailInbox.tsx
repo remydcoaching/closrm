@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../../lib/api-client'
+import { swrGet } from '../../../lib/query-cache'
 import { Avatar } from '../../../design-system/Avatar'
 import { Button } from '../../../design-system/Button'
 import { Input, Textarea } from '../../../design-system/Input'
@@ -49,8 +50,11 @@ export function EmailInbox() {
     try {
       const p = new URLSearchParams()
       if (debounced) p.set('search', debounced)
-      const r = await api.get<{ data: EmailConversation[] }>(`/api/emails/conversations?${p.toString()}`)
-      setConversations(r.data ?? [])
+      // The last known list shows at once, then the fresh one.
+      const r = await swrGet<{ data: EmailConversation[] }>(`/api/emails/conversations?${p.toString()}`, (c) => {
+        setConversations(c.data ?? [])
+        setLoading(false)
+      })
       setError(null)
       return r.data ?? []
     } catch (err) {
@@ -76,7 +80,8 @@ export function EmailInbox() {
     setSelected(c)
     setMessages([])
     try {
-      setMessages(await loadMessages(c))
+      // A thread opened before shows at once.
+      await swrGet<{ data: EmailMessage[] }>(`/api/emails/messages?conversation_id=${c.id}`, (r) => setMessages(r.data ?? []))
       setConversations((prev) => prev.map((x) => (x.id === c.id ? { ...x, unread_count: 0 } : x)))
     } catch {
       /* silent, like the web */

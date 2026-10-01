@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api-client'
+import { swrGet } from '../../lib/query-cache'
 import { TableCard, ContactCell } from '../../design-system/TableCard'
 import { Avatar } from '../../design-system/Avatar'
 import { Chips } from '../../design-system/Tabs'
@@ -82,8 +83,7 @@ export function MonitorSection() {
 
   const load = useCallback(async () => {
     try {
-      const res = await api.get<{ data: MonitorState }>('/api/instagram/monitor')
-      setState(res.data)
+      await swrGet<{ data: MonitorState }>('/api/instagram/monitor', (res) => setState(res.data))
       setError(null)
     } catch (err) {
       setError(err instanceof ApiError && err.status === 503 ? 'Migration 118 à appliquer pour activer le suivi.' : err instanceof Error ? err.message : 'Suivi indisponible')

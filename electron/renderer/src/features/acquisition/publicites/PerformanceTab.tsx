@@ -6,8 +6,7 @@
 // spend is fetched (web hardcodes 0 → fake +100 % deltas), and attribution
 // uses the campaign-level breakdown (web passes the account-level one, which
 // is always empty).
-import { useEffect, useState } from 'react'
-import { api } from '../../../lib/api-client'
+import { useCachedQuery } from '../../../lib/use-cached-query'
 import { StatCard, StatGrid } from '../../../design-system/StatCard'
 import { LoadingState, EmptyState } from '../../../design-system/States'
 import { StatusPill } from '../../../design-system/StatusPill'
@@ -41,58 +40,19 @@ function convRate(visits: number, followers: number): number {
 }
 
 export function PerformanceTab({ data, loading, campaignType, dateFrom, dateTo, periodQuery }: Props) {
-  const [funnel, setFunnel] = useState<FunnelData | null>(null)
-  const [prevFunnel, setPrevFunnel] = useState<FunnelData | null>(null)
-  const [funnelState, setFunnelState] = useState<'loading' | 'ok' | 'error'>('loading')
-  const [prevSpend, setPrevSpend] = useState<number | null>(null)
-  const [campaigns, setCampaigns] = useState<MetaBreakdownRow[] | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    setFunnelState('loading')
-    api
-      .get<FollowAdsResponse>(`/api/performance/follow-ads?date_from=${dateFrom}&date_to=${dateTo}`)
-      .then((res) => {
-        if (cancelled) return
-        setFunnel(res.data.funnel)
-        setPrevFunnel(res.data.previous_period)
-        setFunnelState('ok')
-      })
-      .catch(() => {
-        if (cancelled) return
-        setFunnel(null)
-        setPrevFunnel(null)
-        setFunnelState('error')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [dateFrom, dateTo])
-
-  useEffect(() => {
-    let cancelled = false
-    setPrevSpend(null)
-    const prev = previousRange(dateFrom, dateTo)
-    api
-      .get<MetaInsightsResponse>(`/api/meta/insights?level=account&date_from=${prev.dateFrom}&date_to=${prev.dateTo}&campaign_type=${campaignType}`)
-      .then((res) => !cancelled && setPrevSpend(res.kpis.spend))
-      .catch(() => !cancelled && setPrevSpend(null))
-    return () => {
-      cancelled = true
-    }
-  }, [dateFrom, dateTo, campaignType])
-
-  useEffect(() => {
-    let cancelled = false
-    setCampaigns(null)
-    api
-      .get<MetaInsightsResponse>(`/api/meta/insights?level=campaign&${periodQuery}&campaign_type=${campaignType}`)
-      .then((res) => !cancelled && setCampaigns(res.breakdown ?? []))
-      .catch(() => !cancelled && setCampaigns([]))
-    return () => {
-      cancelled = true
-    }
-  }, [periodQuery, campaignType])
+  // Cached: instant on revisit, refreshed in the background.
+  const funnelQuery = useCachedQuery<FollowAdsResponse>(`/api/performance/follow-ads?date_from=${dateFrom}&date_to=${dateTo}`, { screen: 'PublicitesFunnel', staleMs: 5 * 60_000 })
+  const funnel: FunnelData | null = funnelQuery.data?.data.funnel ?? null
+  const prevFunnel: FunnelData | null = funnelQuery.data?.data.previous_period ?? null
+  const funnelState: 'loading' | 'ok' | 'error' = funnelQuery.data ? 'ok' : funnelQuery.error ? 'error' : 'loading'
+  const prev = previousRange(dateFrom, dateTo)
+  const prevQuery = useCachedQuery<MetaInsightsResponse>(`/api/meta/insights?level=account&date_from=${prev.dateFrom}&date_to=${prev.dateTo}&campaign_type=${campaignType}`, {
+    screen: 'PublicitesPrev',
+    staleMs: 30 * 60_000,
+  })
+  const prevSpend = prevQuery.data?.kpis.spend ?? null
+  const campaignsQuery = useCachedQuery<MetaInsightsResponse>(`/api/meta/insights?level=campaign&${periodQuery}&campaign_type=${campaignType}`, { screen: 'PublicitesCampaigns', staleMs: 5 * 60_000 })
+  const campaigns: MetaBreakdownRow[] | null = campaignsQuery.data ? (campaignsQuery.data.breakdown ?? []) : campaignsQuery.error ? [] : null
 
   if (loading || !data || funnelState === 'loading') return <LoadingState label="Analyse des performances…" />
 

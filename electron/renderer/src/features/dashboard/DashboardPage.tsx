@@ -29,12 +29,20 @@ import { SetterDashboard, CloserDashboard } from './TeamDashboards'
 import './dashboard.css'
 import '../stats/stats.css'
 import { useCachedQuery } from '../../lib/use-cached-query'
+import { registerLoader } from '../../lib/query-cache'
 
 const PERIODS: { key: string; label: string }[] = [
   { key: '7', label: '7 jours' },
   { key: '30', label: '30 jours' },
   { key: '90', label: '90 jours' },
 ]
+
+// Composite keys the start-up warm-up may refresh before the page is opened.
+registerLoader('desktop:current-member', () => fetchCurrentMember)
+registerLoader('desktop:dashboard:', (key) => {
+  const period = Number(key.slice('desktop:dashboard:'.length))
+  return period === 7 || period === 30 || period === 90 ? () => loadAdminDashboard(period) : null
+})
 
 export function DashboardPage() {
   // Role rarely changes: cached 10 min, shown instantly on every visit.

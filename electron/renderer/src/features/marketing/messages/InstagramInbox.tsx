@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../../lib/api-client'
+import { setCached, swrGet } from '../../../lib/query-cache'
 import { openWeb } from '../../../lib/web-link'
 import { Avatar } from '../../../design-system/Avatar'
 import { Button } from '../../../design-system/Button'
@@ -20,6 +21,11 @@ import { apiPostForm, errorMessage } from '../http'
 import { shortAgo } from '../format'
 import type { IgConversation, IgMessage } from '../types'
 import { MessageThread } from './MessageThread'
+
+type ConversationsResponse = { data: IgConversation[]; syncWarning?: string }
+
+const SYNC_EVERY_MS = 10 * 60_000
+let lastBackgroundSync = 0
 
 export function InstagramInbox() {
   const navigate = useNavigate()
@@ -45,18 +51,24 @@ export function InstagramInbox() {
     async (withSync = false) => {
       setError(null)
       try {
-        const acc = await api.get<{ data: unknown }>('/api/instagram/account')
-        if (!acc.data) {
-          setHasAccount(false)
-          return
-        }
-        setHasAccount(true)
         const p = new URLSearchParams()
         if (debounced) p.set('search', debounced)
-        if (withSync) p.set('sync', 'true')
-        const r = await api.get<{ data: IgConversation[]; syncWarning?: string }>(`/api/instagram/conversations?${p.toString()}`)
-        setConversations(r.data ?? [])
-        setSyncWarning(r.syncWarning ?? null)
+        const key = `/api/instagram/conversations?${p.toString()}`
+        const apply = (r: ConversationsResponse) => {
+          setConversations(r.data ?? [])
+          setSyncWarning(r.syncWarning ?? null)
+          setLoading(false)
+        }
+        // Account and list in parallel; the last known list shows at once.
+        await Promise.all([
+          swrGet<{ data: unknown }>('/api/instagram/account', (acc) => setHasAccount(!!acc.data)),
+          withSync
+            ? api.get<ConversationsResponse>(`${key}${key.endsWith('?') ? '' : '&'}sync=true`).then((r) => {
+                setCached(key, r)
+                apply(r)
+              })
+            : swrGet<ConversationsResponse>(key, apply),
+        ])
       } catch (err) {
         setError(errorMessage(err))
       } finally {
@@ -68,9 +80,11 @@ export function InstagramInbox() {
 
   useEffect(() => {
     fetchConversations(false).then(() => {
-      // Web behaviour: background Meta sync after the first paint.
-      if (!initialSync.current) {
+      // Web behaviour: background Meta sync after the first paint — at most
+      // every 10 min (it takes ~30 s server-side; the 15 s polling shows new DMs).
+      if (!initialSync.current && Date.now() - lastBackgroundSync > SYNC_EVERY_MS) {
         initialSync.current = true
+        lastBackgroundSync = Date.now()
         api.get('/api/instagram/conversations?sync=true').catch(() => undefined)
       }
     })
@@ -86,8 +100,8 @@ export function InstagramInbox() {
     setSelected(c)
     setMessages([])
     try {
-      const r = await api.get<{ data: IgMessage[] }>(`/api/instagram/messages?conversation_id=${c.id}`)
-      setMessages(r.data ?? [])
+      // A thread opened before shows at once.
+      await swrGet<{ data: IgMessage[] }>(`/api/instagram/messages?conversation_id=${c.id}`, (r) => setMessages(r.data ?? []))
       setConversations((prev) => prev.map((x) => (x.id === c.id ? { ...x, unread_count: 0 } : x)))
     } catch {
       setMessages([])

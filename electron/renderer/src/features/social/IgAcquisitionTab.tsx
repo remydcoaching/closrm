@@ -3,6 +3,7 @@
 // /pillars; lead creation via /api/leads (+ PATCH conversation lead_id).
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { swrGet, swrMany } from '../../lib/query-cache'
 import { openWeb } from '../../lib/web-link'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
 import { EmptyState, ErrorState, LoadingState } from '../../design-system/States'
@@ -71,24 +72,19 @@ export function IgAcquisitionTab({ notify, onSeeInbox }: { notify: Notify; onSee
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    setLoading(true)
     setError(null)
     try {
-      const [conv, snaps] = await Promise.all([
-        api.get<ListResponse<IgConversation>>('/api/instagram/conversations?per_page=30'),
-        api.get<ListResponse<IgSnapshot>>('/api/instagram/snapshots'),
+      // Last known values at once, fresh ones right after.
+      await swrMany<[ListResponse<IgConversation>, ListResponse<IgSnapshot>]>(['/api/instagram/conversations?per_page=30', '/api/instagram/snapshots'], ([conv, snaps]) => {
+        setConversations(conv.data ?? [])
+        setSnapshots(snaps.data ?? [])
+        setLoading(false)
+      })
+      await Promise.all([
+        swrGet<ListResponse<IgComment>>('/api/instagram/comments', (r) => setComments(r.data ?? [])).catch(() => setComments([])),
+        swrGet<ListResponse<IgReel>>('/api/instagram/reels?per_page=50', (r) => setReels(r.data ?? [])).catch(() => setReels([])),
+        swrGet<ListResponse<ContentPillar>>('/api/instagram/pillars', (r) => setPillars(r.data ?? [])).catch(() => setPillars([])),
       ])
-      setConversations(conv.data ?? [])
-      setSnapshots(snaps.data ?? [])
-      setLoading(false)
-      const [com, rl, pl] = await Promise.all([
-        api.get<ListResponse<IgComment>>('/api/instagram/comments').catch(() => ({ data: [] as IgComment[] })),
-        api.get<ListResponse<IgReel>>('/api/instagram/reels?per_page=50').catch(() => ({ data: [] as IgReel[] })),
-        api.get<ListResponse<ContentPillar>>('/api/instagram/pillars').catch(() => ({ data: [] as ContentPillar[] })),
-      ])
-      setComments(com.data ?? [])
-      setReels(rl.data ?? [])
-      setPillars(pl.data ?? [])
     } catch (e) {
       setError(errMsg(e))
       setLoading(false)
@@ -259,15 +255,13 @@ export function IgInboxTab({ notify }: { notify: Notify }) {
   // NB: the web asks per_page=100 but the zod schema caps it at 50 (the web
   // request errors) — we use the real max.
   const load = useCallback(async () => {
-    setLoading(true)
     setError(null)
     try {
-      const [conv, com] = await Promise.all([
-        api.get<ListResponse<IgConversation>>('/api/instagram/conversations?per_page=50'),
-        api.get<ListResponse<IgComment>>('/api/instagram/comments'),
-      ])
-      setConversations(conv.data ?? [])
-      setComments(com.data ?? [])
+      await swrMany<[ListResponse<IgConversation>, ListResponse<IgComment>]>(['/api/instagram/conversations?per_page=50', '/api/instagram/comments'], ([conv, com]) => {
+        setConversations(conv.data ?? [])
+        setComments(com.data ?? [])
+        setLoading(false)
+      })
     } catch (e) {
       setError(errMsg(e))
     } finally {

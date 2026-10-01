@@ -6,6 +6,7 @@
 // message template resolution, same categories.
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api-client'
+import { getCached, revalidate, swrGet } from '../../lib/query-cache'
 import { Avatar } from '../../design-system/Avatar'
 import { Button } from '../../design-system/Button'
 import { Input } from '../../design-system/Input'
@@ -34,8 +35,14 @@ export function SessionsDmPage() {
 
   async function checkExisting() {
     try {
-      const res = await api.get<{ data: DmSessionSummary | null }>('/api/dm-sessions')
-      setExistingSession(res.data)
+      // Last known session at once, then the fresh one.
+      const res = await swrGet<{ data: DmSessionSummary | null }>('/api/dm-sessions', (r) => {
+        setExistingSession(r.data)
+        if (r.data) {
+          const cached = getCached<{ data: DmSessionDetail }>(`/api/dm-sessions/${r.data.id}`)
+          if (cached) setSession(cached.data.data)
+        }
+      })
       if (res.data) await loadSession(res.data.id)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
@@ -45,7 +52,7 @@ export function SessionsDmPage() {
 
   async function loadSession(sessionId: string) {
     try {
-      const res = await api.get<{ data: DmSessionDetail }>(`/api/dm-sessions/${sessionId}`)
+      const res = await revalidate<{ data: DmSessionDetail }>(`/api/dm-sessions/${sessionId}`)
       setSession(res.data)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erreur inconnue')

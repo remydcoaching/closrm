@@ -4,7 +4,9 @@
 // (deals actifs table) and DELETE /api/deals/:id. Deltas added only where
 // the same data allows it: MRR vs mois précédent (mrr_by_month), cash du
 // mois vs mois précédent (deals.started_at, the rule overview uses).
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useCachedQuery } from '../../lib/use-cached-query'
+import { registerLoader } from '../../lib/query-cache'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../../lib/api-client'
 import { downloadCsv } from '../../lib/csv'
@@ -33,26 +35,24 @@ function dealMrr(d: DealWithLead): number {
   return d.duration_months ? Number(d.amount) / d.duration_months : 0
 }
 
+const FINANCE_KEY = 'desktop:finance'
+
+async function loadFinance(): Promise<FinanceData> {
+  const [overview, team, deals] = await Promise.all([fetchFinanceOverview(), fetchFinanceTeam().catch(() => []), fetchDeals()])
+  return { overview, team, deals }
+}
+
+registerLoader(FINANCE_KEY, () => loadFinance)
+
 export function FinancePage() {
   const navigate = useNavigate()
-  const [data, setData] = useState<FinanceData | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<DealWithLead | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; order: 'asc' | 'desc' }>({ key: 'amount', order: 'desc' })
-
-  const load = useCallback(async () => {
-    setError(null)
-    try {
-      const [overview, team, deals] = await Promise.all([fetchFinanceOverview(), fetchFinanceTeam().catch(() => []), fetchDeals()])
-      setData({ overview, team, deals })
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
-    }
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  // Last figures shown at once, refreshed in the background.
+  const query = useCachedQuery<FinanceData>(FINANCE_KEY, { screen: 'Finance', staleMs: 60_000, fetcher: loadFinance })
+  const data = query.data ?? null
+  const error = query.error
+  const load = query.refresh
 
   if (error) {
     return (

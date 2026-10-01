@@ -18,7 +18,7 @@ import { ConfirmButton, Field, NoticeBanner, useNotice } from '../social/ui'
 import { errMsg } from '../social/http'
 import '../social/social.css'
 import '../../design-system/status-pill.css'
-import { swrGet } from '../../lib/query-cache'
+import { getCached, revalidate, swrGet } from '../../lib/query-cache'
 
 type Notify = (text: string, tone?: 'success' | 'danger' | 'info' | 'warning') => void
 
@@ -264,11 +264,13 @@ export function IntegrationsPage() {
   )
 }
 
+// Cards start from the last known list (instant), then re-read the server.
+const listOf = <T,>(r: T[] | { data?: T[] | null } | undefined): T[] | null => (r === undefined ? null : Array.isArray(r) ? r : (r.data ?? []))
+
 function GoogleCard({ notify }: { notify: Notify }) {
-  const [accounts, setAccounts] = useState<GoogleAccount[] | null>(null)
+  const [accounts, setAccounts] = useState<GoogleAccount[] | null>(() => listOf(getCached<{ data: GoogleAccount[] }>('/api/google-calendar-accounts')?.data))
   const load = useCallback(() => {
-    api
-      .get<{ data: GoogleAccount[] }>('/api/google-calendar-accounts')
+    revalidate<{ data: GoogleAccount[] }>('/api/google-calendar-accounts')
       .then((r) => setAccounts(r.data ?? []))
       .catch((e) => {
         setAccounts([])
@@ -406,7 +408,7 @@ function CredentialsCard({
 }
 
 function DomainCard({ notify }: { notify: Notify }) {
-  const [domains, setDomains] = useState<EmailDomain[] | null>(null)
+  const [domains, setDomains] = useState<EmailDomain[] | null>(() => listOf(getCached<EmailDomain[] | { data: EmailDomain[] }>('/api/emails/domains')?.data))
   const [newDomain, setNewDomain] = useState('')
   const [busy, setBusy] = useState(false)
   const [fromEmail, setFromEmail] = useState('')
@@ -414,7 +416,7 @@ function DomainCard({ notify }: { notify: Notify }) {
 
   const load = useCallback(async () => {
     try {
-      const r = await api.get<EmailDomain[] | { data: EmailDomain[] }>('/api/emails/domains')
+      const r = await revalidate<EmailDomain[] | { data: EmailDomain[] }>('/api/emails/domains')
       const list = Array.isArray(r) ? r : (r.data ?? [])
       setDomains(list)
       const d = list[0]
@@ -543,10 +545,10 @@ function DomainCard({ notify }: { notify: Notify }) {
 const REASON_LABEL: Record<Suppression['reason'], string> = { bounce: 'Rebond', complaint: 'Plainte', unsubscribe: 'Désabonné', manual: 'Ajout manuel' }
 
 function SuppressionList({ notify }: { notify: Notify }) {
-  const [items, setItems] = useState<Suppression[] | null>(null)
+  const [items, setItems] = useState<Suppression[] | null>(() => listOf(getCached<Suppression[] | { data: Suppression[] }>('/api/emails/suppressions')?.data))
   const load = useCallback(async () => {
     try {
-      const r = await api.get<Suppression[] | { data: Suppression[] }>('/api/emails/suppressions')
+      const r = await revalidate<Suppression[] | { data: Suppression[] }>('/api/emails/suppressions')
       setItems(Array.isArray(r) ? r : (r.data ?? []))
     } catch (e) {
       setItems([])

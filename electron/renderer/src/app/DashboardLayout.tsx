@@ -3,6 +3,7 @@
 // If no Instagram account is known after login, the onboarding asks for it
 // before anything else (every Hiker feature needs it).
 import { useEffect, useRef, useState } from 'react'
+import { startCacheWarming } from '../lib/warm-cache'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '../design-system/Sidebar'
 import { Avatar } from '../design-system/Avatar'
@@ -32,6 +33,8 @@ export function DashboardLayout() {
 function Shell() {
   const { account, skipped } = useInstagramAccount()
   const [editing, setEditing] = useState(false)
+  // Refreshes the recently used screens in the background (instant, current clicks).
+  useEffect(() => startCacheWarming(), [])
 
   if (account === undefined) return <LoadingState label="Chargement de votre compte…" />
   if (account === null && !skipped) return <InstagramOnboarding />
