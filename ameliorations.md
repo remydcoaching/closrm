@@ -1029,6 +1029,13 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Moyen
 - **Statut :** En attente de validation
 
+### A-050-5 · Ancien client Apify « likers » (cron apify-instagram-likes)
+- **Contexte :** 2026-10-01 — l'intégration Apify du workspace pointe sur `seemuapps/instagram-post-likers-scraper` (0,0023 $/liker, 1 post par lancement, champ d'entrée `post`) alors que `src/lib/apify/client.ts` envoie `postUrls`.
+- **Description :** soit retirer ce cron (le suivi des publications le remplace), soit le brancher sur `apify-history.ts` (acteur datadoping, 0,00155 $/liker, liste de posts).
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
 ---
 
 *Mis à jour le 2026-10-01 par Claude Code — ClosRM*

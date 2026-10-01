@@ -9,7 +9,8 @@
 - **Mergé** : #573 (suivi des likers piloté par Meta : un réel n'est relu que si son nombre de j'aime augmente ; bouton « Historique des j'aime », coût confirmé — migration 122), #574 (Audience : « Qui like vos réels », une ligne par compte, lead ou non), #575 (app desktop : clics instantanés). En cours : #576 (réels d'essai repérés — migration 123 — et j'aime identifiés dans Contenu).
 - **Vitesse desktop (mesurée, 2e visite)** : Publicités 8,1 s → 0,04 s, Statistiques 1,6 s → 0,05 s, Finance 0,3 s → 0,03 s ; version compilée : toutes les pages < 20 ms une fois en cache. Préchargement des écrans récents au démarrage, délai max de 60 s sur les lectures, synchro DM en arrière-plan limitée à 1 / 10 min.
 - **Incident** : Supabase Auth du projet ne répondait plus (≥ 13:00–13:37, rétabli avant 17:41) → API connectée bloquée en prod et en local ; base et stockage OK.
-- **À faire (Pierre)** : migrations 120, 122, 123 ; lancer « Historique des j'aime » (136 réels ≈ 2,72 $) ; App Review Meta (liste de tournage).
+- **Historique des j'aime via Apify** (Hiker sans crédit) : 3 191 j'aime sur 86 réels (97 % des j'aime Meta de ces réels), 2 150 personnes dont 134 leads, 610 j'aime ajoutés aux parcours ; 4,85 $ de crédit Apify gratuit (acteur datadoping — memo23 et publicsignallabs brident les comptes gratuits). 45 réels plus anciens restent pour Hiker. Script : `scripts/instagram/apify-likes-history.ts`.
+- **À faire (Pierre)** : recharger Hiker pour les 45 réels restants et le suivi quotidien ; App Review Meta (liste de tournage).
 
 ## 2026-09-29 → 30 — Mise en production + audit ClosRM Desktop (Pierre)
 - **Mergé et en prod** : #561 (Desktop + Instagram Intelligence), #562 (reconnexion Meta depuis closrm.fr, jetons morts détectés), #563 (suppression des créneaux du calendrier éditorial, web + app), #564 (fonctions Vercel à Francfort), #565 (app compilée → production).
