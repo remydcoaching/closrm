@@ -159,7 +159,7 @@ export function ContentDetailPage() {
         {all.length === 0 ? (
           <EmptyState
             title="Aucun profil identifié"
-            description="Relancez une analyse de votre compte : les likers et commentateurs de chaque contenu sont enregistrés depuis la dernière mise à jour."
+            description="Les likers de ce réel n'ont pas encore été lus : le suivi des publications (page Contenu) les lit — « Historique des j'aime » pour les anciens réels. Les commentaires viennent de Meta à chaque synchronisation."
           />
         ) : (
           <table className="ds-table">

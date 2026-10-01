@@ -301,6 +301,43 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
     byUser.set(li.instagram_username, p)
   }
 
+  // Likers (and Hiker comments) identified by the publication monitor or the likes history.
+  const monitored: { instagram_username: string; instagram_user_id: string; full_name: string | null; profile_pic_url: string | null; interaction_type: string; matched_lead_id: string | null }[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('instagram_engagement_observations')
+      .select('instagram_username, instagram_user_id, full_name, profile_pic_url, interaction_type, matched_lead_id')
+      .eq('workspace_id', workspaceId)
+      .eq('content_id', contentId)
+      .range(from, from + 999)
+    if (error) break // migration 118 not applied: no monitor
+    monitored.push(...(data ?? []))
+    if (!data || data.length < 1000) break
+  }
+  for (const o of monitored) {
+    const p =
+      byUser.get(o.instagram_username) ??
+      ({
+        username: o.instagram_username,
+        fullName: o.full_name,
+        instagramUserId: o.instagram_user_id,
+        profilePicUrl: o.profile_pic_url,
+        isVerified: null,
+        followsTarget: null,
+        liked: false,
+        commented: false,
+        totalLikes: null,
+        totalComments: null,
+        discoveryProfileId: null,
+        runId: null,
+        lead: null,
+      } satisfies ContentProfile)
+    if (o.interaction_type === 'like') p.liked = true
+    else p.commented = true
+    p.profilePicUrl ??= o.profile_pic_url
+    byUser.set(o.instagram_username, p)
+  }
+
   // Commenters read from the Meta API (exact, free).
   if (meta) {
     const { data: metaComments } = await supabase.from('ig_comments').select('username').eq('workspace_id', workspaceId).eq('ig_media_id', meta.ig_media_id)
@@ -331,6 +368,11 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
   const usernames = [...byUser.keys()]
   const leadIds = new Set<string>((leadInteractions ?? []).map((l) => l.lead_id as string))
   const leadIdByUser = new Map<string, string>((leadInteractions ?? []).map((l) => [l.instagram_username as string, l.lead_id as string]))
+  for (const o of monitored) {
+    if (!o.matched_lead_id || leadIdByUser.has(o.instagram_username)) continue
+    leadIds.add(o.matched_lead_id)
+    leadIdByUser.set(o.instagram_username, o.matched_lead_id)
+  }
 
   for (let i = 0; i < usernames.length; i += CHUNK) {
     const { data: profiles } = await supabase
