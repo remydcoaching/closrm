@@ -40,12 +40,6 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'others', label: 'Pas encore leads' },
 ]
 
-function openProfile(username: string) {
-  const url = `https://instagram.com/${encodeURIComponent(username)}`
-  if (window.closrm?.openExternal) void window.closrm.openExternal(url)
-  else window.open(url, '_blank', 'noopener,noreferrer')
-}
-
 export function LikersSection() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<Filter>('all')
@@ -95,8 +89,8 @@ export function LikersSection() {
                 <tr
                   key={r.instagramUserId}
                   className="ds-row-clickable"
-                  onClick={() => (r.lead ? navigate(`/leads/${r.lead.id}`) : openProfile(r.username))}
-                  title={r.lead ? 'Ouvrir la fiche lead' : 'Ouvrir le profil Instagram'}
+                  onClick={() => navigate(r.lead ? `/leads/${r.lead.id}` : `/instagram/people/${encodeURIComponent(r.username)}`)}
+                  title={r.lead ? 'Ouvrir la fiche lead' : 'Ouvrir sa fiche (parcours)'}
                 >
                   <td>
                     <ContactCell name={name} handle={r.username} avatar={<Avatar name={name} size={28} src={r.lead?.instagram_profile_pic_url || r.profilePicUrl} />} />

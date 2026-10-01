@@ -226,10 +226,11 @@
   font-style: italic;
 }
 
+/* The chart tooltip is dark: its title stays light (the reel's caption, like Insyder). */
 .scatter-tooltip-title {
   font-weight: 700;
   margin-bottom: var(--space-1);
-  color: var(--color-text-primary);
+  color: #fff;
 }
 
 .ig-content-grid {
@@ -663,4 +664,58 @@
   background: color-mix(in srgb, var(--color-warning, #d69e2e) 16%, transparent);
   color: var(--color-warning, #d69e2e);
   font-weight: 600;
+}
+
+/* Instagram person page (anyone who reacted, lead or not). */
+.ig-back {
+  align-self: flex-start;
+}
+
+.ig-person-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.ig-person-id {
+  flex: 1;
+  min-width: 0;
+}
+
+.ig-person-id h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 22px;
+}
+
+.ig-person-id p {
+  margin: 2px 0 0;
+  color: var(--color-text-secondary);
+}
+
+.ig-person-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ig-person-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-muted);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.ig-person-badge--muted {
+  opacity: 0.8;
+}
+
+.ig-person-actions {
+  display: flex;
+  gap: 8px;
 }
