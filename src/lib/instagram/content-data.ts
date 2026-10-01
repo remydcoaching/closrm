@@ -77,7 +77,26 @@ async function loadMatchedLeads(supabase: SupabaseClient, workspaceId: string, r
 }
 
 // ─── Official Meta figures (ig_reels, nightly sync) ───────────────────────
-const META_COLS = 'ig_media_id, shortcode, permalink, caption, thumbnail_url, views, likes, comments, reach, saves, shares, published_at'
+const META_COLS = 'ig_media_id, shortcode, permalink, caption, thumbnail_url, views, likes, comments, reach, saves, shares, published_at, is_shared_to_feed'
+// Columns of migrations that may not be applied yet, dropped from the select when missing.
+const OPTIONAL_META_COLS: [RegExp, string][] = [
+  [/is_shared_to_feed/, ', is_shared_to_feed'],
+  [/shortcode|permalink/, ', shortcode, permalink'],
+]
+
+/** Runs a select of META_COLS, dropping the columns of migrations not applied yet (121, 123), whatever the order Postgres reports them. */
+async function selectMeta<R extends { error: { message: string } | null }>(run: (cols: string) => PromiseLike<R>): Promise<R> {
+  let cols = META_COLS
+  let res = await run(cols)
+  for (let i = 0; i < OPTIONAL_META_COLS.length && res.error; i++) {
+    const message = res.error.message
+    const hit = OPTIONAL_META_COLS.find(([re, part]) => cols.includes(part) && re.test(message))
+    if (!hit) break
+    cols = cols.replace(hit[1], '')
+    res = await run(cols)
+  }
+  return res
+}
 
 /**
  * Reels synced from the Meta API, keyed by shortcode — or by their Graph id
@@ -90,9 +109,7 @@ async function loadMetaReels(supabase: SupabaseClient, workspaceId: string, sinc
     if (sinceIso) q = q.gte('published_at', sinceIso)
     return q.limit(1000)
   }
-  let res = await build(META_COLS)
-  // Migration 121 not applied yet: no shortcode / permalink columns.
-  if (res.error && /shortcode|permalink/.test(res.error.message)) res = await build(META_COLS.replace(', shortcode, permalink', ''))
+  const res = await selectMeta(build)
   if (res.error) return new Map()
   return new Map(((res.data ?? []) as unknown as MetaReelRow[]).map((r) => [metaKey(r), { ...r, shortcode: r.shortcode ?? null, permalink: r.permalink ?? null }]))
 }
@@ -102,6 +119,13 @@ const metaKey = (r: MetaReelRow) => r.shortcode ?? `g:${r.ig_media_id}`
 
 /** Content id of a Meta-only publication: the media pk (from the shortcode), else the Graph id. */
 const metaContentId = (r: MetaReelRow) => (r.shortcode ? shortcodeToMediaId(r.shortcode) : '') || r.ig_media_id
+
+/** Likers identified by the publication monitor, per content (media pk). */
+async function loadMonitorLikers(supabase: SupabaseClient, workspaceId: string): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('instagram_monitored_contents').select('content_id, likers_seen').eq('workspace_id', workspaceId).gt('likers_seen', 0).limit(2000)
+  if (error) return new Map() // migration 118 not applied: no monitor
+  return new Map((data ?? []).map((r) => [r.content_id as string, Number(r.likers_seen)]))
+}
 
 /** Distinct commenters per Graph media id, from the comments synced via the Meta API. */
 async function loadMetaCommenters(supabase: SupabaseClient, workspaceId: string, graphIds: string[]): Promise<Map<string, Set<string>>> {
@@ -158,7 +182,7 @@ export async function loadContentMetrics(supabase: SupabaseClient, workspaceId: 
 
   // Official Meta figures on scanned contents, and the recent publications
   // Hiker never scanned (so the page is current without paying a scan).
-  const metaByCode = await loadMetaReels(supabase, workspaceId, sinceIso)
+  const [metaByCode, monitorLikers] = await Promise.all([loadMetaReels(supabase, workspaceId, sinceIso), loadMonitorLikers(supabase, workspaceId)])
   const scannedCodes = new Set(rows.map((r) => mediaIdToShortcode(r.content_id)))
   const metaOnly = [...metaByCode.entries()].filter(([code]) => !scannedCodes.has(code))
   const commenters = await loadMetaCommenters(supabase, workspaceId, [...metaByCode.values()].map((m) => m.ig_media_id))
@@ -167,7 +191,7 @@ export async function loadContentMetrics(supabase: SupabaseClient, workspaceId: 
     const meta = metaByCode.get(mediaIdToShortcode(r.content_id))
     const o = observed.get(r.content_id)
     const counts: ObservedCounts = {
-      likers: o?.likers ?? 0,
+      likers: Math.max(o?.likers ?? 0, monitorLikers.get(r.content_id) ?? 0),
       commenters: Math.max(o?.commenters ?? 0, meta ? (commenters.get(meta.ig_media_id)?.size ?? 0) : 0),
       leads: Math.max(o?.leads ?? 0, apifyLeads.get(r.content_id) ?? 0),
     }
@@ -177,7 +201,7 @@ export async function loadContentMetrics(supabase: SupabaseClient, workspaceId: 
     .map(([, meta]) => {
       const pk = metaContentId(meta)
       if (!pk) return null
-      const counts: ObservedCounts = { likers: 0, commenters: commenters.get(meta.ig_media_id)?.size ?? 0, leads: apifyLeads.get(pk) ?? 0 }
+      const counts: ObservedCounts = { likers: monitorLikers.get(pk) ?? 0, commenters: commenters.get(meta.ig_media_id)?.size ?? 0, leads: apifyLeads.get(pk) ?? 0 }
       return withMeta(buildContentMetrics(rowFromMeta(meta, pk), counts), meta, false)
     })
     .filter((m): m is ContentMetrics => !!m)
@@ -214,10 +238,11 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
   // The Meta reel behind this content: by shortcode (media pk), or by Graph id
   // for a reel whose shortcode isn't synced yet.
   const code = mediaIdToShortcode(contentId)
-  let metaRes = await supabase.from('ig_reels').select(META_COLS).eq('workspace_id', workspaceId).or(`shortcode.eq.${code},ig_media_id.eq.${contentId}`).limit(1).maybeSingle()
-  if (metaRes.error && /shortcode|permalink/.test(metaRes.error.message)) {
-    metaRes = (await supabase.from('ig_reels').select(META_COLS.replace(', shortcode, permalink', '')).eq('workspace_id', workspaceId).eq('ig_media_id', contentId).maybeSingle()) as typeof metaRes
-  }
+  const metaRes = await selectMeta((cols) => {
+    const q = supabase.from('ig_reels').select(cols).eq('workspace_id', workspaceId)
+    // Without migration 121 there is no shortcode to match on.
+    return (cols.includes('shortcode') ? q.or(`shortcode.eq.${code},ig_media_id.eq.${contentId}`) : q.eq('ig_media_id', contentId)).limit(1).maybeSingle()
+  })
   const meta = (metaRes.data ?? undefined) as MetaReelRow | undefined
   if (!scanned && !meta) return null
   const row = scanned ? (meta ? applyMeta(scanned, meta) : scanned) : rowFromMeta(meta as MetaReelRow, contentId)

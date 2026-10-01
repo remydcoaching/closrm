@@ -25,7 +25,7 @@ import { usePaged, PaginationBar } from '../../design-system/Pagination'
 import { useCachedQuery } from '../../lib/use-cached-query'
 
 type Period = '7' | '30' | '90' | '365' | 'all'
-type Format = 'all' | 'clip' | 'media'
+type Format = 'all' | 'clip' | 'trial' | 'media'
 type StageFilter = 'all' | FunnelStage
 type ConfFilter = 'all' | ConfidenceKey
 type TableView = 'audience' | 'business'
@@ -51,15 +51,27 @@ const PERIODS: { key: Period; label: string }[] = [
 const FORMATS: { key: Format; label: string }[] = [
   { key: 'all', label: 'Tous formats' },
   { key: 'clip', label: 'Réels' },
+  { key: 'trial', label: "Réels d'essai" },
   { key: 'media', label: 'Publications' },
 ]
+
+/**
+ * A reel Meta reports as not shared to the feed: shown in the Reels tab only,
+ * not on the profile grid — a trial reel (Meta has no "trial" flag; a reel
+ * posted to the Reels tab only looks the same).
+ */
+export const isTrialReel = (c: { contentType: string; onGrid?: boolean | null }) => c.contentType === 'clip' && c.onGrid === false
+const TRIAL_HINT = "Réel d'essai : visible dans l'onglet Réels, pas sur la grille du profil (montré d'abord aux non-abonnés)"
+
+const matchesFormat = (c: ContentChartPoint, format: Format) =>
+  format === 'all' || (format === 'trial' ? isTrialReel(c) : c.contentType === format)
 
 export function formatRate(rate: number | null): string {
   return rate === null ? '—' : `${(rate * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} %`
 }
 
-export function contentTypeLabel(type: string): string {
-  return type === 'clip' ? 'Réel' : 'Publication'
+export function contentTypeLabel(type: string, onGrid?: boolean | null): string {
+  return type === 'clip' ? (onGrid === false ? "Réel d'essai" : 'Réel') : 'Publication'
 }
 
 export function ContentPage() {
@@ -87,12 +99,14 @@ export function ContentPage() {
 
   const filtered = useMemo(() => {
     return (items ?? []).filter((c) => {
-      if (format !== 'all' && c.contentType !== format) return false
+      if (!matchesFormat(c, format)) return false
       if (stage !== 'all' && (c.engagementRate === null || funnelStage(c.engagementRate) !== stage)) return false
       if (conf !== 'all' && !(c.confidence?.[conf] ?? 0)) return false
       return true
     })
   }, [items, format, stage, conf])
+
+  const trialCount = useMemo(() => (items ?? []).filter(isTrialReel).length, [items])
 
   const tableRows = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -104,7 +118,7 @@ export function ContentPage() {
   const stageCounts = useMemo(() => {
     const counts: Record<FunnelStage, number> = { haut: 0, milieu: 0, bas: 0 }
     for (const c of items ?? []) {
-      if (format !== 'all' && c.contentType !== format) continue
+      if (!matchesFormat(c, format)) continue
       if (c.engagementRate !== null) counts[funnelStage(c.engagementRate)] += 1
     }
     return counts
@@ -162,7 +176,7 @@ export function ContentPage() {
                 : `${c.leadsCount} lead${c.leadsCount > 1 ? 's' : ''} touché${c.leadsCount > 1 ? 's' : ''}`}
             </div>
             <div className="scatter-tooltip-row">
-              <span>{contentTypeLabel(c.contentType)}</span>
+              <span>{contentTypeLabel(c.contentType, c.onGrid)}</span>
               <b>{shortDate(c.publishedAt)}</b>
             </div>
           </div>
@@ -214,7 +228,7 @@ export function ContentPage() {
           <TableCard title="Quel contenu amène des leads" subtitle="Un contenu par bulle, taille = vues. Cliquez pour l'ouvrir.">
             <div className="ig-filter-rows">
               <span className="ig-filter-label">Forme</span>
-              <Chips items={FORMATS} active={format} onChange={setFormat} />
+              <Chips items={FORMATS.map((f) => (f.key === 'trial' ? { ...f, count: trialCount } : f))} active={format} onChange={setFormat} />
               <span className="ig-filter-label">Étape</span>
               <Chips
                 items={[
@@ -304,7 +318,13 @@ export function ContentPage() {
                           </div>
                         </td>
                         <td>
-                          <span className="ig-type-pill">{c.contentType === 'clip' ? 'Reel' : 'Post'}</span>
+                          {isTrialReel(c) ? (
+                            <span className="ig-type-pill ig-type-pill--trial" title={TRIAL_HINT}>
+                              Essai
+                            </span>
+                          ) : (
+                            <span className="ig-type-pill">{c.contentType === 'clip' ? 'Reel' : 'Post'}</span>
+                          )}
                         </td>
                         <td className="ds-num-cell">
                           <span className="ds-num">{shortDate(c.publishedAt)}</span>

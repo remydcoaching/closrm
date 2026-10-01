@@ -63,14 +63,24 @@ async function syncOneReel(ctx: SyncContext, reel: Awaited<ReturnType<typeof fet
     plays: views,
     engagement_rate: Math.round(engagementRate * 100) / 100,
     published_at: reel.timestamp,
+    // false = Reels tab only, not on the grid: trial reels (migration 123).
+    is_shared_to_feed: reel.is_shared_to_feed ?? null,
   }
-  const { error } = await ctx.supabase.from('ig_reels').upsert(row, { onConflict: 'ig_media_id' })
-  // Migration 121 not applied yet: store the rest.
-  if (error && /shortcode|permalink/.test(error.message)) {
-    const { shortcode: _s, permalink: _p, ...legacy } = row
-    await ctx.supabase.from('ig_reels').upsert(legacy, { onConflict: 'ig_media_id' })
+  // A migration not applied yet (121: shortcode/permalink, 123: is_shared_to_feed):
+  // drop its columns and store the rest.
+  let toStore: Record<string, unknown> = row
+  for (let i = 0; i <= OPTIONAL_REEL_COLUMNS.length; i++) {
+    const { error } = await ctx.supabase.from('ig_reels').upsert(toStore, { onConflict: 'ig_media_id' })
+    const hit = error && OPTIONAL_REEL_COLUMNS.find(([cols, re]) => cols.some((c) => c in toStore) && re.test(error.message))
+    if (!hit) return
+    toStore = Object.fromEntries(Object.entries(toStore).filter(([k]) => !hit[0].includes(k)))
   }
 }
+
+const OPTIONAL_REEL_COLUMNS: [string[], RegExp][] = [
+  [['is_shared_to_feed'], /is_shared_to_feed/],
+  [['shortcode', 'permalink'], /shortcode|permalink/],
+]
 
 export async function syncStories(ctx: SyncContext) {
   const stories = await fetchIgStories(ctx.accessToken, ctx.igUserId)
