@@ -275,8 +275,10 @@ export function ContentPage() {
                     {view === 'audience' ? (
                       <>
                         <th className="ds-num-cell">Taux</th>
-                        <th className="ds-num-cell">Likers</th>
-                        <th className="ds-num-cell">Commentaires</th>
+                        <th className="ds-num-cell" title="Likes Instagram · dont personnes identifiées">Likes</th>
+                        <th className="ds-num-cell" title="Commentaires Instagram · dont personnes identifiées">Commentaires</th>
+                        <th className="ds-num-cell" title="Enregistrements (Meta)">Enreg.</th>
+                        <th className="ds-num-cell" title="Partages (Meta)">Partages</th>
                       </>
                     ) : (
                       <>
@@ -316,10 +318,16 @@ export function ContentPage() {
                               <span className="ds-num">{formatRate(c.engagementRate)}</span>
                             </td>
                             <td className="ds-num-cell">
-                              <span className="ds-num">{formatNumber(c.identifiedLikers)}</span>
+                              <CountCell total={c.likesCount} identified={c.identifiedLikers} />
                             </td>
                             <td className="ds-num-cell">
-                              <span className="ds-num">{formatNumber(c.identifiedCommenters)}</span>
+                              <CountCell total={c.commentsCount} identified={c.identifiedCommenters} />
+                            </td>
+                            <td className="ds-num-cell">
+                              <span className="ds-num">{c.saves == null ? '—' : formatNumber(c.saves)}</span>
+                            </td>
+                            <td className="ds-num-cell">
+                              <span className="ds-num">{c.shares == null ? '—' : formatNumber(c.shares)}</span>
                             </td>
                           </>
                         ) : (
@@ -352,5 +360,15 @@ export function ContentPage() {
         </>
       )}
     </div>
+  )
+}
+
+/** Instagram's counter, with the people actually identified underneath (who liked / commented). */
+function CountCell({ total, identified }: { total: number; identified: number }) {
+  return (
+    <span className="ig-count-cell">
+      <span className="ds-num">{formatNumber(total)}</span>
+      <span className="ig-count-identified">{identified > 0 ? `${formatNumber(identified)} identifié${identified > 1 ? 's' : ''}` : '—'}</span>
+    </span>
   )
 }

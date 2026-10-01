@@ -130,6 +130,11 @@ export interface ContentChartPoint {
   identifiedLikers: number
   identifiedCommenters: number
   leadsCount: number
+  /** Official Meta figures (null when the publication isn't synced from the Meta API). */
+  reach?: number | null
+  saves?: number | null
+  shares?: number | null
+  source?: 'meta' | 'hiker' | 'meta+hiker'
   /** Leads reached per confidence level (only with ?confidence=1). */
   confidence?: Partial<Record<ConfidenceKey, number>>
 }
