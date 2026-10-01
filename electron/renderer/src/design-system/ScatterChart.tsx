@@ -41,8 +41,13 @@ function linScale(value: number, min: number, max: number, rangeMin: number, ran
 export function rateTicks(max: number): number[] {
   const steps = [0.001, 0.0025, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5]
   const step = steps.find((s) => max / s <= 5) ?? 1
+  // The last tick is at or above max: no bubble can sit above the plot.
   const out: number[] = []
-  for (let t = 0; t <= max + step / 2; t += step) out.push(Number(t.toFixed(4)))
+  for (let i = 0; ; i++) {
+    const t = Number((i * step).toFixed(4))
+    out.push(t)
+    if (t >= max - 1e-9) break
+  }
   return out
 }
 
