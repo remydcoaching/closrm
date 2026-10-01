@@ -217,6 +217,9 @@ export interface ContentProfile {
   followsTarget: boolean | null
   liked: boolean
   commented: boolean
+  /** Comments on this publication (Meta, monitor or scan — the largest source) and the earliest text. */
+  commentsCount: number
+  commentText: string | null
   /** Totals across the whole scanned account (from discovery_profiles). */
   totalLikes: number | null
   totalComments: number | null
@@ -249,6 +252,19 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
 
   const interactions = scanned ? await loadInteractions(supabase, workspaceId, [row.discovery_run_id], [contentId]) : []
   const byUser = new Map<string, ContentProfile>()
+  // Comments per person and source (the same comment can be read by Meta and by Hiker): the largest count wins.
+  const commentCounts = new Map<string, number[]>()
+  const countComment = (username: string, source: 0 | 1 | 2, text: string | null, at: string | null, earliest: Map<string, string>) => {
+    const c = commentCounts.get(username) ?? [0, 0, 0]
+    c[source] += 1
+    commentCounts.set(username, c)
+    const p = byUser.get(username)
+    if (p && text && (!p.commentText || (at && at < (earliest.get(username) ?? '\uffff')))) {
+      p.commentText = text
+      if (at) earliest.set(username, at)
+    }
+  }
+  const earliestComment = new Map<string, string>()
   for (const i of interactions) {
     const p =
       byUser.get(i.instagram_username) ??
@@ -261,6 +277,8 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
         followsTarget: null,
         liked: false,
         commented: false,
+        commentsCount: 0,
+        commentText: null,
         totalLikes: null,
         totalComments: null,
         discoveryProfileId: null,
@@ -270,6 +288,7 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
     if (i.interaction_type === 'like') p.liked = true
     else p.commented = true
     byUser.set(i.instagram_username, p)
+    if (i.interaction_type !== 'like') countComment(i.instagram_username, 0, null, null, earliestComment)
   }
 
   // Leads observed on this content through instagram_interactions (Apify).
@@ -290,6 +309,8 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
         followsTarget: null,
         liked: false,
         commented: false,
+        commentsCount: 0,
+        commentText: null,
         totalLikes: null,
         totalComments: null,
         discoveryProfileId: null,
@@ -302,11 +323,11 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
   }
 
   // Likers (and Hiker comments) identified by the publication monitor or the likes history.
-  const monitored: { instagram_username: string; instagram_user_id: string; full_name: string | null; profile_pic_url: string | null; interaction_type: string; matched_lead_id: string | null }[] = []
+  const monitored: { instagram_username: string; instagram_user_id: string; full_name: string | null; profile_pic_url: string | null; interaction_type: string; matched_lead_id: string | null; comment_text: string | null; commented_at: string | null }[] = []
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabase
       .from('instagram_engagement_observations')
-      .select('instagram_username, instagram_user_id, full_name, profile_pic_url, interaction_type, matched_lead_id')
+      .select('instagram_username, instagram_user_id, full_name, profile_pic_url, interaction_type, matched_lead_id, comment_text, commented_at')
       .eq('workspace_id', workspaceId)
       .eq('content_id', contentId)
       .range(from, from + 999)
@@ -326,6 +347,8 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
         followsTarget: null,
         liked: false,
         commented: false,
+        commentsCount: 0,
+        commentText: null,
         totalLikes: null,
         totalComments: null,
         discoveryProfileId: null,
@@ -336,11 +359,12 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
     else p.commented = true
     p.profilePicUrl ??= o.profile_pic_url
     byUser.set(o.instagram_username, p)
+    if (o.interaction_type === 'comment') countComment(o.instagram_username, 1, o.comment_text, o.commented_at, earliestComment)
   }
 
   // Commenters read from the Meta API (exact, free).
   if (meta) {
-    const { data: metaComments } = await supabase.from('ig_comments').select('username').eq('workspace_id', workspaceId).eq('ig_media_id', meta.ig_media_id)
+    const { data: metaComments } = await supabase.from('ig_comments').select('username, text, timestamp').eq('workspace_id', workspaceId).eq('ig_media_id', meta.ig_media_id)
     for (const c of metaComments ?? []) {
       if (!c.username) continue
       const p =
@@ -354,6 +378,8 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
           followsTarget: null,
           liked: false,
           commented: false,
+          commentsCount: 0,
+          commentText: null,
           totalLikes: null,
           totalComments: null,
           discoveryProfileId: null,
@@ -362,7 +388,12 @@ export async function loadContentDetail(supabase: SupabaseClient, workspaceId: s
         } satisfies ContentProfile)
       p.commented = true
       byUser.set(c.username, p)
+      countComment(c.username, 2, c.text ?? null, c.timestamp ?? null, earliestComment)
     }
+  }
+  for (const [username, c] of commentCounts) {
+    const p = byUser.get(username)
+    if (p) p.commentsCount = Math.max(...c)
   }
 
   const usernames = [...byUser.keys()]

@@ -5,9 +5,7 @@
 // of 10 pile up on the left), bubble size = leads reached, colour = funnel
 // stage (funnel-stage.ts). Clicking a bubble or a row opens the content's
 // own page with every identified profile.
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { api, ApiError } from '../../lib/api-client'
+import { useMemo, useState } from 'react'
 import { ScatterChart, type ScatterPoint } from '../../design-system/ScatterChart'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
 import { TableCard } from '../../design-system/TableCard'
@@ -16,6 +14,7 @@ import { LoadingState, ErrorState, EmptyState } from '../../design-system/States
 import { shortDate } from '../leads/status'
 import { funnelStage, FUNNEL_STAGE_LABEL, FUNNEL_STAGE_COLOR, type FunnelStage } from './funnel-stage'
 import { ContentThumb } from './ContentThumb'
+import { ReelReactionsDrawer } from './ReelReactionsDrawer'
 import type { ContentChartPoint, ConfidenceKey } from './types'
 import { Tabs } from '../../design-system/Tabs'
 import { SearchInput } from '../../design-system/SearchInput'
@@ -75,12 +74,13 @@ export function contentTypeLabel(type: string, onGrid?: boolean | null): string 
 }
 
 export function ContentPage() {
-  const navigate = useNavigate()
   const [period, setPeriod] = useState<Period>('90')
   const [format, setFormat] = useState<Format>('all')
   const [stage, setStage] = useState<StageFilter>('all')
   const [conf, setConf] = useState<ConfFilter>('all')
   const [view, setView] = useState<TableView>('audience')
+  // Clicking a publication opens the « Qui a réagi » side panel.
+  const [openId, setOpenId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
   const q = new URLSearchParams()
@@ -155,7 +155,7 @@ export function ContentPage() {
         radius: c.views ?? 0,
         color: FUNNEL_STAGE_COLOR[st],
         label: c.contentId,
-        onClick: () => navigate(`/instagram/content/${encodeURIComponent(c.contentId)}`),
+        onClick: () => setOpenId(c.contentId),
         tooltip: (
           <div>
             <div className="scatter-tooltip-title">{c.caption ? c.caption.slice(0, 80) : `${contentTypeLabel(c.contentType)} · ${FUNNEL_STAGE_LABEL[st]}`}</div>
@@ -219,7 +219,7 @@ export function ContentPage() {
                 )
               }
               caption={bestReel ? `${formatNumber(bestReel.views ?? 0)} vues · ${formatRate(bestReel.engagementRate)}` : undefined}
-              onClick={bestReel ? () => navigate(`/instagram/content/${encodeURIComponent(bestReel.contentId)}`) : undefined}
+              onClick={bestReel ? () => setOpenId(bestReel.contentId) : undefined}
             />
             <StatCard label="Taux d'engagement" value={formatRate(totals.rate)} caption="(likes + commentaires) / vues, compteurs Instagram" />
             <StatCard label="Leads touchés" value={totals.leads} highlight caption={`${formatNumber(totals.identified)} interactions identifiées`} />
@@ -307,7 +307,7 @@ export function ContentPage() {
                   {paged.pageRows.map((c, i) => {
                     const st = c.engagementRate === null ? null : funnelStage(c.engagementRate)
                     return (
-                      <tr key={c.contentId} className="ds-row-clickable" onClick={() => navigate(`/instagram/content/${encodeURIComponent(c.contentId)}`)}>
+                      <tr key={c.contentId} className="ds-row-clickable" onClick={() => setOpenId(c.contentId)}>
                         <td className="ds-num-cell">
                           <span className="ds-muted">{(paged.page - 1) * paged.size + i + 1}</span>
                         </td>
@@ -379,6 +379,7 @@ export function ContentPage() {
           </TableCard>
         </>
       )}
+      {openId && <ReelReactionsDrawer contentId={openId} onClose={() => setOpenId(null)} />}
     </div>
   )
 }

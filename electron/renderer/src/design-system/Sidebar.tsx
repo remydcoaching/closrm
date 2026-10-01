@@ -53,12 +53,6 @@ const DiscoveryIcon = (
   </svg>
 )
 
-const InteractionsIcon = (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-  </svg>
-)
-
 const ContentIcon = (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -161,7 +155,6 @@ const NAV_ITEMS: SidebarItem[] = [
 
 const INSTAGRAM_ITEMS: SidebarItem[] = [
   { to: '/instagram/discovery', label: 'Analyse (ciblage)', icon: DiscoveryIcon },
-  { to: '/instagram/interactions', label: 'Interactions', icon: InteractionsIcon },
   { to: '/instagram/content', label: 'Content', icon: ContentIcon },
   { to: '/instagram/audience', label: 'Audience', icon: AudienceIcon, matchPaths: ['/instagram/stories'] },
   { to: '/acquisition/lead-magnets', label: 'Lead Magnets', icon: LeadMagnetIcon },
