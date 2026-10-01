@@ -6,7 +6,8 @@
 // (campaign level, split by campaign type via the campaign breakdown of
 // GET /api/meta/insights). "Performance par plateforme" = real lead counts
 // per Meta source from GET /api/leads (meta.total).
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useCachedQuery } from '../../../lib/use-cached-query'
 import { api } from '../../../lib/api-client'
 import { openWeb } from '../../../lib/web-link'
 import { StatCard, StatGrid } from '../../../design-system/StatCard'
@@ -50,31 +51,17 @@ interface CrmState {
 }
 
 export function OverviewTab({ data, loading, campaignType, dateFrom, dateTo, periodQuery, thresholds }: Props) {
-  const [crm, setCrm] = useState<CrmState | null>(null)
-  const [crmError, setCrmError] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    setCrm(null)
-    setCrmError(false)
-    Promise.all([
-      api.get<AdPerformanceResponse>(`/api/meta/ad-performance?level=campaign&date_from=${dateFrom}&date_to=${dateTo}`),
-      api.get<MetaInsightsResponse>(`/api/meta/insights?level=campaign&${periodQuery}&campaign_type=all`),
-    ])
-      .then(([perf, campaigns]) => {
-        if (cancelled) return
-        const split = crmByCampaignType(perf.data ?? [], campaigns.breakdown ?? [])
-        const all = addCrm(addCrm(addCrm(split.leadform, split.follow_ads), split.other), split.unattributed)
-        const global = campaignType === 'all' ? all : campaignType === 'leadform' ? split.leadform : campaignType === 'follow_ads' ? split.follow_ads : split.other
-        setCrm({ global, leadform: split.leadform, follow: split.follow_ads, unattributed: split.unattributed })
-      })
-      .catch(() => {
-        if (!cancelled) setCrmError(true)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [dateFrom, dateTo, periodQuery, campaignType])
+  // Cached: instant on revisit, refreshed in the background (same keys as the Campagnes tab).
+  const perfQuery = useCachedQuery<AdPerformanceResponse>(`/api/meta/ad-performance?level=campaign&date_from=${dateFrom}&date_to=${dateTo}`, { screen: 'PublicitesCrm', staleMs: 5 * 60_000 })
+  const campaignsQuery = useCachedQuery<MetaInsightsResponse>(`/api/meta/insights?level=campaign&${periodQuery}&campaign_type=all`, { screen: 'PublicitesCampaigns', staleMs: 5 * 60_000 })
+  const crmError = !!perfQuery.error || !!campaignsQuery.error
+  const crm = useMemo<CrmState | null>(() => {
+    if (!perfQuery.data || !campaignsQuery.data) return null
+    const split = crmByCampaignType(perfQuery.data.data ?? [], campaignsQuery.data.breakdown ?? [])
+    const all = addCrm(addCrm(addCrm(split.leadform, split.follow_ads), split.other), split.unattributed)
+    const global = campaignType === 'all' ? all : campaignType === 'leadform' ? split.leadform : campaignType === 'follow_ads' ? split.follow_ads : split.other
+    return { global, leadform: split.leadform, follow: split.follow_ads, unattributed: split.unattributed }
+  }, [perfQuery.data, campaignsQuery.data, campaignType])
 
   if (loading || !data) return <LoadingState label="Chargement des performances Meta…" />
 
@@ -276,27 +263,15 @@ function FollowSection({
 }
 
 function InstagramGrowth({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
-  const [snapshots, setSnapshots] = useState<IgSnapshot[] | null>(null)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    setSnapshots(null)
-    setFailed(false)
-    api
-      .get<{ data: IgSnapshot[] }>('/api/instagram/snapshots')
-      .then((res) => {
-        if (cancelled) return
-        const inRange = (res.data ?? [])
-          .filter((s) => s.snapshot_date >= dateFrom && s.snapshot_date <= dateTo)
-          .sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date))
-        setSnapshots(inRange)
-      })
-      .catch(() => !cancelled && setFailed(true))
-    return () => {
-      cancelled = true
-    }
-  }, [dateFrom, dateTo])
+  const query = useCachedQuery<{ data: IgSnapshot[] }>('/api/instagram/snapshots', { screen: 'PublicitesIgGrowth', staleMs: 10 * 60_000 })
+  const failed = !!query.error
+  const snapshots = useMemo(
+    () =>
+      query.data
+        ? (query.data.data ?? []).filter((s) => s.snapshot_date >= dateFrom && s.snapshot_date <= dateTo).sort((a, b) => a.snapshot_date.localeCompare(b.snapshot_date))
+        : null,
+    [query.data, dateFrom, dateTo],
+  )
 
   if (!failed && snapshots === null) return <LoadingState label="Croissance Instagram…" />
 
@@ -367,31 +342,26 @@ interface PlatformRow {
 }
 
 function PlatformPerformance({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
-  const [rows, setRows] = useState<PlatformRow[] | null>(null)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    setRows(null)
-    setFailed(false)
-    const range = `date_from=${encodeURIComponent(`${dateFrom}T00:00:00.000Z`)}&date_to=${encodeURIComponent(`${dateTo}T23:59:59.999Z`)}`
-    const count = (qs: string) => api.get<LeadsCountResponse>(`/api/leads?${qs}&${range}&page=1&per_page=1`).then((r) => r.meta?.total ?? 0)
-    Promise.all(
-      PLATFORMS.map(async (p) => {
-        const [leads, qualified, closed] = await Promise.all([
-          count(`source=${p.source}`),
-          count(`source=${p.source}&status=${QUALIFIED_STATUSES}`),
-          count(`source=${p.source}&status=clos`),
-        ])
-        return { ...p, leads, qualified, closed }
-      }),
-    )
-      .then((r) => !cancelled && setRows(r))
-      .catch(() => !cancelled && setFailed(true))
-    return () => {
-      cancelled = true
-    }
-  }, [dateFrom, dateTo])
+  const query = useCachedQuery<PlatformRow[]>(`desktop:ads-platforms:${dateFrom}:${dateTo}`, {
+    screen: 'PublicitesPlatforms',
+    staleMs: 5 * 60_000,
+    fetcher: () => {
+      const range = `date_from=${encodeURIComponent(`${dateFrom}T00:00:00.000Z`)}&date_to=${encodeURIComponent(`${dateTo}T23:59:59.999Z`)}`
+      const count = (qs: string) => api.get<LeadsCountResponse>(`/api/leads?${qs}&${range}&page=1&per_page=1`).then((r) => r.meta?.total ?? 0)
+      return Promise.all(
+        PLATFORMS.map(async (p) => {
+          const [leads, qualified, closed] = await Promise.all([
+            count(`source=${p.source}`),
+            count(`source=${p.source}&status=${QUALIFIED_STATUSES}`),
+            count(`source=${p.source}&status=clos`),
+          ])
+          return { ...p, leads, qualified, closed }
+        }),
+      )
+    },
+  })
+  const rows = query.data ?? null
+  const failed = !!query.error
 
   const total = rows?.reduce((s, r) => s + r.leads, 0) ?? 0
 

@@ -26,6 +26,32 @@ const STORAGE_PREFIX = `closrm:qc:v${VERSION}:`
 let partition: string | null = null
 let entries = new Map<string, CacheEntry>()
 const inflight = new Map<string, Promise<unknown>>()
+// Loader of each composite key ('desktop:…'), so invalidate() can refresh it too.
+const loaders = new Map<string, () => Promise<unknown>>()
+// Loaders screens declare up front, so their composite keys can be refreshed
+// before the screen is opened (start-up warm-up).
+const factories: { prefix: string; make: (key: string) => (() => Promise<unknown>) | null }[] = []
+
+/** Declares how to load the composite keys starting with `prefix` (e.g. 'desktop:stats:'). */
+export function registerLoader(prefix: string, make: (key: string) => (() => Promise<unknown>) | null) {
+  factories.push({ prefix, make })
+}
+
+function loaderFor(key: string): (() => Promise<unknown>) | undefined {
+  const known = loaders.get(key)
+  if (known) return known
+  return factories.find((f) => key.startsWith(f.prefix))?.make(key) ?? undefined
+}
+
+/** Keys not refreshed for `staleMs`, most recently used first — what the coach looks at. */
+export function staleRecentKeys(limit: number, staleMs: number): string[] {
+  const now = Date.now()
+  return [...entries.entries()]
+    .filter(([, e]) => now - e.at > staleMs)
+    .sort((a, b) => b[1].at - a[1].at)
+    .slice(0, limit)
+    .map(([k]) => k)
+}
 const listeners = new Map<string, Set<() => void>>()
 let persistTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -149,7 +175,7 @@ export function invalidate(match: string | ((key: string) => boolean)) {
   for (const [k, e] of entries) {
     if (!test(k)) continue
     e.at = 0
-    if (listeners.has(k)) void revalidate(k)
+    if (listeners.has(k)) void revalidate(k).catch(() => undefined)
   }
 }
 
@@ -160,8 +186,11 @@ export function invalidate(match: string | ((key: string) => boolean)) {
 export function revalidate<T>(key: string, fetcher?: () => Promise<T>): Promise<T> {
   const running = inflight.get(key)
   if (running) return running as Promise<T>
+  if (fetcher) loaders.set(key, fetcher)
+  const load = (fetcher ?? loaderFor(key)) as (() => Promise<T>) | undefined
+  if (!load && !key.startsWith('/')) return Promise.reject(new Error(`No loader for ${key}`))
   const t0 = performance.now()
-  const p = (fetcher ? fetcher() : api.get<T>(key))
+  const p = (load ? load() : api.get<T>(key))
     .then((data) => {
       const changed = setCached(key, data)
       perfLog('api', { path: key.split('?')[0], ms: Math.round(performance.now() - t0), changed })
@@ -187,5 +216,19 @@ export async function swrGet<T>(key: string, apply: (data: T) => void): Promise<
   const before = cached?.sig
   const fresh = await revalidate<T>(key)
   if (getCached<T>(key)?.sig !== before || !cached) apply(fresh)
+  return fresh
+}
+
+/**
+ * swrGet for several paths read together: `apply` runs at once with the
+ * cached values when all of them are cached, then with the fresh ones if
+ * anything changed.
+ */
+export async function swrMany<T extends unknown[]>(keys: string[], apply: (data: T) => void): Promise<T> {
+  const cached = keys.map((k) => getCached(k))
+  const allCached = cached.every((c) => !!c)
+  if (allCached) apply(cached.map((c) => c?.data) as T)
+  const fresh = (await Promise.all(keys.map((k) => revalidate(k)))) as T
+  if (!allCached || keys.some((k, i) => getCached(k)?.sig !== cached[i]?.sig)) apply(fresh)
   return fresh
 }

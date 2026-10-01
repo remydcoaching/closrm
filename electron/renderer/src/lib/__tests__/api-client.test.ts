@@ -88,4 +88,16 @@ describe('api-client', () => {
       expect((err as ApiError).status).toBe(403)
     }
   })
+
+  it('reads carry a timeout signal (a stuck server ends in ApiError 408, not an endless spinner); writes do not', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) })
+    global.fetch = mockFetch as unknown as typeof fetch
+    await api.get('/api/leads')
+    await api.post('/api/instagram/monitor', {})
+    expect((mockFetch.mock.calls[0][1] as RequestInit).signal).toBeInstanceOf(AbortSignal)
+    expect((mockFetch.mock.calls[1][1] as RequestInit).signal).toBeUndefined()
+
+    global.fetch = vi.fn().mockRejectedValue(new DOMException('timed out', 'TimeoutError')) as unknown as typeof fetch
+    await expect(api.get('/api/leads')).rejects.toMatchObject({ status: 408 })
+  })
 })

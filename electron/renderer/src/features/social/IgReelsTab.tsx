@@ -3,6 +3,7 @@
 // GET/POST/PUT/DELETE /api/instagram/pillars (PUT/DELETE take {id} in body).
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { swrMany } from '../../lib/query-cache'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
 import { SortHeader, TableCard } from '../../design-system/TableCard'
 import { Drawer } from '../../design-system/Drawer'
@@ -41,15 +42,13 @@ export function IgReelsTab({ notify }: { notify: Notify }) {
   const [pillarModal, setPillarModal] = useState<{ pillar?: ContentPillar } | null>(null)
 
   const load = useCallback(async () => {
-    setLoading(true)
     setError(null)
     try {
-      const [r, p] = await Promise.all([
-        api.get<ListResponse<IgReel>>('/api/instagram/reels?per_page=100'),
-        api.get<ListResponse<ContentPillar>>('/api/instagram/pillars'),
-      ])
-      setReels(r.data ?? [])
-      setPillars(p.data ?? [])
+      await swrMany<[ListResponse<IgReel>, ListResponse<ContentPillar>]>(['/api/instagram/reels?per_page=100', '/api/instagram/pillars'], ([r, p]) => {
+        setReels(r.data ?? [])
+        setPillars(p.data ?? [])
+        setLoading(false)
+      })
     } catch (e) {
       setError(errMsg(e))
     } finally {

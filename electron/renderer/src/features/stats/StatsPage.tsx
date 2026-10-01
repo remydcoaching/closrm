@@ -9,9 +9,10 @@
 // The web page is a Server Component querying Supabase directly (no API
 // route), so every figure is rebuilt from the list endpoints — see
 // stats-api.ts / stats-compute.ts for the exact mapping.
-import { useCallback, useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ApiError } from '../../lib/api-client'
+import { useCachedQuery } from '../../lib/use-cached-query'
+import { registerLoader } from '../../lib/query-cache'
 import { openWeb } from '../../lib/web-link'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
 import { TableCard } from '../../design-system/TableCard'
@@ -115,25 +116,27 @@ function d(cur: number | null, prev: PeriodFigures | null, pick: (p: PeriodFigur
   return pctDelta(cur, pick(prev))
 }
 
+/** Windows come back from the persisted cache as ISO strings. */
+function reviveStats(d: StatsData): StatsData {
+  const win = (w: TimeWindow | null) => (w ? { ...w, from: new Date(w.from), to: new Date(w.to) } : null)
+  return { ...d, current: win(d.current), meta: { ...d.meta, window: win(d.meta.window) as TimeWindow } }
+}
+
+/** Cache key of a period's figures — also used to prefetch the page. */
+const statsKey = (period: StatsPeriod) => `desktop:stats:${period}`
+registerLoader('desktop:stats:', (key) => {
+  const period = Number(key.slice('desktop:stats:'.length))
+  return period === 0 || period === 7 || period === 30 || period === 90 ? () => loadStats(period) : null
+})
+
 export function StatsPage() {
   const navigate = useNavigate()
   const [period, setPeriod] = useState<StatsPeriod>(30)
-  const [data, setData] = useState<StatsData | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    setError(null)
-    setData(null)
-    try {
-      setData(await loadStats(period))
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Erreur inconnue')
-    }
-  }, [period])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  // Last figures shown at once, recomputed in the background (≈ 20 requests).
+  const query = useCachedQuery<StatsData>(statsKey(period), { screen: 'Stats', staleMs: 60_000, keepPrevious: true, fetcher: () => loadStats(period) })
+  const data = useMemo(() => (query.data ? reviveStats(query.data) : null), [query.data])
+  const error = query.error
+  const load = query.refresh
 
   return (
     <div className="stats-page">

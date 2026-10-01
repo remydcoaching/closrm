@@ -4,6 +4,7 @@
 // lets you set them via the existing POST /api/instagram/goals (upsert).
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../lib/api-client'
+import { swrMany } from '../../lib/query-cache'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
 import { TableCard } from '../../design-system/TableCard'
 import { Chips } from '../../design-system/Tabs'
@@ -62,17 +63,14 @@ export function IgOverviewTab({ notify }: { notify: Notify }) {
   const [savingGoal, setSavingGoal] = useState(false)
 
   const load = useCallback(async () => {
-    setLoading(true)
     setError(null)
     try {
-      const [s, r, g] = await Promise.all([
-        api.get<ListResponse<IgSnapshot>>('/api/instagram/snapshots'),
-        api.get<ListResponse<IgReel>>('/api/instagram/reels?per_page=100'),
-        api.get<ListResponse<IgGoal>>('/api/instagram/goals'),
-      ])
-      setSnapshots(s.data ?? [])
-      setReels(r.data ?? [])
-      setGoals(g.data ?? [])
+      await swrMany<[ListResponse<IgSnapshot>, ListResponse<IgReel>, ListResponse<IgGoal>]>(['/api/instagram/snapshots', '/api/instagram/reels?per_page=100', '/api/instagram/goals'], ([s, r, g]) => {
+        setSnapshots(s.data ?? [])
+        setReels(r.data ?? [])
+        setGoals(g.data ?? [])
+        setLoading(false)
+      })
     } catch (e) {
       setError(errMsg(e))
     } finally {

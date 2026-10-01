@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// Pure scheduling under test: no Supabase client (it reads the Electron secure storage at load).
+vi.mock('../supabase', () => ({ supabase: { auth: { getSession: async () => ({ data: { session: null } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) } } }))
+
 import { nextWakeUpMs } from '../story-collector'
 
 describe('nextWakeUpMs (Insyder-style randomized wake-ups)', () => {

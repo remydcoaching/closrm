@@ -6,7 +6,7 @@
 // POST /api/social/trame/generate (window=range).
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../lib/api-client'
-import { swrGet } from '../../lib/query-cache'
+import { swrGet, swrMany } from '../../lib/query-cache'
 import { Chips, Tabs } from '../../design-system/Tabs'
 import { ErrorState, LoadingState } from '../../design-system/States'
 import { Field, Modal } from './ui'
@@ -66,15 +66,14 @@ export function PlanningView({ notify }: { notify: Notify }) {
   }, [view])
 
   const reloadStructure = useCallback(async () => {
-    setStructureLoading(true)
     setError(null)
     try {
-      const [t, p] = await Promise.all([
-        api.get<{ data: ContentTrame | null }>('/api/social/trame'),
-        api.get<ListResponse<ContentPillar>>('/api/social/pillars'),
-      ])
-      setTrame(t.data ?? null)
-      setPillars(p.data ?? [])
+      // Last known trame and pillars at once, fresh ones right after.
+      await swrMany<[{ data: ContentTrame | null }, ListResponse<ContentPillar>]>(['/api/social/trame', '/api/social/pillars'], ([t, p]) => {
+        setTrame(t.data ?? null)
+        setPillars(p.data ?? [])
+        setStructureLoading(false)
+      })
     } catch (e) {
       setError(errMsg(e))
     } finally {

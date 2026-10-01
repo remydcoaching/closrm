@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api-client'
+import { swrGet } from '../../lib/query-cache'
 import { openWeb } from '../../lib/web-link'
 import { Tabs } from '../../design-system/Tabs'
 import { EmptyState, ErrorState, LoadingState } from '../../design-system/States'
@@ -72,13 +73,17 @@ export function SocialPage() {
   }
 
   const loadAccounts = useCallback(async () => {
-    setAccountsLoading(true)
     setAccountsError(null)
     setIgCreateError(null)
     try {
+      // Known accounts show at once; an empty cache waits for the server.
       const [ig, yt] = await Promise.all([
-        api.get<{ data: IgAccount | null }>('/api/instagram/account').catch(() => ({ data: null })),
-        api.get<{ data: YtAccount | null }>('/api/youtube/account').catch(() => ({ data: null })),
+        swrGet<{ data: IgAccount | null }>('/api/instagram/account', (r) => {
+          if (!r.data) return
+          setIgAccount(r.data)
+          setAccountsLoading(false)
+        }).catch(() => ({ data: null })),
+        swrGet<{ data: YtAccount | null }>('/api/youtube/account', (r) => setYtAccount(r.data ?? null)).catch(() => ({ data: null })),
       ])
       if (ig.data) setIgAccount(ig.data)
       else {

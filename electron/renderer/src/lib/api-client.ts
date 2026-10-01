@@ -24,6 +24,11 @@ async function authHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${session.access_token}` }
 }
 
+// A read never waits forever: a stuck server (e.g. a local dev server whose
+// outbound fetches hang) used to leave spinners up for minutes and block the
+// cache's refresh of that key. Writes keep no limit (syncs, scans can be long).
+const READ_TIMEOUT_MS = 60_000
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = {
     'Content-Type': 'application/json',
@@ -31,7 +36,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...(init?.headers ?? {}),
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
+  const signal = init?.signal ?? (init?.method === 'GET' ? AbortSignal.timeout(READ_TIMEOUT_MS) : undefined)
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers, signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') throw new ApiError(408, 'Le serveur ne répond pas — réessayez')
+    throw err
+  }
 
   if (res.status === 401) {
     throw new ApiError(401, 'Session expirée — reconnexion nécessaire')

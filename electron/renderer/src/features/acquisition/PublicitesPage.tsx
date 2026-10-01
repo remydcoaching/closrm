@@ -8,8 +8,9 @@
 // Meta connection state is derived from the insights route's own errors
 // (404 "Meta not connected" / 403 "needs_upgrade") — the web reads it
 // server-side from the same integrations row.
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, ApiError } from '../../lib/api-client'
+import { useMemo, useState } from 'react'
+import { useCachedQuery } from '../../lib/use-cached-query'
+import { setCached } from '../../lib/query-cache'
 import { openWeb } from '../../lib/web-link'
 import { Tabs, Chips } from '../../design-system/Tabs'
 import { Input } from '../../design-system/Input'
@@ -64,9 +65,9 @@ const TYPE_ITEMS: { key: CampaignTypeFilter; label: string }[] = [
   { key: 'follow_ads', label: 'Follow Ads' },
 ]
 
-function errorText(err: unknown): string {
-  if (!(err instanceof ApiError)) return 'Erreur réseau. Vérifiez votre connexion.'
-  switch (err.message) {
+function errorText(message: string): string {
+  if (message === 'Erreur inconnue') return 'Erreur réseau. Vérifiez votre connexion.'
+  switch (message) {
     case 'token_expired':
       return 'Votre token Meta a expiré. Reconnectez votre compte.'
     case 'rate_limited':
@@ -74,7 +75,7 @@ function errorText(err: unknown): string {
     case 'meta_error':
       return 'Erreur Meta lors de la récupération des données.'
     default:
-      return err.message || 'Erreur lors de la récupération des données'
+      return message || 'Erreur lors de la récupération des données'
   }
 }
 
@@ -100,12 +101,6 @@ export function PublicitesPage() {
   const [customTo, setCustomTo] = useState(initialCustom.dateTo)
   const [applied, setApplied] = useState(initialCustom)
 
-  const [connection, setConnection] = useState<Connection>('unknown')
-  const [data, setData] = useState<MetaInsightsResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [crmByLevel, setCrmByLevel] = useState<Partial<Record<CrmLevel, Map<string, AdPerformanceRow>>>>({})
-  const [thresholds, setThresholds] = useState<ThresholdOverrides>({})
   const [thresholdsOpen, setThresholdsOpen] = useState(false)
   const [selectedAd, setSelectedAd] = useState<MetaBreakdownRow | null>(null)
 
@@ -117,67 +112,38 @@ export function PublicitesPage() {
     return { ...presetRange(period), periodQuery: `preset=${period}` }
   }, [period, applied])
 
-  useEffect(() => {
-    api
-      .get<{ data: ThresholdOverrides }>('/api/ads-thresholds')
-      .then((res) => setThresholds(res.data ?? {}))
-      .catch(() => {
-        /* defaults apply */
-      })
-  }, [])
+  // Every block reads the cache first (instant on revisit), Meta is re-read in the background.
+  const thresholdsQuery = useCachedQuery<{ data: ThresholdOverrides }>('/api/ads-thresholds', { screen: 'PublicitesThresholds', staleMs: 10 * 60_000 })
+  const thresholds = thresholdsQuery.data?.data ?? {}
 
-  const fetchInsights = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+  const insightsKey = useMemo(() => {
     const params = new URLSearchParams(periodQuery)
     params.set('level', TAB_TO_LEVEL[tab])
     if (drill.campaignId && (tab === 'adsets' || tab === 'ads')) params.set('campaign_id', drill.campaignId)
     if (drill.adsetId && tab === 'ads') params.set('adset_id', drill.adsetId)
     params.set('campaign_type', campaignType)
-    try {
-      const res = await api.get<MetaInsightsResponse>(`/api/meta/insights?${params.toString()}`)
-      setData(res)
-      setConnection('connected')
-    } catch (err) {
-      setData(null)
-      if (err instanceof ApiError && err.status === 404 && err.message === 'Meta not connected') setConnection('not_connected')
-      else if (err instanceof ApiError && err.message === 'needs_upgrade') setConnection('needs_upgrade')
-      else {
-        setConnection((c) => (c === 'unknown' ? 'connected' : c))
-        setError(errorText(err))
-      }
-    } finally {
-      setLoading(false)
-    }
+    return `/api/meta/insights?${params.toString()}`
   }, [periodQuery, tab, drill, campaignType])
-
-  useEffect(() => {
-    void fetchInsights()
-  }, [fetchInsights])
+  const insightsQuery = useCachedQuery<MetaInsightsResponse>(insightsKey, { screen: 'Publicites', staleMs: 5 * 60_000 })
+  const data = insightsQuery.data ?? null
+  const loading = insightsQuery.loading
+  const fetchInsights = insightsQuery.refresh
+  const connection: Connection =
+    insightsQuery.error === 'Meta not connected' ? 'not_connected' : insightsQuery.error === 'needs_upgrade' ? 'needs_upgrade' : data || insightsQuery.error ? 'connected' : 'unknown'
+  const error = connection === 'connected' && insightsQuery.error ? errorText(insightsQuery.error) : null
 
   // CRM attribution for table tabs (same params as the web's fetchCrm).
-  useEffect(() => {
-    if (connection !== 'connected') return
-    if (tab !== 'campaigns' && tab !== 'adsets' && tab !== 'ads') return
-    const level: CrmLevel = tab === 'campaigns' ? 'campaign' : tab === 'adsets' ? 'adset' : 'ad'
+  const level: CrmLevel | null = tab === 'campaigns' ? 'campaign' : tab === 'adsets' ? 'adset' : tab === 'ads' ? 'ad' : null
+  const crmKey = useMemo(() => {
+    if (connection !== 'connected' || !level) return null
     const params = new URLSearchParams({ level, date_from: dateFrom, date_to: dateTo })
     if (drill.campaignId && (tab === 'adsets' || tab === 'ads')) params.set('campaign_id', drill.campaignId)
     if (drill.adsetId && tab === 'ads') params.set('adset_id', drill.adsetId)
-    let cancelled = false
-    setCrmByLevel((prev) => ({ ...prev, [level]: undefined }))
-    api
-      .get<AdPerformanceResponse>(`/api/meta/ad-performance?${params.toString()}`)
-      .then((res) => {
-        if (cancelled) return
-        setCrmByLevel((prev) => ({ ...prev, [level]: new Map((res.data ?? []).map((r) => [r.id, r])) }))
-      })
-      .catch(() => {
-        /* non-critical: CRM columns fall back to 0 / — */
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [connection, tab, dateFrom, dateTo, drill])
+    return `/api/meta/ad-performance?${params.toString()}`
+  }, [connection, level, tab, dateFrom, dateTo, drill])
+  // Non-critical: on error the CRM columns fall back to 0 / —.
+  const crmQuery = useCachedQuery<AdPerformanceResponse>(crmKey, { screen: 'PublicitesCrm', staleMs: 5 * 60_000 })
+  const crmMap = useMemo(() => (crmQuery.data ? new Map<string, AdPerformanceRow>((crmQuery.data.data ?? []).map((r) => [r.id, r])) : undefined), [crmQuery.data])
 
   function handleTabChange(next: TabKey) {
     if (next === 'campaigns') setDrill({})
@@ -237,7 +203,6 @@ export function PublicitesPage() {
     )
   }
 
-  const level: CrmLevel | null = tab === 'campaigns' ? 'campaign' : tab === 'adsets' ? 'adset' : tab === 'ads' ? 'ad' : null
   const rangeLabel = `Du ${dateFrom} au ${dateTo}`
 
   return (
@@ -330,7 +295,7 @@ export function PublicitesPage() {
             tabKey={tab}
             rows={data?.breakdown ?? null}
             loading={loading}
-            crmMap={crmByLevel[level]}
+            crmMap={crmMap}
             thresholds={thresholds}
             subtitle={`${rangeLabel}${tab === 'ads' ? ' · clic = créative et leads' : ' · clic = détail'}`}
             onRowClick={handleRowClick}
@@ -338,7 +303,7 @@ export function PublicitesPage() {
         )
       )}
 
-      {thresholdsOpen && <ThresholdsModal onClose={() => setThresholdsOpen(false)} onSaved={setThresholds} />}
+      {thresholdsOpen && <ThresholdsModal onClose={() => setThresholdsOpen(false)} onSaved={(t) => setCached('/api/ads-thresholds', { data: t })} />}
       {selectedAd && <AdDrawer ad={selectedAd} onClose={() => setSelectedAd(null)} />}
     </div>
   )
