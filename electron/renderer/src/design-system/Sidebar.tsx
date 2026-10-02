@@ -45,6 +45,14 @@ const LeadsIcon = (
 
 
 
+const PeopleIcon = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="8" r="3.2" />
+    <path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8" />
+    <path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 14.4c1.7.6 2.8 2.2 3.1 4.6" />
+  </svg>
+)
+
 const DiscoveryIcon = (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="7" />
@@ -154,6 +162,7 @@ const NAV_ITEMS: SidebarItem[] = [
 ]
 
 const INSTAGRAM_ITEMS: SidebarItem[] = [
+  { to: '/instagram/leads', label: 'Leads Instagram', icon: PeopleIcon, matchPaths: ['/instagram/people'] },
   { to: '/instagram/discovery', label: 'Analyse (ciblage)', icon: DiscoveryIcon },
   { to: '/instagram/content', label: 'Content', icon: ContentIcon },
   { to: '/instagram/audience', label: 'Audience', icon: AudienceIcon, matchPaths: ['/instagram/stories'] },

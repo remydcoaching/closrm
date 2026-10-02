@@ -7,6 +7,7 @@ import { LeadDetailPage } from '../features/leads/LeadDetailPage'
 import { DiscoveryPage } from '../features/instagram/DiscoveryPage'
 import { CiblageRunPage } from '../features/instagram/CiblageRunPage'
 import { InstagramPersonPage } from '../features/instagram/InstagramPersonPage'
+import { InstagramLeadsPage } from '../features/instagram/InstagramLeadsPage'
 import { ContentPage } from '../features/instagram/ContentPage'
 import { ContentDetailPage } from '../features/instagram/ContentDetailPage'
 import { StoryDetailPage } from '../features/instagram/StoryDetailPage'
@@ -109,6 +110,7 @@ function AppRoutes() {
         <Route path="instagram/stories" element={<Navigate to="/instagram/audience" replace />} />
         <Route path="instagram/stories/:pk" element={<StoryDetailPage />} />
         <Route path="instagram/people/:username" element={<InstagramPersonPage />} />
+        <Route path="instagram/leads" element={<InstagramLeadsPage />} />
         {/* Sessions DM now lives in Leads › Relances. */}
         <Route path="instagram/sessions-dm" element={<Navigate to="/relances?vue=sessions-dm" replace />} />
         <Route path="acquisition/lead-magnets" element={<LeadMagnetsPage />} />
