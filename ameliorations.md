@@ -1036,6 +1036,27 @@ Or ClosRM dispose déjà d'un module Calendrier/Booking interne type Calendly (l
 - **Effort estimé :** Faible
 - **Statut :** En attente de validation
 
+### A-051-1 · Jetons Meta hors de portée des membres du workspace
+- **Contexte :** audit 2026-10-02 — `ig_accounts.access_token` / `page_access_token` et `ai_coach_briefs.api_key` sont lisibles par tout membre (setter, closer) via l'API Supabase (RLS par workspace).
+- **Description :** déplacer ces secrets dans `integrations` (chiffré), ou retirer le `select` de ces colonnes au rôle `authenticated` et passer les routes concernées au client service.
+- **Priorité estimée :** Haute (dès qu'il y a des membres d'équipe)
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### A-051-2 · `/api/desktop/dashboard` inutilisée et lente
+- **Contexte :** audit 2026-10-02 — 2 s en médiane, aucun écran ne l'appelle (le dashboard desktop est calculé côté client).
+- **Description :** la supprimer, ou l'optimiser et y basculer le dashboard desktop (1 requête au lieu d'une dizaine).
+- **Priorité estimée :** Basse
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-051-3 · Index Leads Instagram en SQL
+- **Contexte :** l'index lit ~4 000 lignes à chaque calcul (cache de 1 min par instance) ; 0,35 s en médiane, 2 s à froid.
+- **Description :** fonction Postgres qui renvoie les gestes déjà joints (une seule requête), ou table matérialisée rafraîchie après chaque collecte.
+- **Priorité estimée :** Moyenne quand le volume grossit
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
 ---
 
-*Mis à jour le 2026-10-01 par Claude Code — ClosRM*
+*Mis à jour le 2026-10-02 par Claude Code — ClosRM*

@@ -93,11 +93,12 @@ Hiker relit périodiquement likers + commentaires des publications récentes ; l
 
 ## Nuit du 2026-10-01 — Finir l'app (parité Insyder) + audits
 - [x] Panneau « Qui a réagi » sur un réel + fiche profil pour toute personne (#580)
-- [ ] Leads Instagram (Insyder « Leads ») : toutes les personnes qui ont interagi, KPIs (actifs, très élevé jamais contactés, lurkers acheteurs, passés très élevé), onglets Nouveaux / Confiance / Certifiés / Stories, recherche, export CSV
-- [ ] Fiche profil : score /100, niveau de confiance, engagement, potentiel d'achat, parcours par jour, « Pourquoi ce score »
-- [ ] Audience : « Quand publier » par heure (réels) et par jour (stories), médianes
-- [ ] Story : nouveaux vs connaissaient déjà, scores
-- [ ] Vitesse : endpoints lourds, découpage du bundle, préchargement
-- [ ] Audit sécurité (API, RLS, Electron, secrets) — rapport + correctifs
-- [ ] Audit vitesse — mesures avant/après
-- [ ] Audit workflow — pages inutiles / doublons, navigation
+- [x] Leads Instagram (Insyder « Leads ») : toutes les personnes qui ont interagi, KPIs (actifs, très élevé jamais contactés, lurkers acheteurs, passés très élevé), onglets Nouveaux / Confiance / Certifiés / Stories, recherche, export CSV
+- [x] Fiche profil : score /100, niveau de confiance, engagement, potentiel d'achat, parcours par jour, « Pourquoi ce score »
+- [x] Audience : « Quand publier » par heure (réels) et par jour (stories), médianes
+- [x] Story : nouveaux vs connaissaient déjà, scores
+- [x] Vitesse : endpoints lourds, découpage du bundle, préchargement
+- [x] Audit sécurité (API, RLS, Electron, secrets) — rapport + correctifs
+- [x] Audit vitesse — mesures avant/après
+- [x] Audit workflow — pages inutiles / doublons, navigation
+- [ ] Pierre : migrations 124, 125 ; fusionner #583 ; décisions A-051-1 (jetons) et vérification locale des JWT

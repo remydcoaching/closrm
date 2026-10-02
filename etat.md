@@ -1,9 +1,15 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-10-01
+> Derniere mise a jour : 2026-10-02
 
 ---
+
+## 2026-10-02 — Parité Insyder, vitesse, audits (Pierre)
+- **En prod** : #580 (panneau « Qui a réagi » sur un réel, fiche profil pour toute personne, page Interactions retirée), #581 (Leads Instagram : toutes les personnes qui ont interagi, scorées ; fiche profil façon Insyder ; « Quand publier » par heure / jour ; story : nouveaux vs connaissaient déjà), #582 (découpage du code desktop 1,18 Mo → 563 Ko, index allégé, jetons Meta plus jamais renvoyés, webhooks Meta / SNS signés, recherche sécurisée, Electron durci).
+- **PR #583 à fusionner** : Audience façon Insyder (doublons retirés), clé IA masquée, migrations 124 (RLS tables internes) et 125 (search_path des fonctions definer).
+- **Audit** : `docs/audits/2026-10-02-audit-securite-vitesse-workflow.md`.
+- **À faire (Pierre)** : migrations 124, 125 ; fusionner #583 ; décider : jetons Meta lisibles par les membres via Supabase, vérification locale des JWT.
 
 ## 2026-10-01 — Likers pilotés par Meta, Audience « Qui like vos réels », vitesse de l'app (Pierre)
 - **Mergé** : #573 (suivi des likers piloté par Meta : un réel n'est relu que si son nombre de j'aime augmente ; bouton « Historique des j'aime », coût confirmé — migration 122), #574 (Audience : « Qui like vos réels », une ligne par compte, lead ou non), #575 (app desktop : clics instantanés). En cours : #576 (réels d'essai repérés — migration 123 — et j'aime identifiés dans Contenu).
