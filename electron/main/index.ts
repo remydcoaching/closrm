@@ -9,6 +9,7 @@ import { app, BrowserWindow, ipcMain, safeStorage, session, shell } from 'electr
 import path from 'node:path'
 import { readFile, writeFile, unlink } from 'node:fs/promises'
 import * as instagramSession from './instagram-session'
+import { pathToFileURL } from 'node:url'
 
 // This file compiles to CommonJS (see vite.config.ts) — Electron's native
 // `electron` module import does not interoperate correctly with Node's ESM
@@ -40,6 +41,22 @@ function isInstagramCdn(url: string): boolean {
   }
 }
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
+const RENDERER_FILE_URL = pathToFileURL(path.join(__dirname, '../renderer/index.html')).toString()
+
+/** The app's own pages: the Vite dev server in dev, the bundled index.html once packaged. */
+function isAppUrl(url: string): boolean {
+  try {
+    if (DEV_SERVER_URL) return new URL(url).origin === new URL(DEV_SERVER_URL).origin
+    return url.split('#')[0].split('?')[0] === RENDERER_FILE_URL
+  } catch {
+    return false
+  }
+}
+
+/** IPC calls are honoured only from the app's own pages (never from a page the window was navigated to). */
+function fromApp(event: Electron.IpcMainInvokeEvent): boolean {
+  return isAppUrl(event.senderFrame?.url ?? '')
+}
 
 let mainWindow: BrowserWindow | null = null
 let quitting = false
@@ -110,6 +127,17 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:$/.test(new URL(url).protocol)) shell.openExternal(url)
     return { action: 'deny' }
+  })
+  // The window never leaves the app: a page loaded there would reach the
+  // preload API (session storage, Instagram session). Links go to the browser.
+  win.webContents.on('will-navigate', (event, url) => {
+    if (isAppUrl(url)) return
+    event.preventDefault()
+    try {
+      if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url)
+    } catch {
+      // not a URL: just blocked
+    }
   })
 
   win.once('ready-to-show', () => {
@@ -207,7 +235,9 @@ ipcMain.handle('closrm:open-external', async (_event, url: string) => {
   await shell.openExternal(parsed.toString())
 })
 
-ipcMain.handle('closrm:secure-storage:set', async (_event, plaintext: string) => {
+ipcMain.handle('closrm:secure-storage:set', async (event, plaintext: string) => {
+  if (!fromApp(event)) throw new Error('Forbidden')
+  if (typeof plaintext !== 'string' || plaintext.length > 100_000) throw new Error('Invalid session')
   if (!safeStorage.isEncryptionAvailable()) {
     throw new Error('OS-backed encryption is not available on this machine')
   }
@@ -215,7 +245,8 @@ ipcMain.handle('closrm:secure-storage:set', async (_event, plaintext: string) =>
   await writeFile(SESSION_FILE, encrypted)
 })
 
-ipcMain.handle('closrm:secure-storage:get', async () => {
+ipcMain.handle('closrm:secure-storage:get', async (event) => {
+  if (!fromApp(event)) return null
   try {
     const encrypted = await readFile(SESSION_FILE)
     if (!safeStorage.isEncryptionAvailable()) return null
@@ -225,7 +256,8 @@ ipcMain.handle('closrm:secure-storage:get', async () => {
   }
 })
 
-ipcMain.handle('closrm:secure-storage:clear', async () => {
+ipcMain.handle('closrm:secure-storage:clear', async (event) => {
+  if (!fromApp(event)) return
   try {
     await unlink(SESSION_FILE)
   } catch {
@@ -250,7 +282,8 @@ app.whenReady().then(() => {
         ...headers,
         'Content-Security-Policy': [
           "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline'; " + // 'unsafe-inline' relaxed only for Vite HMR in dev; tighten before production build
+            // Inline scripts only for Vite's dev server (HMR); the packaged app has none.
+          `script-src 'self'${DEV_SERVER_URL ? " 'unsafe-inline'" : ''}; ` +
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
             "font-src 'self' https://fonts.gstatic.com; " +
             "img-src 'self' data: https:; " +
