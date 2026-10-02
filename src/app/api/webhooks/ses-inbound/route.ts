@@ -18,7 +18,7 @@
 import { NextResponse } from 'next/server'
 import PostalMime from 'postal-mime'
 import { createServiceClient } from '@/lib/supabase/service'
-import { isAllowedSnsTopic } from '@/lib/email/sns-verify'
+import { isAllowedSnsTopic, isSnsUrl, verifySnsSignature, type SnsSignedEnvelope } from '@/lib/email/sns-verify'
 
 interface SnsEnvelope {
   Type?: string
@@ -52,6 +52,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   }
 
+  // Signature AWS : sans elle, n'importe qui forgeait des notifications.
+  if (!(await verifySnsSignature(envelope as SnsSignedEnvelope))) {
+    console.warn('[ses-inbound] rejected: invalid SNS signature', envelope.TopicArn)
+    return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 403 })
+  }
+
   // Filtrage TopicArn en defense-en-profondeur (voir sns-verify.ts)
   if (!isAllowedSnsTopic(envelope)) {
     console.warn('[ses-inbound] rejected unknown TopicArn', envelope.TopicArn)
@@ -59,9 +65,9 @@ export async function POST(request: Request) {
   }
 
   // Handshake SNS
-  if (envelope.Type === 'SubscriptionConfirmation' && envelope.SubscribeURL) {
+  if (envelope.Type === 'SubscriptionConfirmation' && isSnsUrl(envelope.SubscribeURL)) {
     try {
-      await fetch(envelope.SubscribeURL, { method: 'GET' })
+      await fetch(envelope.SubscribeURL as string, { method: 'GET' })
     } catch (err) {
       console.error('[ses-inbound] SNS confirmation failed', err)
     }

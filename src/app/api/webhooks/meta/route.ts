@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { verifyMetaSignature } from '@/lib/meta/webhook-signature'
 import { decrypt } from '@/lib/meta/encryption'
 import { getLeadData, parseLeadFields, type MetaCredentials } from '@/lib/meta/client'
 import { findExistingLeadId } from '@/lib/leads/identity'
@@ -49,10 +50,13 @@ interface WebhookPayload {
 }
 
 export async function POST(request: NextRequest) {
+  const rawBody = await request.text()
+  if (!verifyMetaSignature(rawBody, request.headers.get('x-hub-signature-256'))) {
+    return new NextResponse('Invalid signature', { status: 401 })
+  }
   let payload: WebhookPayload
-
   try {
-    payload = await request.json()
+    payload = JSON.parse(rawBody) as WebhookPayload
   } catch {
     return new NextResponse('Bad Request', { status: 400 })
   }
