@@ -14,7 +14,7 @@ import { SearchInput } from '../../design-system/SearchInput'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
 import { usePaged, PaginationBar } from '../../design-system/Pagination'
 import { shortDate } from '../leads/status'
-import { confidenceLevel, CONFIDENCE_LABEL } from '../leads/confidence'
+import { confidenceLevel, CONFIDENCE_LABEL, type ConfidenceLevel } from '../leads/confidence'
 import { useStoryArchive, type ArchivedStory } from './stories-data'
 import './stories.css'
 
@@ -26,6 +26,8 @@ interface DetailViewer {
   isVerified: boolean | null
   hasLiked: boolean | null
   seenAt: string
+  person: { score: number; confidence: ConfidenceLevel; interactions: number; firstAt: string | null; lastAt: string | null } | null
+  isNew: boolean
   lead: {
     id: string
     name: string
@@ -51,10 +53,10 @@ interface StoryDetail {
     highlight_title?: string | null
   } | null
   viewers: DetailViewer[]
-  counts: { viewers: number; reactions: number; leads: number }
+  counts: { viewers: number; reactions: number; leads: number; newPeople?: number; newVeryHigh?: number }
 }
 
-type Filter = 'leads' | 'all' | 'reactions' | 'not_leads'
+type Filter = 'all' | 'new' | 'known' | 'leads' | 'reactions'
 
 const CONFIDENCE_COLOR: Record<string, string> = {
   tres_eleve: '#35c759',
@@ -98,7 +100,7 @@ export function StoryDetailPage() {
   }
   const [detail, setDetail] = useState<StoryDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<Filter>('leads')
+  const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [mediaBroken, setMediaBroken] = useState(false)
   const [targeting, setTargeting] = useState<string | null>(null)
@@ -131,7 +133,8 @@ export function StoryDetailPage() {
     return (detail?.viewers ?? []).filter((v) => {
       if (q && !v.username.toLowerCase().includes(q) && !(v.fullName ?? '').toLowerCase().includes(q) && !(v.lead?.name ?? '').toLowerCase().includes(q)) return false
       if (filter === 'leads') return !!v.lead
-      if (filter === 'not_leads') return !v.lead
+      if (filter === 'new') return v.isNew
+      if (filter === 'known') return !v.isNew
       if (filter === 'reactions') return !!v.hasLiked
       return true
     })
@@ -174,23 +177,31 @@ export function StoryDetailPage() {
               value={media?.likeCount ?? counts?.reactions ?? '—'}
               caption={media?.likeCount != null ? "j'aime comptés par Instagram" : 'cœurs envoyés sur la story'}
             />
-            <StatCard label="Leads" value={counts?.leads ?? '—'} highlight caption="spectateurs déjà dans votre CRM" />
+            <StatCard
+              label="Nouvelles personnes amenées"
+              value={counts?.newPeople ?? '—'}
+              highlight
+              caption={counts?.newPeople !== undefined ? `premier geste chez vous · dont ${counts.newVeryHigh ?? 0} au niveau de confiance très élevé` : undefined}
+              onClick={() => setFilter('new')}
+            />
+            <StatCard label="Leads CRM" value={counts?.leads ?? '—'} caption="spectateurs déjà dans votre CRM" onClick={() => setFilter('leads')} />
           </div>
         </div>
       </div>
 
       <TableCard
-        title="Ils ont regardé cette story"
+        title={filter === 'new' ? 'Nouveaux : cette story est leur premier geste' : filter === 'known' ? 'Ils connaissaient déjà le compte' : 'Ils ont regardé cette story'}
         subtitle={detail ? `${formatNumber(rows.length)} sur ${formatNumber(detail.viewers.length)} spectateurs identifiés` : undefined}
         toolbar={
           <>
             <SearchInput value={search} onChange={setSearch} placeholder="Rechercher un contact" />
             <Chips
               items={[
-                { key: 'leads' as Filter, label: 'Déjà leads', count: counts?.leads },
-                { key: 'reactions' as Filter, label: 'Réactions', count: counts?.reactions },
-                { key: 'not_leads' as Filter, label: 'Pas encore leads', count: detail ? detail.viewers.length - detail.counts.leads : undefined },
                 { key: 'all' as Filter, label: 'Tous', count: counts?.viewers },
+                { key: 'new' as Filter, label: 'Nouveaux', count: counts?.newPeople },
+                { key: 'known' as Filter, label: 'Connaissaient déjà', count: detail && counts?.newPeople !== undefined ? detail.viewers.length - counts.newPeople : undefined },
+                { key: 'reactions' as Filter, label: 'Réactions', count: counts?.reactions },
+                { key: 'leads' as Filter, label: 'Leads CRM', count: counts?.leads },
               ]}
               active={filter}
               onChange={setFilter}
@@ -217,7 +228,7 @@ export function StoryDetailPage() {
               <tr>
                 <th>Contact</th>
                 <th>Geste</th>
-                <th className="ds-num-cell">Lead créé le</th>
+                <th className="ds-num-cell">Premier geste</th>
                 <th className="ds-num-cell">Score</th>
                 <th>Niveau de confiance</th>
                 <th className="ds-num-cell">Dernière activité</th>
@@ -228,9 +239,10 @@ export function StoryDetailPage() {
             <tbody>
               {paged.pageRows.map((v) => {
                 const name = v.lead?.name || v.fullName || v.username
-                const level = v.lead ? confidenceOf(v.lead) : null
+                const level = v.person?.confidence ?? (v.lead ? confidenceOf(v.lead) : null)
+                const score = v.person?.score ?? v.lead?.score ?? null
                 return (
-                  <tr key={v.userId} className={v.lead ? 'ds-row-clickable' : undefined} onClick={() => v.lead && navigate(`/leads/${v.lead.id}`)}>
+                  <tr key={v.userId} className="ds-row-clickable" onClick={() => navigate(v.lead ? `/leads/${v.lead.id}` : `/instagram/people/${encodeURIComponent(v.username)}`)}>
                     <td>
                       <ContactCell name={`${name}${v.isVerified ? ' ✓' : ''}`} handle={v.username} avatar={<Avatar name={name} size={28} src={v.profilePicUrl} />} />
                     </td>
@@ -243,28 +255,29 @@ export function StoryDetailPage() {
                       </span>
                     </td>
                     <td className="ds-num-cell">
-                      <span className="ds-num">{v.lead ? shortDate(v.lead.createdAt) : '—'}</span>
+                      <span className="ds-num">{shortDate(v.person?.firstAt ?? v.seenAt)}</span>
+                      {v.isNew && <span className="ig-new-badge ig-new-badge--sm">Nouveau</span>}
                     </td>
                     <td className="ds-num-cell">
-                      <span className="ds-num">{v.lead ? v.lead.score : '—'}</span>
+                      <span className="ds-num">{score ?? '—'}</span>
                     </td>
                     <td>
                       {level ? (
                         <span className="story-confidence" title={CONFIDENCE_LABEL[level]}>
                           <span className="story-confidence-track">
-                            <span style={{ width: `${v.lead?.score ?? 0}%`, background: CONFIDENCE_COLOR[level] }} />
+                            <span style={{ width: `${score ?? 0}%`, background: CONFIDENCE_COLOR[level] }} />
                           </span>
                           <span className="ds-muted">{CONFIDENCE_LABEL[level]}</span>
                         </span>
                       ) : (
-                        <span className="ds-muted">Pas encore lead</span>
+                        <span className="ds-muted">—</span>
                       )}
                     </td>
                     <td className="ds-num-cell">
-                      <span className="ds-num">{shortDate(v.lead?.lastInteractionAt ?? v.seenAt)}</span>
+                      <span className="ds-num">{shortDate(v.person?.lastAt ?? v.lead?.lastInteractionAt ?? v.seenAt)}</span>
                     </td>
                     <td className="ds-num-cell">
-                      <span className="ds-num">{v.lead ? formatNumber(v.lead.totalInteractions) : '—'}</span>
+                      <span className="ds-num">{formatNumber(v.person?.interactions ?? v.lead?.totalInteractions ?? 1)}</span>
                     </td>
                     <td className="ds-num-cell">
                       {!v.lead && (
