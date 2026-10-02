@@ -913,3 +913,127 @@
   font-weight: 400;
   color: var(--color-text-faint);
 }
+
+/* Audience › Quand publier (Insyder layout). */
+.bt-group {
+  margin-bottom: var(--space-4);
+}
+
+.bt-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--space-2);
+}
+
+.bt-group-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.bt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.bt-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bt-card--muted {
+  opacity: 0.7;
+}
+
+.bt-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.bt-best-label {
+  font-size: 18px;
+  font-weight: 700;
+  color: #c837ab;
+}
+
+.bt-value {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.bt-value b {
+  color: var(--color-text-primary);
+}
+
+.bt-empty {
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.bt-bars-wrap {
+  margin-top: 6px;
+}
+
+.bt-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 48px;
+}
+
+.bt-bars span {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bt-bars i {
+  display: block;
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  background: #d9d9de;
+}
+
+.bt-bars i.bt-best {
+  background: #c837ab;
+}
+
+.bt-bars i.bt-off {
+  background: #eeeef1;
+}
+
+.bt-ticks {
+  position: relative;
+  height: 14px;
+  font-size: 10px;
+  color: var(--color-text-faint);
+}
+
+.bt-ticks span {
+  position: absolute;
+  top: 2px;
+}
+
+.bt-day-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--color-text-faint);
+  margin-top: 2px;
+}
+
+.bt-foot {
+  font-size: 11px;
+  color: var(--color-text-faint);
+  margin-top: 4px;
+}

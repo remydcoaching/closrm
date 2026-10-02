@@ -7,9 +7,8 @@
 //   scanned contents (publish-timing.ts);
 // - Vos réels: best reels by engagement rate (GET /api/instagram/content/chart);
 // - Vos stories: gallery from the coach's own Instagram archive (StoriesGallery).
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, ApiError } from '../../lib/api-client'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
 import { TableCard, ContactCell } from '../../design-system/TableCard'
 import { Chips } from '../../design-system/Tabs'
@@ -20,7 +19,7 @@ import { relativeTime, shortDate, statusEntry } from '../leads/status'
 import type { LeadStatus } from '../leads/types'
 import { ContentThumb } from './ContentThumb'
 import { formatRate } from './ContentPage'
-import { publishTiming, bestSlots, SLOTS, WEEKDAYS, MIN_SAMPLES } from './publish-timing'
+import { BestTimeSection } from './BestTimeSection'
 import { StoryViewersSection } from './StoryViewersSection'
 import { LikersSection } from './LikersSection'
 import { StoriesGallery } from './StoriesPage'
@@ -69,6 +68,8 @@ const SEGMENT_LABEL: Record<Segment, string> = {
   lurkers: 'Lurkers (jamais contactés)',
 }
 
+const NO_CONTENTS: ContentChartPoint[] = []
+
 export function AudiencePage() {
   const navigate = useNavigate()
   const [period, setPeriod] = useState<Period>('30')
@@ -82,15 +83,12 @@ export function AudiencePage() {
   const contentsQuery = useCachedQuery<{ data: ContentChartPoint[] }>('/api/instagram/content/chart?days=365', { screen: 'AudienceContents', staleMs: 5 * 60_000 })
   const counts = countsQuery.data?.data ?? null
   const segmentLeads = segmentQuery.data?.data ?? (segmentQuery.error ? [] : null)
-  const contents = contentsQuery.data?.data ?? (contentsQuery.error ? [] : null)
+  const contents = contentsQuery.data?.data ?? (contentsQuery.error ? NO_CONTENTS : null)
   const error = countsQuery.error
   const load = countsQuery.refresh
 
   const paged = usePaged(segmentLeads ?? [])
 
-  const timing = useMemo(() => publishTiming(contents ?? []), [contents])
-  const best = useMemo(() => bestSlots(timing), [timing])
-  const maxRate = Math.max(0, ...timing.map((c) => c.avgRate ?? 0))
   const topReels = useMemo(
     () =>
       (contents ?? [])
@@ -132,54 +130,7 @@ export function AudiencePage() {
 
       <StoryViewersSection />
 
-      <TableCard title="Quand publier" subtitle="Taux d'engagement moyen de vos contenus selon le jour et l'heure de publication (12 derniers mois)">
-        {contents === null ? (
-          <LoadingState label="Chargement…" />
-        ) : contents.length === 0 ? (
-          <EmptyState title="Pas encore de contenu analysé" description="Lancez une analyse de votre compte pour voir vos meilleurs créneaux." />
-        ) : (
-          <>
-            {best.length > 0 && (
-              <p className="ig-timing-best">
-                Meilleurs créneaux :{' '}
-                {best.map((c, i) => (
-                  <strong key={i}>
-                    {i > 0 && ' · '}
-                    {WEEKDAYS[c.weekday]} {SLOTS[c.slot].label} ({formatRate(c.avgRate)})
-                  </strong>
-                ))}
-              </p>
-            )}
-            <div className="ig-timing-grid">
-              <span />
-              {WEEKDAYS.map((d) => (
-                <span key={d} className="ig-timing-head">
-                  {d}
-                </span>
-              ))}
-              {SLOTS.map((slot, si) => (
-                <div key={slot.key} className="ig-timing-row">
-                  <span className="ig-timing-head">{slot.label}</span>
-                  {WEEKDAYS.map((_, wd) => {
-                    const cell = timing.find((c) => c.weekday === wd && c.slot === si)!
-                    const intensity = cell.avgRate && maxRate > 0 ? cell.avgRate / maxRate : 0
-                    return (
-                      <span
-                        key={wd}
-                        className={`ig-timing-cell ${cell.count > 0 && cell.count < MIN_SAMPLES ? 'ig-timing-cell--weak' : ''}`}
-                        style={{ background: cell.avgRate === null ? undefined : `rgba(200, 55, 171, ${0.08 + intensity * 0.8})` }}
-                        title={cell.count === 0 ? 'Aucun contenu' : `${cell.count} contenu${cell.count > 1 ? 's' : ''} · ${formatRate(cell.avgRate)}`}
-                      >
-                        {cell.avgRate === null ? '' : formatRate(cell.avgRate)}
-                      </span>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </TableCard>
+      <BestTimeSection contents={contents} periodDays={Number(period)} />
 
       <TableCard>
         <StoriesGallery />
