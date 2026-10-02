@@ -4,6 +4,8 @@
 // déjà le compte").
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { scoreLeads } from '@/lib/leads/engagement-score'
+import type { ConfidenceLevel } from '@/lib/leads/confidence'
+import { loadPeople } from './people'
 
 export interface StoryDetailViewer {
   userId: string
@@ -13,6 +15,10 @@ export interface StoryDetailViewer {
   isVerified: boolean | null
   hasLiked: boolean | null
   seenAt: string
+  /** Score and level from the Leads Instagram index — every viewer, lead or not. */
+  person: { score: number; confidence: ConfidenceLevel; interactions: number; firstAt: string | null; lastAt: string | null } | null
+  /** This story is the first gesture ClosRM saw from them. */
+  isNew: boolean
   lead: {
     id: string
     name: string
@@ -56,7 +62,9 @@ export async function loadStoryDetail(supabase: SupabaseClient, workspaceId: str
     const { data } = await supabase.from('leads').select('id, first_name, last_name, status, created_at').eq('workspace_id', workspaceId).in('id', leadIds.slice(i, i + 200))
     for (const l of data ?? []) leads.set(l.id, l)
   }
-  const scores = await scoreLeads(supabase, workspaceId, leadIds)
+  const [scores, people] = await Promise.all([scoreLeads(supabase, workspaceId, leadIds), loadPeople(supabase, workspaceId)])
+  const personOf = new Map(people.rows.map((r) => [r.username, r]))
+  const takenAt = (story?.taken_at as string | undefined) ?? null
 
   const viewers: StoryDetailViewer[] = rows.map((r) => {
     const l = r.matched_lead_id ? leads.get(r.matched_lead_id) : undefined
@@ -69,6 +77,14 @@ export async function loadStoryDetail(supabase: SupabaseClient, workspaceId: str
       isVerified: r.is_verified,
       hasLiked: r.has_liked ?? null,
       seenAt: r.first_seen_at,
+      person: (() => {
+        const pr = personOf.get(r.instagram_username.toLowerCase())
+        return pr ? { score: pr.score, confidence: pr.confidence, interactions: pr.interactions, firstAt: pr.firstAt, lastAt: pr.lastAt } : null
+      })(),
+      isNew: (() => {
+        const first = personOf.get(r.instagram_username.toLowerCase())?.firstAt
+        return !first || !takenAt || first >= takenAt
+      })(),
       lead:
         l && r.matched_lead_id
           ? {
@@ -85,7 +101,7 @@ export async function loadStoryDetail(supabase: SupabaseClient, workspaceId: str
     }
   })
   // Leads first (best score first), then everyone else.
-  viewers.sort((a, b) => (b.lead?.score ?? -1) - (a.lead?.score ?? -1) || a.username.localeCompare(b.username))
+  viewers.sort((a, b) => (b.person?.score ?? b.lead?.score ?? -1) - (a.person?.score ?? a.lead?.score ?? -1) || a.username.localeCompare(b.username))
 
   return {
     story,
@@ -94,6 +110,8 @@ export async function loadStoryDetail(supabase: SupabaseClient, workspaceId: str
       viewers: viewers.length,
       reactions: viewers.filter((v) => v.hasLiked).length,
       leads: viewers.filter((v) => v.lead).length,
+      newPeople: viewers.filter((v) => v.isNew).length,
+      newVeryHigh: viewers.filter((v) => v.isNew && v.person?.confidence === 'tres_eleve').length,
     },
   }
 }

@@ -90,3 +90,14 @@ Hiker relit périodiquement likers + commentaires des publications récentes ; l
 - [ ] Pierre : appliquer 120, 122, 123 puis « Synchroniser » ; lancer l'historique des j'aime
 - [ ] Comparatif Insyder → liste de ce qui manque
 - [ ] Liste de tournage App Review Meta
+
+## Nuit du 2026-10-01 — Finir l'app (parité Insyder) + audits
+- [x] Panneau « Qui a réagi » sur un réel + fiche profil pour toute personne (#580)
+- [ ] Leads Instagram (Insyder « Leads ») : toutes les personnes qui ont interagi, KPIs (actifs, très élevé jamais contactés, lurkers acheteurs, passés très élevé), onglets Nouveaux / Confiance / Certifiés / Stories, recherche, export CSV
+- [ ] Fiche profil : score /100, niveau de confiance, engagement, potentiel d'achat, parcours par jour, « Pourquoi ce score »
+- [ ] Audience : « Quand publier » par heure (réels) et par jour (stories), médianes
+- [ ] Story : nouveaux vs connaissaient déjà, scores
+- [ ] Vitesse : endpoints lourds, découpage du bundle, préchargement
+- [ ] Audit sécurité (API, RLS, Electron, secrets) — rapport + correctifs
+- [ ] Audit vitesse — mesures avant/après
+- [ ] Audit workflow — pages inutiles / doublons, navigation

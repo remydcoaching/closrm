@@ -4,6 +4,8 @@
 // stories watched or liked (desktop collection) — oldest first.
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { mediaIdToShortcode, shortcodeToMediaId } from './shortcode'
+import { loadPeople } from './people'
+import type { ConfidenceLevel } from '@/lib/leads/confidence'
 
 export type GestureKind = 'like' | 'comment' | 'story_view' | 'story_like'
 
@@ -31,6 +33,55 @@ export interface InstagramPerson {
   counts: { likes: number; comments: number; storyViews: number; storyLikes: number }
   firstGesture: PersonGesture | null
   gestures: PersonGesture[]
+  /** Same score / confidence as the Leads Instagram list (CRM engagement rules). */
+  score: number
+  confidence: ConfidenceLevel
+  /** Share of the publications and stories published since the first gesture that this person touched. */
+  engagementRate: number | null
+  lastAt: string | null
+  potential: 'tres_fort' | 'fort' | 'moyen' | 'faible'
+  /** « Pourquoi ce score » — each factor 0..1, from the gestures (none invented). */
+  factors: { key: string; label: string; value: number }[]
+  /** Comment quality: strong = a question or a real sentence, medium = a few words, weak = emoji only / empty. */
+  commentLevels: { fort: number; moyen: number; faible: number }
+}
+
+/** Pure: quality of a comment, like Insyder's « niveau d'engagement de ses commentaires ». */
+export function commentLevel(text: string | null): 'fort' | 'moyen' | 'faible' {
+  const t = (text ?? '').trim()
+  const words = t.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, ' ').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w))
+  if (words.length === 0) return 'faible'
+  if (t.includes('?') || words.length >= 6) return 'fort'
+  return 'moyen'
+}
+
+/** Pure: the reasons behind the score (ratios of what the person did vs what they could have done). */
+export function scoreFactors(
+  gestures: PersonGesture[],
+  ctx: { follows: boolean | null; publicationsSinceFirst: number; storiesSinceFirst: number; now?: Date },
+): { key: string; label: string; value: number }[] {
+  const now = ctx.now ?? new Date()
+  const days = (n: number) => new Date(now.getTime() - n * 86_400_000).toISOString()
+  const recent = days(30)
+  const week = days(7)
+  const kinds = (k: GestureKind[], since?: string) => gestures.filter((g) => k.includes(g.kind) && (!since || (g.at ?? '') >= since))
+  const contents = new Set(gestures.filter((g) => g.contentId).map((g) => g.contentId))
+  const stories = new Set(gestures.filter((g) => g.storyPk).map((g) => g.storyPk))
+  const months = new Set(gestures.filter((g) => g.at).map((g) => (g.at as string).slice(0, 7)))
+  const dated = gestures.filter((g) => g.at).map((g) => g.at as string).sort()
+  const spanMonths = dated.length ? Math.max(1, Math.round((now.getTime() - new Date(dated[0]).getTime()) / (30 * 86_400_000))) : 1
+  const clamp = (x: number) => Math.max(0, Math.min(1, x))
+  return [
+    { key: 'comments_recent', label: 'A commenté vos publications récentes', value: clamp(kinds(['comment'], recent).length / 3) },
+    { key: 'story_likes', label: 'A réagi à vos stories', value: clamp(kinds(['story_like']).length / 3) },
+    { key: 'likes_recent', label: 'A liké vos publications récentes', value: clamp(kinds(['like'], recent).length / 5) },
+    { key: 'stories_seen', label: 'A regardé vos stories', value: ctx.storiesSinceFirst > 0 ? clamp(stories.size / ctx.storiesSinceFirst) : 0 },
+    { key: 'monthly', label: 'Revient mois après mois', value: clamp(months.size / spanMonths) },
+    { key: 'comments_week', label: 'A commenté vos publications cette semaine', value: clamp(kinds(['comment'], week).length / 2) },
+    { key: 'likes_week', label: 'A liké vos publications cette semaine', value: clamp(kinds(['like'], week).length / 3) },
+    { key: 'follows', label: 'Est abonné à votre compte', value: ctx.follows === true ? 1 : 0 },
+    { key: 'share', label: "Part de vos publications touchée depuis qu'on le connaît", value: ctx.publicationsSinceFirst > 0 ? clamp(contents.size / ctx.publicationsSinceFirst) : 0 },
+  ]
 }
 
 /** Pure: newest first for display, with counts and the first gesture (oldest dated one). */
@@ -148,14 +199,41 @@ export async function loadInstagramPerson(supabase: SupabaseClient, workspaceId:
   const { data: leads } = await leadQuery.limit(1)
   const l = leads?.[0]
 
+  const summary = summarizeGestures(gestures)
+  const follows = scan ? !!scan.follows_target : null
+  // Score and level from the Leads Instagram index (same rules, cached).
+  const people = await loadPeople(supabase, workspaceId)
+  const row = people.rows.find((r) => r.username === username)
+  const firstAt = summary.firstGesture?.at ?? null
+  const [pubs, storiesSince] = firstAt
+    ? await Promise.all([
+        supabase.from('instagram_monitored_contents').select('content_id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).gte('published_at', firstAt),
+        supabase.from('story_view_stories').select('story_pk', { count: 'exact', head: true }).eq('workspace_id', workspaceId).gte('taken_at', firstAt).gt('viewers_collected', 0),
+      ])
+    : [{ count: 0 }, { count: 0 }]
+  const publicationsSinceFirst = pubs.count ?? 0
+  const storiesSinceFirst = storiesSince.count ?? 0
+  const touched = new Set(gestures.map((g) => g.contentId ?? g.storyPk).filter(Boolean)).size
+  const available = publicationsSinceFirst + storiesSinceFirst
+  const confidence = row?.confidence ?? 'insuffisant'
+  const levels = { fort: 0, moyen: 0, faible: 0 }
+  for (const g of gestures) if (g.kind === 'comment') levels[commentLevel(g.text)] += 1
+
   return {
     username,
     fullName,
     instagramUserId: id,
     profilePicUrl: pic ?? l?.instagram_profile_pic_url ?? null,
     isVerified: v.find((r) => r.is_verified !== null)?.is_verified ?? scan?.is_verified ?? null,
-    follows: scan ? !!scan.follows_target : null,
+    follows,
     lead: l ? { id: l.id, firstName: l.first_name, lastName: l.last_name, status: l.status } : null,
-    ...summarizeGestures(gestures),
+    ...summary,
+    score: row?.score ?? 0,
+    confidence,
+    engagementRate: available > 0 ? Math.min(1, touched / available) : null,
+    lastAt: summary.gestures.find((g) => g.at)?.at ?? null,
+    potential: confidence === 'tres_eleve' ? 'tres_fort' : confidence === 'eleve' ? 'fort' : confidence === 'moyen' ? 'moyen' : 'faible',
+    factors: scoreFactors(gestures, { follows, publicationsSinceFirst, storiesSinceFirst }),
+    commentLevels: levels,
   }
 }

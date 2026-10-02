@@ -719,3 +719,327 @@
   display: flex;
   gap: 8px;
 }
+
+/* Leads Instagram (Insyder « Leads »). */
+.ig-lead-contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ig-new-badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: #c837ab;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.ig-gestures {
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--color-text-faint);
+}
+
+.ig-gestures span {
+  margin-right: 10px;
+}
+
+.ig-gestures span.on {
+  color: var(--color-text-primary);
+}
+
+.ig-confidence {
+  display: inline-block;
+  width: 96px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-bg-muted);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.ig-confidence i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.ig-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+/* Person page — Insyder layout. */
+.ig-person-ring {
+  padding: 3px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c837ab, #ff9a3c);
+}
+
+.ig-person-ring > * {
+  border: 3px solid var(--color-surface);
+  border-radius: 50%;
+}
+
+.ig-person-handle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #c837ab;
+}
+
+.ig-confidence--wide {
+  width: 100%;
+  max-width: 220px;
+  margin-top: 6px;
+}
+
+.ig-journey {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+}
+
+.ig-journey-day {
+  position: relative;
+  flex: 0 0 132px;
+  padding: 0 10px 22px;
+  border-bottom: 2px solid #e8b7de;
+}
+
+.ig-journey-date {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ig-journey-thumbs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 6px 0 4px;
+}
+
+.ig-journey-thumbs button {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.ig-journey-more {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-left: 2px;
+}
+
+.ig-journey-summary {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--color-text-secondary);
+}
+
+.ig-journey-dot {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c837ab;
+  transform: translateX(-50%);
+}
+
+.ig-person-columns {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.ig-comment-level {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-3);
+  font-size: 12.5px;
+}
+
+.ig-comment-level-head {
+  display: flex;
+  justify-content: space-between;
+}
+
+.ig-comment-level-head i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.ig-comment-quote {
+  margin: 6px 0;
+  font-size: 12.5px;
+}
+
+.ig-why-score {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: var(--space-2);
+}
+
+.ig-why-potential {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.ig-why-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ig-why-row--off {
+  font-weight: 400;
+  color: var(--color-text-faint);
+}
+
+/* Audience › Quand publier (Insyder layout). */
+.bt-group {
+  margin-bottom: var(--space-4);
+}
+
+.bt-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--space-2);
+}
+
+.bt-group-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.bt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.bt-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bt-card--muted {
+  opacity: 0.7;
+}
+
+.bt-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.bt-best-label {
+  font-size: 18px;
+  font-weight: 700;
+  color: #c837ab;
+}
+
+.bt-value {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.bt-value b {
+  color: var(--color-text-primary);
+}
+
+.bt-empty {
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.bt-bars-wrap {
+  margin-top: 6px;
+}
+
+.bt-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 48px;
+}
+
+.bt-bars span {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bt-bars i {
+  display: block;
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  background: #d9d9de;
+}
+
+.bt-bars i.bt-best {
+  background: #c837ab;
+}
+
+.bt-bars i.bt-off {
+  background: #eeeef1;
+}
+
+.bt-ticks {
+  position: relative;
+  height: 14px;
+  font-size: 10px;
+  color: var(--color-text-faint);
+}
+
+.bt-ticks span {
+  position: absolute;
+  top: 2px;
+}
+
+.bt-day-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--color-text-faint);
+  margin-top: 2px;
+}
+
+.bt-foot {
+  font-size: 11px;
+  color: var(--color-text-faint);
+  margin-top: 4px;
+}
+
+.ig-new-badge--sm {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 9.5px;
+}

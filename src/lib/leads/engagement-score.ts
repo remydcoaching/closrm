@@ -109,7 +109,7 @@ export interface EngagementScoreResult {
   signals: EngagementSignal[]
 }
 
-async function loadScoringRules(supabase: SupabaseClient, workspaceId: string): Promise<Record<string, number>> {
+export async function loadScoringRules(supabase: SupabaseClient, workspaceId: string): Promise<Record<string, number>> {
   const { data: rules } = await supabase
     .from('engagement_scoring_rules')
     .select('interaction_type, points')
