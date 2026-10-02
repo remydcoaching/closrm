@@ -98,6 +98,9 @@ export function buildPeople(
 }
 
 export interface PeopleKpis {
+  /** Active on the period and known not to follow the account (Ciblage scan); unknown ones counted apart. */
+  notFollowing: number
+  followUnknown: number
   active: number
   activePrevious: number
   veryHighNeverContacted: number
@@ -114,8 +117,11 @@ export function peopleKpis(rows: PersonRow[], gestures: PersonGestureRow[], peri
   const startRows: BatchInteractionRow[] = gestures.filter((g) => g.at && g.at < since).map((g) => ({ lead_id: g.username, interaction_type: WEIGHT_KIND[g.kind], source_post_id: g.sourceId, first_seen_at: g.at, last_seen_at: g.at }))
   const startScores = aggregateScores(startRows, scoring)
   const startDate = new Date(since)
+  const activeRows = rows.filter((r) => (r.lastAt ?? '') >= since)
   return {
-    active: activeIn(since, '￿'),
+    notFollowing: activeRows.filter((r) => r.follows === false).length,
+    followUnknown: activeRows.filter((r) => r.follows === null).length,
+    active: activeIn(since, '\uffff'),
     activePrevious: activeIn(before, since),
     veryHighNeverContacted: rows.filter((r) => r.confidence === 'tres_eleve' && !r.contacted && (r.lastAt ?? '') >= since).length,
     buyerLurkers: rows.filter((r) => isBuyerLurker(r, recentStoriesCount)).length,

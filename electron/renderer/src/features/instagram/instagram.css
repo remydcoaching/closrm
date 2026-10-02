@@ -1043,3 +1043,12 @@
   padding: 1px 6px;
   font-size: 9.5px;
 }
+
+.ig-filter-pill {
+  padding: 3px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
