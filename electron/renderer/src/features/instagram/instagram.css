@@ -773,3 +773,143 @@
   font-size: 12.5px;
   color: var(--color-text-secondary);
 }
+
+/* Person page — Insyder layout. */
+.ig-person-ring {
+  padding: 3px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c837ab, #ff9a3c);
+}
+
+.ig-person-ring > * {
+  border: 3px solid var(--color-surface);
+  border-radius: 50%;
+}
+
+.ig-person-handle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #c837ab;
+}
+
+.ig-confidence--wide {
+  width: 100%;
+  max-width: 220px;
+  margin-top: 6px;
+}
+
+.ig-journey {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+}
+
+.ig-journey-day {
+  position: relative;
+  flex: 0 0 132px;
+  padding: 0 10px 22px;
+  border-bottom: 2px solid #e8b7de;
+}
+
+.ig-journey-date {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ig-journey-thumbs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 6px 0 4px;
+}
+
+.ig-journey-thumbs button {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.ig-journey-more {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-left: 2px;
+}
+
+.ig-journey-summary {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--color-text-secondary);
+}
+
+.ig-journey-dot {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c837ab;
+  transform: translateX(-50%);
+}
+
+.ig-person-columns {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.ig-comment-level {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-3);
+  font-size: 12.5px;
+}
+
+.ig-comment-level-head {
+  display: flex;
+  justify-content: space-between;
+}
+
+.ig-comment-level-head i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.ig-comment-quote {
+  margin: 6px 0;
+  font-size: 12.5px;
+}
+
+.ig-why-score {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: var(--space-2);
+}
+
+.ig-why-potential {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.ig-why-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ig-why-row--off {
+  font-weight: 400;
+  color: var(--color-text-faint);
+}

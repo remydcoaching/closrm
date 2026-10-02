@@ -53,3 +53,28 @@ describe('Instagram person journey', () => {
     expect(s.counts).toEqual({ likes: 1, comments: 1, storyViews: 2, storyLikes: 1 })
   })
 })
+
+describe('person: comment quality and score reasons', () => {
+  it('comment level: question / sentence = fort, a few words = moyen, emoji only or empty = faible', async () => {
+    const { commentLevel } = await import('../person')
+    expect(commentLevel('Tu fais comment pour la séance du matin ?')).toBe('fort')
+    expect(commentLevel('Je la trouve hyper bien moi, vraiment top')).toBe('fort')
+    expect(commentLevel('Top 🔥')).toBe('moyen')
+    expect(commentLevel('🔥🔥🙌')).toBe('faible')
+    expect(commentLevel('')).toBe('faible')
+  })
+  it('factors are ratios of what was done vs what was possible, never above 1', async () => {
+    const { scoreFactors } = await import('../person')
+    const now = new Date('2026-10-01T12:00:00Z')
+    const g = (kind: 'like' | 'comment' | 'story_view' | 'story_like', at: string, contentId: string | null, storyPk: string | null = null) => ({ kind, at, contentId, storyPk, title: null, thumbnailUrl: null, url: null, text: null })
+    const f = scoreFactors(
+      [g('like', '2026-09-28T00:00:00Z', 'r1'), g('comment', '2026-09-29T00:00:00Z', 'r2'), g('story_view', '2026-09-30T00:00:00Z', null, 's1'), g('story_like', '2026-09-30T00:00:00Z', null, 's2')],
+      { follows: true, publicationsSinceFirst: 4, storiesSinceFirst: 2, now },
+    )
+    const v = Object.fromEntries(f.map((x) => [x.key, x.value]))
+    expect(v.stories_seen).toBe(1)
+    expect(v.share).toBe(0.5)
+    expect(v.follows).toBe(1)
+    expect(Math.max(...f.map((x) => x.value))).toBeLessThanOrEqual(1)
+  })
+})
