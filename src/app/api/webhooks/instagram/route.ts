@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createHmac } from 'crypto'
+import { verifyMetaSignature } from '@/lib/meta/webhook-signature'
 import { createServiceClient } from '@/lib/supabase/service'
 
 const VERIFY_TOKEN = process.env.IG_WEBHOOK_VERIFY_TOKEN
 if (!VERIFY_TOKEN) console.warn('[Webhook] IG_WEBHOOK_VERIFY_TOKEN not set')
-
-function verifySignature(rawBody: string, signature: string | null): boolean {
-  // Skip verification if META_APP_SECRET is not configured
-  if (!process.env.META_APP_SECRET) return true
-  if (!signature) return false
-  const expected = 'sha256=' + createHmac('sha256', process.env.META_APP_SECRET).update(rawBody).digest('hex')
-  return signature === expected
-}
 
 // ─── GET : webhook verification (Meta sends this to validate the endpoint) ───
 
@@ -60,7 +52,7 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text()
     const signature = request.headers.get('x-hub-signature-256')
 
-    if (!verifySignature(rawBody, signature)) {
+    if (!verifyMetaSignature(rawBody, signature)) {
       console.warn('[Webhook] Invalid signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 403 })
     }

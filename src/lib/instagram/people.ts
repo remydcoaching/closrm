@@ -166,18 +166,19 @@ export interface LoadedPeople {
 }
 
 async function loadPeopleUncached(supabase: SupabaseClient, workspaceId: string): Promise<LoadedPeople> {
-  type Viewer = { story_pk: string; instagram_username: string; instagram_user_id: string; full_name: string | null; profile_pic_url: string | null; is_verified: boolean | null; has_liked: boolean | null; first_seen_at: string; matched_lead_id: string | null }
-  type Obs = { content_id: string; interaction_type: string; instagram_username: string; instagram_user_id: string; full_name: string | null; profile_pic_url: string | null; commented_at: string | null; matched_lead_id: string | null }
+  // Light columns only: names and pictures are fetched for the displayed rows (attachIdentities).
+  type Viewer = { story_pk: string; instagram_username: string; instagram_user_id: string; is_verified: boolean | null; has_liked: boolean | null; first_seen_at: string; matched_lead_id: string | null }
+  type Obs = { content_id: string; interaction_type: string; instagram_username: string; instagram_user_id: string; commented_at: string | null; matched_lead_id: string | null }
   type Comment = { ig_media_id: string; username: string | null; timestamp: string | null }
   const [viewers, observations, comments, stories, contents, reels, profiles, convs, leads, scoring] = await Promise.all([
-    all<Viewer>((f, t) => supabase.from('story_viewers').select('story_pk, instagram_username, instagram_user_id, full_name, profile_pic_url, is_verified, has_liked, first_seen_at, matched_lead_id', { count: 'exact' }).eq('workspace_id', workspaceId).range(f, t)),
-    all<Obs>((f, t) => supabase.from('instagram_engagement_observations').select('content_id, interaction_type, instagram_username, instagram_user_id, full_name, profile_pic_url, commented_at, matched_lead_id', { count: 'exact' }).eq('workspace_id', workspaceId).range(f, t)),
+    all<Viewer>((f, t) => supabase.from('story_viewers').select('story_pk, instagram_username, instagram_user_id, is_verified, has_liked, first_seen_at, matched_lead_id', { count: 'exact' }).eq('workspace_id', workspaceId).range(f, t)),
+    all<Obs>((f, t) => supabase.from('instagram_engagement_observations').select('content_id, interaction_type, instagram_username, instagram_user_id, commented_at, matched_lead_id', { count: 'exact' }).eq('workspace_id', workspaceId).range(f, t)),
     all<Comment>((f, t) => supabase.from('ig_comments').select('ig_media_id, username, timestamp').eq('workspace_id', workspaceId).range(f, t)),
     all<{ story_pk: string; taken_at: string; viewers_collected: number | null }>((f, t) => supabase.from('story_view_stories').select('story_pk, taken_at, viewers_collected').eq('workspace_id', workspaceId).order('taken_at', { ascending: false }).range(f, t)),
     all<{ content_id: string; content_type: string; published_at: string | null }>((f, t) => supabase.from('instagram_monitored_contents').select('content_id, content_type, published_at').eq('workspace_id', workspaceId).range(f, t)),
     all<{ ig_media_id: string; shortcode: string | null; published_at: string | null }>((f, t) => supabase.from('ig_reels').select('ig_media_id, shortcode, published_at').eq('workspace_id', workspaceId).range(f, t)),
-    all<{ instagram_username: string; is_verified: boolean | null; follows_target: boolean | null; full_name: string | null; profile_pic_url: string | null; created_at: string }>((f, t) =>
-      supabase.from('discovery_profiles').select('instagram_username, is_verified, follows_target, full_name, profile_pic_url, created_at').eq('workspace_id', workspaceId).order('created_at', { ascending: true }).range(f, t),
+    all<{ instagram_username: string; is_verified: boolean | null; follows_target: boolean | null; created_at: string }>((f, t) =>
+      supabase.from('discovery_profiles').select('instagram_username, is_verified, follows_target, created_at').eq('workspace_id', workspaceId).order('created_at', { ascending: true }).range(f, t),
     ),
     all<{ participant_username: string | null }>((f, t) => supabase.from('ig_conversations').select('participant_username').eq('workspace_id', workspaceId).range(f, t)),
     all<{ id: string; status: string; instagram_handle: string | null; instagram_user_id: string | null; call_attempts: number | null }>((f, t) =>
@@ -209,13 +210,13 @@ async function loadPeopleUncached(supabase: SupabaseClient, workspaceId: string)
   const matchedLead = new Map<string, string>()
   for (const v of viewers) {
     const u = v.instagram_username.toLowerCase()
-    remember(u, { fullName: v.full_name, profilePicUrl: v.profile_pic_url, instagramUserId: v.instagram_user_id, isVerified: v.is_verified })
+    remember(u, { instagramUserId: v.instagram_user_id, isVerified: v.is_verified })
     gestures.push({ username: u, kind: v.has_liked ? 'story_like' : 'story_view', sourceId: v.story_pk, source: 'story', at: storyAt.get(v.story_pk) ?? v.first_seen_at })
     if (v.matched_lead_id) matchedLead.set(u, v.matched_lead_id)
   }
   for (const o of observations) {
     const u = o.instagram_username.toLowerCase()
-    remember(u, { fullName: o.full_name, profilePicUrl: o.profile_pic_url, instagramUserId: o.instagram_user_id })
+    remember(u, { instagramUserId: o.instagram_user_id })
     const c = contentOf.get(o.content_id)
     const isComment = o.interaction_type === 'comment'
     gestures.push({ username: u, kind: isComment ? 'comment' : 'like', sourceId: o.content_id, source: c?.content_type === 'media' ? 'post' : 'reel', at: (isComment ? o.commented_at : null) ?? c?.published_at ?? null })
@@ -231,7 +232,7 @@ async function loadPeopleUncached(supabase: SupabaseClient, workspaceId: string)
   for (const p of profiles) {
     const u = p.instagram_username.toLowerCase()
     if (!identities.has(u)) continue
-    remember(u, { isVerified: p.is_verified, follows: p.follows_target, fullName: p.full_name, profilePicUrl: p.profile_pic_url })
+    remember(u, { isVerified: p.is_verified, follows: p.follows_target })
   }
 
   const leadById = new Map(leads.map((l) => [l.id, l]))
@@ -249,6 +250,30 @@ async function loadPeopleUncached(supabase: SupabaseClient, workspaceId: string)
 
   const rows = buildPeople(gestures, identities, scoring, { recentStoryIds, contacted, leads: leadOf })
   return { rows, gestures, scoring, recentStoriesCount: recentStoryIds.size }
+}
+
+/** Names and pictures of the rows about to be shown (most recent source first). */
+export async function attachIdentities(supabase: SupabaseClient, workspaceId: string, rows: PersonRow[]): Promise<PersonRow[]> {
+  const names = [...new Set(rows.map((r) => r.username))]
+  if (names.length === 0) return rows
+  const found = new Map<string, { fullName: string | null; pic: string | null }>()
+  const take = (u: string, fullName: string | null, pic: string | null) => {
+    const prev = found.get(u)
+    found.set(u, { fullName: prev?.fullName ?? fullName, pic: prev?.pic ?? pic })
+  }
+  for (let i = 0; i < names.length; i += 200) {
+    const chunk = names.slice(i, i + 200)
+    const [obs, viewers] = await Promise.all([
+      supabase.from('instagram_engagement_observations').select('instagram_username, full_name, profile_pic_url, first_observed_at').eq('workspace_id', workspaceId).in('instagram_username', chunk).order('first_observed_at', { ascending: false }).limit(chunk.length * 3),
+      supabase.from('story_viewers').select('instagram_username, full_name, profile_pic_url, first_seen_at').eq('workspace_id', workspaceId).in('instagram_username', chunk).order('first_seen_at', { ascending: false }).limit(chunk.length * 3),
+    ])
+    for (const r of obs.data ?? []) take(String(r.instagram_username).toLowerCase(), r.full_name, r.profile_pic_url)
+    for (const r of viewers.data ?? []) take(String(r.instagram_username).toLowerCase(), r.full_name, r.profile_pic_url)
+  }
+  return rows.map((r) => {
+    const f = found.get(r.username)
+    return f ? { ...r, fullName: r.fullName ?? f.fullName, profilePicUrl: r.profilePicUrl ?? f.pic } : r
+  })
 }
 
 const CACHE_TTL_MS = 60_000

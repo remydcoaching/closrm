@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
+import { orSearchTerm } from '@/lib/supabase/or-search'
 
 /**
  * Lists the profiles observed during a Ciblage (Discovery) run — people who
@@ -51,7 +52,10 @@ export async function GET(
     }
 
     let query = applyFilter(base(), filter)
-    if (search) query = query.or(`instagram_username.ilike.%${search}%,full_name.ilike.%${search}%`)
+    if (search) {
+      const term = orSearchTerm(search)
+      if (term) query = query.or(`instagram_username.ilike.%${term}%,full_name.ilike.%${term}%`)
+    }
     const { data, error, count } = await query.order(sort, { ascending }).order('instagram_username').range(from, to)
 
     if (error) {

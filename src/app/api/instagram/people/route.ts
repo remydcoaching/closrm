@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
-import { isBuyerLurker, loadPeople, peopleKpis, type PersonRow } from '@/lib/instagram/people'
+import { attachIdentities, isBuyerLurker, loadPeople, peopleKpis, type PersonRow } from '@/lib/instagram/people'
 import type { ConfidenceLevel } from '@/lib/leads/confidence'
 
 /**
@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
     list = list.sort(by[tab])
 
     if (sp.get('format') === 'csv') {
+      list = await attachIdentities(supabase, workspaceId, list)
       const esc = (v: unknown) => {
         const s = v === null || v === undefined ? '' : String(v)
         return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
         kpis: peopleKpis(rows, gestures, periodDays, recentStoriesCount, scoring),
         recentStoriesCount,
         total: list.length,
-        rows: list.slice((page - 1) * perPage, page * perPage),
+        rows: await attachIdentities(supabase, workspaceId, list.slice((page - 1) * perPage, page * perPage)),
       },
     })
   } catch (err) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
-import { linkInstagramAccount } from '@/lib/instagram/link-account'
+import { IG_ACCOUNT_PUBLIC_COLS, linkInstagramAccount } from '@/lib/instagram/link-account'
 
 export async function GET() {
   try {
@@ -10,7 +10,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('ig_accounts')
-      .select('*')
+      .select(IG_ACCOUNT_PUBLIC_COLS)
       .eq('workspace_id', workspaceId)
       .maybeSingle()
 

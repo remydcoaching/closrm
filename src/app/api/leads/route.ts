@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
+import { orSearchTerm } from '@/lib/supabase/or-search'
 import { createLeadSchema, leadFiltersSchema } from '@/lib/validations/leads'
 import { fireTriggersForEvent } from '@/lib/workflows/trigger'
 import { sendPushToWorkspace } from '@/lib/push/send-to-workspace'
@@ -67,8 +68,7 @@ export async function GET(request: NextRequest) {
     if (filters.search) {
       const s = filters.search.trim()
       if (s) {
-        // Escape special PostgREST characters in search term
-        const escaped = s.replace(/[%_]/g, '\\$&')
+        const escaped = orSearchTerm(s)
         query = query.or(
           `first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%,email.ilike.%${escaped}%,phone.ilike.%${escaped}%,instagram_handle.ilike.%${escaped}%`
         )

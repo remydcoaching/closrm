@@ -106,6 +106,7 @@
 
 /* Figures: bold mono, right-aligned ("54 sur 61", "17 sept."). */
 .ds-num-cell,
+.ds-table th.ds-num-cell,
 .ds-table td.ds-num-cell {
   text-align: right;
   white-space: nowrap;

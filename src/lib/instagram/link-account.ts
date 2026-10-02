@@ -9,6 +9,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isInvalidTokenPayload } from '@/lib/meta/token-error'
 
+/** Columns of ig_accounts safe to send to a client — never the Meta access tokens. */
+export const IG_ACCOUNT_PUBLIC_COLS =
+  'id, workspace_id, ig_user_id, ig_username, page_id, is_connected, token_expires_at, starting_followers, starting_date, starting_monthly_views, starting_engagement, starting_best_reel, created_at'
+
 const GRAPH = 'https://graph.facebook.com/v25.0'
 
 export interface LinkInput {
@@ -104,7 +108,7 @@ export async function linkInstagramAccount(
       },
       { onConflict: 'workspace_id' },
     )
-    .select()
+    .select(IG_ACCOUNT_PUBLIC_COLS)
     .single()
   if (error) return { ok: false, status: 500, error: error.message }
   return { ok: true, data: data as Record<string, unknown> }

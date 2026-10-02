@@ -2,7 +2,7 @@
 // [logo ClosRM] [(avatar) @handle · ● Connecté (ig)] ............ [user ▾]
 // If no Instagram account is known after login, the onboarding asks for it
 // before anything else (every Hiker feature needs it).
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { startCacheWarming } from '../lib/warm-cache'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '../design-system/Sidebar'
@@ -76,7 +76,9 @@ function Shell() {
           <UserMenu />
         </header>
         <main className="app-content">
-          <Outlet />
+          <Suspense fallback={<LoadingState />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
       {editing && <InstagramAccountModal onClose={() => setEditing(false)} />}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
+import { orSearchTerm } from '@/lib/supabase/or-search'
 import { createFollowUpSchema, followUpFiltersSchema } from '@/lib/validations/follow-ups'
 
 export async function GET(request: NextRequest) {
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
       if (s) {
         const { data: matchingLeads } = await supabase
           .from('leads').select('id').eq('workspace_id', workspaceId)
-          .or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,phone.ilike.%${s}%`)
+          .or(`first_name.ilike.%${orSearchTerm(s)}%,last_name.ilike.%${orSearchTerm(s)}%,phone.ilike.%${orSearchTerm(s)}%`)
         if (matchingLeads && matchingLeads.length > 0) {
           query = query.in('lead_id', matchingLeads.map((l) => l.id))
         } else {
