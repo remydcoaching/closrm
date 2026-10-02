@@ -5,6 +5,7 @@
 // Live third-party reads (Meta Graph, AI, Instagram syncs) are left to the
 // screens themselves.
 import { revalidate, staleRecentKeys } from './query-cache'
+import { preloadPages } from '../app/lazy-pages'
 
 const MAX_KEYS = 30
 const CONCURRENCY = 3
@@ -32,7 +33,10 @@ export async function warmCache(): Promise<void> {
 
 /** Starts the warm-up shortly after the app shell mounts, and again on refocus. Returns a cleanup. */
 export function startCacheWarming(): () => void {
-  const timer = setTimeout(() => void warmCache(), 1500)
+  const timer = setTimeout(() => {
+    preloadPages()
+    void warmCache()
+  }, 1500)
   const onFocus = () => {
     if (Date.now() - lastRun > REFOCUS_MS) void warmCache()
   }

@@ -1,5 +1,6 @@
 // Route-based tab bar (same look as <Tabs>), rendered above every page of a
 // tab group — see app/tab-groups.ts.
+import { Suspense } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import type { TabGroup } from '../app/tab-groups'
 import './tabs.css'
@@ -22,7 +23,9 @@ export function TabGroupLayout({ group }: { group: TabGroup }) {
     <div className="ds-tab-group-layout">
       <PageTabs group={group} />
       <div className="ds-tab-group-body">
-        <Outlet />
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
       </div>
     </div>
   )

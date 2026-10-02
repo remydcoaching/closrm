@@ -2,41 +2,43 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from '../lib/auth-context'
 import { LoginPage } from '../features/auth/LoginPage'
 import { DashboardLayout } from './DashboardLayout'
-import { LeadsListPage } from '../features/leads/LeadsListPage'
-import { LeadDetailPage } from '../features/leads/LeadDetailPage'
-import { DiscoveryPage } from '../features/instagram/DiscoveryPage'
-import { CiblageRunPage } from '../features/instagram/CiblageRunPage'
-import { InstagramPersonPage } from '../features/instagram/InstagramPersonPage'
-import { InstagramLeadsPage } from '../features/instagram/InstagramLeadsPage'
-import { ContentPage } from '../features/instagram/ContentPage'
-import { ContentDetailPage } from '../features/instagram/ContentDetailPage'
-import { StoryDetailPage } from '../features/instagram/StoryDetailPage'
-import { AudiencePage } from '../features/instagram/AudiencePage'
-import { LeadMagnetsPage } from '../features/acquisition/LeadMagnetsPage'
-import { PublicitesPage } from '../features/acquisition/PublicitesPage'
-import { PipelinePage } from '../features/crm/PipelinePage'
-import { RelancesPage } from '../features/crm/RelancesPage'
-import { DealsPage } from '../features/crm/DealsPage'
-import { ClosingPage } from '../features/crm/ClosingPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
-import { SocialPage } from '../features/social/SocialPage'
-import { SettingsAccountPage } from '../features/settings/SettingsAccountPage'
-import { IntegrationsPage } from '../features/settings/IntegrationsPage'
-import { AiAssistantPage } from '../features/settings/AiAssistantPage'
-import { TeamPage } from '../features/settings/TeamPage'
-import { TeamChatPage } from '../features/settings/TeamChatPage'
-import { FunnelsPage } from '../features/marketing/FunnelsPage'
-import { EmailsPage } from '../features/marketing/EmailsPage'
-import { AutomationsPage } from '../features/marketing/AutomationsPage'
-import { MessagesPage } from '../features/marketing/MessagesPage'
-import { AgendaPage } from '../features/agenda/AgendaPage'
-import { BookingPagesPage } from '../features/agenda/BookingPagesPage'
-import { BookingCalendarEditPage } from '../features/agenda/BookingCalendarEditPage'
-import { StatsPage } from '../features/stats/StatsPage'
-import { FinancePage } from '../features/stats/FinancePage'
 import { TabGroupLayout } from '../design-system/PageTabs'
 import { TAB_GROUPS } from './tab-groups'
 import { LoadingState } from '../design-system/States'
+import {
+  LeadsListPage,
+  LeadDetailPage,
+  DiscoveryPage,
+  CiblageRunPage,
+  InstagramPersonPage,
+  InstagramLeadsPage,
+  ContentPage,
+  ContentDetailPage,
+  StoryDetailPage,
+  AudiencePage,
+  LeadMagnetsPage,
+  PublicitesPage,
+  PipelinePage,
+  RelancesPage,
+  DealsPage,
+  ClosingPage,
+  SocialPage,
+  SettingsAccountPage,
+  IntegrationsPage,
+  AiAssistantPage,
+  TeamPage,
+  TeamChatPage,
+  FunnelsPage,
+  EmailsPage,
+  AutomationsPage,
+  MessagesPage,
+  AgendaPage,
+  BookingPagesPage,
+  BookingCalendarEditPage,
+  StatsPage,
+  FinancePage,
+} from './lazy-pages'
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
   const { session, loading } = useAuth()
