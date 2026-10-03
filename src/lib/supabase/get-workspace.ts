@@ -10,21 +10,26 @@ interface WorkspaceContext {
 
 export async function getWorkspaceId(): Promise<WorkspaceContext> {
   const supabase = await createClient()
-  let { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+  let userId: string | null = user?.id ?? null
 
-  // Fallback Bearer (mobile) — si pas de session cookies, on tente de
-  // valider le JWT en clair via auth.getUser(token). Le client Supabase
-  // a déjà l'Authorization en global.headers (cf createClient), donc
-  // les requêtes RLS suivantes sont aussi authentifiées correctement.
-  if (!user) {
+  // Fallback Bearer (desktop, mobile) — pas de session cookies : on vérifie
+  // le JWT avec getClaims(). Avec des clés de signature asymétriques, la
+  // vérification est locale (JWKS en cache : pas d'aller-retour vers Supabase
+  // Auth à chaque requête, et l'API tient si Auth tombe) ; avec la clé
+  // partagée HS256 historique, getClaims() refait getUser(token) comme avant.
+  // Le client Supabase a déjà l'Authorization en global.headers (cf
+  // createClient) : les requêtes RLS suivantes sont authentifiées.
+  if (!userId) {
     try {
       const h = await nextHeaders()
       const authHeader = h.get('authorization') ?? h.get('Authorization')
       if (authHeader?.startsWith('Bearer ')) {
         const token = authHeader.slice('Bearer '.length).trim()
         if (token) {
-          const { data, error } = await supabase.auth.getUser(token)
-          if (!error && data.user) user = data.user
+          const { data, error } = await supabase.auth.getClaims(token)
+          const sub = data?.claims?.sub
+          if (!error && typeof sub === 'string' && sub) userId = sub
         }
       }
     } catch {
@@ -32,7 +37,7 @@ export async function getWorkspaceId(): Promise<WorkspaceContext> {
     }
   }
 
-  if (!user) {
+  if (!userId) {
     throw new Error('Not authenticated')
   }
 
@@ -45,7 +50,7 @@ export async function getWorkspaceId(): Promise<WorkspaceContext> {
   const { data: members } = await supabase
     .from('workspace_members')
     .select('workspace_id, role')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('status', 'active')
 
   const list = (members ?? []) as { workspace_id: string; role: string }[]
@@ -56,7 +61,7 @@ export async function getWorkspaceId(): Promise<WorkspaceContext> {
     )
     const primary = sorted[0]
     return {
-      userId: user.id,
+      userId,
       workspaceId: primary.workspace_id,
       role: primary.role as WorkspaceRole,
     }
@@ -66,7 +71,7 @@ export async function getWorkspaceId(): Promise<WorkspaceContext> {
   const { data: profile, error: profileError } = await supabase
     .from('users')
     .select('workspace_id, role')
-    .eq('id', user.id)
+    .eq('id', userId)
     .single()
 
   if (profileError || !profile) {
@@ -74,7 +79,7 @@ export async function getWorkspaceId(): Promise<WorkspaceContext> {
   }
 
   return {
-    userId: user.id,
+    userId,
     workspaceId: profile.workspace_id,
     role: (profile.role === 'coach' ? 'admin' : profile.role) as WorkspaceRole,
   }

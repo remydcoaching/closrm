@@ -1,10 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
+// Briefs hold the coach's AI provider key: read and written with the service
+// role, always scoped by workspace (members can't read api_key, migration 126).
+import { createServiceClient } from '@/lib/supabase/service'
 import { AiCoachBrief } from '@/types'
 import { callClaude } from './client'
 import { buildBriefGenerationPrompt } from './prompts'
 
 export async function getBrief(workspaceId: string): Promise<AiCoachBrief | null> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('ai_coach_briefs')
     .select('*')
@@ -30,7 +32,7 @@ export async function saveBrief(
     api_key?: string
   }
 ): Promise<AiCoachBrief> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const apiKey = answers.api_key
   if (!apiKey) throw new Error('Cle API requise pour generer le brief')
@@ -65,7 +67,7 @@ export async function getWinningConversations(
   _source: string,
   limit: number = 3
 ): Promise<{ messages: string }[]> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('ai_conversation_outcomes')
     .select('messages_snapshot')
@@ -93,7 +95,7 @@ export async function recordOutcome(
   leadId: string,
   outcome: 'won' | 'lost' | 'no_response'
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
 
   const { data: messages } = await supabase
     .from('ig_messages')

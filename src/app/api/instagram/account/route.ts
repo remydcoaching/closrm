@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { IG_ACCOUNT_PUBLIC_COLS, linkInstagramAccount } from '@/lib/instagram/link-account'
 
@@ -65,8 +66,9 @@ export async function POST(request: NextRequest) {
         .filter((k) => body[k] !== undefined && body[k] !== null)
         .map((k) => [k, body[k]]),
     )
+    // Writes the Meta tokens: service role (members can't read them, migration 126), scoped by workspace.
     const result = await linkInstagramAccount(
-      supabase,
+      createServiceClient(),
       workspaceId,
       {
         userAccessToken: creds.user_access_token,

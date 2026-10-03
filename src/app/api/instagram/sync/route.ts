@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { syncAll, syncStories } from '@/lib/instagram/sync'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST(request: NextRequest) {
   try {
     const { workspaceId } = await getWorkspaceId()
     const supabase = await createClient()
 
-    const { data: account } = await supabase
+    const { data: account } = await createServiceClient()
       .from('ig_accounts')
       .select('*')
       .eq('workspace_id', workspaceId)

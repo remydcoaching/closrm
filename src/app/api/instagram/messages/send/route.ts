@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { sendMessageSchema } from '@/lib/validations/instagram'
 import { sendIgMessage } from '@/lib/instagram/api'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
     // Get account
-    const { data: account } = await supabase
+    const { data: account } = await createServiceClient()
       .from('ig_accounts').select('*').eq('workspace_id', workspaceId).eq('is_connected', true).single()
 
     if (!account?.page_id || !account?.page_access_token) {

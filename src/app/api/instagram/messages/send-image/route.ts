@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { sendIgImage } from '@/lib/instagram/api'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get account
-    const { data: account } = await supabase
+    const { data: account } = await createServiceClient()
       .from('ig_accounts').select('*').eq('workspace_id', workspaceId).eq('is_connected', true).single()
 
     if (!account?.page_id || !account?.page_access_token) {

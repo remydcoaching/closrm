@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { fetchConversationMessages } from '@/lib/instagram/api'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     // If no local messages, try to fetch from Meta API
     if (!data || data.length === 0) {
       try {
-        const { data: account } = await supabase
+        const { data: account } = await createServiceClient()
           .from('ig_accounts')
           .select('ig_user_id, page_access_token')
           .eq('workspace_id', workspaceId)
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
     // If refresh=true and messages already exist, poll Meta API for new messages
     if (shouldRefresh && data && data.length > 0) {
       try {
-        const { data: account } = await supabase
+        const { data: account } = await createServiceClient()
           .from('ig_accounts')
           .select('ig_user_id, page_access_token')
           .eq('workspace_id', workspaceId)

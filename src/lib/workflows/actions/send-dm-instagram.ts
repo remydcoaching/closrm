@@ -1,5 +1,6 @@
 import { sendIgMessage } from '@/lib/instagram/api'
 import type { ExecutionContext } from './index'
+import { createServiceClient } from '@/lib/supabase/service'
 
 /**
  * Action: send_dm_instagram
@@ -42,7 +43,7 @@ export async function execute(
   let pageId = integration.meta_page_id as string | null
 
   if (!pageId) {
-    const { data: igAccount } = await context.supabase
+    const { data: igAccount } = await createServiceClient()
       .from('ig_accounts')
       .select('page_id, page_access_token')
       .eq('workspace_id', context.workspaceId)
@@ -73,7 +74,7 @@ export async function execute(
   }
 
   // 6. Get the page access token from ig_accounts
-  const { data: igAccount } = await context.supabase
+  const { data: igAccount } = await createServiceClient()
     .from('ig_accounts')
     .select('page_access_token')
     .eq('workspace_id', context.workspaceId)

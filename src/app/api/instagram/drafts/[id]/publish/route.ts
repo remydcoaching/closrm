@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createMediaContainer, pollContainerStatus, publishContainer } from '@/lib/instagram/api'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST(
   _request: NextRequest,
@@ -20,7 +21,7 @@ export async function POST(
     if (!draft.media_urls?.length) return NextResponse.json({ error: 'Au moins un média requis' }, { status: 400 })
 
     // 2. Get IG account — use page_access_token for publishing (required by Meta)
-    const { data: account } = await supabase
+    const { data: account } = await createServiceClient()
       .from('ig_accounts').select('*').eq('workspace_id', workspaceId).eq('is_connected', true).maybeSingle()
     if (!account) return NextResponse.json({ error: 'Aucun compte Instagram connecté' }, { status: 400 })
 
