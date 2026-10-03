@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const tab = (TABS as readonly string[]).includes(sp.get('tab') ?? '') ? (sp.get('tab') as Tab) : 'actifs'
     const level = LEVELS.includes(sp.get('level') as ConfidenceLevel) ? (sp.get('level') as ConfidenceLevel) : null
     const uncontacted = sp.get('uncontacted') === '1'
+    const follows = sp.get('follows') === '0' ? false : sp.get('follows') === '1' ? true : null
     const q = (sp.get('q') ?? '').trim().toLowerCase()
     const page = Math.max(Number(sp.get('page')) || 1, 1)
     // ?all=1: the whole filtered list in one page (desktop export).
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
       if (tab === 'lurkers' && !isBuyerLurker(r, recentStoriesCount)) return false
       if (level && r.confidence !== level) return false
       if (uncontacted && r.contacted) return false
+      if (follows !== null && r.follows !== follows) return false
       if (q && !r.username.includes(q) && !(r.fullName ?? '').toLowerCase().includes(q)) return false
       return true
     })

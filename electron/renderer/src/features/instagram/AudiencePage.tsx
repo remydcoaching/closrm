@@ -1,57 +1,30 @@
-// Instagram > Audience — "comment votre communauté interagit avec vous".
-// - Qui like vos réels: likes identified by the publication monitor (LikersSection);
-// - Segments (actifs / jamais contactés / ne vous suivent pas / lurkers) from
-//   GET /api/instagram/audience + drill-down /audience/leads (same
-//   definitions, src/lib/instagram/audience-segments.ts);
-// - Quand publier: engagement rate by weekday × slot of the coach's own
-//   scanned contents (publish-timing.ts);
-// - Vos réels: best reels by engagement rate (GET /api/instagram/content/chart);
-// - Vos stories: gallery from the coach's own Instagram archive (StoriesGallery).
+// Instagram > Audience (Insyder « Analyse de votre audience »):
+// - three cards from the Leads Instagram index (everyone who reacted, not only
+//   CRM leads): personnes actives, ne vous suivent pas, lurkers — each opens
+//   the matching list on /instagram/leads;
+// - Quand publier (BestTimeSection), your stories, highlights, best reels.
+// The people lists themselves live on Leads Instagram (no duplicate here).
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { StatCard, StatGrid, formatNumber } from '../../design-system/StatCard'
-import { TableCard, ContactCell } from '../../design-system/TableCard'
+import { TableCard } from '../../design-system/TableCard'
 import { Chips } from '../../design-system/Tabs'
-import { Avatar } from '../../design-system/Avatar'
-import { StatusPill } from '../../design-system/StatusPill'
 import { LoadingState, ErrorState, EmptyState } from '../../design-system/States'
-import { relativeTime, shortDate, statusEntry } from '../leads/status'
-import type { LeadStatus } from '../leads/types'
+import { shortDate } from '../leads/status'
 import { ContentThumb } from './ContentThumb'
 import { formatRate } from './ContentPage'
 import { BestTimeSection } from './BestTimeSection'
-import { StoryViewersSection } from './StoryViewersSection'
-import { LikersSection } from './LikersSection'
 import { StoriesGallery } from './StoriesPage'
 import { HighlightsSection } from './HighlightsSection'
 import type { ContentChartPoint } from './types'
 import './instagram.css'
-import { usePaged, PaginationBar } from '../../design-system/Pagination'
 import { useCachedQuery } from '../../lib/use-cached-query'
 
-interface AudienceCounts {
-  actifs: number
-  actifsJamaisContactes: number
-  neVousSuiventPas: number
-  lurkers: number
-  totalEngaged: number
+interface PeopleSummary {
+  kpis: { active: number; notFollowing: number; followUnknown: number; buyerLurkers: number }
+  recentStoriesCount: number
 }
 
-interface AudienceLeadRow {
-  id: string
-  first_name: string
-  last_name: string
-  instagram_handle: string | null
-  instagram_profile_pic_url: string | null
-  status: LeadStatus
-  call_attempts: number
-  follows_target: boolean | null
-  interactions_count: number
-  last_seen_at: string | null
-}
-
-
-type Segment = 'actifs' | 'actifs_jamais_contactes' | 'ne_vous_suivent_pas' | 'lurkers'
 type Period = '7' | '30' | '90' | '365'
 
 const PERIODS: { key: Period; label: string }[] = [
@@ -61,33 +34,16 @@ const PERIODS: { key: Period; label: string }[] = [
   { key: '365', label: '1 an' },
 ]
 
-const SEGMENT_LABEL: Record<Segment, string> = {
-  actifs: 'Leads actifs',
-  actifs_jamais_contactes: 'Actifs, jamais contactés',
-  ne_vous_suivent_pas: 'Ne vous suivent pas',
-  lurkers: 'Lurkers (jamais contactés)',
-}
-
 const NO_CONTENTS: ContentChartPoint[] = []
 
 export function AudiencePage() {
   const navigate = useNavigate()
   const [period, setPeriod] = useState<Period>('30')
-  const [segment, setSegment] = useState<Segment>('actifs_jamais_contactes')
-
-  // Each block reads its own cached snapshot: the page shows the last known
-  // values instantly and every block refreshes in the background, none
-  // blocking another. The content snapshot is shared with the Contenu page.
-  const countsQuery = useCachedQuery<{ data: AudienceCounts }>(`/api/instagram/audience?period_days=${period}`, { screen: 'Audience', staleMs: 60_000, keepPrevious: true })
-  const segmentQuery = useCachedQuery<{ data: AudienceLeadRow[] }>(`/api/instagram/audience/leads?segment=${segment}&period_days=${period}`, { screen: 'AudienceSegment', staleMs: 60_000, keepPrevious: true })
+  // Cached snapshots: the page shows the last values at once, each block refreshes alone.
+  const peopleQuery = useCachedQuery<{ data: PeopleSummary }>(`/api/instagram/people?period_days=${period}&tab=actifs&page=1&per_page=1`, { screen: 'AudiencePeople', staleMs: 60_000, keepPrevious: true })
   const contentsQuery = useCachedQuery<{ data: ContentChartPoint[] }>('/api/instagram/content/chart?days=365', { screen: 'AudienceContents', staleMs: 5 * 60_000 })
-  const counts = countsQuery.data?.data ?? null
-  const segmentLeads = segmentQuery.data?.data ?? (segmentQuery.error ? [] : null)
+  const people = peopleQuery.data?.data ?? null
   const contents = contentsQuery.data?.data ?? (contentsQuery.error ? NO_CONTENTS : null)
-  const error = countsQuery.error
-  const load = countsQuery.refresh
-
-  const paged = usePaged(segmentLeads ?? [])
 
   const topReels = useMemo(
     () =>
@@ -108,27 +64,31 @@ export function AudiencePage() {
         <Chips items={PERIODS} active={period} onChange={setPeriod} />
       </div>
 
-      {counts === null && !error && <LoadingState label="Chargement…" />}
-      {error && <ErrorState message={error} onRetry={load} />}
+      {!people && !peopleQuery.error && <LoadingState label="Chargement…" />}
+      {!people && peopleQuery.error && <ErrorState message={peopleQuery.error} onRetry={peopleQuery.refresh} />}
 
-      {counts && (
+      {people && (
         <StatGrid>
-          <StatCard label="Personnes actives" value={counts.actifs} caption={`au moins une interaction sur ${period} j`} onClick={() => setSegment('actifs')} />
+          <StatCard label="Personnes actives" value={people.kpis.active} caption={`ont fait un geste sur ${period} jours`} onClick={() => navigate(`/instagram/leads?tab=actifs&period=${period}`)} />
           <StatCard
-            label="Actives, jamais contactées"
-            value={counts.actifsJamaisContactes}
+            label="Ne vous suivent pas"
+            value={people.kpis.notFollowing}
             highlight
-            caption="personne ne leur a écrit"
-            onClick={() => setSegment('actifs_jamais_contactes')}
+            caption={
+              people.kpis.active > 0
+                ? `${Math.round((people.kpis.notFollowing / people.kpis.active) * 100)} % des actifs · ${formatNumber(people.kpis.followUnknown)} pas encore vérifiés`
+                : undefined
+            }
+            onClick={() => navigate(`/instagram/leads?tab=actifs&period=${period}&follows=0`)}
           />
-          <StatCard label="Ne vous suivent pas" value={counts.neVousSuiventPas} caption="interagissent sans être abonnées" onClick={() => setSegment('ne_vous_suivent_pas')} />
-          <StatCard label="Lurkers" value={counts.lurkers} unit="profils" caption="ont interagi, jamais contactés" onClick={() => setSegment('lurkers')} />
+          <StatCard
+            label="Lurkers"
+            value={people.kpis.buyerLurkers}
+            caption={people.recentStoriesCount > 0 ? `vus sur la moitié de vos ${people.recentStoriesCount} dernières stories, jamais un geste` : 'aucune story collectée pour l’instant'}
+            onClick={() => navigate(`/instagram/leads?tab=lurkers&period=${period}`)}
+          />
         </StatGrid>
       )}
-
-      <LikersSection />
-
-      <StoryViewersSection />
 
       <BestTimeSection contents={contents} periodDays={Number(period)} />
 
@@ -173,59 +133,6 @@ export function AudiencePage() {
 
       </div>
 
-      <TableCard
-        title={`${SEGMENT_LABEL[segment]} · ${period} j`}
-        subtitle={segmentLeads ? `${formatNumber(segmentLeads.length)} contact${segmentLeads.length > 1 ? 's' : ''}` : '…'}
-        toolbar={
-          <Chips
-            items={(Object.keys(SEGMENT_LABEL) as Segment[]).map((k) => ({ key: k, label: SEGMENT_LABEL[k] }))}
-            active={segment}
-            onChange={setSegment}
-          />
-        }
-      >
-        {segmentLeads === null && <LoadingState label="Chargement…" />}
-        {segmentLeads && segmentLeads.length === 0 && <EmptyState title="Aucun lead dans ce segment" />}
-        {segmentLeads && segmentLeads.length > 0 && (
-          <table className="ds-table">
-            <thead>
-              <tr>
-                <th>Contact</th>
-                <th>Statut</th>
-                <th className="ds-num-cell">Interactions</th>
-                <th>Abonné</th>
-                <th className="ds-num-cell">Dernière activité</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paged.pageRows.map((l) => {
-                const name = `${l.first_name} ${l.last_name}`.trim() || l.instagram_handle || '—'
-                const st = statusEntry(l.status)
-                return (
-                  <tr key={l.id} className="ds-row-clickable" onClick={() => navigate(`/leads/${l.id}`)}>
-                    <td>
-                      <ContactCell name={name} handle={l.instagram_handle} avatar={<Avatar name={name} size={28} src={l.instagram_profile_pic_url} />} />
-                    </td>
-                    <td>
-                      <StatusPill label={st.label} color={st.color} bg={st.bg} />
-                    </td>
-                    <td className="ds-num-cell">
-                      <span className="ds-num">{formatNumber(l.interactions_count)}</span>
-                    </td>
-                    <td>{l.follows_target === null ? '—' : l.follows_target ? 'Oui' : 'Non'}</td>
-                    <td className="ds-num-cell">
-                      <span className="ds-num" title={l.last_seen_at ? relativeTime(l.last_seen_at) : undefined}>
-                        {shortDate(l.last_seen_at)}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-        <PaginationBar total={paged.total} page={paged.page} pages={paged.pages} size={paged.size} onPage={paged.setPage} onSize={paged.setSize} />
-      </TableCard>
     </div>
   )
 }

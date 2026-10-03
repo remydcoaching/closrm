@@ -3,7 +3,7 @@
 // with the CRM's engagement rules. « Qui contacter en priorité ».
 // GET /api/instagram/people (src/lib/instagram/people.ts).
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api-client'
 import { downloadCsv } from '../../lib/csv'
 import { useCachedQuery } from '../../lib/use-cached-query'
@@ -45,7 +45,7 @@ interface PersonRow {
 }
 
 interface PeopleResponse {
-  kpis: { active: number; activePrevious: number; veryHighNeverContacted: number; buyerLurkers: number; becameVeryHigh: number }
+  kpis: { active: number; activePrevious: number; veryHighNeverContacted: number; buyerLurkers: number; becameVeryHigh: number; notFollowing: number; followUnknown: number }
   recentStoriesCount: number
   total: number
   rows: PersonRow[]
@@ -98,12 +98,19 @@ function pctDelta(cur: number, prev: number): string | null {
   return `${d >= 0 ? '▲ +' : '▼ '}${d} % vs période précédente`
 }
 
+const TAB_KEYS = TABS.map((t) => t.key)
+const PERIOD_KEYS = PERIODS.map((p) => p.key)
+
 export function InstagramLeadsPage() {
   const navigate = useNavigate()
-  const [period, setPeriod] = useState<Period>('30')
-  const [tab, setTab] = useState<Tab>('actifs')
-  const [level, setLevel] = useState<ConfidenceLevel | 'all'>('all')
-  const [uncontacted, setUncontacted] = useState(false)
+  // Deep links (from Audience): ?tab=lurkers&period=30&follows=0&level=tres_eleve&uncontacted=1
+  const [searchParams] = useSearchParams()
+  const qp = (k: string) => searchParams.get(k)
+  const [period, setPeriod] = useState<Period>(PERIOD_KEYS.includes(qp('period') as Period) ? (qp('period') as Period) : '30')
+  const [tab, setTab] = useState<Tab>(TAB_KEYS.includes(qp('tab') as Tab) ? (qp('tab') as Tab) : 'actifs')
+  const [level, setLevel] = useState<ConfidenceLevel | 'all'>((qp('level') as ConfidenceLevel | null) ?? 'all')
+  const [uncontacted, setUncontacted] = useState(qp('uncontacted') === '1')
+  const [follows, setFollows] = useState<'0' | '1' | null>(qp('follows') === '0' ? '0' : qp('follows') === '1' ? '1' : null)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [size, setSize] = useState<PageSize>(20)
@@ -112,6 +119,7 @@ export function InstagramLeadsPage() {
   const params = new URLSearchParams({ period_days: period, tab, page: String(page), per_page: String(size) })
   if (level !== 'all') params.set('level', level)
   if (uncontacted) params.set('uncontacted', '1')
+  if (follows) params.set('follows', follows)
   if (search.trim()) params.set('q', search.trim())
   const query = useCachedQuery<{ data: PeopleResponse }>(`/api/instagram/people?${params.toString()}`, { screen: 'InstagramLeads', staleMs: 60_000, keepPrevious: true })
   const d = query.data?.data ?? null
@@ -121,6 +129,7 @@ export function InstagramLeadsPage() {
     setTab(next.tab)
     setLevel(next.level ?? 'all')
     setUncontacted(next.uncontacted ?? false)
+    setFollows(null)
     setPage(1)
   }
 
@@ -209,6 +218,13 @@ export function InstagramLeadsPage() {
             </>
           }
         >
+          {follows && (
+            <div className="ig-filter-rows">
+              <button type="button" className="ig-filter-pill" onClick={() => { setFollows(null); setPage(1) }}>
+                {follows === '0' ? 'Ne vous suivent pas' : 'Vous suivent'} ×
+              </button>
+            </div>
+          )}
           {tab === 'confiance' && (
             <div className="ig-filter-rows">
               <span className="ig-filter-label">Niveau</span>
