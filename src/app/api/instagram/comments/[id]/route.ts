@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { deleteComment, hideComment } from '@/lib/instagram/api'
+import { createServiceClient } from '@/lib/supabase/service'
 
 // DELETE — delete a comment via Meta API + remove from DB
 export async function DELETE(
@@ -26,7 +27,7 @@ export async function DELETE(
     }
 
     // Get account token
-    const { data: account } = await supabase
+    const { data: account } = await createServiceClient()
       .from('ig_accounts')
       .select('access_token, page_access_token')
       .eq('workspace_id', workspaceId)
@@ -83,7 +84,7 @@ export async function PATCH(
     }
 
     // Get account token
-    const { data: account } = await supabase
+    const { data: account } = await createServiceClient()
       .from('ig_accounts')
       .select('access_token, page_access_token')
       .eq('workspace_id', workspaceId)

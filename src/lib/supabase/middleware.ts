@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/auth/callback', '/api/webhooks', '/c', '/unsubscribe', '/booking', '/book', '/f', '/proto']
+const PUBLIC_ROUTES = ['/login', '/register', '/reset-password', '/auth/callback', '/api/webhooks', '/c', '/unsubscribe', '/booking', '/book', '/f', '/proto', '/confidentialite', '/suppression-des-donnees']
 
 function isPublicRoute(pathname: string): boolean {
   if (pathname === '/') return true
@@ -101,7 +101,10 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/book/') ||
     pathname.startsWith('/booking/') ||
     pathname.startsWith('/f/') ||
-    pathname.startsWith('/proto')
+    pathname.startsWith('/proto') ||
+    // Legal pages: readable signed in or not (Meta App Review links).
+    pathname === '/confidentialite' ||
+    pathname === '/suppression-des-donnees'
 
   if (
     user &&

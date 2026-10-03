@@ -120,7 +120,8 @@ export async function GET(request: NextRequest) {
     // Fresh tokens for every Instagram feature (ig_accounts), then a first
     // sync right away so profile, posts and DMs show without waiting for the
     // nightly cron. A failure here doesn't undo the Meta connection.
-    const linked = await linkInstagramAccount(supabase, workspaceId, {
+    // Writes the Meta tokens with the service role (members can't read them, migration 126), scoped by workspace.
+    const linked = await linkInstagramAccount(createServiceClient(), workspaceId, {
       userAccessToken: longToken,
       tokenExpiresAt: expires_at,
       pageId: page.id,

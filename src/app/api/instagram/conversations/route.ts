@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { igConversationsFiltersSchema } from '@/lib/validations/instagram'
 import { syncConversations } from '@/lib/instagram/sync'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     // Sync from Meta API if requested
     if (shouldSync) {
       try {
-        const { data: account } = await supabase
+        const { data: account } = await createServiceClient()
           .from('ig_accounts')
           .select('access_token, ig_user_id, page_id, page_access_token')
           .eq('workspace_id', workspaceId)

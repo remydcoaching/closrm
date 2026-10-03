@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { replyToComment } from '@/lib/instagram/api'
+import { createServiceClient } from '@/lib/supabase/service'
 
 // GET — list comments from DB, optional ?media_id= filter
 export async function GET(request: NextRequest) {
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get account token
-    const { data: account } = await supabase
+    const { data: account } = await createServiceClient()
       .from('ig_accounts')
       .select('access_token, page_access_token')
       .eq('workspace_id', workspaceId)

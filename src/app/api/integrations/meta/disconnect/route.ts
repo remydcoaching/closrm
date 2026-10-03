@@ -3,6 +3,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createClient } from '@/lib/supabase/server'
 import { decrypt } from '@/lib/meta/encryption'
 import { unsubscribePageFromLeadgen, type MetaCredentials } from '@/lib/meta/client'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST() {
   try {
@@ -42,6 +43,14 @@ export async function POST() {
     if (error) {
       return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
     }
+
+    // The Instagram account keeps its own copy of the tokens: wiped too
+    // (access_token is NOT NULL → emptied). Service role: members can't read
+    // or write those columns (migration 126); scoped by workspace.
+    await createServiceClient()
+      .from('ig_accounts')
+      .update({ access_token: '', page_access_token: null, is_connected: false })
+      .eq('workspace_id', workspaceId)
 
     return NextResponse.json({ success: true })
   } catch (err) {
