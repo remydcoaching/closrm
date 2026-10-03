@@ -20,7 +20,11 @@ Une seule vidéo pour toutes les autorisations, tournée sur **ClosRM web (closr
 - [ ] Ajouter l'**accès avancé à `public_profile`** (bandeau « Facebook Login for Business nécessite un accès Avancé ») — démontré par le clip 1 (connexion).
 - [ ] Garder : pages_show_list, pages_read_engagement, instagram_basic, instagram_manage_messages, instagram_manage_comments, instagram_manage_insights, instagram_content_publish.
 - [ ] **Facebook Login › Paramètres › URI de redirection OAuth valides** : `https://closrm.fr/api/integrations/meta/callback` **et** `https://closrm.vercel.app/api/integrations/meta/callback` (la connexion revient désormais à l'adresse d'où elle part). Domaines de l'app : `closrm.fr`, `closrm.vercel.app`.
-- [ ] Paramètres › Général : URL de politique de confidentialité, URL de suppression des données, icône, catégorie, e-mail de contact.
+- [ ] Paramètres › Général :
+  - URL de politique de confidentialité : `https://closrm.fr/confidentialite` (en ligne)
+  - URL des instructions de suppression des données : `https://closrm.fr/suppression-des-donnees` (en ligne)
+  - icône, catégorie, e-mail de contact.
+  - Avant : dans Vercel, renseigner `NEXT_PUBLIC_LEGAL_COMPANY` (raison sociale ou ton nom), `NEXT_PUBLIC_LEGAL_EMAIL` (e-mail de contact) et `NEXT_PUBLIC_LEGAL_ADDRESS` (adresse), puis redéployer : ces deux pages les affichent.
 - [ ] Vérification de l'entreprise : faite ou lancée.
 - [ ] Rôles d'app › Rôles › Ajouter › **Testeur Instagram** : ton compte Instagram testeur.
 - [ ] Sur ce compte, dans Instagram : Paramètres › Sites web et applications › Invitations de testeur › Accepter.
