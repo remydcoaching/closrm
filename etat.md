@@ -7,7 +7,8 @@
 
 ## 2026-10-02 — Parité Insyder, vitesse, audits (Pierre)
 - **En prod** : #580 (panneau « Qui a réagi » sur un réel, fiche profil pour toute personne, page Interactions retirée), #581 (Leads Instagram : toutes les personnes qui ont interagi, scorées ; fiche profil façon Insyder ; « Quand publier » par heure / jour ; story : nouveaux vs connaissaient déjà), #582 (découpage du code desktop 1,18 Mo → 563 Ko, index allégé, jetons Meta plus jamais renvoyés, webhooks Meta / SNS signés, recherche sécurisée, Electron durci).
-- **PR #583 à fusionner** : Audience façon Insyder (doublons retirés), clé IA masquée, migrations 124 (RLS tables internes) et 125 (search_path des fonctions definer).
+- **Fusionné aussi** : #583 (Audience façon Insyder, clé IA masquée, migrations 124/125), #584 (jetons Meta et clé IA hors de portée des membres — migration 126 —, authentification par getClaims, pages publiques /confidentialite et /suppression-des-donnees, jetons effacés à la déconnexion Meta). App desktop 0.2.0 compilée (`electron/release`).
+- **Ancien point** : PR #583 à fusionner : Audience façon Insyder (doublons retirés), clé IA masquée, migrations 124 (RLS tables internes) et 125 (search_path des fonctions definer).
 - **Audit** : `docs/audits/2026-10-02-audit-securite-vitesse-workflow.md`.
 - **À faire (Pierre)** : migrations 124, 125 ; fusionner #583 ; décider : jetons Meta lisibles par les membres via Supabase, vérification locale des JWT.
 
