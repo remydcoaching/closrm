@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -101,8 +102,8 @@ function buildSparkline(rows: { date: string; value: number }[], days = 14): num
 
 // ─── KPIs étendus ────────────────────────────────────────────────────────────
 
-export async function fetchKpisV2(workspaceId: string, period: number): Promise<DashboardKpisV2> {
-  const supabase = await createClient()
+export async function fetchKpisV2(workspaceId: string, period: number, client?: SupabaseClient): Promise<DashboardKpisV2> {
+  const supabase = client ?? await createClient()
   const now = new Date()
   const sinceCurrent = new Date(now.getTime() - period * 86400000).toISOString()
   const sincePrevious = new Date(now.getTime() - period * 2 * 86400000).toISOString()
@@ -267,8 +268,8 @@ export async function getNextBooking(workspaceId: string): Promise<NextBooking |
   }
 }
 
-export async function getDayPlan(workspaceId: string): Promise<DayPlanItem[]> {
-  const supabase = await createClient()
+export async function getDayPlan(workspaceId: string, client?: SupabaseClient): Promise<DayPlanItem[]> {
+  const supabase = client ?? await createClient()
   const now = new Date()
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000).toISOString()
@@ -353,8 +354,8 @@ export async function getDayPlan(workspaceId: string): Promise<DayPlanItem[]> {
 
 // ─── Listes prioritaires (algo pur) ──────────────────────────────────────────
 
-export async function getRiskLeads(workspaceId: string): Promise<PriorityLead[]> {
-  const supabase = await createClient()
+export async function getRiskLeads(workspaceId: string, client?: SupabaseClient): Promise<PriorityLead[]> {
+  const supabase = client ?? await createClient()
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString()
 
   const { data } = await supabase
@@ -380,8 +381,8 @@ export async function getRiskLeads(workspaceId: string): Promise<PriorityLead[]>
   })
 }
 
-export async function getHotLeads(workspaceId: string): Promise<PriorityLead[]> {
-  const supabase = await createClient()
+export async function getHotLeads(workspaceId: string, client?: SupabaseClient): Promise<PriorityLead[]> {
+  const supabase = client ?? await createClient()
   const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString()
 
   // Hot lead = activité récente (48h) ET (status nouveau OU tag chaud/VIP)
