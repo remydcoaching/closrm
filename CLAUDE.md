@@ -485,6 +485,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 *Fichier généré le 26/03/2026 — ClosRM v0.1*
 
-## Contrat Hub (Rémy)
+## Contrat Hub (Rémy) — projet personnel, hors produit ClosRM
+
+> **Pour info (Pierre et toute session Claude)** : le Hub est la page de démarrage **personnelle** de Rémy (repo séparé `hub`). Cette route n'est utilisée par aucun client ClosRM, n'apparaît nulle part dans l'interface et ne lit que l'espace de Rémy. Elle peut être ignorée pour tout le reste du produit.
 
 `GET /api/hub` (Bearer `HUB_SECRET`, espace `HUB_WORKSPACE_ID`) alimente le widget ClosRM du Hub personnel de Rémy (repo `hub`). Format : `src/lib/hub/contrat.ts`. Si tu modifies `getDayPlan`, `fetchKpisV2`, `getHotLeads` ou `getRiskLeads`, garde le paramètre optionnel `client` (utilisé avec le client service, sans session) et vérifie `src/lib/hub/resume.test.ts`.
