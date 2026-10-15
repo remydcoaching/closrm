@@ -1,9 +1,20 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-10-02
+> Derniere mise a jour : 2026-10-15
 
 ---
+
+## 2026-10-15 — Objectifs par horizons, façon Timestripe (Pierre)
+- **Nouvelle page desktop « Objectifs »** (sous Agenda) :
+  - onglets Jours, Semaines, Mois, Trimestres, Années et Inbox ;
+  - une colonne par période, et la colonne de l'horizon parent à droite ;
+  - sous-objectifs, fil vers l'objectif parent, couleurs, replanification, objectifs déplaçables d'une colonne à l'autre.
+- **Côté serveur** : API `/api/goals` et table `goals` (migration 127). Spec : `docs/specs/2026-10-objectifs-horizons.md`. Tâche : 050.
+- **À faire (Pierre)** :
+  - appliquer la migration 127 ;
+  - fusionner la PR ;
+  - recompiler le DMG.
 
 ## 2026-10-02 — Parité Insyder, vitesse, audits (Pierre)
 - **En prod** : #580 (panneau « Qui a réagi » sur un réel, fiche profil pour toute personne, page Interactions retirée), #581 (Leads Instagram : toutes les personnes qui ont interagi, scorées ; fiche profil façon Insyder ; « Quand publier » par heure / jour ; story : nouveaux vs connaissaient déjà), #582 (découpage du code desktop 1,18 Mo → 563 Ko, index allégé, jetons Meta plus jamais renvoyés, webhooks Meta / SNS signés, recherche sécurisée, Electron durci).

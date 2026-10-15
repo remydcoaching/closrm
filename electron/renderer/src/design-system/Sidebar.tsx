@@ -33,6 +33,14 @@ const AgendaIcon = (
   </svg>
 )
 
+const GoalsIcon = (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="12" cy="12" r="1" />
+  </svg>
+)
+
 const LeadsIcon = (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -157,6 +165,7 @@ const MessagesIcon = (
 const NAV_ITEMS: SidebarItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
   { to: '/agenda', label: 'Agenda', icon: AgendaIcon, matchPaths: ['/agenda'] },
+  { to: '/objectifs', label: 'Objectifs', icon: GoalsIcon },
   // Pipeline, Closing, Relances and Deals are tabs of the Leads page.
   { to: '/leads', label: 'Leads', icon: LeadsIcon, matchPaths: ['/pipeline', '/closing', '/relances', '/deals', '/instagram/sessions-dm'] },
 ]
