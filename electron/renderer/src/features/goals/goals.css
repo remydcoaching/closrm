@@ -140,14 +140,21 @@
   text-overflow: ellipsis;
 }
 
-/* Current period: dark pill, like today's date in the Agenda. */
-.goals-column-head--current .goals-column-title {
+/* Current period: a small dot before the grey line, which turns dark. */
+.goals-column-head--current .goals-column-sub {
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-semibold);
+}
+
+.goals-column-head--current .goals-column-sub::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
   background: var(--color-text-strong);
-  color: var(--color-text-on-accent);
-  border-radius: var(--radius-full);
-  padding: 0 8px;
-  line-height: 22px;
-  margin-left: -8px;
+  vertical-align: 1px;
 }
 
 .goals-list {

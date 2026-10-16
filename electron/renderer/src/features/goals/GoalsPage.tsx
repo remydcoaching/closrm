@@ -257,7 +257,7 @@ function OverviewBoard({ today, tabs }: { today: string; tabs: React.ReactNode }
               horizon={c.horizon}
               start={c.start}
               label={c.label}
-              current={false}
+              current={!isUndated(c.horizon) && c.start !== null && isCurrentPeriod(c.horizon as DatedHorizon, c.start, today)}
               all={all}
               ops={ops}
               today={today}
