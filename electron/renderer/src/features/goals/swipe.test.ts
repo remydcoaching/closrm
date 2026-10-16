@@ -29,6 +29,14 @@ describe('createSwipeDetector', () => {
     expect(run(d, first, 0)).toEqual([1])
     expect(run(d, gesture(1), first.length * 16)).toEqual([1])
   })
+  it('vrai swipe droite du trackpad de Pierre (accélère encore après le déclenchement) = un seul cran', () => {
+    const real = [-1, -5, -15, -41, -73, -77, -123, -130, -128, -125, -118, -112, -107, -101, -90, -70, -50, -30, -15, -8, -4, -2, -1]
+    expect(run(createSwipeDetector(), real, 0)).toEqual([-1])
+  })
+  it('vrai swipe gauche du trackpad de Pierre = un seul cran', () => {
+    const real = [1, 2, 11, 25, 46, 57, 52, 66, 74, 75, 74, 71, 68, 70, 66, 62, 58, 53, 51, 47, 43, 39, 37, 34, 31, 28]
+    expect(run(createSwipeDetector(), real, 0)).toEqual([1])
+  })
   it('ignore le défilement vertical', () => {
     const d = createSwipeDetector()
     expect([10, 30, 50].map((dy, i) => d.feed(5, dy, i * 16))).toEqual([0, 0, 0])

@@ -114,10 +114,10 @@ function HorizonBoard({ horizon, today }: { horizon: DatedHorizon; today: string
     return [...m.values()]
   }, [main.data, parent.data])
 
+  // A horizontal swipe slides the whole row by one period (both directions);
+  // the row itself does not scroll.
   const scroller = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    scroller.current?.scrollTo({ left: 0 })
-  }, [anchor])
+  useHorizontalSwipe(scroller, (dir) => setAnchor((a) => addPeriods(horizon, a, dir)))
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -137,7 +137,7 @@ function HorizonBoard({ horizon, today }: { horizon: DatedHorizon; today: string
     <div className="goals-board-wrap">
       {ops.error && <ErrorBanner message={ops.error} onClose={ops.clearError} />}
       <div className="goals-board">
-        <div className="goals-columns" ref={scroller}>
+        <div className="goals-columns goals-columns--slide" ref={scroller}>
           {starts.map((start) => (
             <GoalColumn
               key={start}
@@ -275,7 +275,11 @@ function useHorizontalSwipe(ref: React.RefObject<HTMLElement | null>, onSwipe: (
     if (!el || !enabled) return
     const detector = createSwipeDetector()
     function onWheel(e: WheelEvent) {
-      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
+      // Vertical scroll stays native. Everything else is ours — including the
+      // zero-delta first event of a trackpad gesture: if that one is not
+      // cancelled, Chromium makes the whole gesture uncancelable and a swipe
+      // right at the left edge becomes macOS « back » navigation.
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) return
       e.preventDefault()
       const dir = detector.feed(e.deltaX, e.deltaY, performance.now())
       if (dir !== 0) cb.current?.(dir)

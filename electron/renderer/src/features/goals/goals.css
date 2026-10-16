@@ -456,3 +456,17 @@
   background: var(--color-bg-muted);
   color: var(--color-text-primary);
 }
+
+/* No macOS « swipe back » / rubber-band on the goals board: a horizontal
+   swipe slides a column (Horizons view) or scrolls the columns. */
+html:has(.goals-page),
+body:has(.goals-page),
+.goals-page,
+.goals-columns {
+  overscroll-behavior-x: none;
+}
+
+/* Single-horizon tabs: swiping slides the periods, the row never scrolls. */
+.goals-columns--slide {
+  overflow-x: hidden;
+}
