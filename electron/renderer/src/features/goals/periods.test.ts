@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addPeriods, childHorizon, formatDayRange, isCurrentPeriod, isoWeek, parentHorizon, periodEnd,
-  periodLabel, periodRange, periodStart, shortDateLabel,
+  cascadeShift, periodLabel, periodRange, periodStart, shortDateLabel, startsAt,
 } from './periods'
 
 describe('isoWeek', () => {
@@ -98,5 +98,31 @@ describe('divers', () => {
     expect(childHorizon('week')).toBe('day')
     expect(childHorizon('year')).toBe('quarter')
     expect(childHorizon('day')).toBe('day')
+  })
+})
+
+describe('cascadeShift (vue Horizons)', () => {
+  const today = '2026-10-16'
+  const base = startsAt(today)
+  it('positions de départ', () => {
+    expect(base).toEqual({ day: '2026-10-16', week: '2026-10-12', month: '2026-10-01', quarter: '2026-10-01', year: '2026-01-01' })
+  })
+  it('mois suivant : la semaine et le jour suivent dans novembre, le trimestre reste', () => {
+    expect(cascadeShift(base, 'month', 1, today)).toEqual({
+      day: '2026-11-01', week: '2026-10-26', month: '2026-11-01', quarter: '2026-10-01', year: '2026-01-01',
+    })
+  })
+  it('année suivante : tout passe en 2027', () => {
+    expect(cascadeShift(base, 'year', 1, today)).toEqual({
+      day: '2027-01-01', week: '2026-12-28', month: '2027-01-01', quarter: '2027-01-01', year: '2027-01-01',
+    })
+  })
+  it('retour sur la période courante : on revient sur aujourd’hui', () => {
+    const nov = cascadeShift(base, 'month', 1, today)
+    expect(cascadeShift(nov, 'month', -1, today)).toEqual(base)
+  })
+  it('semaine suivante qui change de mois : le mois et le trimestre suivent', () => {
+    const s = cascadeShift(startsAt('2026-12-30'), 'week', 1, '2026-12-30')
+    expect(s).toEqual({ day: '2027-01-04', week: '2027-01-04', month: '2027-01-01', quarter: '2027-01-01', year: '2027-01-01' })
   })
 })

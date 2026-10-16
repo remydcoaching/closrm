@@ -191,3 +191,34 @@ export function childHorizon(h: DatedHorizon): DatedHorizon {
 export const WINDOW_SIZE: Record<DatedHorizon, number> = {
   day: 14, week: 8, month: 6, quarter: 4, year: 3,
 }
+
+export type HorizonStarts = Record<DatedHorizon, string>
+
+/** Current period start of every dated horizon (the « Horizons » view on today). */
+export function startsAt(date: string): HorizonStarts {
+  return {
+    day: periodStart('day', date),
+    week: periodStart('week', date),
+    month: periodStart('month', date),
+    quarter: periodStart('quarter', date),
+    year: periodStart('year', date),
+  }
+}
+
+/**
+ * Slides one column of the « Horizons » view by n periods. Shorter horizons
+ * follow into the new period (today if it falls inside, else its first day);
+ * longer horizons realign so they still contain it.
+ */
+export function cascadeShift(starts: HorizonStarts, horizon: DatedHorizon, n: number, today: string = todayISO()): HorizonStarts {
+  const start = addPeriods(horizon, starts[horizon], n)
+  const end = periodEnd(horizon, start)
+  const focus = today >= start && today <= end ? today : start
+  const level = DATED_HORIZONS.indexOf(horizon)
+  const next = { ...starts }
+  for (const h of DATED_HORIZONS) {
+    const i = DATED_HORIZONS.indexOf(h)
+    next[h] = i === level ? start : periodStart(h, i < level ? focus : start)
+  }
+  return next
+}

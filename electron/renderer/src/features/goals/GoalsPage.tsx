@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Tabs } from '../../design-system/Tabs'
 import { ErrorState, LoadingState } from '../../design-system/States'
 import {
-  addPeriods, childHorizon, formatDayRange, isCurrentPeriod, isoWeek, isUndated, parentHorizon, periodEnd, periodLabel,
+  addPeriods, cascadeShift, childHorizon, DATED_HORIZONS, formatDayRange, startsAt, type HorizonStarts, isCurrentPeriod, isoWeek, isUndated, parentHorizon, periodEnd, periodLabel,
   periodStart, shortDateLabel, todayISO, type DatedHorizon, type Horizon, type PeriodLabel,
 } from './periods'
 import { positionAtEnd, sortByPosition } from './ordering'
@@ -181,15 +181,12 @@ const MONTHS_LONG_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', '
  * Aujourd'hui · this week · this month · this quarter · this year · Vie.
  */
 function OverviewBoard({ today }: { today: string }) {
-  const week = periodStart('week', today)
-  const month = periodStart('month', today)
-  const quarter = periodStart('quarter', today)
-  const year = periodStart('year', today)
-  const d = useGoals('day', today, today)
-  const w = useGoals('week', week, week)
-  const m = useGoals('month', month, month)
-  const q = useGoals('quarter', quarter, quarter)
-  const y = useGoals('year', year, year)
+  const [starts, setStarts] = useState<HorizonStarts>(() => startsAt(today))
+  const d = useGoals('day', starts.day, starts.day)
+  const w = useGoals('week', starts.week, starts.week)
+  const m = useGoals('month', starts.month, starts.month)
+  const q = useGoals('quarter', starts.quarter, starts.quarter)
+  const y = useGoals('year', starts.year, starts.year)
   const life = useGoals('life')
   const queries = [d, w, m, q, y, life]
   const ops = useGoalMutations(queries.map((x) => x.key))
@@ -201,17 +198,37 @@ function OverviewBoard({ today }: { today: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d.data, w.data, m.data, q.data, y.data, life.data])
 
+  const shift = (h: DatedHorizon, n: number) => setStarts((s) => cascadeShift(s, h, n, today))
+  const onToday = DATED_HORIZONS.every((h) => starts[h] === startsAt(today)[h])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (isTyping() || e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === 't' || e.key === 'T') setStarts(startsAt(today))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [today])
+
   const failed = queries.find((x) => !x.data && x.error)
   if (failed) return <ErrorState message={failed.error!} onRetry={() => queries.forEach((x) => void x.refresh())} />
   if (queries.some((x) => !x.data)) return <LoadingState />
 
-  const day = Number(today.slice(8, 10))
+  const dayLabel = periodLabel('day', starts.day)
   const columns: { horizon: Horizon; start: string | null; label: PeriodLabel }[] = [
-    { horizon: 'day', start: today, label: { title: 'Aujourd’hui', subtitle: `${day} ${MONTHS_LONG_FR[Number(today.slice(5, 7)) - 1]}` } },
-    { horizon: 'week', start: week, label: { title: formatDayRange(week, periodEnd('week', week)), subtitle: `S${isoWeek(week).week}` } },
-    { horizon: 'month', start: month, label: periodLabel('month', month) },
-    { horizon: 'quarter', start: quarter, label: periodLabel('quarter', quarter) },
-    { horizon: 'year', start: year, label: periodLabel('year', year) },
+    {
+      horizon: 'day',
+      start: starts.day,
+      label: starts.day === today ? { title: 'Aujourd’hui', subtitle: dayLabel.subtitle } : dayLabel,
+    },
+    {
+      horizon: 'week',
+      start: starts.week,
+      label: { title: formatDayRange(starts.week, periodEnd('week', starts.week)), subtitle: `S${isoWeek(starts.week).week}` },
+    },
+    { horizon: 'month', start: starts.month, label: periodLabel('month', starts.month) },
+    { horizon: 'quarter', start: starts.quarter, label: periodLabel('quarter', starts.quarter) },
+    { horizon: 'year', start: starts.year, label: periodLabel('year', starts.year) },
     { horizon: 'life', start: null, label: { title: 'Vie', subtitle: '' } },
   ]
 
@@ -221,12 +238,60 @@ function OverviewBoard({ today }: { today: string }) {
       <div className="goals-board">
         <div className="goals-columns">
           {columns.map((c) => (
-            <GoalColumn key={c.horizon} horizon={c.horizon} start={c.start} label={c.label} current={false} all={all} ops={ops} today={today} />
+            <GoalColumn
+              key={c.horizon}
+              horizon={c.horizon}
+              start={c.start}
+              label={c.label}
+              current={!isUndated(c.horizon) && c.start !== null && isCurrentPeriod(c.horizon as DatedHorizon, c.start, today)}
+              all={all}
+              ops={ops}
+              today={today}
+              onShift={isUndated(c.horizon) ? undefined : (n) => shift(c.horizon as DatedHorizon, n)}
+            />
           ))}
         </div>
       </div>
+      <div className="goals-nav">
+        <button className="goals-nav-today" disabled={onToday} onClick={() => setStarts(startsAt(today))}>
+          Aujourd’hui
+        </button>
+      </div>
     </div>
   )
+}
+
+/**
+ * Horizontal trackpad swipe on an element → onSwipe(+1 | -1), once per gesture
+ * (the trackpad's inertia keeps sending wheel events after the fingers lift).
+ */
+function useHorizontalSwipe(ref: React.RefObject<HTMLElement | null>, onSwipe: ((dir: 1 | -1) => void) | undefined) {
+  const cb = useRef(onSwipe)
+  cb.current = onSwipe
+  const enabled = !!onSwipe
+  useEffect(() => {
+    const el = ref.current
+    if (!el || !enabled) return
+    let acc = 0
+    let lockedUntil = 0
+    function onWheel(e: WheelEvent) {
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
+      e.preventDefault()
+      const now = performance.now()
+      if (now < lockedUntil) {
+        lockedUntil = now + 250 // still the same gesture (inertia)
+        return
+      }
+      acc += e.deltaX
+      if (Math.abs(acc) >= 60) {
+        cb.current?.(acc > 0 ? 1 : -1)
+        acc = 0
+        lockedUntil = now + 250
+      }
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [ref, enabled])
 }
 
 function InboxBoard() {
@@ -264,9 +329,13 @@ interface ColumnProps {
   today: string
   /** Overrides the default column header (« Horizons » view). */
   label?: PeriodLabel
+  /** « Horizons » view: slide this column by n periods (swipe or ‹ ›). */
+  onShift?: (n: number) => void
 }
 
-function GoalColumn({ horizon, start, current, all, ops, today, label: labelOverride }: ColumnProps) {
+function GoalColumn({ horizon, start, current, all, ops, today, label: labelOverride, onShift }: ColumnProps) {
+  const sectionRef = useRef<HTMLElement>(null)
+  useHorizontalSwipe(sectionRef, onShift)
   const [dragOver, setDragOver] = useState(false)
   const goals = useMemo(
     () => sortByPosition(all.filter((g) => g.horizon === horizon && g.period_start === start)),
@@ -291,6 +360,7 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
 
   return (
     <section
+      ref={sectionRef}
       className={`goals-column${dragOver ? ' goals-column--over' : ''}`}
       onDragOver={(e) => {
         if (!e.dataTransfer.types.includes('text/goal-id')) return
@@ -301,7 +371,15 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
       onDrop={onDrop}
     >
       <header className={`goals-column-head${current ? ' goals-column-head--current' : ''}`}>
-        <div className="goals-column-title">{label.title}</div>
+        <div className="goals-column-title-row">
+          <div className="goals-column-title">{label.title}</div>
+          {onShift && (
+            <div className="goals-column-arrows">
+              <button onClick={() => onShift(-1)} aria-label="Période précédente">‹</button>
+              <button onClick={() => onShift(1)} aria-label="Période suivante">›</button>
+            </div>
+          )}
+        </div>
         <div className="goals-column-sub">{label.subtitle || ' '}</div>
       </header>
       <div className="goals-list">

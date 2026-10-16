@@ -120,6 +120,26 @@ describe('GoalsPage', () => {
     expect(post).toHaveBeenCalledWith('/api/goals', expect.objectContaining({ title: 'Vivre à Bali', horizon: 'life', period_start: null }))
   })
 
+  it('vue Horizons : glisser la colonne du mois fait suivre la semaine et le jour', async () => {
+    localStorage.removeItem('closrm.goals.tab')
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const month = el.querySelectorAll('.goals-column')[2]
+    await act(async () => {
+      month.dispatchEvent(new WheelEvent('wheel', { deltaX: 80, deltaY: 2, bubbles: true, cancelable: true }))
+    })
+    await flush()
+    const titles = () => [...el.querySelectorAll('.goals-column-title')].map((n) => n.textContent)
+    expect(titles()).toEqual(['Dimanche', '26 oct.–1 nov.', 'Novembre', 'T4 2026', '2026', 'Vie'])
+    expect(get).toHaveBeenCalledWith(expect.stringContaining('horizon=month&from=2026-11-01&to=2026-11-01'))
+
+    // ‹ on the month column brings everything back to today.
+    const prev = el.querySelectorAll('.goals-column')[2].querySelector('[aria-label="Période précédente"]') as HTMLButtonElement
+    await act(async () => prev.click())
+    await flush()
+    expect(titles()).toEqual(['Aujourd’hui', '12–18 oct.', 'Octobre', 'T4 2026', '2026', 'Vie'])
+  })
+
   it('montre le message quand la migration manque', async () => {
     get.mockRejectedValue(new ApiError(503, "La table des objectifs n'existe pas encore : applique la migration 127_goals.sql dans Supabase."))
     await act(async () => root.render(<GoalsPage />))

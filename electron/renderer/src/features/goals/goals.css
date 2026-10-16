@@ -422,3 +422,37 @@
   font-size: 16px;
   cursor: pointer;
 }
+
+/* ── « Horizons » view: per-column ‹ › ─────────────── */
+.goals-column-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.goals-column-arrows {
+  display: flex;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.goals-column:hover .goals-column-arrows {
+  opacity: 1;
+}
+
+.goals-column-arrows button {
+  border: none;
+  background: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.goals-column-arrows button:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text-primary);
+}
