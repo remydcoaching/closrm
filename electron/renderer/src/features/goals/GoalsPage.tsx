@@ -11,6 +11,7 @@ import {
 import { positionAtEnd, sortByPosition } from './ordering'
 import { useGoalMutations, useGoals, type Goal, type GoalColor } from './use-goals'
 import { createSwipeDetector } from './swipe'
+import '../../design-system/data-table.css'
 import './goals.css'
 
 type Ops = ReturnType<typeof useGoalMutations>
@@ -39,9 +40,9 @@ const colorValue = (c: GoalColor | null) => COLORS.find((x) => x.key === c)?.val
 
 const PARENT_LABEL: Record<DatedHorizon, string> = { day: 'Semaine', week: 'Mois', month: 'Trimestre', quarter: 'Année', year: '' }
 
-/** Columns shown: the previous period, the anchor, then the next ones. */
+/** Columns shown: the previous period, the anchor, then the next ones (they share the card width). */
 const COLUMNS_BEFORE = 1
-const COLUMNS_AFTER = 6
+const COLUMNS_AFTER = 3
 
 const TAB_STORAGE = 'closrm.goals.tab'
 
@@ -73,24 +74,28 @@ export function GoalsPage() {
     }
   }
 
+  const tabs = <Tabs items={TABS} active={tab} onChange={changeTab} />
+
   return (
     <div className="goals-page">
       <div className="goals-header">
-        <h1>Objectifs</h1>
-        <Tabs items={TABS} active={tab} onChange={changeTab} />
+        <div>
+          <h1>Objectifs</h1>
+          <p>Ce que tu veux accomplir aujourd’hui, cette semaine, ce mois-ci et au-delà</p>
+        </div>
       </div>
       {tab === 'horizons' ? (
-        <OverviewBoard today={today} />
+        <OverviewBoard today={today} tabs={tabs} />
       ) : tab === 'inbox' ? (
-        <InboxBoard />
+        <InboxBoard tabs={tabs} />
       ) : (
-        <HorizonBoard key={tab} horizon={tab} today={today} />
+        <HorizonBoard key={tab} horizon={tab} today={today} tabs={tabs} />
       )}
     </div>
   )
 }
 
-function HorizonBoard({ horizon, today }: { horizon: DatedHorizon; today: string }) {
+function HorizonBoard({ horizon, today, tabs }: { horizon: DatedHorizon; today: string; tabs: React.ReactNode }) {
   const current = periodStart(horizon, today)
   const [anchor, setAnchor] = useState(current)
   const starts = useMemo(
@@ -130,14 +135,29 @@ function HorizonBoard({ horizon, today }: { horizon: DatedHorizon; today: string
     return () => window.removeEventListener('keydown', onKey)
   }, [horizon, current])
 
-  if (!main.data && main.error) return <ErrorState message={main.error} onRetry={main.refresh} />
-  if (!main.data) return <LoadingState />
+  const toolbar = (
+    <div className="goals-toolbar">
+      {tabs}
+      <div className="goals-nav">
+        <button type="button" className="goals-nav-arrow" onClick={() => setAnchor(addPeriods(horizon, anchor, -1))} aria-label="Période précédente">‹</button>
+        <button type="button" className="ds-pill-button" disabled={anchor === current} onClick={() => setAnchor(current)}>
+          Aujourd’hui
+        </button>
+        <button type="button" className="goals-nav-arrow" onClick={() => setAnchor(addPeriods(horizon, anchor, 1))} aria-label="Période suivante">›</button>
+      </div>
+      <span className="goals-period">{formatDayRange(from, to)}</span>
+    </div>
+  )
+
+  if (!main.data && main.error) return <>{toolbar}<ErrorState message={main.error} onRetry={main.refresh} /></>
+  if (!main.data) return <>{toolbar}<LoadingState /></>
 
   return (
-    <div className="goals-board-wrap">
+    <>
+      {toolbar}
       {ops.error && <ErrorBanner message={ops.error} onClose={ops.clearError} />}
       <div className="goals-board">
-        <div className="goals-columns goals-columns--slide" ref={scroller}>
+        <div className="goals-columns goals-columns--slide goals-columns--fill" ref={scroller}>
           {starts.map((start) => (
             <GoalColumn
               key={start}
@@ -152,11 +172,11 @@ function HorizonBoard({ horizon, today }: { horizon: DatedHorizon; today: string
         </div>
         {parentH && parentStart && (
           <div className="goals-parent-column">
-            <div className="goals-parent-tag">{PARENT_LABEL[horizon]}</div>
             <GoalColumn
               horizon={parentH}
               start={parentStart}
-              current={isCurrentPeriod(parentH, parentStart, today)}
+              label={{ ...columnLabel(parentH, parentStart), subtitle: `${PARENT_LABEL[horizon]} · ${columnLabel(parentH, parentStart).subtitle}` }}
+              current={false}
               all={all}
               ops={ops}
               today={today}
@@ -164,24 +184,15 @@ function HorizonBoard({ horizon, today }: { horizon: DatedHorizon; today: string
           </div>
         )}
       </div>
-      <div className="goals-nav">
-        <button onClick={() => setAnchor(addPeriods(horizon, anchor, -1))} aria-label="Période précédente">‹</button>
-        <button className="goals-nav-today" disabled={anchor === current} onClick={() => setAnchor(current)}>
-          Aujourd’hui
-        </button>
-        <button onClick={() => setAnchor(addPeriods(horizon, anchor, 1))} aria-label="Période suivante">›</button>
-      </div>
-    </div>
+    </>
   )
 }
-
-const MONTHS_LONG_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
 
 /**
  * « Horizons »: every horizon on its current period side by side —
  * Aujourd'hui · this week · this month · this quarter · this year · Vie.
  */
-function OverviewBoard({ today }: { today: string }) {
+function OverviewBoard({ today, tabs }: { today: string; tabs: React.ReactNode }) {
   const [starts, setStarts] = useState<HorizonStarts>(() => startsAt(today))
   const d = useGoals('day', starts.day, starts.day)
   const w = useGoals('week', starts.week, starts.week)
@@ -211,40 +222,42 @@ function OverviewBoard({ today }: { today: string }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [today])
 
-  const failed = queries.find((x) => !x.data && x.error)
-  if (failed) return <ErrorState message={failed.error!} onRetry={() => queries.forEach((x) => void x.refresh())} />
-  if (queries.some((x) => !x.data)) return <LoadingState />
+  const toolbar = (
+    <div className="goals-toolbar">
+      {tabs}
+      <button type="button" className="ds-pill-button" disabled={onToday} onClick={() => setStarts(startsAt(today))}>
+        Aujourd’hui
+      </button>
+    </div>
+  )
 
-  const dayLabel = periodLabel('day', starts.day)
+  const failed = queries.find((x) => !x.data && x.error)
+  if (failed) return <>{toolbar}<ErrorState message={failed.error!} onRetry={() => queries.forEach((x) => void x.refresh())} /></>
+  if (queries.some((x) => !x.data)) return <>{toolbar}<LoadingState /></>
+
+  const kicker = (h: DatedHorizon, name: string, start: string): PeriodLabel => ({ ...columnLabel(h, start), subtitle: name })
   const columns: { horizon: Horizon; start: string | null; label: PeriodLabel }[] = [
-    {
-      horizon: 'day',
-      start: starts.day,
-      label: starts.day === today ? { title: 'Aujourd’hui', subtitle: dayLabel.subtitle } : dayLabel,
-    },
-    {
-      horizon: 'week',
-      start: starts.week,
-      label: { title: formatDayRange(starts.week, periodEnd('week', starts.week)), subtitle: `S${isoWeek(starts.week).week}` },
-    },
-    { horizon: 'month', start: starts.month, label: periodLabel('month', starts.month) },
-    { horizon: 'quarter', start: starts.quarter, label: periodLabel('quarter', starts.quarter) },
-    { horizon: 'year', start: starts.year, label: periodLabel('year', starts.year) },
-    { horizon: 'life', start: null, label: { title: 'Vie', subtitle: '' } },
+    { horizon: 'day', start: starts.day, label: starts.day === today ? kicker('day', 'Aujourd’hui', starts.day) : columnLabel('day', starts.day) },
+    { horizon: 'week', start: starts.week, label: columnLabel('week', starts.week) },
+    { horizon: 'month', start: starts.month, label: { subtitle: 'Mois', title: `${periodLabel('month', starts.month).title} ${starts.month.slice(0, 4)}` } },
+    { horizon: 'quarter', start: starts.quarter, label: kicker('quarter', 'Trimestre', starts.quarter) },
+    { horizon: 'year', start: starts.year, label: columnLabel('year', starts.year) },
+    { horizon: 'life', start: null, label: columnLabel('life', null) },
   ]
 
   return (
-    <div className="goals-board-wrap">
+    <>
+      {toolbar}
       {ops.error && <ErrorBanner message={ops.error} onClose={ops.clearError} />}
       <div className="goals-board">
-        <div className="goals-columns">
+        <div className="goals-columns goals-columns--fill">
           {columns.map((c) => (
             <GoalColumn
               key={c.horizon}
               horizon={c.horizon}
               start={c.start}
               label={c.label}
-              current={!isUndated(c.horizon) && c.start !== null && isCurrentPeriod(c.horizon as DatedHorizon, c.start, today)}
+              current={false}
               all={all}
               ops={ops}
               today={today}
@@ -253,12 +266,7 @@ function OverviewBoard({ today }: { today: string }) {
           ))}
         </div>
       </div>
-      <div className="goals-nav">
-        <button className="goals-nav-today" disabled={onToday} onClick={() => setStarts(startsAt(today))}>
-          Aujourd’hui
-        </button>
-      </div>
-    </div>
+    </>
   )
 }
 
@@ -289,20 +297,26 @@ function useHorizontalSwipe(ref: React.RefObject<HTMLElement | null>, onSwipe: (
   }, [ref, enabled])
 }
 
-function InboxBoard() {
+function InboxBoard({ tabs }: { tabs: React.ReactNode }) {
   const inbox = useGoals('inbox')
   const ops = useGoalMutations([inbox.key])
-  if (!inbox.data && inbox.error) return <ErrorState message={inbox.error} onRetry={inbox.refresh} />
-  if (!inbox.data) return <LoadingState />
+  const toolbar = (
+    <div className="goals-toolbar">
+      {tabs}
+    </div>
+  )
+  if (!inbox.data && inbox.error) return <>{toolbar}<ErrorState message={inbox.error} onRetry={inbox.refresh} /></>
+  if (!inbox.data) return <>{toolbar}<LoadingState /></>
   return (
-    <div className="goals-board-wrap">
+    <>
+      {toolbar}
       {ops.error && <ErrorBanner message={ops.error} onClose={ops.clearError} />}
       <div className="goals-board">
-        <div className="goals-columns">
+        <div className="goals-columns goals-columns--fill">
           <GoalColumn horizon="inbox" start={null} current={false} all={inbox.data.goals} ops={ops} today={todayISO()} />
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -313,6 +327,20 @@ function ErrorBanner({ message, onClose }: { message: string; onClose: () => voi
       <button onClick={onClose} aria-label="Fermer">×</button>
     </div>
   )
+}
+
+/** Column header: `subtitle` is the small grey line on top, `title` the bold one. */
+function columnLabel(horizon: Horizon, start: string | null): PeriodLabel {
+  if (horizon === 'life') return { subtitle: 'Long terme', title: 'Vie' }
+  if (horizon === 'inbox' || !start) return { subtitle: 'Sans date', title: 'Inbox' }
+  const l = periodLabel(horizon, start)
+  switch (horizon) {
+    case 'day': return { subtitle: l.title, title: l.subtitle } // « Jeudi » / « 15 octobre »
+    case 'week': return { subtitle: `Semaine ${isoWeek(start).week}`, title: l.subtitle }
+    case 'month': return { subtitle: l.subtitle, title: l.title } // « 2026 » / « Octobre »
+    case 'quarter': return { subtitle: l.subtitle, title: l.title } // « oct.–déc. » / « T4 2026 »
+    case 'year': return { subtitle: 'Année', title: l.title }
+  }
 }
 
 interface ColumnProps {
@@ -336,13 +364,7 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
     () => sortByPosition(all.filter((g) => g.horizon === horizon && g.period_start === start)),
     [all, horizon, start],
   )
-  const label =
-    labelOverride ??
-    (horizon === 'life'
-      ? { title: 'Vie', subtitle: '' }
-      : horizon === 'inbox' || !start
-        ? { title: 'Inbox', subtitle: 'Sans date' }
-        : periodLabel(horizon, start))
+  const label = labelOverride ?? columnLabel(horizon, start)
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
@@ -366,6 +388,7 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
       onDrop={onDrop}
     >
       <header className={`goals-column-head${current ? ' goals-column-head--current' : ''}`}>
+        <div className="goals-column-sub">{label.subtitle || ' '}</div>
         <div className="goals-column-title-row">
           <div className="goals-column-title">{label.title}</div>
           {onShift && (
@@ -375,7 +398,6 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
             </div>
           )}
         </div>
-        <div className="goals-column-sub">{label.subtitle || ' '}</div>
       </header>
       <div className="goals-list">
         {goals.map((g) => (
@@ -583,8 +605,8 @@ function GoalComposer({ onSubmit }: { onSubmit: (title: string) => unknown }) {
   if (!open) {
     return (
       <button className="goal-add" onClick={() => setOpen(true)}>
-        <span className="goal-check goal-check--ghost" />
-        Ajouter…
+        <span className="goal-add-plus">+</span>
+        Ajouter
       </button>
     )
   }

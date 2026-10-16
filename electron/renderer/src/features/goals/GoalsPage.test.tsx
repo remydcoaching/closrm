@@ -69,12 +69,12 @@ describe('GoalsPage', () => {
     await act(async () => root.render(<GoalsPage />))
     await flush()
     const titles = [...el.querySelectorAll('.goals-column-title')].map((n) => n.textContent)
-    expect(titles.slice(0, 3)).toEqual(['S41, 2026', 'S42, 2026', 'S43, 2026'])
+    expect(titles.slice(0, 3)).toEqual(['5–11 oct.', '12–18 oct.', '19–25 oct.'])
     expect(titles[titles.length - 1]).toBe('Octobre')
-    expect(el.querySelector('.goals-column-head--current .goals-column-title')?.textContent).toBe('S42, 2026')
+    expect(el.querySelector('.goals-column-head--current .goals-column-title')?.textContent).toBe('12–18 oct.')
     expect(el.textContent).toContain('Ecriture + tournage')
     expect(el.querySelector('.goal-parent')?.textContent).toBe('Poster 3-5 contenus par jour')
-    expect(get).toHaveBeenCalledWith(expect.stringContaining('horizon=week&from=2026-10-05&to=2026-11-29'))
+    expect(get).toHaveBeenCalledWith(expect.stringContaining('horizon=week&from=2026-10-05&to=2026-11-08'))
     expect(get).toHaveBeenCalledWith(expect.stringContaining('horizon=month&from=2026-10-01&to=2026-10-31'))
   })
 
@@ -103,7 +103,7 @@ describe('GoalsPage', () => {
     await act(async () => root.render(<GoalsPage />))
     await flush()
     const titles = [...el.querySelectorAll('.goals-column-title')].map((n) => n.textContent)
-    expect(titles).toEqual(['Aujourd’hui', '12–18 oct.', 'Octobre', 'T4 2026', '2026', 'Vie'])
+    expect(titles).toEqual(['15 octobre', '12–18 oct.', 'Octobre 2026', 'T4 2026', '2026', 'Vie'])
     expect(get).toHaveBeenCalledWith('/api/goals?horizon=life')
     const cols = el.querySelectorAll('.goals-column')
     expect(cols[1].textContent).toContain('Ecriture + tournage')
@@ -130,14 +130,14 @@ describe('GoalsPage', () => {
     })
     await flush()
     const titles = () => [...el.querySelectorAll('.goals-column-title')].map((n) => n.textContent)
-    expect(titles()).toEqual(['Dimanche', '26 oct.–1 nov.', 'Novembre', 'T4 2026', '2026', 'Vie'])
+    expect(titles()).toEqual(['1 novembre', '26 oct.–1 nov.', 'Novembre 2026', 'T4 2026', '2026', 'Vie'])
     expect(get).toHaveBeenCalledWith(expect.stringContaining('horizon=month&from=2026-11-01&to=2026-11-01'))
 
     // ‹ on the month column brings everything back to today.
     const prev = el.querySelectorAll('.goals-column')[2].querySelector('[aria-label="Période précédente"]') as HTMLButtonElement
     await act(async () => prev.click())
     await flush()
-    expect(titles()).toEqual(['Aujourd’hui', '12–18 oct.', 'Octobre', 'T4 2026', '2026', 'Vie'])
+    expect(titles()).toEqual(['15 octobre', '12–18 oct.', 'Octobre 2026', 'T4 2026', '2026', 'Vie'])
   })
 
   it('montre le message quand la migration manque', async () => {
