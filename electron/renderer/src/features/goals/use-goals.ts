@@ -20,6 +20,8 @@ export interface Goal {
   done_at: string | null
   color: GoalColor | null
   created_at: string
+  /** Period it was first planned in, when it was carried over unfinished (migration 129). */
+  carried_from?: string | null
 }
 
 export interface GoalsResponse {

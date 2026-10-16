@@ -5,8 +5,10 @@ import { updateGoalSchema } from '@/lib/validations/goals'
 import { authOrServerError, goalsDbError } from '@/lib/goals/api-errors'
 import { normalizePeriodStart } from '@/lib/goals/period'
 import { syncAncestorsDone } from '@/lib/goals/done'
+import { isMissingColumn } from '@/lib/goals/api-errors'
 
-const COLS = 'id, parent_id, title, description, horizon, period_start, position, done_at, color, created_at'
+// '*' rather than a list: carried_from (migration 129) shows up as soon as it exists.
+const COLS = '*'
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -37,7 +39,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
-    const { data, error } = await supabase.from('goals').update(patch).eq('id', id).eq('workspace_id', workspaceId).select(COLS).single()
+    // Rescheduled by hand: it is no longer a carried-over goal.
+    if (rest.period_start !== undefined || rest.horizon !== undefined) patch.carried_from = null
+    let { data, error } = await supabase.from('goals').update(patch).eq('id', id).eq('workspace_id', workspaceId).select(COLS).single()
+    if (error && isMissingColumn(error) && 'carried_from' in patch) {
+      delete patch.carried_from // migration 129 not applied yet
+      ;({ data, error } = await supabase.from('goals').update(patch).eq('id', id).eq('workspace_id', workspaceId).select(COLS).single())
+    }
     if (error) return goalsDbError(error)
     // Checking a week slice can check the month goal it belongs to (and so on up).
     if (done !== undefined) await syncAncestorsDone(supabase, workspaceId, data.parent_id)

@@ -5,7 +5,8 @@ import { createGoalSchema, goalsQuerySchema } from '@/lib/validations/goals'
 import { authOrServerError, goalsDbError } from '@/lib/goals/api-errors'
 import { normalizePeriodStart } from '@/lib/goals/period'
 
-const COLS = 'id, parent_id, title, description, horizon, period_start, position, done_at, color, created_at'
+// '*' rather than a list: carried_from (migration 129) shows up as soon as it exists.
+const COLS = '*'
 
 // GET /api/goals?horizon=week&from=2026-09-01&to=2026-12-31
 // Returns the goals of the range plus their direct parents and children

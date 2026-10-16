@@ -15,3 +15,8 @@ export function authOrServerError(err: unknown) {
   if (err instanceof Error && err.message === 'Not authenticated') return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
   return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
 }
+
+/** A column that a not-yet-applied migration adds (PostgREST / Postgres codes). */
+export function isMissingColumn(error: { code?: string } | null | undefined): boolean {
+  return error?.code === '42703' || error?.code === 'PGRST204'
+}

@@ -12,6 +12,8 @@ import { positionAtEnd, sortByPosition } from './ordering'
 import { useGoalMutations, useGoals, type Goal, type GoalColor } from './use-goals'
 import { dropCreatesSubGoal } from './goal-tree'
 import { createSwipeDetector } from './swipe'
+import { api } from '../../lib/api-client'
+import { invalidate } from '../../lib/query-cache'
 import '../../design-system/data-table.css'
 import './goals.css'
 
@@ -74,6 +76,17 @@ export function GoalsPage() {
       /* storage unavailable */
     }
   }
+
+  // Like Timestripe's auto-move: unfinished goals of past periods move to the
+  // current one (once per opening; the lists refresh only if something moved).
+  useEffect(() => {
+    api
+      .post<{ moved: number }>('/api/goals/rollover', { today })
+      .then((r) => {
+        if (r.moved > 0) invalidate('goals:')
+      })
+      .catch(() => undefined)
+  }, [today])
 
   const tabs = <Tabs items={TABS} active={tab} onChange={changeTab} />
 
@@ -469,6 +482,9 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
             <div className="goal-title" onClick={() => setEditing(true)}>
               {goal.title}
             </div>
+          )}
+          {goal.carried_from && !done && (
+            <div className="goal-carried">↻ Reporté · {shortDateLabel(goal.horizon, goal.carried_from)}</div>
           )}
           {parent && <div className="goal-parent">{parent.title}</div>}
           {(children.length > 0 || open) && (

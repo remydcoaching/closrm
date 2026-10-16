@@ -514,3 +514,9 @@ body:has(.goals-page),
 .goals-column:hover .goal-add {
   opacity: 1;
 }
+
+.goal-carried {
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+  margin-top: 2px;
+}

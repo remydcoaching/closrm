@@ -20,3 +20,5 @@ export function normalizePeriodStart(horizon: string, iso: string | null | undef
   }
   return date.toISOString().slice(0, 10)
 }
+
+export const ROLLING_HORIZONS = ['day', 'week', 'month', 'quarter', 'year'] as const

@@ -47,7 +47,8 @@ beforeEach(() => {
   for (const f of [get, post, patch, del]) f.mockReset()
   const created: Record<string, unknown>[] = []
   get.mockImplementation(async (url: string) => ({ goals: url.includes('horizon=week') ? [weekGoal, monthGoal, ...created] : [monthGoal] }))
-  post.mockImplementation(async (_url: string, body: { title: string; position: number }) => {
+  post.mockImplementation(async (url: string, body: { title: string; position: number }) => {
+    if (url === '/api/goals/rollover') return { moved: 0 }
     const goal = { ...weekGoal, ...body, id: `srv-${created.length}`, parent_id: null }
     created.push(goal)
     return { goal }
@@ -138,6 +139,12 @@ describe('GoalsPage', () => {
     await act(async () => prev.click())
     await flush()
     expect(titles()).toEqual(['15 octobre', '12–18 oct.', 'Octobre 2026', 'T4 2026', '2026', 'Vie'])
+  })
+
+  it('lance le report des objectifs non faits à l’ouverture, avec la date du jour', async () => {
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    expect(post).toHaveBeenCalledWith('/api/goals/rollover', { today: '2026-10-15' })
   })
 
   it('montre le message quand la migration manque', async () => {
