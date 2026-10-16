@@ -10,6 +10,7 @@ import {
 } from './periods'
 import { positionAtEnd, sortByPosition } from './ordering'
 import { useGoalMutations, useGoals, type Goal, type GoalColor } from './use-goals'
+import { createSwipeDetector } from './swipe'
 import './goals.css'
 
 type Ops = ReturnType<typeof useGoalMutations>
@@ -272,22 +273,12 @@ function useHorizontalSwipe(ref: React.RefObject<HTMLElement | null>, onSwipe: (
   useEffect(() => {
     const el = ref.current
     if (!el || !enabled) return
-    let acc = 0
-    let lockedUntil = 0
+    const detector = createSwipeDetector()
     function onWheel(e: WheelEvent) {
       if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
       e.preventDefault()
-      const now = performance.now()
-      if (now < lockedUntil) {
-        lockedUntil = now + 250 // still the same gesture (inertia)
-        return
-      }
-      acc += e.deltaX
-      if (Math.abs(acc) >= 60) {
-        cb.current?.(acc > 0 ? 1 : -1)
-        acc = 0
-        lockedUntil = now + 250
-      }
+      const dir = detector.feed(e.deltaX, e.deltaY, performance.now())
+      if (dir !== 0) cb.current?.(dir)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
