@@ -26,6 +26,9 @@ const STORAGE_PREFIX = `closrm:qc:v${VERSION}:`
 let partition: string | null = null
 let entries = new Map<string, CacheEntry>()
 const inflight = new Map<string, Promise<unknown>>()
+// Bumped when a write makes a running fetch's answer outdated: that answer is
+// then dropped instead of overwriting the newer (optimistic or refetched) data.
+const generations = new Map<string, number>()
 // Loader of each composite key ('desktop:…'), so invalidate() can refresh it too.
 const loaders = new Map<string, () => Promise<unknown>>()
 // Loaders screens declare up front, so their composite keys can be refreshed
@@ -169,9 +172,24 @@ export function updateCached<T>(key: string, updater: (prev: T) => T) {
   if (prev) setCached(key, updater(prev.data))
 }
 
+/**
+ * A write is starting or just finished: fetches of matching keys already
+ * running may answer with data from before it, so their answer is ignored.
+ */
+export function discardInflight(match: string | ((key: string) => boolean)) {
+  const test = typeof match === 'string' ? (k: string) => k.startsWith(match) : match
+  for (const k of [...inflight.keys()]) {
+    if (!test(k)) continue
+    generations.set(k, (generations.get(k) ?? 0) + 1)
+    inflight.delete(k)
+  }
+}
+
 /** Marks matching entries stale (they stay visible) and refetches the ones on screen. */
 export function invalidate(match: string | ((key: string) => boolean)) {
   const test = typeof match === 'string' ? (k: string) => k.startsWith(match) : match
+  // A fetch started before the write would bring back pre-write data: drop it, fetch again.
+  discardInflight(test)
   for (const [k, e] of entries) {
     if (!test(k)) continue
     e.at = 0
@@ -190,13 +208,17 @@ export function revalidate<T>(key: string, fetcher?: () => Promise<T>): Promise<
   const load = (fetcher ?? loaderFor(key)) as (() => Promise<T>) | undefined
   if (!load && !key.startsWith('/')) return Promise.reject(new Error(`No loader for ${key}`))
   const t0 = performance.now()
-  const p = (load ? load() : api.get<T>(key))
+  const gen = generations.get(key) ?? 0
+  const p: Promise<T> = (load ? load() : api.get<T>(key))
     .then((data) => {
+      if ((generations.get(key) ?? 0) !== gen) return data // outdated by a write meanwhile
       const changed = setCached(key, data)
       perfLog('api', { path: key.split('?')[0], ms: Math.round(performance.now() - t0), changed })
       return data
     })
-    .finally(() => inflight.delete(key))
+    .finally(() => {
+      if (inflight.get(key) === p) inflight.delete(key)
+    })
   inflight.set(key, p)
   return p
 }

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const { workspaceId } = await getWorkspaceId()
     const parsed = goalsQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams))
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Requête invalide', details: parsed.error.flatten() }, { status: 400 })
     const { horizon, from, to } = parsed.data
     const supabase = await createClient()
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   try {
     const { workspaceId, userId } = await getWorkspaceId()
     const parsed = createGoalSchema.safeParse(await request.json().catch(() => null))
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Requête invalide', details: parsed.error.flatten() }, { status: 400 })
     const input = parsed.data
     const supabase = await createClient()
 

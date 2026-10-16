@@ -4,6 +4,7 @@ import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateGoalSchema } from '@/lib/validations/goals'
 import { authOrServerError, goalsDbError } from '@/lib/goals/api-errors'
 import { normalizePeriodStart } from '@/lib/goals/period'
+import { syncAncestorsDone } from '@/lib/goals/done'
 
 const COLS = 'id, parent_id, title, description, horizon, period_start, position, done_at, color, created_at'
 
@@ -12,7 +13,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params
     const { workspaceId } = await getWorkspaceId()
     const parsed = updateGoalSchema.safeParse(await request.json().catch(() => null))
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Requête invalide', details: parsed.error.flatten() }, { status: 400 })
     const { done, ...rest } = parsed.data
     const supabase = await createClient()
 
@@ -38,6 +39,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { data, error } = await supabase.from('goals').update(patch).eq('id', id).eq('workspace_id', workspaceId).select(COLS).single()
     if (error) return goalsDbError(error)
+    // Checking a week slice can check the month goal it belongs to (and so on up).
+    if (done !== undefined) await syncAncestorsDone(supabase, workspaceId, data.parent_id)
     return NextResponse.json({ goal: data })
   } catch (err) {
     return authOrServerError(err)

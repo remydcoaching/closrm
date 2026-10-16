@@ -10,6 +10,7 @@ import {
 } from './periods'
 import { positionAtEnd, sortByPosition } from './ordering'
 import { useGoalMutations, useGoals, type Goal, type GoalColor } from './use-goals'
+import { dropCreatesSubGoal } from './goal-tree'
 import { createSwipeDetector } from './swipe'
 import '../../design-system/data-table.css'
 import './goals.css'
@@ -372,6 +373,11 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
     const id = e.dataTransfer.getData('text/goal-id')
     const goal = all.find((g) => g.id === id)
     if (!goal || (goal.horizon === horizon && goal.period_start === start)) return
+    if (dropCreatesSubGoal(goal.horizon, horizon)) {
+      // Month goal dropped on a week: plan a slice of it there, it stays in the month.
+      void ops.create({ title: goal.title, horizon, period_start: start, parent_id: goal.id, position: positionAtEnd(goals) })
+      return
+    }
     void ops.update(id, { horizon, period_start: start, position: positionAtEnd(goals) })
   }
 
@@ -442,7 +448,7 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
     <div
       className={`goal-item${done ? ' goal-item--done' : ''}`}
       style={{ borderLeftColor: colorValue(goal.color) ?? 'transparent' }}
-      draggable={!editing}
+      draggable={!editing && !goal.id.startsWith('tmp-')}
       onDragStart={(e) => {
         e.dataTransfer.setData('text/goal-id', goal.id)
         e.dataTransfer.effectAllowed = 'move'

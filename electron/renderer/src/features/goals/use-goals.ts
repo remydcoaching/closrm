@@ -2,8 +2,9 @@
 // every list on screen, rollback + message on failure.
 import { useCallback, useState } from 'react'
 import { api, ApiError } from '../../lib/api-client'
-import { getCached, invalidate, setCached } from '../../lib/query-cache'
+import { discardInflight, getCached, invalidate, setCached } from '../../lib/query-cache'
 import { useCachedQuery } from '../../lib/use-cached-query'
+import { propagateDone } from './goal-tree'
 import { isUndated, type Horizon } from './periods'
 
 export type GoalColor = 'yellow' | 'pink' | 'green' | 'blue' | 'purple' | 'orange'
@@ -91,12 +92,22 @@ export function useGoalMutations(keys: (string | null)[]) {
   const keysSig = liveKeys.join('|')
 
   const run = useCallback(
-    async (apply: (goals: Goal[]) => Goal[], call: () => Promise<unknown>) => {
+    async <R>(apply: (goals: Goal[]) => Goal[], call: () => Promise<R>, confirm?: (result: R, goals: Goal[]) => Goal[]) => {
       const ks = keysSig.split('|').filter(Boolean)
+      // A refetch already running would bring back the list without this change.
+      discardInflight('goals:')
       const snapshots = ks.map((k) => [k, getCached<GoalsResponse>(k)?.data] as const)
       for (const [k, prev] of snapshots) if (prev) setCached<GoalsResponse>(k, { goals: apply(prev.goals) })
       try {
-        await call()
+        const result = await call()
+        // Server answer in hand (e.g. the real id of a new goal): apply it now,
+        // without waiting for the background refetch.
+        if (confirm) {
+          for (const k of ks) {
+            const cur = getCached<GoalsResponse>(k)?.data
+            if (cur) setCached<GoalsResponse>(k, { goals: confirm(result, cur.goals) })
+          }
+        }
         setError(null)
       } catch (err) {
         for (const [k, prev] of snapshots) if (prev) setCached(k, prev)
@@ -122,7 +133,11 @@ export function useGoalMutations(keys: (string | null)[]) {
         color: null,
         created_at: new Date().toISOString(),
       }
-      return run((goals) => [...goals, tmp], () => api.post('/api/goals', input))
+      return run(
+        (goals) => [...goals, tmp],
+        () => api.post<{ goal: Goal }>('/api/goals', input),
+        ({ goal }, goals) => goals.map((g) => (g.id === tmp.id ? goal : g)),
+      )
     },
     [run],
   )
@@ -132,12 +147,15 @@ export function useGoalMutations(keys: (string | null)[]) {
       if (id.startsWith('tmp-')) return Promise.resolve()
       const { done, ...rest } = patch
       return run(
-        (goals) =>
-          goals.map((g) =>
+        (goals) => {
+          const next = goals.map((g) =>
             g.id === id
               ? { ...g, ...rest, ...(done !== undefined ? { done_at: done ? new Date().toISOString() : null } : {}) }
               : g,
-          ),
+          )
+          // Checking a sub-goal can check (or uncheck) its parents.
+          return done !== undefined ? propagateDone(next, id) : next
+        },
         () => api.patch(`/api/goals/${id}`, patch),
       )
     },
