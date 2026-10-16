@@ -42,6 +42,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-10-15T10:00:00'))
   localStorage.clear()
+  localStorage.setItem('closrm.goals.tab', 'week')
   setCachePartition(`test-${Math.random()}`)
   for (const f of [get, post, patch, del]) f.mockReset()
   const created: Record<string, unknown>[] = []
@@ -95,6 +96,28 @@ describe('GoalsPage', () => {
 
     await act(async () => (s42.querySelector('.goal-check') as HTMLButtonElement).click())
     expect(patch).toHaveBeenCalledWith('/api/goals/w1', { done: true })
+  })
+
+  it('vue Horizons : aujourd’hui, semaine, mois, trimestre, année, Vie', async () => {
+    localStorage.removeItem('closrm.goals.tab')
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const titles = [...el.querySelectorAll('.goals-column-title')].map((n) => n.textContent)
+    expect(titles).toEqual(['Aujourd’hui', '12–18 oct.', 'Octobre', 'T4 2026', '2026', 'Vie'])
+    expect(get).toHaveBeenCalledWith('/api/goals?horizon=life')
+    const cols = el.querySelectorAll('.goals-column')
+    expect(cols[1].textContent).toContain('Ecriture + tournage')
+    expect(cols[2].textContent).toContain('Poster 3-5 contenus par jour')
+
+    const vie = cols[5]
+    await act(async () => (vie.querySelector('.goal-add') as HTMLButtonElement).click())
+    const input = vie.querySelector('.goal-input') as HTMLInputElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Vivre à Bali')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })))
+    expect(post).toHaveBeenCalledWith('/api/goals', expect.objectContaining({ title: 'Vivre à Bali', horizon: 'life', period_start: null }))
   })
 
   it('montre le message quand la migration manque', async () => {

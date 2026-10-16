@@ -2,8 +2,10 @@
 // All dates are plain ISO strings "YYYY-MM-DD" (no time, no timezone) and all
 // arithmetic is done in UTC so DST / local timezone can never shift a day.
 
-export type Horizon = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'inbox'
-export type DatedHorizon = Exclude<Horizon, 'inbox'>
+export type Horizon = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'life' | 'inbox'
+export type DatedHorizon = Exclude<Horizon, 'inbox' | 'life'>
+
+export const isUndated = (h: Horizon): h is 'inbox' | 'life' => h === 'inbox' || h === 'life'
 
 export const DATED_HORIZONS: DatedHorizon[] = ['day', 'week', 'month', 'quarter', 'year']
 
@@ -161,6 +163,7 @@ export function periodLabel(horizon: DatedHorizon, start: string): PeriodLabel {
 
 /** Short label of a goal's date, shown under a sub-goal ("15 octobre", "S42", "Octobre 2026"…). */
 export function shortDateLabel(horizon: Horizon, start: string | null): string {
+  if (horizon === 'life') return 'Vie'
   if (horizon === 'inbox' || !start) return 'Inbox'
   const d = parseISODate(start)
   switch (horizon) {

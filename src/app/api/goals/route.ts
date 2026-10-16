@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     let q = supabase.from('goals').select(COLS).eq('workspace_id', workspaceId)
     if (horizon) q = q.eq('horizon', horizon)
-    if (horizon !== 'inbox') {
+    if (horizon !== 'inbox' && horizon !== 'life') {
       if (from) q = q.gte('period_start', from)
       if (to) q = q.lte('period_start', to)
     }

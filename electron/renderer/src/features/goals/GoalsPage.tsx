@@ -5,8 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Tabs } from '../../design-system/Tabs'
 import { ErrorState, LoadingState } from '../../design-system/States'
 import {
-  addPeriods, childHorizon, isCurrentPeriod, parentHorizon, periodEnd, periodLabel, periodStart,
-  shortDateLabel, todayISO, type DatedHorizon, type Horizon,
+  addPeriods, childHorizon, formatDayRange, isCurrentPeriod, isoWeek, isUndated, parentHorizon, periodEnd, periodLabel,
+  periodStart, shortDateLabel, todayISO, type DatedHorizon, type Horizon, type PeriodLabel,
 } from './periods'
 import { positionAtEnd, sortByPosition } from './ordering'
 import { useGoalMutations, useGoals, type Goal, type GoalColor } from './use-goals'
@@ -14,7 +14,10 @@ import './goals.css'
 
 type Ops = ReturnType<typeof useGoalMutations>
 
-const TABS: { key: Horizon; label: string }[] = [
+type Tab = 'horizons' | DatedHorizon | 'inbox'
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'horizons', label: 'Horizons' },
   { key: 'day', label: 'Jours' },
   { key: 'week', label: 'Semaines' },
   { key: 'month', label: 'Mois' },
@@ -41,14 +44,14 @@ const COLUMNS_AFTER = 6
 
 const TAB_STORAGE = 'closrm.goals.tab'
 
-function readTab(): Horizon {
+function readTab(): Tab {
   try {
     const v = localStorage.getItem(TAB_STORAGE)
-    if (v && TABS.some((t) => t.key === v)) return v as Horizon
+    if (v && TABS.some((t) => t.key === v)) return v as Tab
   } catch {
     /* storage unavailable */
   }
-  return 'week'
+  return 'horizons'
 }
 
 function isTyping(): boolean {
@@ -57,10 +60,10 @@ function isTyping(): boolean {
 }
 
 export function GoalsPage() {
-  const [tab, setTab] = useState<Horizon>(readTab)
+  const [tab, setTab] = useState<Tab>(readTab)
   const today = todayISO()
 
-  function changeTab(next: Horizon) {
+  function changeTab(next: Tab) {
     setTab(next)
     try {
       localStorage.setItem(TAB_STORAGE, next)
@@ -75,7 +78,13 @@ export function GoalsPage() {
         <h1>Objectifs</h1>
         <Tabs items={TABS} active={tab} onChange={changeTab} />
       </div>
-      {tab === 'inbox' ? <InboxBoard /> : <HorizonBoard key={tab} horizon={tab} today={today} />}
+      {tab === 'horizons' ? (
+        <OverviewBoard today={today} />
+      ) : tab === 'inbox' ? (
+        <InboxBoard />
+      ) : (
+        <HorizonBoard key={tab} horizon={tab} today={today} />
+      )}
     </div>
   )
 }
@@ -165,6 +174,61 @@ function HorizonBoard({ horizon, today }: { horizon: DatedHorizon; today: string
   )
 }
 
+const MONTHS_LONG_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+
+/**
+ * « Horizons »: every horizon on its current period side by side —
+ * Aujourd'hui · this week · this month · this quarter · this year · Vie.
+ */
+function OverviewBoard({ today }: { today: string }) {
+  const week = periodStart('week', today)
+  const month = periodStart('month', today)
+  const quarter = periodStart('quarter', today)
+  const year = periodStart('year', today)
+  const d = useGoals('day', today, today)
+  const w = useGoals('week', week, week)
+  const m = useGoals('month', month, month)
+  const q = useGoals('quarter', quarter, quarter)
+  const y = useGoals('year', year, year)
+  const life = useGoals('life')
+  const queries = [d, w, m, q, y, life]
+  const ops = useGoalMutations(queries.map((x) => x.key))
+
+  const all = useMemo(() => {
+    const byId = new Map<string, Goal>()
+    for (const x of queries) for (const g of x.data?.goals ?? []) byId.set(g.id, g)
+    return [...byId.values()]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d.data, w.data, m.data, q.data, y.data, life.data])
+
+  const failed = queries.find((x) => !x.data && x.error)
+  if (failed) return <ErrorState message={failed.error!} onRetry={() => queries.forEach((x) => void x.refresh())} />
+  if (queries.some((x) => !x.data)) return <LoadingState />
+
+  const day = Number(today.slice(8, 10))
+  const columns: { horizon: Horizon; start: string | null; label: PeriodLabel }[] = [
+    { horizon: 'day', start: today, label: { title: 'Aujourd’hui', subtitle: `${day} ${MONTHS_LONG_FR[Number(today.slice(5, 7)) - 1]}` } },
+    { horizon: 'week', start: week, label: { title: formatDayRange(week, periodEnd('week', week)), subtitle: `S${isoWeek(week).week}` } },
+    { horizon: 'month', start: month, label: periodLabel('month', month) },
+    { horizon: 'quarter', start: quarter, label: periodLabel('quarter', quarter) },
+    { horizon: 'year', start: year, label: periodLabel('year', year) },
+    { horizon: 'life', start: null, label: { title: 'Vie', subtitle: '' } },
+  ]
+
+  return (
+    <div className="goals-board-wrap">
+      {ops.error && <ErrorBanner message={ops.error} onClose={ops.clearError} />}
+      <div className="goals-board">
+        <div className="goals-columns">
+          {columns.map((c) => (
+            <GoalColumn key={c.horizon} horizon={c.horizon} start={c.start} label={c.label} current={false} all={all} ops={ops} today={today} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function InboxBoard() {
   const inbox = useGoals('inbox')
   const ops = useGoalMutations([inbox.key])
@@ -198,15 +262,23 @@ interface ColumnProps {
   all: Goal[]
   ops: Ops
   today: string
+  /** Overrides the default column header (« Horizons » view). */
+  label?: PeriodLabel
 }
 
-function GoalColumn({ horizon, start, current, all, ops, today }: ColumnProps) {
+function GoalColumn({ horizon, start, current, all, ops, today, label: labelOverride }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false)
   const goals = useMemo(
     () => sortByPosition(all.filter((g) => g.horizon === horizon && g.period_start === start)),
     [all, horizon, start],
   )
-  const label = horizon === 'inbox' || !start ? { title: 'Inbox', subtitle: 'Sans date' } : periodLabel(horizon, start)
+  const label =
+    labelOverride ??
+    (horizon === 'life'
+      ? { title: 'Vie', subtitle: '' }
+      : horizon === 'inbox' || !start
+        ? { title: 'Inbox', subtitle: 'Sans date' }
+        : periodLabel(horizon, start))
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
@@ -248,6 +320,7 @@ function GoalColumn({ horizon, start, current, all, ops, today }: ColumnProps) {
 
 /** Where a sub-goal of `parent` lands: one horizon down, in today's period if it falls inside the parent's. */
 function childPlacement(parent: Goal, today: string): { horizon: Horizon; period_start: string | null } {
+  if (parent.horizon === 'life') return { horizon: 'year', period_start: periodStart('year', today) }
   if (parent.horizon === 'inbox' || !parent.period_start) return { horizon: 'inbox', period_start: null }
   const h = childHorizon(parent.horizon)
   const inside = today >= parent.period_start && today <= periodEnd(parent.horizon, parent.period_start)
@@ -268,7 +341,7 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
     setMenu(false)
   }
 
-  const dated = goal.horizon !== 'inbox' && goal.period_start ? (goal.horizon as DatedHorizon) : null
+  const dated = !isUndated(goal.horizon) && goal.period_start ? (goal.horizon as DatedHorizon) : null
 
   return (
     <div

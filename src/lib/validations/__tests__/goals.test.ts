@@ -12,6 +12,10 @@ describe('createGoalSchema', () => {
   it('accepte un objectif Inbox sans date', () => {
     expect(createGoalSchema.safeParse({ title: 'Idée', horizon: 'inbox' }).success).toBe(true)
   })
+  it('accepte un objectif Vie sans date, refuse un objectif Vie daté', () => {
+    expect(createGoalSchema.safeParse({ title: 'Vivre à Bali', horizon: 'life' }).success).toBe(true)
+    expect(createGoalSchema.safeParse({ title: 'x', horizon: 'life', period_start: '2026-01-01' }).success).toBe(false)
+  })
   it('refuse un objectif Inbox daté', () => {
     expect(createGoalSchema.safeParse({ title: 'x', horizon: 'inbox', period_start: '2026-10-12' }).success).toBe(false)
   })

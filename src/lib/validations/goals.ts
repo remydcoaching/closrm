@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const GOAL_HORIZONS = ['day', 'week', 'month', 'quarter', 'year', 'inbox'] as const
+export const GOAL_HORIZONS = ['day', 'week', 'month', 'quarter', 'year', 'life', 'inbox'] as const
 export const GOAL_COLORS = ['yellow', 'pink', 'green', 'blue', 'purple', 'orange'] as const
 
 const isoDate = z
@@ -10,10 +10,12 @@ const isoDate = z
 
 const horizon = z.enum(GOAL_HORIZONS)
 
-/** inbox <=> no date. Every other horizon needs a period_start. */
+/** inbox and life (« Vie ») have no date. Every other horizon needs a period_start. */
+const isUndated = (h?: string) => h === 'inbox' || h === 'life'
+
 function horizonDateConsistent(v: { horizon?: string; period_start?: string | null }) {
   if (v.horizon === undefined) return true
-  if (v.horizon === 'inbox') return v.period_start === null || v.period_start === undefined
+  if (isUndated(v.horizon)) return v.period_start === null || v.period_start === undefined
   return typeof v.period_start === 'string'
 }
 const horizonDateMessage = {
@@ -56,10 +58,10 @@ export const updateGoalSchema = z
   .refine((v) => Object.keys(v).length > 0, { message: 'Aucun champ à modifier' })
   // Changing horizon requires sending period_start along with it (except to inbox).
   .refine(
-    (v) => v.horizon === undefined || v.horizon === 'inbox' || v.period_start !== undefined,
+    (v) => v.horizon === undefined || isUndated(v.horizon) || v.period_start !== undefined,
     { message: 'period_start requis quand on change d’horizon', path: ['period_start'] },
   )
-  .refine((v) => !(v.horizon === 'inbox' && typeof v.period_start === 'string'), horizonDateMessage)
+  .refine((v) => !(isUndated(v.horizon) && typeof v.period_start === 'string'), horizonDateMessage)
 
 export type GoalsQuery = z.infer<typeof goalsQuerySchema>
 export type CreateGoalInput = z.infer<typeof createGoalSchema>

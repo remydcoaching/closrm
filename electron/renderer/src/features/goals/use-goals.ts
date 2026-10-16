@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { api, ApiError } from '../../lib/api-client'
 import { getCached, invalidate, setCached } from '../../lib/query-cache'
 import { useCachedQuery } from '../../lib/use-cached-query'
-import type { Horizon } from './periods'
+import { isUndated, type Horizon } from './periods'
 
 export type GoalColor = 'yellow' | 'pink' | 'green' | 'blue' | 'purple' | 'orange'
 
@@ -26,12 +26,12 @@ export interface GoalsResponse {
 }
 
 export function goalsKey(horizon: Horizon, from?: string, to?: string): string {
-  return horizon === 'inbox' ? 'goals:inbox' : `goals:${horizon}:${from}:${to}`
+  return isUndated(horizon) ? `goals:${horizon}` : `goals:${horizon}:${from}:${to}`
 }
 
 function goalsUrl(horizon: Horizon, from?: string, to?: string): string {
   const p = new URLSearchParams({ horizon })
-  if (horizon !== 'inbox' && from && to) {
+  if (!isUndated(horizon) && from && to) {
     p.set('from', from)
     p.set('to', to)
   }
