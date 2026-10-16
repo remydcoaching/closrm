@@ -84,9 +84,9 @@ function AppRoutes() {
         <Route element={<TabGroupLayout group={TAB_GROUPS.agenda} />}>
           <Route path="agenda" element={<AgendaPage />} />
           <Route path="agenda/pages" element={<BookingPagesPage />} />
+          <Route path="objectifs" element={<GoalsPage />} />
         </Route>
         <Route path="agenda/pages/:id" element={<BookingCalendarEditPage />} />
-        <Route path="objectifs" element={<GoalsPage />} />
         <Route element={<TabGroupLayout group={TAB_GROUPS.stats} />}>
           <Route path="statistiques" element={<StatsPage />} />
           <Route path="finance" element={<FinancePage />} />

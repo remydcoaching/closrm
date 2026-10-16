@@ -23,6 +23,7 @@ export const TAB_GROUPS = {
     tabs: [
       { label: 'Vue calendrier', to: '/agenda' },
       { label: 'Pages de réservation', to: '/agenda/pages' },
+      { label: 'Objectifs', to: '/objectifs' },
     ],
   },
   stats: {
