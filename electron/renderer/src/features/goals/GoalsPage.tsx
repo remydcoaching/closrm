@@ -475,6 +475,28 @@ function relatedTo(id: string, all: Goal[]): Set<string> {
   return out
 }
 
+const MONTHS_SHORT_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+const UNIT_PLURAL: Record<string, string> = { day: 'jours', week: 'sem.', month: 'mois', quarter: 'trim.', year: 'ans' }
+
+/** « S43 » / « 19 oct. » / « nov. » for one planned copy, « 8 sem. » for several; full list in the tooltip. */
+function plannedLabel(copies: Goal[]): { text: string; title: string } | null {
+  const dated = copies.filter((c) => c.period_start && !isUndated(c.horizon))
+  if (dated.length === 0) return null
+  const sorted = [...dated].sort((a, b) => a.period_start!.localeCompare(b.period_start!))
+  const short = (c: Goal) => {
+    const [y, m, d] = c.period_start!.split('-').map(Number)
+    if (c.horizon === 'week') return `S${isoWeek(c.period_start!).week}`
+    if (c.horizon === 'day') return `${d} ${MONTHS_SHORT_FR[m - 1]}`
+    if (c.horizon === 'month') return MONTHS_SHORT_FR[m - 1]
+    if (c.horizon === 'quarter') return `T${Math.floor((m - 1) / 3) + 1}`
+    return String(y)
+  }
+  const title = `Planifié : ${sorted.map((c) => shortDateLabel(c.horizon, c.period_start)).join(', ')}`
+  if (sorted.length === 1) return { text: short(sorted[0]), title }
+  const sameUnit = sorted.every((c) => c.horizon === sorted[0].horizon)
+  return { text: sameUnit ? `${sorted.length} ${UNIT_PLURAL[sorted[0].horizon] ?? ''}`.trim() : `${sorted.length}×`, title }
+}
+
 function countDescendants(all: Goal[], id: string): number {
   let n = 0
   const stack = [id]
@@ -503,6 +525,9 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
   // (dragged onto a shorter horizon), not a sub-goal: not listed nor counted.
   const direct = sortByPosition(all.filter((g) => g.parent_id === goal.id))
   const children = direct.filter((g) => g.title !== goal.title)
+  // Where it is already planned one level down (same-title copies): « → S43 ».
+  const planned = direct.filter((g) => g.title === goal.title)
+  const plannedBadge = plannedLabel(planned)
   const descendantCount = countDescendants(all, goal.id)
   const repeatable = goal.horizon === 'day' || goal.horizon === 'week' || goal.horizon === 'month'
   const [repeatForm, setRepeatForm] = useState(false)
@@ -559,6 +584,11 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
             <div className="goal-title" onClick={() => setEditing(true)}>
               {goal.repeats && <span className="goal-repeat" title="Se répète chaque période">↻ </span>}
               {goal.title}
+              {plannedBadge && (
+                <span className="goal-planned" title={plannedBadge.title}>
+                  → {plannedBadge.text}
+                </span>
+              )}
             </div>
           )}
           {goal.target ? (

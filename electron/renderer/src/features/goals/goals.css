@@ -616,3 +616,18 @@ body:has(.goals-page),
   color: var(--color-text-muted);
   margin-top: 2px;
 }
+
+/* « → S43 »: where a goal is already planned one level down */
+.goal-planned {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-muted);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 17px;
+  white-space: nowrap;
+  vertical-align: 1px;
+}

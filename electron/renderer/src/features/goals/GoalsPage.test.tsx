@@ -225,6 +225,18 @@ describe('GoalsPage', () => {
     expect(patch).toHaveBeenCalledWith('/api/goals/w1', { repeats: true, target: 4, repeat_until: '2026-12-06' })
   })
 
+  it('un objectif déjà planifié plus bas affiche « → S43 »', async () => {
+    const slice = { ...monthGoal, id: 'm1-w', parent_id: 'm1', horizon: 'week', period_start: '2026-10-19' }
+    get.mockImplementation(async (url: string) => ({
+      goals: url.includes('horizon=week') ? [weekGoal, monthGoal, slice] : [monthGoal, slice],
+    }))
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const month = el.querySelector('.goals-parent-column .goal-item')!
+    expect(month.querySelector('.goal-planned')?.textContent?.trim()).toBe('→ S43')
+    expect(month.querySelector('.goal-planned')?.getAttribute('title')).toContain('S43 · 19–25 oct.')
+  })
+
   it('montre le message quand la migration manque', async () => {
     get.mockRejectedValue(new ApiError(503, "La table des objectifs n'existe pas encore : applique la migration 127_goals.sql dans Supabase."))
     await act(async () => root.render(<GoalsPage />))
