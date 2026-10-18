@@ -44,6 +44,11 @@ export function todayISO(now: Date = new Date()): string {
   return `${y}-${m}-${d}`
 }
 
+/** Calendar day arithmetic on ISO dates. */
+export function addDaysISO(iso: string, n: number): string {
+  return addDays(iso, n)
+}
+
 function addDays(iso: string, n: number): string {
   const d = parseISODate(iso)
   d.setUTCDate(d.getUTCDate() + n)

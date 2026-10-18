@@ -22,3 +22,13 @@ export function normalizePeriodStart(horizon: string, iso: string | null | undef
 }
 
 export const ROLLING_HORIZONS = ['day', 'week', 'month', 'quarter', 'year'] as const
+
+const LEVEL: Record<string, number> = { day: 0, week: 1, month: 2, quarter: 3, year: 4, life: 5 }
+
+/** A sub-goal sits exactly one level under its parent (no month goal hanging off a year goal). The Inbox is free. */
+export function isDirectChildHorizon(parentHorizon: string, childHorizon: string): boolean {
+  const p = LEVEL[parentHorizon]
+  const c = LEVEL[childHorizon]
+  if (p === undefined || c === undefined) return true
+  return p === c + 1 || (p === 0 && c === 0)
+}

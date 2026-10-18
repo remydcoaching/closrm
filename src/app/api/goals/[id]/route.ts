@@ -3,8 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { updateGoalSchema } from '@/lib/validations/goals'
 import { authOrServerError, goalsDbError } from '@/lib/goals/api-errors'
-import { normalizePeriodStart } from '@/lib/goals/period'
+import { isDirectChildHorizon, normalizePeriodStart } from '@/lib/goals/period'
 import { syncAncestorsDone } from '@/lib/goals/done'
+import { moveDescendants } from '@/lib/goals/move'
 import { isMissingColumn } from '@/lib/goals/api-errors'
 
 // '*' rather than a list: carried_from (migration 129) shows up as soon as it exists.
@@ -19,7 +20,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { done, ...rest } = parsed.data
     const supabase = await createClient()
 
-    const { data: current, error: readError } = await supabase.from('goals').select('id, horizon').eq('id', id).eq('workspace_id', workspaceId).maybeSingle()
+    const { data: current, error: readError } = await supabase.from('goals').select('id, parent_id, horizon, period_start').eq('id', id).eq('workspace_id', workspaceId).maybeSingle()
     if (readError) return goalsDbError(readError)
     if (!current) return NextResponse.json({ error: 'Objectif introuvable' }, { status: 404 })
 
@@ -27,8 +28,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (done !== undefined) patch.done_at = done ? new Date().toISOString() : null
     if (rest.period_start !== undefined) patch.period_start = normalizePeriodStart(rest.horizon ?? current.horizon, rest.period_start)
 
-    // A parent must be in the same workspace and must not create a cycle.
+    // A parent must be in the same workspace, one level up, and must not create a cycle.
     if (rest.parent_id) {
+      const { data: parent } = await supabase.from('goals').select('horizon').eq('id', rest.parent_id).eq('workspace_id', workspaceId).maybeSingle()
+      if (parent && !isDirectChildHorizon(parent.horizon, rest.horizon ?? current.horizon)) {
+        return NextResponse.json({ error: 'Un sous-objectif se place juste un niveau en dessous (année → trimestre → mois → semaine → jour)' }, { status: 400 })
+      }
       let cursor: string | null = rest.parent_id
       for (let depth = 0; cursor && depth < 10; depth++) {
         if (cursor === id) return NextResponse.json({ error: 'Un objectif ne peut pas être son propre sous-objectif' }, { status: 400 })
@@ -47,6 +52,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ;({ data, error } = await supabase.from('goals').update(patch).eq('id', id).eq('workspace_id', workspaceId).select(COLS).single())
     }
     if (error) return goalsDbError(error)
+    // Moved to another period or horizon: its sub-goals follow (a sub-goal moved alone: only its own).
+    if (rest.horizon !== undefined || rest.period_start !== undefined) await moveDescendants(supabase, workspaceId, current, data)
     // Checking a week slice can check the month goal it belongs to (and so on up).
     if (done !== undefined) await syncAncestorsDone(supabase, workspaceId, data.parent_id)
     return NextResponse.json({ goal: data })

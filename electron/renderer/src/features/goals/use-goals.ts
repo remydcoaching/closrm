@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react'
 import { api, ApiError } from '../../lib/api-client'
 import { discardInflight, getCached, invalidate, setCached } from '../../lib/query-cache'
 import { useCachedQuery } from '../../lib/use-cached-query'
-import { propagateDone } from './goal-tree'
+import { moveSubtree, propagateDone } from './goal-tree'
 import { isUndated, type Horizon } from './periods'
 
 export type GoalColor = 'yellow' | 'pink' | 'green' | 'blue' | 'purple' | 'orange'
@@ -94,7 +94,7 @@ export function useGoalMutations(keys: (string | null)[]) {
   const keysSig = liveKeys.join('|')
 
   const run = useCallback(
-    async <R>(apply: (goals: Goal[]) => Goal[], call: () => Promise<R>, confirm?: (result: R, goals: Goal[]) => Goal[]) => {
+    async <R>(apply: (goals: Goal[]) => Goal[], call: () => Promise<R>, confirm?: (result: R, goals: Goal[]) => Goal[]): Promise<R | undefined> => {
       const ks = keysSig.split('|').filter(Boolean)
       // A refetch already running would bring back the list without this change.
       discardInflight('goals:')
@@ -111,9 +111,11 @@ export function useGoalMutations(keys: (string | null)[]) {
           }
         }
         setError(null)
+        return result
       } catch (err) {
         for (const [k, prev] of snapshots) if (prev) setCached(k, prev)
         setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
+        return undefined
       } finally {
         invalidate('goals:')
       }
@@ -139,7 +141,7 @@ export function useGoalMutations(keys: (string | null)[]) {
         (goals) => [...goals, tmp],
         () => api.post<{ goal: Goal }>('/api/goals', input),
         ({ goal }, goals) => goals.map((g) => (g.id === tmp.id ? goal : g)),
-      )
+      ).then((r) => r?.goal) // the saved goal, or undefined if it failed
     },
     [run],
   )
@@ -155,8 +157,14 @@ export function useGoalMutations(keys: (string | null)[]) {
               ? { ...g, ...rest, ...(done !== undefined ? { done_at: done ? new Date().toISOString() : null } : {}) }
               : g,
           )
+          // Moved to another period or horizon: its sub-goals follow.
+          const target = next.find((g) => g.id === id)
+          const moved =
+            target && (rest.horizon !== undefined || rest.period_start !== undefined)
+              ? moveSubtree(goals.map((g) => (g.id === id ? { ...g, position: target.position, title: target.title } : g)), id, { horizon: target.horizon, period_start: target.period_start })
+              : next
           // Checking a sub-goal can check (or uncheck) its parents.
-          return done !== undefined ? propagateDone(next, id) : next
+          return done !== undefined ? propagateDone(moved, id) : moved
         },
         () => api.patch(`/api/goals/${id}`, patch),
       )

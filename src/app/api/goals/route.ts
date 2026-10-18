@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getWorkspaceId } from '@/lib/supabase/get-workspace'
 import { createGoalSchema, goalsQuerySchema } from '@/lib/validations/goals'
 import { authOrServerError, goalsDbError } from '@/lib/goals/api-errors'
-import { normalizePeriodStart } from '@/lib/goals/period'
+import { isDirectChildHorizon, normalizePeriodStart } from '@/lib/goals/period'
 
 // '*' rather than a list: carried_from (migration 129) shows up as soon as it exists.
 const COLS = '*'
@@ -51,8 +51,11 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     if (input.parent_id) {
-      const { data: parent } = await supabase.from('goals').select('id').eq('id', input.parent_id).eq('workspace_id', workspaceId).maybeSingle()
+      const { data: parent } = await supabase.from('goals').select('id, horizon').eq('id', input.parent_id).eq('workspace_id', workspaceId).maybeSingle()
       if (!parent) return NextResponse.json({ error: 'Objectif parent introuvable' }, { status: 400 })
+      if (!isDirectChildHorizon(parent.horizon, input.horizon)) {
+        return NextResponse.json({ error: 'Un sous-objectif se place juste un niveau en dessous (année → trimestre → mois → semaine → jour)' }, { status: 400 })
+      }
     }
     const period_start = normalizePeriodStart(input.horizon, input.period_start)
 

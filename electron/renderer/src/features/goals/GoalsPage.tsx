@@ -10,7 +10,7 @@ import {
 } from './periods'
 import { positionAtEnd, sortByPosition } from './ordering'
 import { useGoalMutations, useGoals, type Goal, type GoalColor } from './use-goals'
-import { dropCreatesSubGoal } from './goal-tree'
+import { dropCreatesSubGoal, horizonsDown } from './goal-tree'
 import { createSwipeDetector } from './swipe'
 import { api } from '../../lib/api-client'
 import { invalidate } from '../../lib/query-cache'
@@ -380,6 +380,26 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
   )
   const label = labelOverride ?? columnLabel(horizon, start)
 
+  /**
+   * Year goal dropped on a week: one sub-goal per level in between (quarter,
+   * month, then the week), each reusing the slice that already exists there.
+   */
+  async function planDown(goal: Goal) {
+    let parentId = goal.id
+    for (const h of horizonsDown(goal.horizon, horizon)) {
+      const at = h === horizon ? start : isUndated(h) || !start ? null : periodStart(h as DatedHorizon, start)
+      const existing = all.find((g) => g.parent_id === parentId && g.horizon === h && g.period_start === at && g.title === goal.title)
+      if (existing) {
+        parentId = existing.id
+        continue
+      }
+      const column = all.filter((g) => g.horizon === h && g.period_start === at)
+      const created = await ops.create({ title: goal.title, horizon: h, period_start: at, parent_id: parentId, position: positionAtEnd(column) })
+      if (!created) return
+      parentId = created.id
+    }
+  }
+
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragOver(false)
@@ -388,7 +408,7 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
     if (!goal || (goal.horizon === horizon && goal.period_start === start)) return
     if (dropCreatesSubGoal(goal.horizon, horizon)) {
       // Month goal dropped on a week: plan a slice of it there, it stays in the month.
-      void ops.create({ title: goal.title, horizon, period_start: start, parent_id: goal.id, position: positionAtEnd(goals) })
+      void planDown(goal)
       return
     }
     void ops.update(id, { horizon, period_start: start, position: positionAtEnd(goals) })
