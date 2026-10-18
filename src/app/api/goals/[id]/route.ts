@@ -66,6 +66,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Moved to another period or horizon: its sub-goals follow (a sub-goal moved alone: only its own).
     if (rest.horizon !== undefined || rest.period_start !== undefined) await moveDescendants(supabase, workspaceId, current, data)
     // Checking a week slice can check the month goal it belongs to (and so on up).
+    // Checking a day slice of a counter goal (« Poster 0/4 » this week) counts it: +1 / −1.
+    if (done !== undefined && !!done !== !!current.done_at && data.parent_id) {
+      const { data: parent } = await supabase.from('goals').select('*').eq('id', data.parent_id).eq('workspace_id', workspaceId).maybeSingle()
+      if (parent?.target) {
+        const progress = Math.max(0, (parent.progress ?? 0) + (done ? 1 : -1))
+        const done_at = progress >= parent.target ? (parent.done_at ?? new Date().toISOString()) : null
+        await supabase.from('goals').update({ progress, done_at }).eq('id', parent.id).eq('workspace_id', workspaceId)
+        await syncAncestorsDone(supabase, workspaceId, parent.parent_id)
+      }
+    }
     if (done !== undefined || 'done_at' in patch) await syncAncestorsDone(supabase, workspaceId, data.parent_id)
     // Repeat switched on, changed or stopped: the coming occurrences follow (created now when it has an end).
     if (rest.repeats !== undefined || rest.repeat_until !== undefined || rest.target !== undefined) {

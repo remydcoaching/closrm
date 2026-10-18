@@ -631,3 +631,27 @@ body:has(.goals-page),
   white-space: nowrap;
   vertical-align: 1px;
 }
+
+/* quick « plan one level down » button, shown on hover next to ⋯ */
+.goal-quickplan {
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  height: 20px;
+  min-width: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.goal-item:hover .goal-quickplan {
+  opacity: 1;
+}
+
+.goal-quickplan:hover {
+  background: var(--color-bg-muted);
+}

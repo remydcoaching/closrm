@@ -32,6 +32,8 @@ interface DoneNode {
   id: string
   parent_id: string | null
   done_at: string | null
+  /** A counter goal (« 0/4 ») is done by its counter, never by its sub-goals. */
+  target?: number | null
 }
 
 /**
@@ -44,7 +46,7 @@ export function propagateDone<T extends DoneNode>(goals: T[], changedId: string,
   let parentId = byId.get(changedId)?.parent_id ?? null
   for (let depth = 0; parentId && depth < 10; depth++) {
     const parent = byId.get(parentId)
-    if (!parent) break
+    if (!parent || parent.target) break
     const children = goals.filter((g) => g.parent_id === parentId).map((g) => byId.get(g.id)!)
     const allDone = children.length > 0 && children.every((c) => c.done_at)
     const doneAt = allDone ? (parent.done_at ?? now) : null

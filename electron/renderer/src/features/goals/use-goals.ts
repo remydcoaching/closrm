@@ -204,7 +204,17 @@ export function useGoalMutations(keys: (string | null)[]) {
               ? moveSubtree(goals.map((g) => (g.id === id ? { ...g, position: target.position, title: target.title } : g)), id, { horizon: target.horizon, period_start: target.period_start })
               : next
           // Checking a sub-goal can check (or uncheck) its parents.
-          return done !== undefined || counterDone !== undefined ? propagateDone(moved, id) : moved
+          // Checking a day slice of a counter goal counts it on the parent (+1 / −1), like the server.
+          let counted = moved
+          const before = goals.find((g) => g.id === id)
+          const parent = before?.parent_id ? moved.find((g) => g.id === before.parent_id) : undefined
+          if (done !== undefined && before && !!done !== !!before.done_at && parent?.target) {
+            const progress = Math.max(0, (parent.progress ?? 0) + (done ? 1 : -1))
+            const done_at = progress >= parent.target ? (parent.done_at ?? new Date().toISOString()) : null
+            counted = moved.map((g) => (g.id === parent.id ? { ...g, progress, done_at } : g))
+            counted = propagateDone(counted, parent.id)
+          }
+          return done !== undefined || counterDone !== undefined ? propagateDone(counted, id) : counted
         },
         () => api.patch(`/api/goals/${id}`, patch),
       )

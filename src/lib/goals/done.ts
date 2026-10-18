@@ -8,10 +8,11 @@ export async function syncAncestorsDone(supabase: SupabaseClient, workspaceId: s
   let current = parentId
   for (let depth = 0; current && depth < 10; depth++) {
     const [{ data: parent }, { data: children }] = await Promise.all([
-      supabase.from('goals').select('id, parent_id, done_at').eq('id', current).eq('workspace_id', workspaceId).maybeSingle(),
+      supabase.from('goals').select('*').eq('id', current).eq('workspace_id', workspaceId).maybeSingle(),
       supabase.from('goals').select('done_at').eq('parent_id', current).eq('workspace_id', workspaceId),
     ])
-    if (!parent || !children) return
+    // A counter goal (« 0/4 ») is done by its counter, never by its sub-goals.
+    if (!parent || !children || (parent as { target?: number | null }).target) return
     const allDone = children.length > 0 && children.every((c) => c.done_at)
     const doneAt = allDone ? (parent.done_at ?? new Date().toISOString()) : null
     if (doneAt === parent.done_at) return

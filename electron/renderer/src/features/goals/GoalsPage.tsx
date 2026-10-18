@@ -264,6 +264,7 @@ function OverviewBoard({ today, tabs }: { today: string; tabs: React.ReactNode }
               horizon={c.horizon}
               start={c.start}
               label={c.label}
+              hidePassThrough
               current={!isUndated(c.horizon) && c.start !== null && isCurrentPeriod(c.horizon as DatedHorizon, c.start, today)}
               all={all}
               ops={ops}
@@ -370,15 +371,22 @@ interface ColumnProps {
   label?: PeriodLabel
   /** « Horizons » view: slide this column by n periods (swipe or ‹ ›). */
   onShift?: (n: number) => void
+  /** « Horizons » view: hide the copies that only link a goal to the level below. */
+  hidePassThrough?: boolean
 }
 
-function GoalColumn({ horizon, start, current, all, ops, today, label: labelOverride, onShift }: ColumnProps) {
+function GoalColumn({ horizon, start, current, all, ops, today, label: labelOverride, onShift, hidePassThrough }: ColumnProps) {
   const sectionRef = useRef<HTMLElement>(null)
   useHorizontalSwipe(sectionRef, onShift)
   const [dragOver, setDragOver] = useState(false)
   const goals = useMemo(
-    () => sortByPosition(all.filter((g) => g.horizon === horizon && g.period_start === start)),
-    [all, horizon, start],
+    () =>
+      sortByPosition(
+        all.filter(
+          (g) => g.horizon === horizon && g.period_start === start && !(hidePassThrough && isPassThrough(g, all)),
+        ),
+      ),
+    [all, horizon, start, hidePassThrough],
   )
   const label = labelOverride ?? columnLabel(horizon, start)
 
@@ -497,6 +505,44 @@ function plannedLabel(copies: Goal[]): { text: string; title: string } | null {
   return { text: sameUnit ? `${sorted.length} ${UNIT_PLURAL[sorted[0].horizon] ?? ''}`.trim() : `${sorted.length}×`, title }
 }
 
+/**
+ * A copy that only links a goal to the level below: a month, quarter or year
+ * copy (same title as its parent, copied further down) with no state of its
+ * own. Weeks and days always show: that is where the work happens.
+ */
+function isPassThrough(g: Goal, all: Goal[]): boolean {
+  if (!(g.horizon === 'month' || g.horizon === 'quarter' || g.horizon === 'year') || g.repeats || g.target) return false
+  const parent = g.parent_id ? all.find((p) => p.id === g.parent_id) : undefined
+  return !!parent && parent.title === g.title && all.some((c) => c.parent_id === g.id && c.title === g.title)
+}
+
+/** Where a goal is really planned: the ends of its same-title copy chain (« → S43 », not « → oct. »). */
+function plannedLeaves(goal: Goal, all: Goal[]): Goal[] {
+  const out: Goal[] = []
+  // Down through the hidden linking copies, stop at the first copy that shows (« → 4 sem. »).
+  const walk = (id: string, depth: number) => {
+    for (const c of all) {
+      if (c.parent_id !== id || c.title !== goal.title) continue
+      if (depth < 10 && isPassThrough(c, all)) walk(c.id, depth + 1)
+      else out.push(c)
+    }
+  }
+  walk(goal.id, 0)
+  return out
+}
+
+const QUICK_PLAN_WORD: Partial<Record<Horizon, string>> = { week: 'Faire aujourd’hui', month: 'Faire cette semaine', quarter: 'Faire ce mois-ci', year: 'Faire ce trimestre' }
+
+/** One level down, in the current period when it falls inside the goal's own (else its first). */
+function quickPlanTarget(goal: Goal, today: string): { label: string; horizon: Horizon; period_start: string } | null {
+  if (goal.done_at || !goal.period_start || isUndated(goal.horizon) || goal.horizon === 'day') return null
+  const h = goal.horizon as DatedHorizon
+  const child = childHorizon(h)
+  const inside = today >= goal.period_start && today <= periodEnd(h, goal.period_start)
+  const at = periodStart(child, inside ? today : goal.period_start)
+  return { label: inside ? QUICK_PLAN_WORD[h] ?? 'Planifier' : `Planifier · ${shortDateLabel(child, at)}`, horizon: child, period_start: at }
+}
+
 function countDescendants(all: Goal[], id: string): number {
   let n = 0
   const stack = [id]
@@ -526,8 +572,8 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
   const direct = sortByPosition(all.filter((g) => g.parent_id === goal.id))
   const children = direct.filter((g) => g.title !== goal.title)
   // Where it is already planned one level down (same-title copies): « → S43 ».
-  const planned = direct.filter((g) => g.title === goal.title)
-  const plannedBadge = plannedLabel(planned)
+  const plannedBadge = plannedLabel(plannedLeaves(goal, all))
+  const quickPlan = quickPlanTarget(goal, today)
   const descendantCount = countDescendants(all, goal.id)
   const repeatable = goal.horizon === 'day' || goal.horizon === 'week' || goal.horizon === 'month'
   const [repeatForm, setRepeatForm] = useState(false)
@@ -548,6 +594,15 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
   const isPast = !isUndated(goal.horizon) && !!goal.period_start && periodEnd(goal.horizon as DatedHorizon, goal.period_start) < today
   const [confirmDelete, setConfirmDelete] = useState(false)
   const done = !!goal.done_at
+
+  function planNow() {
+    if (!quickPlan) return
+    setMenu(false)
+    // Already planned there: nothing to add.
+    if (all.some((g) => g.parent_id === goal.id && g.horizon === quickPlan.horizon && g.period_start === quickPlan.period_start && g.title === goal.title)) return
+    const column = all.filter((g) => g.horizon === quickPlan.horizon && g.period_start === quickPlan.period_start)
+    void ops.create({ title: goal.title, horizon: quickPlan.horizon, period_start: quickPlan.period_start, parent_id: goal.id, position: positionAtEnd(column) })
+  }
 
   function reschedule(target: { horizon: Horizon; period_start: string | null }) {
     const column = all.filter((g) => g.horizon === target.horizon && g.period_start === target.period_start)
@@ -637,6 +692,11 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
             </button>
           )}
         </div>
+        {quickPlan && (
+          <button className="goal-quickplan" onClick={planNow} title={quickPlan.label}>
+            {quickPlan.horizon === 'day' ? 'Auj.' : '↓'}
+          </button>
+        )}
         <button className="goal-more" onClick={() => setMenu(!menu)} aria-label="Options">
           ⋯
         </button>
@@ -756,6 +816,7 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
                 Arrêter la répétition
               </button>
             )}
+            {quickPlan && <button onClick={planNow}>{quickPlan.label}</button>}
             <button
               onClick={() => {
                 setOpen(true)

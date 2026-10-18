@@ -237,6 +237,47 @@ describe('GoalsPage', () => {
     expect(month.querySelector('.goal-planned')?.getAttribute('title')).toContain('S43 · 19–25 oct.')
   })
 
+  it('Horizons : la copie intermédiaire est masquée, l’étiquette pointe vers la semaine', async () => {
+    localStorage.removeItem('closrm.goals.tab')
+    const base = { description: null, position: 1024, done_at: null, color: null, created_at: '2026-10-01T00:00:00Z' }
+    const chain = [
+      { ...base, id: 'q', parent_id: null, title: 'Permis', horizon: 'quarter', period_start: '2026-10-01' },
+      { ...base, id: 'qm', parent_id: 'q', title: 'Permis', horizon: 'month', period_start: '2026-10-01' },
+      { ...base, id: 'qw', parent_id: 'qm', title: 'Permis', horizon: 'week', period_start: '2026-10-12' },
+    ]
+    get.mockImplementation(async () => ({ goals: chain }))
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const cols = el.querySelectorAll('.goals-column')
+    expect(cols[2].textContent).not.toContain('Permis') // Octobre: pass-through copy hidden
+    expect(cols[1].textContent).toContain('Permis') // the week where it is done
+    expect(cols[3].querySelector('.goal-planned')?.textContent?.trim()).toBe('→ S42')
+  })
+
+  it('« Auj. » pose un objectif de la semaine sur aujourd’hui', async () => {
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const item = [...el.querySelectorAll('.goal-item')].find((i) => i.textContent?.includes('Ecriture + tournage'))!
+    await act(async () => (item.querySelector('.goal-quickplan') as HTMLButtonElement).click())
+    expect(post).toHaveBeenCalledWith('/api/goals', expect.objectContaining({ title: 'Ecriture + tournage', horizon: 'day', period_start: '2026-10-15', parent_id: 'w1' }))
+  })
+
+  it('cocher la copie du jour d’un objectif à compteur ajoute 1 au compteur de la semaine', async () => {
+    const counter = { ...weekGoal, series_id: 'w1', repeats: true, target: 4, progress: 1 }
+    const daySlice = { ...weekGoal, id: 'd1', parent_id: 'w1', horizon: 'day', period_start: '2026-10-15' }
+    get.mockImplementation(async () => ({ goals: [counter, monthGoal, daySlice] }))
+    localStorage.removeItem('closrm.goals.tab')
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const today = el.querySelectorAll('.goals-column')[0]
+    let resolve: (v: unknown) => void = () => {}
+    patch.mockImplementation(() => new Promise((r) => { resolve = r }))
+    await act(async () => (today.querySelector('.goal-check') as HTMLButtonElement).click())
+    // optimistic, before the server answers
+    expect(el.querySelectorAll('.goals-column')[1].querySelector('.goal-counter-value')?.textContent).toBe('2/4')
+    resolve({ goal: {} })
+  })
+
   it('montre le message quand la migration manque', async () => {
     get.mockRejectedValue(new ApiError(503, "La table des objectifs n'existe pas encore : applique la migration 127_goals.sql dans Supabase."))
     await act(async () => root.render(<GoalsPage />))
