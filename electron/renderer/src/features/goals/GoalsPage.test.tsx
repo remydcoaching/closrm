@@ -237,7 +237,7 @@ describe('GoalsPage', () => {
     expect(month.querySelector('.goal-planned')?.getAttribute('title')).toContain('S43 · 19–25 oct.')
   })
 
-  it('Horizons : la copie intermédiaire est masquée, l’étiquette pointe vers la semaine', async () => {
+  it('Horizons : les copies restent visibles, en discret avec ↳', async () => {
     localStorage.removeItem('closrm.goals.tab')
     const base = { description: null, position: 1024, done_at: null, color: null, created_at: '2026-10-01T00:00:00Z' }
     const chain = [
@@ -249,9 +249,9 @@ describe('GoalsPage', () => {
     await act(async () => root.render(<GoalsPage />))
     await flush()
     const cols = el.querySelectorAll('.goals-column')
-    expect(cols[2].textContent).not.toContain('Permis') // Octobre: pass-through copy hidden
-    expect(cols[1].textContent).toContain('Permis') // the week where it is done
-    expect(cols[3].querySelector('.goal-planned')?.textContent?.trim()).toBe('→ S42')
+    expect(cols[2].querySelector('.goal-item--copy')?.textContent).toContain('Permis') // Octobre still shows it
+    expect(cols[3].querySelector('.goal-item--copy')).toBeNull() // the original
+    expect(cols[3].querySelector('.goal-planned')?.textContent?.trim()).toBe('→ oct.')
   })
 
   it('« Auj. » pose un objectif de la semaine sur aujourd’hui', async () => {

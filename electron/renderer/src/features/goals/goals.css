@@ -655,3 +655,12 @@ body:has(.goals-page),
 .goal-quickplan:hover {
   background: var(--color-bg-muted);
 }
+
+/* A copy of the goal above (planned one level down): lighter */
+.goal-item--copy > .goal-row .goal-title {
+  color: var(--color-text-secondary);
+}
+
+.goal-copy-mark {
+  color: var(--color-text-faint);
+}
