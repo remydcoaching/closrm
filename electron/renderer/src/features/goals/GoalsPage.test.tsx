@@ -170,6 +170,27 @@ describe('GoalsPage', () => {
     expect(patch).toHaveBeenCalledWith('/api/goals/w1', { progress: 4 })
   })
 
+  it('arrêter la répétition retire le ↻', async () => {
+    let repeats = true
+    get.mockImplementation(async (url: string) => ({
+      goals: url.includes('horizon=week') ? [{ ...weekGoal, series_id: weekGoal.id, repeats, target: 4, progress: 1 }, monthGoal] : [monthGoal],
+    }))
+    patch.mockImplementation(async (_url: string, body: { repeats?: boolean }) => {
+      if (body.repeats !== undefined) repeats = body.repeats
+      return { goal: {} }
+    })
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const item = [...el.querySelectorAll('.goal-item')].find((i) => i.textContent?.includes('Ecriture + tournage'))!
+    expect(item.querySelector('.goal-repeat')).not.toBeNull()
+    await act(async () => (item.querySelector('.goal-more') as HTMLButtonElement).click())
+    const stop = [...item.querySelectorAll('.goal-menu button')].find((b) => b.textContent === 'Arrêter la répétition') as HTMLButtonElement
+    await act(async () => stop.click())
+    expect(patch).toHaveBeenCalledWith('/api/goals/w1', { repeats: false })
+    const after = [...el.querySelectorAll('.goal-item')].find((i) => i.textContent?.includes('Ecriture + tournage'))!
+    expect(after.querySelector('.goal-repeat')).toBeNull()
+  })
+
   it('menu : répéter chaque semaine avec un nombre', async () => {
     await act(async () => root.render(<GoalsPage />))
     await flush()
@@ -183,7 +204,25 @@ describe('GoalsPage', () => {
       input.dispatchEvent(new Event('input', { bubbles: true }))
     })
     await act(async () => (item.querySelector('.goal-repeat-form') as HTMLFormElement).requestSubmit())
-    expect(patch).toHaveBeenCalledWith('/api/goals/w1', { repeats: true, target: 10 })
+    expect(patch).toHaveBeenCalledWith('/api/goals/w1', { repeats: true, target: 10, repeat_until: null })
+  })
+
+  it('menu : 4 posts par semaine pendant 8 semaines', async () => {
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const item = [...el.querySelectorAll('.goal-item')].find((i) => i.textContent?.includes('Ecriture + tournage'))!
+    await act(async () => (item.querySelector('.goal-more') as HTMLButtonElement).click())
+    const repeat = [...item.querySelectorAll('.goal-menu button')].find((b) => b.textContent === 'Répéter chaque semaine') as HTMLButtonElement
+    await act(async () => repeat.click())
+    const [target, count] = [...item.querySelectorAll('.goal-repeat-form input')] as HTMLInputElement[]
+    const type = (input: HTMLInputElement, v: string) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, v)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    await act(async () => { type(target, '4'); type(count, '8') })
+    await act(async () => (item.querySelector('.goal-repeat-form') as HTMLFormElement).requestSubmit())
+    // S42 (12 oct.) + 7 semaines = S49, qui finit le 6 déc.
+    expect(patch).toHaveBeenCalledWith('/api/goals/w1', { repeats: true, target: 4, repeat_until: '2026-12-06' })
   })
 
   it('montre le message quand la migration manque', async () => {

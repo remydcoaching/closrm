@@ -13,8 +13,10 @@ type Rolling = (typeof ROLLING_HORIZONS)[number]
 /** Which optional columns exist yet (migrations 129 and 130 may not be applied). */
 async function columnsPresent(supabase: SupabaseClient) {
   const probe = async (col: string) => !isMissingColumn((await supabase.from('goals').select(col).limit(1)).error)
-  const [carried, repeats, scheduled] = await Promise.all([probe('carried_from'), probe('repeats'), probe('scheduled_at')])
-  return { carried, repeats, scheduled }
+  const [carried, repeats, scheduled, until] = await Promise.all([
+    probe('carried_from'), probe('repeats'), probe('scheduled_at'), probe('repeat_until'),
+  ])
+  return { carried, repeats, scheduled, until }
 }
 
 // POST /api/goals/rollover { today } — run when the Objectifs page opens:
@@ -68,12 +70,17 @@ export async function POST(request: NextRequest) {
     // ── 2. repeating series: this period's occurrence ─────────────────────
     if (has.repeats) {
       const { data: occurrences, error } = await supabase.from('goals')
-        .select('series_id, title, horizon, period_start, parent_id, repeats, target, color, position')
+        .select('*') // repeat_until (migration 132) comes along once it exists
         .eq('workspace_id', workspaceId).not('series_id', 'is', null)
       if (error) return goalsDbError(error)
+      type Occurrence = {
+        series_id: string; title: string; horizon: string; period_start: string | null; parent_id: string | null
+        repeats: boolean; target: number | null; color: string | null; position: number; repeat_until?: string | null
+      }
+      const rows = (occurrences ?? []) as Occurrence[]
       // The latest occurrence of each series decides: still repeating, and behind?
-      const latest = new Map<string, NonNullable<typeof occurrences>[number]>()
-      for (const o of occurrences ?? []) {
+      const latest = new Map<string, Occurrence>()
+      for (const o of rows) {
         const cur = latest.get(o.series_id)
         if (!cur || (o.period_start ?? '') > (cur.period_start ?? '')) latest.set(o.series_id, o)
       }
@@ -81,10 +88,13 @@ export async function POST(request: NextRequest) {
         .filter((o) => o.repeats && (ROLLING_HORIZONS as readonly string[]).includes(o.horizon) && o.period_start)
         .map((o) => ({ o, current: normalizePeriodStart(o.horizon, today)! }))
         .filter(({ o, current }) => o.period_start! < current)
+        // « pendant 8 semaines »: past its last period, the series stops.
+        .filter(({ o, current }) => !o.repeat_until || current <= o.repeat_until)
         .map(({ o, current }) => ({
           workspace_id: workspaceId, user_id: userId, series_id: o.series_id, title: o.title, horizon: o.horizon,
           period_start: current, parent_id: o.parent_id, repeats: true, target: o.target, progress: 0,
           color: o.color, position: o.position,
+          ...(has.until ? { repeat_until: o.repeat_until ?? null } : {}),
         }))
       if (fresh.length) {
         // One per series and period (unique index): opening the page twice at once creates it once.

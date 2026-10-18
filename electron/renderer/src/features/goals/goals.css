@@ -578,8 +578,17 @@ body:has(.goals-page),
 
 .goal-repeat-form {
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  padding: 4px 6px;
+  padding: 6px;
+}
+
+.goal-repeat-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
 }
 
 .goal-repeat-form input {

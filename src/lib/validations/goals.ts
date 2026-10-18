@@ -58,6 +58,7 @@ export const updateGoalSchema = z
     repeats: z.boolean().optional(),
     target: z.number().int().min(1).max(100000).nullable().optional(),
     progress: z.number().int().min(0).max(100000).optional(),
+    repeat_until: isoDate.nullable().optional(),
     // Day goal placed in the Agenda (null = back in the day's « Objectifs » strip).
     scheduled_at: z.string().datetime({ offset: true }).nullable().optional(),
     duration_minutes: z.number().int().min(5).max(1440).optional(),

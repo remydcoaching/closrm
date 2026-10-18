@@ -39,7 +39,9 @@ const COLORS: { key: GoalColor; value: string }[] = [
 ]
 const colorValue = (c: GoalColor | null) => COLORS.find((x) => x.key === c)?.value
 
+type RepeatHorizon = 'day' | 'week' | 'month'
 const REPEAT_WORD = { day: 'jour', week: 'semaine', month: 'mois' } as const
+const REPEAT_PLURAL = { day: 'jours', week: 'semaines', month: 'mois' } as const
 
 const PARENT_LABEL: Record<DatedHorizon, string> = { day: 'Semaine', week: 'Mois', month: 'Trimestre', quarter: 'Année', year: '' }
 
@@ -505,6 +507,18 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
   const repeatable = goal.horizon === 'day' || goal.horizon === 'week' || goal.horizon === 'month'
   const [repeatForm, setRepeatForm] = useState(false)
   const [repeatTarget, setRepeatTarget] = useState('')
+  const [repeatCount, setRepeatCount] = useState('')
+  function openRepeatForm() {
+    // Editing: prefill with the current target and the periods left (this one included).
+    setRepeatTarget(goal.target ? String(goal.target) : '')
+    if (goal.repeat_until && goal.period_start && !isUndated(goal.horizon)) {
+      const h = goal.horizon as RepeatHorizon
+      let n = 1
+      while (n < 520 && periodEnd(h, addPeriods(h, goal.period_start, n - 1)) < goal.repeat_until) n++
+      setRepeatCount(String(n))
+    } else setRepeatCount('')
+    setRepeatForm(true)
+  }
   // A past occurrence is history: its counter is read-only.
   const isPast = !isUndated(goal.horizon) && !!goal.period_start && periodEnd(goal.horizon as DatedHorizon, goal.period_start) < today
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -543,7 +557,7 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
             />
           ) : (
             <div className="goal-title" onClick={() => setEditing(true)}>
-              {goal.series_id && <span className="goal-repeat" title="Se répète chaque période">↻ </span>}
+              {goal.repeats && <span className="goal-repeat" title="Se répète chaque période">↻ </span>}
               {goal.title}
             </div>
           )}
@@ -573,6 +587,12 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
               )}
             </div>
           ) : null}
+          {goal.repeats && goal.repeat_until && (
+            <div className="goal-time">
+              ↻ jusqu’au{' '}
+              {new Date(`${goal.repeat_until}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+            </div>
+          )}
           {goal.horizon === 'day' && goal.scheduled_at && (
             <div className="goal-time">
               {new Date(goal.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · dans l’Agenda
@@ -649,30 +669,51 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
                 <button onClick={() => reschedule({ horizon: 'month', period_start: periodStart('month', today) })}>Planifier ce mois-ci</button>
               </>
             )}
-            {repeatable && !goal.repeats && !repeatForm && (
-              <button onClick={() => setRepeatForm(true)}>Répéter chaque {REPEAT_WORD[goal.horizon as 'day' | 'week' | 'month']}</button>
+            {repeatable && !repeatForm && (
+              <button onClick={() => openRepeatForm()}>
+                {goal.repeats ? 'Modifier la répétition' : `Répéter chaque ${REPEAT_WORD[goal.horizon as RepeatHorizon]}`}
+              </button>
             )}
-            {repeatable && !goal.repeats && repeatForm && (
+            {repeatable && repeatForm && (
               <form
                 className="goal-repeat-form"
                 onSubmit={(e) => {
                   e.preventDefault()
+                  const h = goal.horizon as RepeatHorizon
                   const n = Number(repeatTarget)
-                  void ops.update(goal.id, { repeats: true, target: Number.isInteger(n) && n > 0 ? n : null })
+                  const count = Number(repeatCount)
+                  // « pendant 8 semaines » counting this one: the series ends with the 8th.
+                  const until =
+                    Number.isInteger(count) && count > 0 && goal.period_start
+                      ? periodEnd(h, addPeriods(h, goal.period_start, count - 1))
+                      : null
+                  void ops.update(goal.id, { repeats: true, target: Number.isInteger(n) && n > 0 ? n : null, repeat_until: until })
                   setRepeatForm(false)
                   setMenu(false)
                 }}
               >
-                <input
-                  autoFocus
-                  type="number"
-                  min={1}
-                  value={repeatTarget}
-                  onChange={(e) => setRepeatTarget(e.target.value)}
-                  placeholder={`Nombre par ${REPEAT_WORD[goal.horizon as 'day' | 'week' | 'month']} (optionnel)`}
-                  aria-label="Nombre visé par période"
-                />
-                <button type="submit">Répéter</button>
+                <label>
+                  <span>Nombre par {REPEAT_WORD[goal.horizon as RepeatHorizon]}</span>
+                  <input
+                    autoFocus
+                    type="number"
+                    min={1}
+                    value={repeatTarget}
+                    onChange={(e) => setRepeatTarget(e.target.value)}
+                    placeholder="ex. 4 (vide = case à cocher)"
+                  />
+                </label>
+                <label>
+                  <span>Pendant ({REPEAT_PLURAL[goal.horizon as RepeatHorizon]}, celle-ci comprise)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={repeatCount}
+                    onChange={(e) => setRepeatCount(e.target.value)}
+                    placeholder="vide = sans fin"
+                  />
+                </label>
+                <button type="submit">{goal.repeats ? 'Enregistrer' : 'Répéter'}</button>
               </form>
             )}
             {goal.repeats && (

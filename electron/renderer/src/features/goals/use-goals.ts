@@ -31,6 +31,8 @@ export interface Goal {
   /** Day goal placed in the Agenda (migration 131); null = in the day's strip. */
   scheduled_at?: string | null
   duration_minutes?: number | null
+  /** Last day a repeating goal still comes back (migration 132); null = no end. */
+  repeat_until?: string | null
 }
 
 export interface GoalsResponse {
@@ -92,6 +94,7 @@ export interface GoalPatch {
   progress?: number
   scheduled_at?: string | null
   duration_minutes?: number
+  repeat_until?: string | null
 }
 
 export interface NewGoal {
