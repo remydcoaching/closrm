@@ -19,3 +19,18 @@
 - Tests vitest : 13 côté web, 37 pour les objectifs côté desktop, dont le rendu de la page avec l'API simulée. Les 190 tests desktop passent et tsc ne signale rien.
 - Route locale : 401 sans session.
 - Pas encore essayée avec la vraie base : il faut d'abord appliquer la migration 127.
+
+## Ajouts du 16 au 18 octobre
+- **Onglet Horizons** :
+  - les colonnes Aujourd'hui, semaine, mois, trimestre, année et Vie (migration 128) ;
+  - un swipe sur une colonne change sa période, et les colonnes des horizons plus courts suivent ;
+  - un point noir marque la période en cours.
+- **Glisser vers un horizon plus court** crée une copie liée, qui passe par chaque niveau intermédiaire. Le parent est coché quand tous ses sous-objectifs le sont.
+- **Glisser un objectif emporte ses sous-objectifs.** Un sous-objectif est toujours exactement un niveau sous son parent ; l'API refuse le reste.
+- **Report automatique** des objectifs non faits à l'ouverture de la page, comme Timestripe (`POST /api/goals/rollover`). Le repère « Reporté » vient de la migration 129.
+- **Objectifs récurrents** (migration 130) :
+  - menu « Répéter chaque jour / semaine / mois », avec un compteur x/10 optionnel ;
+  - une nouvelle occurrence est créée à chaque période ;
+  - une occurrence ratée n'est pas reportée.
+- **Survol** : passer la souris sur un objectif allume toute sa chaîne. Il y a une confirmation avant toute suppression qui emporte des sous-objectifs.
+- **Mise en page** : même style qu'Agenda ; la page est un onglet de la page Agenda.

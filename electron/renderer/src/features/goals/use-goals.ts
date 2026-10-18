@@ -22,6 +22,12 @@ export interface Goal {
   created_at: string
   /** Period it was first planned in, when it was carried over unfinished (migration 129). */
   carried_from?: string | null
+  /** Repeats each period of its horizon (migration 130). */
+  repeats?: boolean
+  series_id?: string | null
+  /** Number aimed for per period (« 10 » posts); null = a plain checkbox. */
+  target?: number | null
+  progress?: number
 }
 
 export interface GoalsResponse {
@@ -62,6 +68,9 @@ export interface GoalPatch {
   position?: number
   parent_id?: string | null
   color?: GoalColor | null
+  repeats?: boolean
+  target?: number | null
+  progress?: number
 }
 
 export interface NewGoal {
@@ -152,11 +161,18 @@ export function useGoalMutations(keys: (string | null)[]) {
       const { done, ...rest } = patch
       return run(
         (goals) => {
-          const next = goals.map((g) =>
-            g.id === id
-              ? { ...g, ...rest, ...(done !== undefined ? { done_at: done ? new Date().toISOString() : null } : {}) }
-              : g,
-          )
+          let counterDone: boolean | undefined
+          const next = goals.map((g) => {
+            if (g.id !== id) return g
+            const merged = { ...g, ...rest, ...(done !== undefined ? { done_at: done ? new Date().toISOString() : null } : {}) }
+            if (rest.repeats === true && !merged.series_id) merged.series_id = g.id // the server does the same
+            // A counter (« 7/10 ») checks itself at its target, like the server does.
+            if (done === undefined && (rest.progress !== undefined || rest.target !== undefined) && merged.target) {
+              counterDone = (merged.progress ?? 0) >= merged.target
+              merged.done_at = counterDone ? (g.done_at ?? new Date().toISOString()) : null
+            }
+            return merged
+          })
           // Moved to another period or horizon: its sub-goals follow.
           const target = next.find((g) => g.id === id)
           const moved =
@@ -164,7 +180,7 @@ export function useGoalMutations(keys: (string | null)[]) {
               ? moveSubtree(goals.map((g) => (g.id === id ? { ...g, position: target.position, title: target.title } : g)), id, { horizon: target.horizon, period_start: target.period_start })
               : next
           // Checking a sub-goal can check (or uncheck) its parents.
-          return done !== undefined ? propagateDone(moved, id) : moved
+          return done !== undefined || counterDone !== undefined ? propagateDone(moved, id) : moved
         },
         () => api.patch(`/api/goals/${id}`, patch),
       )

@@ -69,7 +69,11 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('goals')
-      .insert({ ...input, period_start, position, workspace_id: workspaceId, user_id: userId })
+      .insert({
+        ...input, period_start, position, workspace_id: workspaceId, user_id: userId,
+        // A repeating goal starts its own series (its id = the series id).
+        ...(input.repeats ? (() => { const id = crypto.randomUUID(); return { id, series_id: id } })() : {}),
+      })
       .select(COLS)
       .single()
     if (error) return goalsDbError(error)

@@ -8,6 +8,12 @@ export function goalsDbError(error: { code?: string; message?: string }) {
       { status: 503 },
     )
   }
+  if (error.code === '42703' || error.code === 'PGRST204') {
+    return NextResponse.json(
+      { code: 'GOALS_MIGRATION_MISSING', error: "Applique les dernières migrations des objectifs (129 et 130) dans Supabase pour utiliser cette option." },
+      { status: 503 },
+    )
+  }
   return NextResponse.json({ error: error.message ?? 'Erreur serveur' }, { status: 500 })
 }
 

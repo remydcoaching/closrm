@@ -533,3 +533,71 @@ body:has(.goals-page),
 .goal-item--dim {
   opacity: 0.45;
 }
+
+/* ── repeating goals: ↻ and the « 7/10 » counter ─────── */
+.goal-repeat {
+  color: var(--color-text-muted);
+}
+
+.goal-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.goal-counter-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+  min-width: 34px;
+}
+
+.goal-counter-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.goal-counter-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+}
+
+.goal-counter-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.goal-repeat-form {
+  display: flex;
+  gap: 6px;
+  padding: 4px 6px;
+}
+
+.goal-repeat-form input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font: inherit;
+  font-size: var(--font-size-base);
+}
+
+.goal-repeat-form button {
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-text-strong);
+  color: var(--color-text-on-accent);
+  padding: 5px 10px;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+}

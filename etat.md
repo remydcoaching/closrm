@@ -1,7 +1,7 @@
 # Etat du projet — ClosRM
 
 > Fichier mis a jour obligatoirement a la fin de chaque tache.
-> Derniere mise a jour : 2026-10-15
+> Derniere mise a jour : 2026-10-18
 
 ---
 
@@ -11,8 +11,15 @@
   - une colonne par période, et la colonne de l'horizon parent à droite ;
   - sous-objectifs, fil vers l'objectif parent, couleurs, replanification, objectifs déplaçables d'une colonne à l'autre.
 - **Côté serveur** : API `/api/goals` et table `goals` (migration 127). Spec : `docs/specs/2026-10-objectifs-horizons.md`. Tâche : 050.
+- **Ajouté ensuite (16-18 oct.)** :
+  - vue Horizons, avec swipe par colonne ;
+  - report automatique des objectifs non faits ;
+  - objectifs récurrents avec compteur ;
+  - glisser-déposer qui emporte les sous-objectifs ;
+  - survol qui allume la chaîne ;
+  - page dans l'onglet Agenda.
 - **À faire (Pierre)** :
-  - appliquer la migration 127 ;
+  - appliquer les migrations 127 et 128 (fait), puis 129 et 130 ;
   - fusionner la PR ;
   - recompiler le DMG.
 

@@ -158,6 +158,34 @@ describe('GoalsPage', () => {
     expect(month.classList.contains('goal-item--lit')).toBe(false)
   })
 
+  it('compteur 3/10 : + envoie 4, − envoie 2', async () => {
+    get.mockImplementation(async (url: string) => ({
+      goals: url.includes('horizon=week') ? [{ ...weekGoal, series_id: weekGoal.id, repeats: true, target: 10, progress: 3 }, monthGoal] : [monthGoal],
+    }))
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    expect(el.querySelector('.goal-counter-value')?.textContent).toBe('3/10')
+    expect(el.textContent).toContain('↻')
+    await act(async () => (el.querySelector('[aria-label="Ajouter 1"]') as HTMLButtonElement).click())
+    expect(patch).toHaveBeenCalledWith('/api/goals/w1', { progress: 4 })
+  })
+
+  it('menu : répéter chaque semaine avec un nombre', async () => {
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const item = [...el.querySelectorAll('.goal-item')].find((i) => i.textContent?.includes('Ecriture + tournage'))!
+    await act(async () => (item.querySelector('.goal-more') as HTMLButtonElement).click())
+    const repeat = [...item.querySelectorAll('.goal-menu button')].find((b) => b.textContent === 'Répéter chaque semaine') as HTMLButtonElement
+    await act(async () => repeat.click())
+    const input = item.querySelector('.goal-repeat-form input') as HTMLInputElement
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '10')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => (item.querySelector('.goal-repeat-form') as HTMLFormElement).requestSubmit())
+    expect(patch).toHaveBeenCalledWith('/api/goals/w1', { repeats: true, target: 10 })
+  })
+
   it('montre le message quand la migration manque', async () => {
     get.mockRejectedValue(new ApiError(503, "La table des objectifs n'existe pas encore : applique la migration 127_goals.sql dans Supabase."))
     await act(async () => root.render(<GoalsPage />))

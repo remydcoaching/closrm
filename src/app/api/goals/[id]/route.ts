@@ -20,13 +20,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { done, ...rest } = parsed.data
     const supabase = await createClient()
 
-    const { data: current, error: readError } = await supabase.from('goals').select('id, parent_id, horizon, period_start').eq('id', id).eq('workspace_id', workspaceId).maybeSingle()
+    const { data: current, error: readError } = await supabase.from('goals').select('*').eq('id', id).eq('workspace_id', workspaceId).maybeSingle()
     if (readError) return goalsDbError(readError)
     if (!current) return NextResponse.json({ error: 'Objectif introuvable' }, { status: 404 })
 
     const patch: Record<string, unknown> = { ...rest }
     if (done !== undefined) patch.done_at = done ? new Date().toISOString() : null
     if (rest.period_start !== undefined) patch.period_start = normalizePeriodStart(rest.horizon ?? current.horizon, rest.period_start)
+    // Repeating: every occurrence of the series shares the first one's id.
+    if (rest.repeats === true && !current.series_id) patch.series_id = id
+    // A counter goal (« 7/10 ») is done once it reaches its target.
+    const target = rest.target !== undefined ? rest.target : current.target
+    const progress = rest.progress !== undefined ? rest.progress : current.progress
+    if (done === undefined && (rest.progress !== undefined || rest.target !== undefined) && target) {
+      patch.done_at = progress >= target ? (current.done_at ?? new Date().toISOString()) : null
+    }
 
     // A parent must be in the same workspace, one level up, and must not create a cycle.
     if (rest.parent_id) {
@@ -55,7 +63,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Moved to another period or horizon: its sub-goals follow (a sub-goal moved alone: only its own).
     if (rest.horizon !== undefined || rest.period_start !== undefined) await moveDescendants(supabase, workspaceId, current, data)
     // Checking a week slice can check the month goal it belongs to (and so on up).
-    if (done !== undefined) await syncAncestorsDone(supabase, workspaceId, data.parent_id)
+    if (done !== undefined || 'done_at' in patch) await syncAncestorsDone(supabase, workspaceId, data.parent_id)
     return NextResponse.json({ goal: data })
   } catch (err) {
     return authOrServerError(err)

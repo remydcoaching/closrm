@@ -41,6 +41,8 @@ const COLORS: { key: GoalColor; value: string }[] = [
 ]
 const colorValue = (c: GoalColor | null) => COLORS.find((x) => x.key === c)?.value
 
+const REPEAT_WORD = { day: 'jour', week: 'semaine', month: 'mois' } as const
+
 const PARENT_LABEL: Record<DatedHorizon, string> = { day: 'Semaine', week: 'Mois', month: 'Trimestre', quarter: 'Année', year: '' }
 
 /** Columns shown: the previous period, the anchor, then the next ones (they share the card width). */
@@ -511,6 +513,11 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
   const direct = sortByPosition(all.filter((g) => g.parent_id === goal.id))
   const children = direct.filter((g) => g.title !== goal.title)
   const descendantCount = countDescendants(all, goal.id)
+  const repeatable = goal.horizon === 'day' || goal.horizon === 'week' || goal.horizon === 'month'
+  const [repeatForm, setRepeatForm] = useState(false)
+  const [repeatTarget, setRepeatTarget] = useState('')
+  // A past occurrence is history: its counter is read-only.
+  const isPast = !isUndated(goal.horizon) && !!goal.period_start && periodEnd(goal.horizon as DatedHorizon, goal.period_start) < today
   const [confirmDelete, setConfirmDelete] = useState(false)
   const done = !!goal.done_at
 
@@ -547,9 +554,36 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
             />
           ) : (
             <div className="goal-title" onClick={() => setEditing(true)}>
+              {goal.series_id && <span className="goal-repeat" title="Se répète chaque période">↻ </span>}
               {goal.title}
             </div>
           )}
+          {goal.target ? (
+            <div className="goal-counter">
+              <span className="goal-counter-value">
+                {goal.progress ?? 0}/{goal.target}
+              </span>
+              {!isPast && (
+                <>
+                  <button
+                    className="goal-counter-btn"
+                    aria-label="Retirer 1"
+                    disabled={(goal.progress ?? 0) <= 0}
+                    onClick={() => void ops.update(goal.id, { progress: Math.max(0, (goal.progress ?? 0) - 1) })}
+                  >
+                    −
+                  </button>
+                  <button
+                    className="goal-counter-btn"
+                    aria-label="Ajouter 1"
+                    onClick={() => void ops.update(goal.id, { progress: (goal.progress ?? 0) + 1 })}
+                  >
+                    +
+                  </button>
+                </>
+              )}
+            </div>
+          ) : null}
           {goal.carried_from && !done && (
             <div className="goal-carried">↻ Reporté · {shortDateLabel(goal.horizon, goal.carried_from)}</div>
           )}
@@ -620,6 +654,42 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
                 <button onClick={() => reschedule({ horizon: 'week', period_start: periodStart('week', today) })}>Planifier cette semaine</button>
                 <button onClick={() => reschedule({ horizon: 'month', period_start: periodStart('month', today) })}>Planifier ce mois-ci</button>
               </>
+            )}
+            {repeatable && !goal.repeats && !repeatForm && (
+              <button onClick={() => setRepeatForm(true)}>Répéter chaque {REPEAT_WORD[goal.horizon as 'day' | 'week' | 'month']}</button>
+            )}
+            {repeatable && !goal.repeats && repeatForm && (
+              <form
+                className="goal-repeat-form"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const n = Number(repeatTarget)
+                  void ops.update(goal.id, { repeats: true, target: Number.isInteger(n) && n > 0 ? n : null })
+                  setRepeatForm(false)
+                  setMenu(false)
+                }}
+              >
+                <input
+                  autoFocus
+                  type="number"
+                  min={1}
+                  value={repeatTarget}
+                  onChange={(e) => setRepeatTarget(e.target.value)}
+                  placeholder={`Nombre par ${REPEAT_WORD[goal.horizon as 'day' | 'week' | 'month']} (optionnel)`}
+                  aria-label="Nombre visé par période"
+                />
+                <button type="submit">Répéter</button>
+              </form>
+            )}
+            {goal.repeats && (
+              <button
+                onClick={() => {
+                  void ops.update(goal.id, { repeats: false })
+                  setMenu(false)
+                }}
+              >
+                Arrêter la répétition
+              </button>
             )}
             <button
               onClick={() => {

@@ -40,6 +40,8 @@ export const createGoalSchema = z
     parent_id: z.string().uuid().nullable().optional(),
     position: z.number().finite().optional(),
     color: z.enum(GOAL_COLORS).nullable().optional(),
+    repeats: z.boolean().optional(),
+    target: z.number().int().min(1).max(100000).nullable().optional(),
   })
   .refine(horizonDateConsistent, horizonDateMessage)
 
@@ -53,6 +55,9 @@ export const updateGoalSchema = z
     position: z.number().finite().optional(),
     parent_id: z.string().uuid().nullable().optional(),
     color: z.enum(GOAL_COLORS).nullable().optional(),
+    repeats: z.boolean().optional(),
+    target: z.number().int().min(1).max(100000).nullable().optional(),
+    progress: z.number().int().min(0).max(100000).optional(),
   })
   .strict()
   .refine((v) => Object.keys(v).length > 0, { message: 'Aucun champ à modifier' })

@@ -47,6 +47,14 @@ describe('updateGoalSchema', () => {
     expect(updateGoalSchema.safeParse({ horizon: 'inbox', period_start: null }).success).toBe(true)
     expect(updateGoalSchema.safeParse({ horizon: 'inbox', period_start: '2026-10-01' }).success).toBe(false)
   })
+  it('répétition, cible et avancement', () => {
+    expect(updateGoalSchema.safeParse({ repeats: true, target: 10 }).success).toBe(true)
+    expect(updateGoalSchema.safeParse({ repeats: false }).success).toBe(true)
+    expect(updateGoalSchema.safeParse({ progress: 3 }).success).toBe(true)
+    expect(updateGoalSchema.safeParse({ progress: -1 }).success).toBe(false)
+    expect(updateGoalSchema.safeParse({ target: 0 }).success).toBe(false)
+    expect(updateGoalSchema.safeParse({ target: 2.5 }).success).toBe(false)
+  })
   it('détacher du parent', () => expect(updateGoalSchema.safeParse({ parent_id: null }).success).toBe(true))
   it('refuse un corps vide ou un champ inconnu', () => {
     expect(updateGoalSchema.safeParse({}).success).toBe(false)
