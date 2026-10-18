@@ -21,6 +21,7 @@ vi.mock('../../lib/api-client', () => ({
 }))
 
 import { GoalsPage } from './GoalsPage'
+import { flushDelete } from './use-goals'
 import { ApiError } from '../../lib/api-client'
 import { setCachePartition } from '../../lib/query-cache'
 
@@ -279,6 +280,28 @@ describe('GoalsPage', () => {
     expect(today.querySelector('.goal-counter-value')?.textContent).toBe('2/4')
     expect(today.querySelector('.goal-counter-scope')?.textContent).toBe('cette semaine')
     resolve({ goal: {} })
+  })
+
+  it('supprimer : masqué tout de suite, « Annuler » le remet, sinon supprimé après le délai', async () => {
+    del.mockResolvedValue(null)
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const find = () => [...el.querySelectorAll('.goal-item')].find((i) => i.textContent?.includes('Ecriture + tournage'))
+    const openMenuAndDelete = async () => {
+      await act(async () => (find()!.querySelector('.goal-more') as HTMLButtonElement).click())
+      const btn = [...find()!.querySelectorAll('.goal-menu button')].find((b) => b.textContent === 'Supprimer') as HTMLButtonElement
+      await act(async () => btn.click())
+    }
+    await openMenuAndDelete()
+    expect(find()).toBeUndefined()
+    expect(el.querySelector('.goals-undo')?.textContent).toContain('« Ecriture + tournage » supprimé')
+    await act(async () => (el.querySelector('.goals-undo-action') as HTMLButtonElement).click())
+    expect(find()).toBeDefined()
+    expect(del).not.toHaveBeenCalled()
+    await openMenuAndDelete()
+    await act(async () => { await flushDelete() })
+    expect(del).toHaveBeenCalledWith('/api/goals/w1')
+    expect(el.querySelector('.goals-undo')).toBeNull()
   })
 
   it('montre le message quand la migration manque', async () => {

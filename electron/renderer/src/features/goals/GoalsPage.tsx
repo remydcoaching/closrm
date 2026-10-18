@@ -9,7 +9,9 @@ import {
   periodStart, shortDateLabel, todayISO, type DatedHorizon, type Horizon, type PeriodLabel,
 } from './periods'
 import { positionAtEnd, sortByPosition } from './ordering'
-import { useGoalMutations, useGoals, useGoalsRollover, type Goal, type GoalColor } from './use-goals'
+import {
+  flushDelete, undoDelete, useGoalMutations, useGoals, useGoalsRollover, usePendingDelete, type Goal, type GoalColor,
+} from './use-goals'
 import { dropCreatesSubGoal, horizonsDown } from './goal-tree'
 import { createSwipeDetector } from './swipe'
 import '../../design-system/data-table.css'
@@ -19,14 +21,13 @@ type Ops = ReturnType<typeof useGoalMutations>
 
 type Tab = 'horizons' | DatedHorizon | 'inbox'
 
+// Days live in the Agenda and the « Aujourd'hui » column; years in the overview.
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'horizons', label: 'Horizons' },
-  { key: 'day', label: 'Jours' },
+  { key: 'horizons', label: 'Vue d’ensemble' },
   { key: 'week', label: 'Semaines' },
   { key: 'month', label: 'Mois' },
   { key: 'quarter', label: 'Trimestres' },
-  { key: 'year', label: 'Années' },
-  { key: 'inbox', label: 'Inbox' },
+  { key: 'inbox', label: 'Idées' },
 ]
 
 const COLORS: { key: GoalColor; value: string }[] = [
@@ -100,6 +101,7 @@ export function GoalsPage() {
       ) : (
         <HorizonBoard key={tab} horizon={tab} today={today} tabs={tabs} />
       )}
+      <UndoBar />
     </div>
   )
 }
@@ -338,6 +340,23 @@ function HoverBoard({ children }: { children: React.ReactNode }) {
   )
 }
 
+/** « « Poster… » supprimé · Annuler » for UNDO_DELAY_MS after a delete. */
+function UndoBar() {
+  const pending = usePendingDelete()
+  if (!pending) return null
+  return (
+    <div className="goals-undo" role="status">
+      <span>{pending.label}</span>
+      <button type="button" className="goals-undo-action" onClick={undoDelete}>
+        Annuler
+      </button>
+      <button type="button" className="goals-undo-close" aria-label="Fermer" onClick={() => void flushDelete()}>
+        ×
+      </button>
+    </div>
+  )
+}
+
 function ErrorBanner({ message, onClose }: { message: string; onClose: () => void }) {
   return (
     <div className="goals-error">
@@ -350,7 +369,7 @@ function ErrorBanner({ message, onClose }: { message: string; onClose: () => voi
 /** Column header: `subtitle` is the small grey line on top, `title` the bold one. */
 function columnLabel(horizon: Horizon, start: string | null): PeriodLabel {
   if (horizon === 'life') return { subtitle: 'Long terme', title: 'Vie' }
-  if (horizon === 'inbox' || !start) return { subtitle: 'Sans date', title: 'Inbox' }
+  if (horizon === 'inbox' || !start) return { subtitle: 'Sans date', title: 'Idées' }
   const l = periodLabel(horizon, start)
   switch (horizon) {
     case 'day': return { subtitle: l.title, title: l.subtitle } // « Jeudi » / « 15 octobre »
@@ -512,6 +531,13 @@ function quickPlanTarget(goal: Goal, today: string): { label: string; horizon: H
   return { label: inside ? QUICK_PLAN_WORD[h] ?? 'Planifier' : `Planifier · ${shortDateLabel(child, at)}`, horizon: child, period_start: at }
 }
 
+function repeatTitle(goal: Goal): string {
+  const every = goal.horizon === 'day' ? 'chaque jour' : goal.horizon === 'month' ? 'chaque mois' : 'chaque semaine'
+  if (!goal.repeat_until) return `Se répète ${every}`
+  const end = new Date(`${goal.repeat_until}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  return `Se répète ${every} · jusqu’au ${end}`
+}
+
 function countDescendants(all: Goal[], id: string): number {
   let n = 0
   const stack = [id]
@@ -567,7 +593,6 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
     } else setRepeatCount('')
     setRepeatForm(true)
   }
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const done = !!goal.done_at
 
   function planNow() {
@@ -613,9 +638,13 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
           ) : (
             <div className="goal-title" onClick={() => setEditing(true)}>
               {isCopy && <span className="goal-copy-mark" title="Suite de l’objectif du dessus">↳ </span>}
-              {goal.repeats && <span className="goal-repeat" title="Se répète chaque période">↻ </span>}
+              {goal.repeats && (
+                <span className="goal-repeat" title={repeatTitle(goal)}>
+                  ↻{' '}
+                </span>
+              )}
               {goal.title}
-              {plannedBadge && (
+              {plannedBadge && !isCopy && (
                 <span className="goal-planned" title={plannedBadge.title}>
                   → {plannedBadge.text}
                 </span>
@@ -647,12 +676,6 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
                 </>
               )}
               {counterOf.id !== goal.id && <span className="goal-counter-scope">{COUNTER_SCOPE[counterOf.horizon] ?? ''}</span>}
-            </div>
-          )}
-          {goal.repeats && goal.repeat_until && (
-            <div className="goal-time">
-              ↻ jusqu’au{' '}
-              {new Date(`${goal.repeat_until}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
             </div>
           )}
           {goal.horizon === 'day' && goal.scheduled_at && (
@@ -702,7 +725,7 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
 
       {menu && (
         <>
-          <div className="goal-menu-backdrop" onClick={() => { setMenu(false); setConfirmDelete(false) }} />
+          <div className="goal-menu-backdrop" onClick={() => setMenu(false)} />
           <div className="goal-menu" role="menu">
             <div className="goal-menu-colors">
               {COLORS.map((c) => (
@@ -726,7 +749,7 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
                 <button onClick={() => reschedule({ horizon: dated, period_start: addPeriods(dated, goal.period_start!, 1) })}>
                   Période suivante
                 </button>
-                <button onClick={() => reschedule({ horizon: 'inbox', period_start: null })}>Déplacer vers l’Inbox</button>
+                <button onClick={() => reschedule({ horizon: 'inbox', period_start: null })}>Mettre dans les idées</button>
               </>
             )}
             {!dated && (
@@ -815,19 +838,16 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
             <button
               className="goal-menu-danger"
               onClick={() => {
-                // Sub-goals go with it: say so, and ask once, before anything is lost.
-                if (descendantCount > 0 && !confirmDelete) {
-                  setConfirmDelete(true)
-                  return
-                }
                 setMenu(false)
-                setConfirmDelete(false)
-                void ops.remove(goal.id)
+                ops.remove(
+                  goal.id,
+                  descendantCount > 0
+                    ? `« ${goal.title} » et ${descendantCount} sous-objectif${descendantCount > 1 ? 's' : ''} supprimés`
+                    : `« ${goal.title} » supprimé`,
+                )
               }}
             >
-              {confirmDelete
-                ? `Confirmer : supprimer aussi ${descendantCount} sous-objectif${descendantCount > 1 ? 's' : ''}`
-                : 'Supprimer'}
+              Supprimer
             </button>
           </div>
         </>

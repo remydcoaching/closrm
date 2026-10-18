@@ -150,6 +150,11 @@ export function getCached<T>(key: string): CacheEntry<T> | undefined {
   return entries.get(key) as CacheEntry<T> | undefined
 }
 
+/** Keys currently cached that start with `prefix` (e.g. every 'goals:' list). */
+export function cachedKeys(prefix: string): string[] {
+  return [...entries.keys()].filter((k) => k.startsWith(prefix))
+}
+
 /** Writes a value (server response or optimistic update). Returns true if it changed. */
 export function setCached<T>(key: string, data: T): boolean {
   const sig = JSON.stringify(data)

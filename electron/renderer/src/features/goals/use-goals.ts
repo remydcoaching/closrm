@@ -1,8 +1,8 @@
 // Goals data: one cached list per (horizon, range), optimistic mutations on
 // every list on screen, rollback + message on failure.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { api, ApiError } from '../../lib/api-client'
-import { discardInflight, getCached, invalidate, setCached } from '../../lib/query-cache'
+import { cachedKeys, discardInflight, getCached, invalidate, setCached } from '../../lib/query-cache'
 import { useCachedQuery } from '../../lib/use-cached-query'
 import { moveSubtree, propagateDone } from './goal-tree'
 import { isUndated, type Horizon } from './periods'
@@ -52,17 +52,73 @@ function goalsUrl(horizon: Horizon, from?: string, to?: string): string {
   return `/api/goals?${p.toString()}`
 }
 
+// ── Delete with « Annuler » ──────────────────────────────────────────────
+// A deleted goal (and its sub-goals) is hidden at once; the server delete only
+// runs after UNDO_DELAY_MS, so « Annuler » simply shows it again. Module-level:
+// leaving the page does not cancel it.
+export const UNDO_DELAY_MS = 8000
+interface PendingDelete {
+  ids: Set<string>
+  label: string
+  timer: ReturnType<typeof setTimeout>
+  commit: () => Promise<void>
+}
+let pendingDelete: PendingDelete | null = null
+const hiddenIds = new Set<string>()
+let undoVersion = 0
+const undoListeners = new Set<() => void>()
+function bumpUndo() {
+  undoVersion++
+  undoListeners.forEach((fn) => fn())
+}
+function subscribeUndo(fn: () => void) {
+  undoListeners.add(fn)
+  return () => {
+    undoListeners.delete(fn)
+  }
+}
+
+/** The delete waiting for « Annuler » (label to show), re-rendering when it changes. */
+export function usePendingDelete(): { label: string } | null {
+  useSyncExternalStore(subscribeUndo, () => undoVersion)
+  return pendingDelete ? { label: pendingDelete.label } : null
+}
+
+/** « Annuler »: the goal shows again, nothing is deleted. */
+export function undoDelete() {
+  if (!pendingDelete) return
+  clearTimeout(pendingDelete.timer)
+  for (const id of pendingDelete.ids) hiddenIds.delete(id)
+  pendingDelete = null
+  bumpUndo()
+}
+
+/** Runs the waiting delete now (the bar's ×, a new delete, or the delay running out). */
+export function flushDelete(): Promise<void> {
+  if (!pendingDelete) return Promise.resolve()
+  const p = pendingDelete
+  pendingDelete = null
+  clearTimeout(p.timer)
+  bumpUndo()
+  return p.commit()
+}
+
 export function useGoals(horizon: Horizon | null, from?: string, to?: string) {
   const key = horizon ? goalsKey(horizon, from, to) : null
-  return {
-    key,
-    ...useCachedQuery<GoalsResponse>(key, {
-      screen: 'Objectifs',
-      staleMs: 15_000,
-      keepPrevious: true,
-      fetcher: horizon ? () => api.get<GoalsResponse>(goalsUrl(horizon, from, to)) : undefined,
-    }),
-  }
+  const version = useSyncExternalStore(subscribeUndo, () => undoVersion)
+  const q = useCachedQuery<GoalsResponse>(key, {
+    screen: 'Objectifs',
+    staleMs: 15_000,
+    keepPrevious: true,
+    fetcher: horizon ? () => api.get<GoalsResponse>(goalsUrl(horizon, from, to)) : undefined,
+  })
+  // Goals waiting for « Annuler » are hidden from every list.
+  const data = useMemo(
+    () => (q.data && hiddenIds.size ? { goals: q.data.goals.filter((g) => !hiddenIds.has(g.id)) } : q.data),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [q.data, version],
+  )
+  return { key, ...q, data }
 }
 
 /**
@@ -222,19 +278,39 @@ export function useGoalMutations(keys: (string | null)[]) {
     [run],
   )
 
-  const remove = useCallback(
-    (id: string) => {
-      if (id.startsWith('tmp-')) return Promise.resolve()
-      return run(
-        (goals) => {
-          const gone = withDescendants(goals, id)
-          return goals.filter((g) => !gone.has(g.id))
-        },
-        () => api.delete(`/api/goals/${id}`),
-      )
-    },
-    [run],
-  )
+  /** Hides the goal and its sub-goals now; the server delete waits for « Annuler » (UNDO_DELAY_MS). */
+  const remove = useCallback((id: string, label = 'Objectif supprimé') => {
+    if (id.startsWith('tmp-')) return
+    void flushDelete() // one pending delete at a time
+    const known = new Map<string, Goal>()
+    for (const k of cachedKeys('goals:')) for (const g of getCached<GoalsResponse>(k)?.data?.goals ?? []) known.set(g.id, g)
+    const ids = withDescendants([...known.values()], id)
+    ids.forEach((x) => hiddenIds.add(x))
+    pendingDelete = {
+      ids,
+      label,
+      timer: setTimeout(() => void flushDelete(), UNDO_DELAY_MS),
+      commit: async () => {
+        discardInflight('goals:')
+        try {
+          await api.delete(`/api/goals/${id}`)
+          // Gone on the server: drop it from every cached list before showing them again.
+          for (const k of cachedKeys('goals:')) {
+            const cur = getCached<GoalsResponse>(k)?.data
+            if (cur) setCached<GoalsResponse>(k, { goals: cur.goals.filter((g) => !ids.has(g.id)) })
+          }
+          setError(null)
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : 'Erreur inconnue')
+        } finally {
+          ids.forEach((x) => hiddenIds.delete(x))
+          bumpUndo()
+          invalidate('goals:')
+        }
+      },
+    }
+    bumpUndo()
+  }, [])
 
   return { create, update, remove, error, clearError: () => setError(null) }
 }

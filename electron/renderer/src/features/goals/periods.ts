@@ -169,7 +169,7 @@ export function periodLabel(horizon: DatedHorizon, start: string): PeriodLabel {
 /** Short label of a goal's date, shown under a sub-goal ("15 octobre", "S42", "Octobre 2026"…). */
 export function shortDateLabel(horizon: Horizon, start: string | null): string {
   if (horizon === 'life') return 'Vie'
-  if (horizon === 'inbox' || !start) return 'Inbox'
+  if (horizon === 'inbox' || !start) return 'Idées'
   const d = parseISODate(start)
   switch (horizon) {
     case 'day': return `${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]}`

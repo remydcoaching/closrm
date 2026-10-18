@@ -89,7 +89,7 @@ describe('divers', () => {
   it('libellés courts des sous-objectifs', () => {
     expect(shortDateLabel('day', '2026-10-15')).toBe('15 octobre')
     expect(shortDateLabel('week', '2026-10-12')).toBe('S42 · 12–18 oct.')
-    expect(shortDateLabel('inbox', null)).toBe('Inbox')
+    expect(shortDateLabel('inbox', null)).toBe('Idées')
   })
   it('horizon parent / enfant', () => {
     expect(parentHorizon('week')).toBe('month')
