@@ -664,3 +664,9 @@ body:has(.goals-page),
 .goal-copy-mark {
   color: var(--color-text-faint);
 }
+
+.goal-counter-scope {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-faint);
+  margin-left: 2px;
+}

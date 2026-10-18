@@ -275,6 +275,9 @@ describe('GoalsPage', () => {
     await act(async () => (today.querySelector('.goal-check') as HTMLButtonElement).click())
     // optimistic, before the server answers
     expect(el.querySelectorAll('.goals-column')[1].querySelector('.goal-counter-value')?.textContent).toBe('2/4')
+    // the day copy shows the week's counter too
+    expect(today.querySelector('.goal-counter-value')?.textContent).toBe('2/4')
+    expect(today.querySelector('.goal-counter-scope')?.textContent).toBe('cette semaine')
     resolve({ goal: {} })
   })
 

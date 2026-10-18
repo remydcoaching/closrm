@@ -39,6 +39,8 @@ const COLORS: { key: GoalColor; value: string }[] = [
 ]
 const colorValue = (c: GoalColor | null) => COLORS.find((x) => x.key === c)?.value
 
+const COUNTER_SCOPE: Partial<Record<Horizon, string>> = { week: 'cette semaine', month: 'ce mois-ci', quarter: 'ce trimestre', year: 'cette année' }
+
 type RepeatHorizon = 'day' | 'week' | 'month'
 const REPEAT_WORD = { day: 'jour', week: 'semaine', month: 'mois' } as const
 const REPEAT_PLURAL = { day: 'jours', week: 'semaines', month: 'mois' } as const
@@ -541,7 +543,13 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
   // Where it is already planned one level down (same-title copies): « → S43 ».
   const plannedBadge = plannedLabel(direct.filter((g) => g.title === goal.title))
   // A copy of the goal above (same title): shown lighter, with « ↳ ».
-  const isCopy = !!goal.parent_id && all.find((g) => g.id === goal.parent_id)?.title === goal.title
+  const parentGoal = goal.parent_id ? all.find((g) => g.id === goal.parent_id) : undefined
+  const isCopy = !!parentGoal && parentGoal.title === goal.title
+  // The counter shown: its own, or — on a day copy of « Poster 0/4 » — the week's, same number everywhere.
+  const counterOf = goal.target ? goal : isCopy && parentGoal?.target ? parentGoal : null
+  // A past period is history: its counter is read-only.
+  const counterPast =
+    !!counterOf && !isUndated(counterOf.horizon) && !!counterOf.period_start && periodEnd(counterOf.horizon as DatedHorizon, counterOf.period_start) < today
   const quickPlan = quickPlanTarget(goal, today)
   const descendantCount = countDescendants(all, goal.id)
   const repeatable = goal.horizon === 'day' || goal.horizon === 'week' || goal.horizon === 'month'
@@ -559,8 +567,6 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
     } else setRepeatCount('')
     setRepeatForm(true)
   }
-  // A past occurrence is history: its counter is read-only.
-  const isPast = !isUndated(goal.horizon) && !!goal.period_start && periodEnd(goal.horizon as DatedHorizon, goal.period_start) < today
   const [confirmDelete, setConfirmDelete] = useState(false)
   const done = !!goal.done_at
 
@@ -616,32 +622,33 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
               )}
             </div>
           )}
-          {goal.target ? (
+          {counterOf && (
             <div className="goal-counter">
               <span className="goal-counter-value">
-                {goal.progress ?? 0}/{goal.target}
+                {counterOf.progress ?? 0}/{counterOf.target}
               </span>
-              {!isPast && (
+              {!counterPast && (
                 <>
                   <button
                     className="goal-counter-btn"
                     aria-label="Retirer 1"
-                    disabled={(goal.progress ?? 0) <= 0}
-                    onClick={() => void ops.update(goal.id, { progress: Math.max(0, (goal.progress ?? 0) - 1) })}
+                    disabled={(counterOf.progress ?? 0) <= 0}
+                    onClick={() => void ops.update(counterOf.id, { progress: Math.max(0, (counterOf.progress ?? 0) - 1) })}
                   >
                     −
                   </button>
                   <button
                     className="goal-counter-btn"
                     aria-label="Ajouter 1"
-                    onClick={() => void ops.update(goal.id, { progress: (goal.progress ?? 0) + 1 })}
+                    onClick={() => void ops.update(counterOf.id, { progress: (counterOf.progress ?? 0) + 1 })}
                   >
                     +
                   </button>
                 </>
               )}
+              {counterOf.id !== goal.id && <span className="goal-counter-scope">{COUNTER_SCOPE[counterOf.horizon] ?? ''}</span>}
             </div>
-          ) : null}
+          )}
           {goal.repeats && goal.repeat_until && (
             <div className="goal-time">
               ↻ jusqu’au{' '}
