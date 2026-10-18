@@ -1,7 +1,7 @@
 // Objectifs — goals planned by horizon (jours, semaines, mois, trimestres,
 // années, Inbox), one column per period, the parent horizon's current period
 // on the right. Behaviour modelled on Timestripe's Horizons (docs/specs/2026-10-objectifs-horizons.md).
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Tabs } from '../../design-system/Tabs'
 import { ErrorState, LoadingState } from '../../design-system/States'
 import {
@@ -170,7 +170,7 @@ function HorizonBoard({ horizon, today, tabs }: { horizon: DatedHorizon; today: 
     <>
       {toolbar}
       {ops.error && <ErrorBanner message={ops.error} onClose={ops.clearError} />}
-      <div className="goals-board">
+      <HoverBoard>
         <div className="goals-columns goals-columns--slide goals-columns--fill" ref={scroller}>
           {starts.map((start) => (
             <GoalColumn
@@ -197,7 +197,7 @@ function HorizonBoard({ horizon, today, tabs }: { horizon: DatedHorizon; today: 
             />
           </div>
         )}
-      </div>
+      </HoverBoard>
     </>
   )
 }
@@ -263,7 +263,7 @@ function OverviewBoard({ today, tabs }: { today: string; tabs: React.ReactNode }
     <>
       {toolbar}
       {ops.error && <ErrorBanner message={ops.error} onClose={ops.clearError} />}
-      <div className="goals-board">
+      <HoverBoard>
         <div className="goals-columns goals-columns--fill">
           {columns.map((c) => (
             <GoalColumn
@@ -279,7 +279,7 @@ function OverviewBoard({ today, tabs }: { today: string; tabs: React.ReactNode }
             />
           ))}
         </div>
-      </div>
+      </HoverBoard>
     </>
   )
 }
@@ -325,12 +325,21 @@ function InboxBoard({ tabs }: { tabs: React.ReactNode }) {
     <>
       {toolbar}
       {ops.error && <ErrorBanner message={ops.error} onClose={ops.clearError} />}
-      <div className="goals-board">
+      <HoverBoard>
         <div className="goals-columns goals-columns--fill">
           <GoalColumn horizon="inbox" start={null} current={false} all={inbox.data.goals} ops={ops} today={todayISO()} />
         </div>
-      </div>
+      </HoverBoard>
     </>
+  )
+}
+
+function HoverBoard({ children }: { children: React.ReactNode }) {
+  const [hovered, setHovered] = useState<string | null>(null)
+  return (
+    <HoverContext.Provider value={{ hovered, setHovered }}>
+      <div className="goals-board">{children}</div>
+    </HoverContext.Provider>
   )
 }
 
@@ -379,6 +388,23 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
     [all, horizon, start],
   )
   const label = labelOverride ?? columnLabel(horizon, start)
+
+  // Goals grouped under the goal they serve (one grey title per group instead
+  // of a line under every goal); goals without a parent come last, untitled.
+  const groups = useMemo(() => {
+    const map = new Map<string, { key: string; title: string | null; goals: Goal[] }>()
+    for (const g of goals) {
+      const origin = originOf(g, all)
+      const key = origin?.id ?? '__none'
+      if (!map.has(key)) map.set(key, { key, title: origin?.title ?? null, goals: [] })
+      map.get(key)!.goals.push(g)
+    }
+    const list = [...map.values()]
+    return [...list.filter((x) => x.title), ...list.filter((x) => !x.title)]
+  }, [goals, all])
+
+  const { hovered } = useContext(HoverContext)
+  const related = useMemo(() => (hovered ? relatedTo(hovered, all) : null), [hovered, all])
 
   /**
    * Year goal dropped on a week: one sub-goal per level in between (quarter,
@@ -439,8 +465,13 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
         </div>
       </header>
       <div className="goals-list">
-        {goals.map((g) => (
-          <GoalItem key={g.id} goal={g} all={all} ops={ops} today={today} />
+        {groups.map((group) => (
+          <div key={group.key} className="goal-group">
+            {group.title && <div className="goal-group-title">{group.title}</div>}
+            {group.goals.map((g) => (
+              <GoalItem key={g.id} goal={g} all={all} ops={ops} today={today} related={related} />
+            ))}
+          </div>
         ))}
         <GoalComposer
           onSubmit={(title) =>
@@ -450,6 +481,40 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
       </div>
     </section>
   )
+}
+
+/**
+ * The goal a goal serves, for its column's group title: the nearest ancestor
+ * with a different title (a slice dragged down keeps its parent's title), else
+ * the top of its chain. Undefined for a goal with no parent.
+ */
+function originOf(goal: Goal, all: Goal[]): Goal | undefined {
+  let p = goal.parent_id ? all.find((g) => g.id === goal.parent_id) : undefined
+  let top = p
+  for (let depth = 0; p && depth < 10; depth++) {
+    if (p.title !== goal.title) return p
+    top = p
+    p = p.parent_id ? all.find((g) => g.id === p!.parent_id) : undefined
+  }
+  return top
+}
+
+/** Hovering a goal lights its whole chain (ancestors + descendants) in every column. */
+const HoverContext = createContext<{ hovered: string | null; setHovered: (id: string | null) => void }>({
+  hovered: null,
+  setHovered: () => {},
+})
+
+function relatedTo(id: string, all: Goal[]): Set<string> {
+  const out = new Set([id])
+  const byId = new Map(all.map((g) => [g.id, g]))
+  for (let p = byId.get(id)?.parent_id, d = 0; p && d < 10; p = byId.get(p)?.parent_id, d++) out.add(p)
+  const stack = [id]
+  for (let guard = 0; stack.length && guard < 1000; guard++) {
+    const cur = stack.pop()!
+    for (const g of all) if (g.parent_id === cur && !out.has(g.id)) { out.add(g.id); stack.push(g.id) }
+  }
+  return out
 }
 
 function countDescendants(all: Goal[], id: string): number {
@@ -471,23 +536,14 @@ function childPlacement(parent: Goal, today: string): { horizon: Horizon; period
   return { horizon: h, period_start: periodStart(h, inside ? today : parent.period_start) }
 }
 
-function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops; today: string }) {
+function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[]; ops: Ops; today: string; related: Set<string> | null }) {
+  const { setHovered } = useContext(HoverContext)
   const [editing, setEditing] = useState(false)
   const [menu, setMenu] = useState(false)
   const [open, setOpen] = useState(false)
-  // Grey line = what this goal serves: the nearest ancestor with a different
-  // title (a slice dragged down a level keeps its parent's title).
-  const parent = (() => {
-    let p = goal.parent_id ? all.find((g) => g.id === goal.parent_id) : undefined
-    for (let depth = 0; p && p.title === goal.title && depth < 10; depth++) {
-      p = p.parent_id ? all.find((g) => g.id === p!.parent_id) : undefined
-    }
-    return p
-  })()
   // A child with the parent's own title is this goal planned one level down
-  // (dragged onto a shorter horizon), not a sub-goal: shown as « Planifié · … ».
+  // (dragged onto a shorter horizon), not a sub-goal: not listed nor counted.
   const direct = sortByPosition(all.filter((g) => g.parent_id === goal.id))
-  const slices = direct.filter((g) => g.title === goal.title)
   const children = direct.filter((g) => g.title !== goal.title)
   const descendantCount = countDescendants(all, goal.id)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -503,7 +559,9 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
 
   return (
     <div
-      className={`goal-item${done ? ' goal-item--done' : ''}`}
+      className={`goal-item${done ? ' goal-item--done' : ''}${related ? (related.has(goal.id) ? ' goal-item--lit' : ' goal-item--dim') : ''}`}
+      onMouseEnter={() => setHovered(goal.id)}
+      onMouseLeave={() => setHovered(null)}
       style={{ borderLeftColor: colorValue(goal.color) ?? 'transparent' }}
       draggable={!editing && !goal.id.startsWith('tmp-')}
       onDragStart={(e) => {
@@ -529,12 +587,6 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
           )}
           {goal.carried_from && !done && (
             <div className="goal-carried">↻ Reporté · {shortDateLabel(goal.horizon, goal.carried_from)}</div>
-          )}
-          {parent && <div className="goal-parent">{parent.title}</div>}
-          {slices.length > 0 && (
-            <div className="goal-parent">
-              Planifié · {slices.map((sl) => shortDateLabel(sl.horizon, sl.period_start)).join(', ')}
-            </div>
           )}
           {(children.length > 0 || open) && (
             <button className="goal-subtoggle" onClick={() => setOpen(!open)}>

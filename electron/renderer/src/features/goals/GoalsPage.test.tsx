@@ -74,7 +74,7 @@ describe('GoalsPage', () => {
     expect(titles[titles.length - 1]).toBe('Octobre')
     expect(el.querySelector('.goals-column-head--current .goals-column-title')?.textContent).toBe('12–18 oct.')
     expect(el.textContent).toContain('Ecriture + tournage')
-    expect(el.querySelector('.goal-parent')?.textContent).toBe('Poster 3-5 contenus par jour')
+    expect(el.querySelector('.goal-group-title')?.textContent).toBe('Poster 3-5 contenus par jour')
     expect(get).toHaveBeenCalledWith(expect.stringContaining('horizon=week&from=2026-10-05&to=2026-11-08'))
     expect(get).toHaveBeenCalledWith(expect.stringContaining('horizon=month&from=2026-10-01&to=2026-10-31'))
   })
@@ -145,6 +145,18 @@ describe('GoalsPage', () => {
     await act(async () => root.render(<GoalsPage />))
     await flush()
     expect(post).toHaveBeenCalledWith('/api/goals/rollover', { today: '2026-10-15' })
+  })
+
+  it('survoler un objectif allume sa chaîne et estompe le reste', async () => {
+    await act(async () => root.render(<GoalsPage />))
+    await flush()
+    const week = [...el.querySelectorAll('.goal-item')].find((i) => i.textContent?.includes('Ecriture + tournage'))!
+    await act(async () => week.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    const month = [...el.querySelectorAll('.goal-item')].find((i) => i.textContent?.includes('Poster 3-5'))!
+    expect(week.classList.contains('goal-item--lit')).toBe(true)
+    expect(month.classList.contains('goal-item--lit')).toBe(true)
+    await act(async () => week.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })))
+    expect(month.classList.contains('goal-item--lit')).toBe(false)
   })
 
   it('montre le message quand la migration manque', async () => {
