@@ -74,7 +74,6 @@ describe('GoalsPage', () => {
     expect(titles[titles.length - 1]).toBe('Octobre')
     expect(el.querySelector('.goals-column-head--current .goals-column-title')?.textContent).toBe('12–18 oct.')
     expect(el.textContent).toContain('Ecriture + tournage')
-    expect(el.querySelector('.goal-group-title')?.textContent).toBe('Poster 3-5 contenus par jour')
     expect(get).toHaveBeenCalledWith(expect.stringContaining('horizon=week&from=2026-10-05&to=2026-11-08'))
     expect(get).toHaveBeenCalledWith(expect.stringContaining('horizon=month&from=2026-10-01&to=2026-10-31'))
   })

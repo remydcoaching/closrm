@@ -389,20 +389,6 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
   )
   const label = labelOverride ?? columnLabel(horizon, start)
 
-  // Goals grouped under the goal they serve (one grey title per group instead
-  // of a line under every goal); goals without a parent come last, untitled.
-  const groups = useMemo(() => {
-    const map = new Map<string, { key: string; title: string | null; goals: Goal[] }>()
-    for (const g of goals) {
-      const origin = originOf(g, all)
-      const key = origin?.id ?? '__none'
-      if (!map.has(key)) map.set(key, { key, title: origin?.title ?? null, goals: [] })
-      map.get(key)!.goals.push(g)
-    }
-    const list = [...map.values()]
-    return [...list.filter((x) => x.title), ...list.filter((x) => !x.title)]
-  }, [goals, all])
-
   const { hovered } = useContext(HoverContext)
   const related = useMemo(() => (hovered ? relatedTo(hovered, all) : null), [hovered, all])
 
@@ -465,13 +451,8 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
         </div>
       </header>
       <div className="goals-list">
-        {groups.map((group) => (
-          <div key={group.key} className="goal-group">
-            {group.title && <div className="goal-group-title">{group.title}</div>}
-            {group.goals.map((g) => (
-              <GoalItem key={g.id} goal={g} all={all} ops={ops} today={today} related={related} />
-            ))}
-          </div>
+        {goals.map((g) => (
+          <GoalItem key={g.id} goal={g} all={all} ops={ops} today={today} related={related} />
         ))}
         <GoalComposer
           onSubmit={(title) =>
@@ -481,22 +462,6 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
       </div>
     </section>
   )
-}
-
-/**
- * The goal a goal serves, for its column's group title: the nearest ancestor
- * with a different title (a slice dragged down keeps its parent's title), else
- * the top of its chain. Undefined for a goal with no parent.
- */
-function originOf(goal: Goal, all: Goal[]): Goal | undefined {
-  let p = goal.parent_id ? all.find((g) => g.id === goal.parent_id) : undefined
-  let top = p
-  for (let depth = 0; p && depth < 10; depth++) {
-    if (p.title !== goal.title) return p
-    top = p
-    p = p.parent_id ? all.find((g) => g.id === p!.parent_id) : undefined
-  }
-  return top
 }
 
 /** Hovering a goal lights its whole chain (ancestors + descendants) in every column. */
