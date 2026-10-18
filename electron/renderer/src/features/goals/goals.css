@@ -601,3 +601,9 @@ body:has(.goals-page),
   font-size: var(--font-size-base);
   cursor: pointer;
 }
+
+.goal-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}

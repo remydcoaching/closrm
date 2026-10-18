@@ -34,3 +34,4 @@
   - une occurrence ratée n'est pas reportée.
 - **Survol** : passer la souris sur un objectif allume toute sa chaîne. Il y a une confirmation avant toute suppression qui emporte des sous-objectifs.
 - **Mise en page** : même style qu'Agenda ; la page est un onglet de la page Agenda.
+- **Agenda** (migration 131) : chaque jour a un bandeau « Objectifs » en haut avec ses objectifs sans heure, qu'on glisse dans la grille pour les placer. Un objectif placé se déplace, se redimensionne et se coche comme un rendez-vous ; remis dans le bandeau, il perd son heure. Un objectif reporté revient dans le bandeau sans heure. Les créneaux de réservation ne sont pas bloqués.

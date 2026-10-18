@@ -1082,3 +1082,130 @@ textarea.agenda-field {
   color: var(--color-danger);
   font-size: var(--font-size-sm);
 }
+
+/* ── Day goals (Objectifs) in the grid ─────────────────── */
+.agenda-goal-strip {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  min-height: 34px;
+  flex-shrink: 0;
+}
+
+.agenda-goal-strip .agenda-allday-label {
+  align-self: center;
+}
+
+.agenda-goal-strip-cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px;
+  border-left: 1px solid var(--color-border);
+  transition: background 0.12s;
+}
+
+.agenda-goal-strip-cell--over {
+  background: var(--color-bg-muted);
+}
+
+.agenda-goal-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px dashed var(--color-border-strong);
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: grab;
+  user-select: none;
+}
+
+.agenda-goal-chip:hover {
+  background: var(--color-bg-subtle);
+}
+
+.agenda-goal-chip--dragging {
+  opacity: 0.4;
+}
+
+.agenda-goal-chip-title {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-goal-chip--done .agenda-goal-chip-title,
+.agenda-goal-block--done .agenda-goal-block-title {
+  color: var(--color-text-faint);
+  text-decoration: line-through;
+}
+
+.agenda-goal-check {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  border: 1.5px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text-on-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.agenda-goal-check--done {
+  background: var(--color-text-strong);
+  border-color: var(--color-text-strong);
+}
+
+.agenda-goal-block {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1.5px dashed var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-bg-muted) 70%, var(--color-surface));
+  padding: 3px 6px;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  z-index: 1;
+}
+
+.agenda-goal-block--dragging {
+  opacity: 0.35;
+}
+
+.agenda-goal-block--ghost {
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.agenda-goal-block-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.agenda-goal-block-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-goal-block-time {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}

@@ -19,7 +19,7 @@
   - survol qui allume la chaîne ;
   - page dans l'onglet Agenda.
 - **À faire (Pierre)** :
-  - appliquer les migrations 127 et 128 (fait), puis 129 et 130 ;
+  - appliquer les migrations 127 et 128 (fait), puis 129, 130 et 131 ;
   - fusionner la PR ;
   - recompiler le DMG.
 

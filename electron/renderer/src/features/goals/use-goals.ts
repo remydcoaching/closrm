@@ -1,6 +1,6 @@
 // Goals data: one cached list per (horizon, range), optimistic mutations on
 // every list on screen, rollback + message on failure.
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from '../../lib/api-client'
 import { discardInflight, getCached, invalidate, setCached } from '../../lib/query-cache'
 import { useCachedQuery } from '../../lib/use-cached-query'
@@ -28,6 +28,9 @@ export interface Goal {
   /** Number aimed for per period (« 10 » posts); null = a plain checkbox. */
   target?: number | null
   progress?: number
+  /** Day goal placed in the Agenda (migration 131); null = in the day's strip. */
+  scheduled_at?: string | null
+  duration_minutes?: number | null
 }
 
 export interface GoalsResponse {
@@ -60,6 +63,22 @@ export function useGoals(horizon: Horizon | null, from?: string, to?: string) {
   }
 }
 
+/**
+ * Like Timestripe's auto-move: unfinished goals of past periods move to the
+ * current one, repeating ones get this period's occurrence. Run by every
+ * screen that shows goals (Objectifs, Agenda); lists refresh only if something moved.
+ */
+export function useGoalsRollover(today: string) {
+  useEffect(() => {
+    api
+      .post<{ moved: number }>('/api/goals/rollover', { today })
+      .then((r) => {
+        if (r.moved > 0) invalidate('goals:')
+      })
+      .catch(() => undefined)
+  }, [today])
+}
+
 export interface GoalPatch {
   title?: string
   done?: boolean
@@ -71,6 +90,8 @@ export interface GoalPatch {
   repeats?: boolean
   target?: number | null
   progress?: number
+  scheduled_at?: string | null
+  duration_minutes?: number
 }
 
 export interface NewGoal {

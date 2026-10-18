@@ -27,6 +27,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const patch: Record<string, unknown> = { ...rest }
     if (done !== undefined) patch.done_at = done ? new Date().toISOString() : null
     if (rest.period_start !== undefined) patch.period_start = normalizePeriodStart(rest.horizon ?? current.horizon, rest.period_start)
+    // Moved to another day without a new time: the old time would sit on the wrong day.
+    if (rest.period_start !== undefined && rest.scheduled_at === undefined && current.scheduled_at) patch.scheduled_at = null
     // Repeating: every occurrence of the series shares the first one's id.
     if (rest.repeats === true && !current.series_id) patch.series_id = id
     // A counter goal (« 7/10 ») is done once it reaches its target.

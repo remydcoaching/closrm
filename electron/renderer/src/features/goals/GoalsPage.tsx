@@ -9,11 +9,9 @@ import {
   periodStart, shortDateLabel, todayISO, type DatedHorizon, type Horizon, type PeriodLabel,
 } from './periods'
 import { positionAtEnd, sortByPosition } from './ordering'
-import { useGoalMutations, useGoals, type Goal, type GoalColor } from './use-goals'
+import { useGoalMutations, useGoals, useGoalsRollover, type Goal, type GoalColor } from './use-goals'
 import { dropCreatesSubGoal, horizonsDown } from './goal-tree'
 import { createSwipeDetector } from './swipe'
-import { api } from '../../lib/api-client'
-import { invalidate } from '../../lib/query-cache'
 import '../../design-system/data-table.css'
 import './goals.css'
 
@@ -79,16 +77,7 @@ export function GoalsPage() {
     }
   }
 
-  // Like Timestripe's auto-move: unfinished goals of past periods move to the
-  // current one (once per opening; the lists refresh only if something moved).
-  useEffect(() => {
-    api
-      .post<{ moved: number }>('/api/goals/rollover', { today })
-      .then((r) => {
-        if (r.moved > 0) invalidate('goals:')
-      })
-      .catch(() => undefined)
-  }, [today])
+  useGoalsRollover(today)
 
   const tabs = <Tabs items={TABS} active={tab} onChange={changeTab} />
 
@@ -584,6 +573,11 @@ function GoalItem({ goal, all, ops, today, related }: { goal: Goal; all: Goal[];
               )}
             </div>
           ) : null}
+          {goal.horizon === 'day' && goal.scheduled_at && (
+            <div className="goal-time">
+              {new Date(goal.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · dans l’Agenda
+            </div>
+          )}
           {goal.carried_from && !done && (
             <div className="goal-carried">↻ Reporté · {shortDateLabel(goal.horizon, goal.carried_from)}</div>
           )}

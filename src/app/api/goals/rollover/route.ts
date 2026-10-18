@@ -13,8 +13,8 @@ type Rolling = (typeof ROLLING_HORIZONS)[number]
 /** Which optional columns exist yet (migrations 129 and 130 may not be applied). */
 async function columnsPresent(supabase: SupabaseClient) {
   const probe = async (col: string) => !isMissingColumn((await supabase.from('goals').select(col).limit(1)).error)
-  const [carried, repeats] = await Promise.all([probe('carried_from'), probe('repeats')])
-  return { carried, repeats }
+  const [carried, repeats, scheduled] = await Promise.all([probe('carried_from'), probe('repeats'), probe('scheduled_at')])
+  return { carried, repeats, scheduled }
 }
 
 // POST /api/goals/rollover { today } — run when the Objectifs page opens:
@@ -36,23 +36,25 @@ export async function POST(request: NextRequest) {
     // ── 1. carry unfinished goals over ────────────────────────────────────
     const rollHorizon = async (horizon: Rolling) => {
       const current = normalizePeriodStart(horizon, today)!
+      // A carried-over day goal goes back to the strip: yesterday's 9:00 means nothing today.
+      const moveTo = { period_start: current, ...(has.scheduled && horizon === 'day' ? { scheduled_at: null } : {}) }
       let q = supabase.from('goals').select('id, period_start').eq('workspace_id', workspaceId).eq('horizon', horizon)
         .is('done_at', null).lt('period_start', current)
       if (has.repeats) q = q.eq('repeats', false).is('series_id', null)
       const { data: rows, error } = await q
       if (error || !rows?.length) return { moved: 0, error }
       if (!has.carried) {
-        const { error: e } = await supabase.from('goals').update({ period_start: current }).in('id', rows.map((r) => r.id)).eq('workspace_id', workspaceId)
+        const { error: e } = await supabase.from('goals').update(moveTo).in('id', rows.map((r) => r.id)).eq('workspace_id', workspaceId)
         return { moved: e ? 0 : rows.length, error: e }
       }
       // Keep the first period a goal was planned in (carried_from), one update per original period.
-      const { error: e1 } = await supabase.from('goals').update({ period_start: current })
+      const { error: e1 } = await supabase.from('goals').update(moveTo)
         .in('id', rows.map((r) => r.id)).eq('workspace_id', workspaceId).not('carried_from', 'is', null)
       if (e1) return { moved: 0, error: e1 }
       const byOrigin = new Map<string, string[]>()
       for (const r of rows) byOrigin.set(r.period_start, [...(byOrigin.get(r.period_start) ?? []), r.id])
       for (const [origin, ids] of byOrigin) {
-        const { error: e2 } = await supabase.from('goals').update({ period_start: current, carried_from: origin })
+        const { error: e2 } = await supabase.from('goals').update({ ...moveTo, carried_from: origin })
           .in('id', ids).eq('workspace_id', workspaceId).is('carried_from', null)
         if (e2) return { moved: 0, error: e2 }
       }
