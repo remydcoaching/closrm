@@ -465,7 +465,15 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
   const [editing, setEditing] = useState(false)
   const [menu, setMenu] = useState(false)
   const [open, setOpen] = useState(false)
-  const parent = goal.parent_id ? all.find((g) => g.id === goal.parent_id) : undefined
+  // Grey line = what this goal serves: the nearest ancestor with a different
+  // title (a slice dragged down a level keeps its parent's title).
+  const parent = (() => {
+    let p = goal.parent_id ? all.find((g) => g.id === goal.parent_id) : undefined
+    for (let depth = 0; p && p.title === goal.title && depth < 10; depth++) {
+      p = p.parent_id ? all.find((g) => g.id === p!.parent_id) : undefined
+    }
+    return p
+  })()
   const children = sortByPosition(all.filter((g) => g.parent_id === goal.id))
   const done = !!goal.done_at
 
