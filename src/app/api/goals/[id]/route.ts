@@ -6,6 +6,7 @@ import { authOrServerError, goalsDbError } from '@/lib/goals/api-errors'
 import { isDirectChildHorizon, normalizePeriodStart } from '@/lib/goals/period'
 import { syncAncestorsDone } from '@/lib/goals/done'
 import { moveDescendants } from '@/lib/goals/move'
+import { syncSeries } from '@/lib/goals/series'
 import { isMissingColumn } from '@/lib/goals/api-errors'
 
 // '*' rather than a list: carried_from (migration 129) shows up as soon as it exists.
@@ -14,7 +15,7 @@ const COLS = '*'
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const { workspaceId } = await getWorkspaceId()
+    const { workspaceId, userId } = await getWorkspaceId()
     const parsed = updateGoalSchema.safeParse(await request.json().catch(() => null))
     if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Requête invalide', details: parsed.error.flatten() }, { status: 400 })
     const { done, ...rest } = parsed.data
@@ -66,6 +67,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (rest.horizon !== undefined || rest.period_start !== undefined) await moveDescendants(supabase, workspaceId, current, data)
     // Checking a week slice can check the month goal it belongs to (and so on up).
     if (done !== undefined || 'done_at' in patch) await syncAncestorsDone(supabase, workspaceId, data.parent_id)
+    // Repeat switched on, changed or stopped: the coming occurrences follow (created now when it has an end).
+    if (rest.repeats !== undefined || rest.repeat_until !== undefined || rest.target !== undefined) {
+      await syncSeries(supabase, workspaceId, userId, data)
+    }
     return NextResponse.json({ goal: data })
   } catch (err) {
     return authOrServerError(err)
