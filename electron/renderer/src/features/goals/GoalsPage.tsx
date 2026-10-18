@@ -452,6 +452,16 @@ function GoalColumn({ horizon, start, current, all, ops, today, label: labelOver
   )
 }
 
+function countDescendants(all: Goal[], id: string): number {
+  let n = 0
+  const stack = [id]
+  for (let guard = 0; stack.length && guard < 1000; guard++) {
+    const cur = stack.pop()!
+    for (const g of all) if (g.parent_id === cur) { n++; stack.push(g.id) }
+  }
+  return n
+}
+
 /** Where a sub-goal of `parent` lands: one horizon down, in today's period if it falls inside the parent's. */
 function childPlacement(parent: Goal, today: string): { horizon: Horizon; period_start: string | null } {
   if (parent.horizon === 'life') return { horizon: 'year', period_start: periodStart('year', today) }
@@ -474,7 +484,13 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
     }
     return p
   })()
-  const children = sortByPosition(all.filter((g) => g.parent_id === goal.id))
+  // A child with the parent's own title is this goal planned one level down
+  // (dragged onto a shorter horizon), not a sub-goal: shown as « Planifié · … ».
+  const direct = sortByPosition(all.filter((g) => g.parent_id === goal.id))
+  const slices = direct.filter((g) => g.title === goal.title)
+  const children = direct.filter((g) => g.title !== goal.title)
+  const descendantCount = countDescendants(all, goal.id)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const done = !!goal.done_at
 
   function reschedule(target: { horizon: Horizon; period_start: string | null }) {
@@ -515,6 +531,11 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
             <div className="goal-carried">↻ Reporté · {shortDateLabel(goal.horizon, goal.carried_from)}</div>
           )}
           {parent && <div className="goal-parent">{parent.title}</div>}
+          {slices.length > 0 && (
+            <div className="goal-parent">
+              Planifié · {slices.map((sl) => shortDateLabel(sl.horizon, sl.period_start)).join(', ')}
+            </div>
+          )}
           {(children.length > 0 || open) && (
             <button className="goal-subtoggle" onClick={() => setOpen(!open)}>
               {children.length} sous-objectif{children.length > 1 ? 's' : ''} {open ? '▴' : '▾'}
@@ -549,7 +570,7 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
 
       {menu && (
         <>
-          <div className="goal-menu-backdrop" onClick={() => setMenu(false)} />
+          <div className="goal-menu-backdrop" onClick={() => { setMenu(false); setConfirmDelete(false) }} />
           <div className="goal-menu" role="menu">
             <div className="goal-menu-colors">
               {COLORS.map((c) => (
@@ -604,11 +625,19 @@ function GoalItem({ goal, all, ops, today }: { goal: Goal; all: Goal[]; ops: Ops
             <button
               className="goal-menu-danger"
               onClick={() => {
+                // Sub-goals go with it: say so, and ask once, before anything is lost.
+                if (descendantCount > 0 && !confirmDelete) {
+                  setConfirmDelete(true)
+                  return
+                }
                 setMenu(false)
+                setConfirmDelete(false)
                 void ops.remove(goal.id)
               }}
             >
-              Supprimer
+              {confirmDelete
+                ? `Confirmer : supprimer aussi ${descendantCount} sous-objectif${descendantCount > 1 ? 's' : ''}`
+                : 'Supprimer'}
             </button>
           </div>
         </>
