@@ -11,6 +11,7 @@ import { useAuth } from '../lib/auth-context'
 import { InstagramAccountProvider, useInstagramAccount } from '../lib/instagram-account'
 import { StoryCollectorProvider, useStoryCollector } from '../lib/story-collector'
 import { InstagramAccountModal, InstagramOnboarding } from './InstagramOnboarding'
+import { QuickGoalButton, QuickGoalHost } from './QuickGoal'
 import { LoadingState } from '../design-system/States'
 import './dashboard-layout.css'
 
@@ -73,6 +74,7 @@ function Shell() {
               </button>
             )}
           </div>
+          <QuickGoalButton />
           <UserMenu />
         </header>
         <main className="app-content">
@@ -82,6 +84,7 @@ function Shell() {
         </main>
       </div>
       {editing && <InstagramAccountModal onClose={() => setEditing(false)} />}
+      <QuickGoalHost />
     </div>
     </StoryCollectorProvider>
   )
