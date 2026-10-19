@@ -1,0 +1,721 @@
+.goals-page {
+  height: 100%;
+  overflow: hidden;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.goals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.goals-header h1 {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  margin: 0;
+}
+
+.goals-header p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  margin: 2px 0 0;
+}
+
+.goals-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.goals-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.goals-nav-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.goals-nav-arrow:hover {
+  background: var(--color-surface-hover);
+}
+
+.goals-period {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.goals-period--hint {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-muted);
+}
+
+/* The board: one rounded card, like the Agenda grid. */
+.goals-board {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.goals-columns {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.goals-column {
+  flex: 0 0 240px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border);
+  transition: background 0.12s;
+}
+
+/* « Horizons »: the columns share the card width. */
+.goals-columns--fill .goals-column {
+  flex: 1 0 190px;
+}
+
+.goals-columns > .goals-column:last-child {
+  border-right: none;
+}
+
+.goals-column--over {
+  background: var(--color-bg-subtle);
+}
+
+.goals-column-head {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.goals-column-title {
+  display: inline-block;
+  max-width: 100%;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.goals-column-sub {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Current period: a small dot before the grey line, which turns dark. */
+.goals-column-head--current .goals-column-sub {
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-semibold);
+}
+
+.goals-column-head--current .goals-column-sub::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--color-text-strong);
+  vertical-align: 1px;
+}
+
+.goals-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-2) var(--space-6);
+}
+
+.goals-parent-column {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  background: var(--color-bg-subtle);
+  border-left: 1px solid var(--color-border);
+}
+
+.goals-parent-column .goals-column {
+  flex: 0 0 240px;
+  width: 240px;
+  border-right: none;
+}
+
+
+/* ── item ─────────────────────────────────────────── */
+.goal-item {
+  position: relative;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 6px var(--space-2);
+  margin-bottom: 2px;
+}
+
+.goal-item:hover {
+  background: var(--color-bg-muted);
+}
+
+.goal-row,
+.goal-child,
+.goal-composer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.goal-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.goal-title {
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  line-height: 1.35;
+  cursor: text;
+  overflow-wrap: anywhere;
+}
+
+.goal-title--static {
+  cursor: default;
+}
+
+.goal-item--done > .goal-row .goal-title,
+.goal-child.goal-item--done .goal-title {
+  color: var(--color-text-faint);
+  text-decoration: line-through;
+}
+
+.goal-parent {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-faint);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.goal-subtoggle {
+  border: none;
+  background: none;
+  padding: 0;
+  margin-top: 3px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-faint);
+  cursor: pointer;
+}
+
+.goal-subtoggle:hover {
+  color: var(--color-text-secondary);
+}
+
+.goal-check {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: 4px;
+  background: var(--color-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-on-accent);
+  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.goal-check:active {
+  transform: scale(0.85);
+}
+
+.goal-check--done {
+  background: var(--color-text-strong);
+  border-color: var(--color-text-strong);
+  animation: goal-check-pop 0.22s ease-out;
+}
+
+.goal-check--ghost {
+  border-color: var(--color-border);
+  cursor: inherit;
+}
+
+@keyframes goal-check-pop {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.goal-more {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  width: 22px;
+  height: 20px;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  line-height: 1;
+}
+
+.goal-item:hover .goal-more {
+  opacity: 1;
+}
+
+.goal-more:hover {
+  background: var(--color-surface);
+}
+
+.goal-children {
+  margin: 6px 0 0 8px;
+  padding-left: var(--space-3);
+  border-left: 1.5px solid var(--color-border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── add / edit ───────────────────────────────────── */
+.goal-add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 6px var(--space-2) 6px calc(var(--space-2) + 3px);
+  font-size: var(--font-size-base);
+  color: var(--color-text-faint);
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--radius-sm);
+}
+
+.goal-children .goal-add {
+  padding-left: 0;
+}
+
+.goal-add:hover {
+  color: var(--color-text-secondary);
+}
+
+.goal-composer {
+  align-items: center;
+  padding: 4px var(--space-2) 4px calc(var(--space-2) + 3px);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.goal-children .goal-composer {
+  padding-left: var(--space-2);
+}
+
+.goal-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  padding: 2px 0;
+}
+
+.goal-composer-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-faint);
+}
+
+/* ── menu ─────────────────────────────────────────── */
+.goal-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.goal-menu {
+  position: absolute;
+  right: 4px;
+  top: 28px;
+  z-index: 21;
+  min-width: 220px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.goal-menu > button {
+  border: none;
+  background: none;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.goal-menu > button:hover {
+  background: var(--color-bg-muted);
+}
+
+.goal-menu > .goal-menu-danger {
+  color: var(--color-danger);
+}
+
+.goal-menu-colors {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px 8px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 4px;
+}
+
+.goal-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.goal-color--active {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3.5px var(--color-text-secondary);
+}
+
+/* ── errors ─────────────────────────────────────── */
+.goals-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: var(--font-size-base);
+}
+
+.goals-error button {
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* ── « Horizons » view: per-column ‹ › ─────────────── */
+.goals-column-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 24px;
+}
+
+.goals-column-arrows {
+  display: flex;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.goals-column:hover .goals-column-arrows {
+  opacity: 1;
+}
+
+.goals-column-arrows button {
+  border: none;
+  background: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.goals-column-arrows button:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text-primary);
+}
+
+/* No macOS « swipe back » / rubber-band on the goals board: a horizontal
+   swipe slides a column (Horizons view) or scrolls the columns. */
+html:has(.goals-page),
+body:has(.goals-page),
+.goals-page,
+.goals-columns {
+  overscroll-behavior-x: none;
+}
+
+/* Single-horizon tabs: swiping slides the periods, the row never scrolls. */
+.goals-columns--slide {
+  overflow-x: hidden;
+}
+
+.goal-add-plus {
+  width: 15px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--color-text-faint);
+}
+
+.goal-add {
+  opacity: 0.8;
+}
+
+.goals-column:hover .goal-add {
+  opacity: 1;
+}
+
+.goal-carried {
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+  margin-top: 2px;
+}
+
+/* ── hover: the chain lights up, the rest steps back ─── */
+.goal-item {
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.goal-item--lit {
+  background: var(--color-bg-muted);
+}
+
+.goal-item--dim {
+  opacity: 0.45;
+}
+
+/* ── repeating goals: ↻ and the « 7/10 » counter ─────── */
+.goal-repeat {
+  color: var(--color-text-muted);
+}
+
+.goal-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.goal-counter-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+  min-width: 34px;
+}
+
+.goal-counter-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.goal-counter-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+}
+
+.goal-counter-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.goal-repeat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+}
+
+.goal-repeat-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.goal-repeat-form input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font: inherit;
+  font-size: var(--font-size-base);
+}
+
+.goal-repeat-form button {
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-text-strong);
+  color: var(--color-text-on-accent);
+  padding: 5px 10px;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+}
+
+.goal-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* « → S43 »: where a goal is already planned one level down */
+.goal-planned {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-muted);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 17px;
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+
+/* quick « plan one level down » button, shown on hover next to ⋯ */
+.goal-quickplan {
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  height: 20px;
+  min-width: 22px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.goal-item:hover .goal-quickplan {
+  opacity: 1;
+}
+
+.goal-quickplan:hover {
+  background: var(--color-bg-muted);
+}
+
+/* A copy of the goal above (planned one level down): lighter */
+.goal-item--copy > .goal-row .goal-title {
+  color: var(--color-text-secondary);
+}
+
+.goal-copy-mark {
+  color: var(--color-text-faint);
+}
+
+.goal-counter-scope {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-faint);
+  margin-left: 2px;
+}
+
+/* « Supprimé · Annuler » */
+.goals-page {
+  position: relative;
+}
+
+.goals-undo {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-6);
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 9px 10px 9px 16px;
+  border-radius: var(--radius-full);
+  background: var(--color-text-strong);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-base);
+  box-shadow: var(--shadow-lg);
+  max-width: min(560px, 90%);
+}
+
+.goals-undo span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.goals-undo-action {
+  border: none;
+  background: none;
+  color: var(--color-accent-bright);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.goals-undo-close {
+  border: none;
+  background: none;
+  color: inherit;
+  opacity: 0.6;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+}

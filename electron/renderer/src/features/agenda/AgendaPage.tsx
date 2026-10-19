@@ -15,7 +15,9 @@ import { EmptyState, ErrorState, LoadingState } from '../../design-system/States
 import '../leads/lead-create-modal.css'
 import './agenda.css'
 import { useAgendaData } from './useAgendaData'
-import { TimeGridView } from './TimeGridView'
+import { TimeGridView, dayKey, type AgendaGoal } from './TimeGridView'
+import { useGoalMutations, useGoals, useGoalsRollover } from '../goals/use-goals'
+import { todayISO } from '../goals/periods'
 import { ListView, MonthView } from './MonthAndListViews'
 import { EventDetailDrawer } from './EventDetailDrawer'
 import { BookingModal } from './BookingModal'
@@ -127,6 +129,46 @@ export function AgendaPage() {
   }, [view, currentDate])
 
   const periodLabel = formatPeriodLabel(view, currentDate)
+
+  // Day goals (Objectifs): the « Objectifs » strip above the grid, placed ones in it.
+  useGoalsRollover(todayISO())
+  const goalFrom = dayKey(days[0])
+  const goalTo = dayKey(days[days.length - 1])
+  const timeGrid = view === 'day' || view === 'week'
+  const dayGoals = useGoals(timeGrid ? 'day' : null, goalFrom, goalTo)
+  const goalOps = useGoalMutations([dayGoals.key])
+  const agendaGoals: AgendaGoal[] = useMemo(
+    () =>
+      (dayGoals.data?.goals ?? [])
+        .filter((g) => g.horizon === 'day' && g.period_start && g.period_start >= goalFrom && g.period_start <= goalTo)
+        .map((g) => ({
+          id: g.id,
+          title: g.title,
+          done: !!g.done_at,
+          day: g.period_start!,
+          scheduledAt: g.scheduled_at ?? null,
+          durationMinutes: g.duration_minutes ?? 60,
+        })),
+    [dayGoals.data, goalFrom, goalTo],
+  )
+  const scheduleGoal = useCallback(
+    (id: string, day: string, scheduledAt: string | null, durationMinutes: number) => {
+      const goal = agendaGoals.find((g) => g.id === id)
+      void goalOps.update(id, {
+        ...(goal && goal.day !== day ? { period_start: day } : {}),
+        scheduled_at: scheduledAt,
+        duration_minutes: durationMinutes,
+      })
+    },
+    [agendaGoals, goalOps],
+  )
+  const toggleGoal = useCallback(
+    (id: string) => {
+      const goal = agendaGoals.find((g) => g.id === id)
+      if (goal) void goalOps.update(id, { done: !goal.done })
+    },
+    [agendaGoals, goalOps],
+  )
 
   const handleEventClick = useCallback((ev: AgendaEvent) => {
     // Click 1 = highlight; click 2 on the same event = detail drawer.
@@ -388,6 +430,14 @@ export function AgendaPage() {
           </button>
         </div>
       )}
+      {goalOps.error && (
+        <div className="agenda-banner" role="alert">
+          <span>{goalOps.error}</span>
+          <button type="button" onClick={goalOps.clearError}>
+            Fermer
+          </button>
+        </div>
+      )}
       {actionError && (
         <div className="agenda-banner" role="alert">
           <span>{actionError}</span>
@@ -440,6 +490,9 @@ export function AgendaPage() {
           onEventMove={handleEventMove}
           onEventResize={handleEventResize}
           onHoverChange={handleHoverChange}
+          goals={agendaGoals}
+          onGoalSchedule={scheduleGoal}
+          onGoalToggle={toggleGoal}
           onDayHeaderClick={(d) => {
             setCurrentDate(d)
             setView('day')

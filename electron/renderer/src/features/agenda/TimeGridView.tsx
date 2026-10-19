@@ -21,6 +21,24 @@ import {
 } from './agenda-utils'
 import type { AgendaEvent } from './types'
 
+/** A day goal (Objectifs) shown in the Agenda: in the day's strip, or placed at a time. */
+export interface AgendaGoal {
+  id: string
+  title: string
+  done: boolean
+  /** Its day, "YYYY-MM-DD" (local). */
+  day: string
+  scheduledAt: string | null
+  durationMinutes: number
+}
+
+const GOAL_DEFAULT_MINUTES = 60
+
+/** Local "YYYY-MM-DD" of a grid day. */
+export function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 interface TimeGridViewProps {
   days: Date[]
   events: AgendaEvent[]
@@ -31,12 +49,19 @@ interface TimeGridViewProps {
   onEventResize: (ev: AgendaEvent, newDurationMinutes: number) => void
   onDayHeaderClick?: (day: Date) => void
   onHoverChange?: (day: Date | null, hour: number | null) => void
+  /** Day goals: the « Objectifs » strip above the grid, and the placed ones in it. */
+  goals?: AgendaGoal[]
+  /** Place a goal (scheduledAt = null: back to the strip of `day`). */
+  onGoalSchedule?: (id: string, day: string, scheduledAt: string | null, durationMinutes: number) => void
+  onGoalToggle?: (id: string) => void
 }
 
 type Drag =
   | { kind: 'create'; dayIdx: number; anchor: number; current: number; moved: boolean }
   | { kind: 'move'; ev: AgendaEvent; dayIdx: number; startHour: number; offsetMin: number; originX: number; originY: number; moved: boolean }
   | { kind: 'resize'; ev: AgendaEvent; endHour: number; startHour: number; moved: boolean }
+  | { kind: 'goal'; goal: AgendaGoal; dayIdx: number; startHour: number; offsetMin: number; overStrip: boolean; originX: number; originY: number; moved: boolean }
+  | { kind: 'goalResize'; goal: AgendaGoal; startHour: number; endHour: number; moved: boolean }
 
 const DRAG_THRESHOLD_PX = 4
 
@@ -71,7 +96,11 @@ export function TimeGridView({
   onEventResize,
   onDayHeaderClick,
   onHoverChange,
+  goals,
+  onGoalSchedule,
+  onGoalToggle,
 }: TimeGridViewProps) {
+  const stripRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const columnsRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
@@ -115,6 +144,16 @@ export function TimeGridView({
   )
   const hasAllDay = allDayByDay.some((l) => l.length > 0)
 
+  const goalsByDay = useMemo(
+    () =>
+      days.map((d) => {
+        const key = dayKey(d)
+        const mine = (goals ?? []).filter((g) => g.day === key)
+        return { strip: mine.filter((g) => !g.scheduledAt), placed: mine.filter((g) => g.scheduledAt) }
+      }),
+    [days, goals],
+  )
+
   const pointerToGrid = useCallback(
     (clientX: number, clientY: number): { dayIdx: number; hour: number } | null => {
       const el = columnsRef.current
@@ -148,6 +187,16 @@ export function TimeGridView({
         if (!moved) return
         const startHour = Math.min(24 - d.ev.durationMinutes / 60, Math.max(0, snapToQuarter(pos.hour - d.offsetMin / 60)))
         updateDrag({ ...d, dayIdx: pos.dayIdx, startHour, moved: true })
+      } else if (d.kind === 'goal') {
+        const moved = d.moved || Math.abs(e.clientX - d.originX) > DRAG_THRESHOLD_PX || Math.abs(e.clientY - d.originY) > DRAG_THRESHOLD_PX
+        if (!moved) return
+        const stripBottom = stripRef.current?.getBoundingClientRect().bottom ?? -Infinity
+        const overStrip = e.clientY <= stripBottom
+        const startHour = Math.min(24 - d.goal.durationMinutes / 60, Math.max(0, snapToQuarter(pos.hour - d.offsetMin / 60)))
+        updateDrag({ ...d, dayIdx: pos.dayIdx, startHour, overStrip, moved: true })
+      } else if (d.kind === 'goalResize') {
+        const endHour = Math.max(d.startHour + 0.25, Math.min(24, snapToQuarter(pos.hour)))
+        updateDrag({ ...d, endHour, moved: true })
       } else {
         const endHour = Math.max(d.startHour + 0.25, Math.min(24, snapToQuarter(pos.hour)))
         updateDrag({ ...d, endHour, moved: true })
@@ -173,6 +222,20 @@ export function TimeGridView({
         const totalMin = Math.round(d.startHour * 60)
         day.setHours(Math.floor(totalMin / 60), totalMin % 60, 0, 0)
         if (day.getTime() !== new Date(d.ev.start).getTime()) onEventMove(d.ev, day.toISOString())
+      } else if (d.kind === 'goal') {
+        if (!d.moved) return
+        const key = dayKey(days[d.dayIdx])
+        if (d.overStrip) {
+          if (d.goal.scheduledAt || key !== d.goal.day) onGoalSchedule?.(d.goal.id, key, null, d.goal.durationMinutes)
+          return
+        }
+        const at = new Date(days[d.dayIdx])
+        const totalMin = Math.round(d.startHour * 60)
+        at.setHours(Math.floor(totalMin / 60), totalMin % 60, 0, 0)
+        onGoalSchedule?.(d.goal.id, key, at.toISOString(), d.goal.durationMinutes)
+      } else if (d.kind === 'goalResize') {
+        const duration = Math.max(15, Math.round((d.endHour - d.startHour) * 60))
+        if (duration !== d.goal.durationMinutes) onGoalSchedule?.(d.goal.id, d.goal.day, d.goal.scheduledAt, duration)
       } else {
         suppressClickRef.current = true
         const duration = Math.max(15, Math.round((d.endHour - d.startHour) * 60))
@@ -187,7 +250,22 @@ export function TimeGridView({
     }
     // `drag` presence toggles the listeners; the live value is read via ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drag !== null, days, pointerToGrid, onSlotCreate, onEventMove, onEventResize])
+  }, [drag !== null, days, pointerToGrid, onSlotCreate, onEventMove, onEventResize, onGoalSchedule])
+
+  function onGoalMouseDown(e: React.MouseEvent, goal: AgendaGoal, dayIdx: number) {
+    e.stopPropagation()
+    if (e.button !== 0 || goal.id.startsWith('tmp-')) return
+    const start = goal.scheduledAt ? new Date(goal.scheduledAt) : null
+    const startHour = start ? start.getHours() + start.getMinutes() / 60 : 9
+    if ((e.target as HTMLElement).dataset.resizeHandle === 'bottom' && start) {
+      updateDrag({ kind: 'goalResize', goal, startHour, endHour: startHour + goal.durationMinutes / 60, moved: false })
+      return
+    }
+    const pos = pointerToGrid(e.clientX, e.clientY)
+    // From the strip the pointer holds the block's top; in the grid, where it was grabbed.
+    const offsetMin = start && pos ? (pos.hour - startHour) * 60 : 0
+    updateDrag({ kind: 'goal', goal, dayIdx, startHour, offsetMin, overStrip: !start, originX: e.clientX, originY: e.clientY, moved: false })
+  }
 
   function onColumnMouseDown(e: React.MouseEvent, dayIdx: number) {
     if (e.button !== 0) return
@@ -279,6 +357,30 @@ export function TimeGridView({
         </div>
       )}
 
+      {goals && (
+        <div className="agenda-goal-strip" ref={stripRef}>
+          <div className="agenda-allday-label">Objectifs</div>
+          {goalsByDay.map(({ strip }, i) => {
+            const dropHere = drag?.kind === 'goal' && drag.moved && drag.overStrip && drag.dayIdx === i
+            return (
+              <div key={i} className={`agenda-goal-strip-cell${dropHere ? ' agenda-goal-strip-cell--over' : ''}`}>
+                {strip.map((g) => (
+                  <div
+                    key={g.id}
+                    className={`agenda-goal-chip${g.done ? ' agenda-goal-chip--done' : ''}${drag?.kind === 'goal' && drag.moved && drag.goal.id === g.id ? ' agenda-goal-chip--dragging' : ''}`}
+                    title={`${g.title} — glisse-le dans la grille pour le placer à une heure`}
+                    onMouseDown={(e) => onGoalMouseDown(e, g, i)}
+                  >
+                    <GoalCheck done={g.done} onToggle={() => onGoalToggle?.(g.id)} />
+                    <span className="agenda-goal-chip-title">{g.title}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       <div className="agenda-grid-body" ref={bodyRef}>
         <div className="agenda-hours" style={{ height: GRID_HEIGHT }}>
           {Array.from({ length: 23 }, (_, i) => i + 1).map((h) => (
@@ -296,7 +398,12 @@ export function TimeGridView({
         >
           {days.map((day, dayIdx) => {
             const dayEvents = timedByDay[dayIdx]
-            const layout = computeOverlapLayout(dayEvents)
+            const placedGoals = goalsByDay[dayIdx].placed
+            // Goals share the columns with events when they overlap.
+            const layout = computeOverlapLayout([
+              ...dayEvents,
+              ...placedGoals.map((g) => ({ id: `goal-${g.id}`, start: g.scheduledAt!, durationMinutes: g.durationMinutes })),
+            ])
             const today = isSameDay(day, now)
             return (
               <div
@@ -335,6 +442,46 @@ export function TimeGridView({
                   )
                 })}
 
+                {placedGoals.map((g) => {
+                  const pos = eventToPosition(g.scheduledAt!, g.durationMinutes)
+                  const lay = layout.get(`goal-${g.id}`) ?? { column: 0, groupSize: 1 }
+                  const width = 100 / lay.groupSize
+                  const moving = drag?.kind === 'goal' && drag.moved && drag.goal.id === g.id
+                  const resizing = drag?.kind === 'goalResize' && drag.goal.id === g.id
+                  const minutes = resizing ? Math.round((drag.endHour - drag.startHour) * 60) : g.durationMinutes
+                  return (
+                    <GoalBlock
+                      key={`goal-${g.id}`}
+                      goal={g}
+                      minutes={minutes}
+                      dragging={moving}
+                      style={{
+                        top: pos.top,
+                        height: Math.max(18, minutes * PX_PER_MINUTE - 2),
+                        left: `calc(${lay.column * width}% + 2px)`,
+                        width: `calc(${width}% - 4px)`,
+                      }}
+                      onMouseDown={(e) => onGoalMouseDown(e, g, dayIdx)}
+                      onToggle={() => onGoalToggle?.(g.id)}
+                    />
+                  )
+                })}
+
+                {drag?.kind === 'goal' && drag.moved && !drag.overStrip && drag.dayIdx === dayIdx && (
+                  <GoalBlock
+                    goal={drag.goal}
+                    ghost
+                    minutes={drag.goal.durationMinutes}
+                    startHour={drag.startHour}
+                    style={{
+                      top: drag.startHour * 60 * PX_PER_MINUTE,
+                      height: Math.max(18, drag.goal.durationMinutes * PX_PER_MINUTE - 2),
+                      left: 2,
+                      right: 2,
+                    }}
+                  />
+                )}
+
                 {drag?.kind === 'move' && drag.moved && drag.dayIdx === dayIdx && (
                   <EventBlock
                     ev={drag.ev}
@@ -366,6 +513,64 @@ export function TimeGridView({
           })}
         </div>
       </div>
+    </div>
+  )
+}
+
+function GoalCheck({ done, onToggle }: { done: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className={`agenda-goal-check${done ? ' agenda-goal-check--done' : ''}`}
+      aria-label={done ? 'Décocher' : 'Cocher'}
+      aria-pressed={done}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation()
+        onToggle()
+      }}
+    >
+      {done && (
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+/** A placed goal: lighter than a booking (dashed edge), its own checkbox, resizable. */
+function GoalBlock({
+  goal,
+  style,
+  minutes,
+  dragging = false,
+  ghost = false,
+  startHour,
+  onMouseDown,
+  onToggle,
+}: {
+  goal: AgendaGoal
+  style: React.CSSProperties
+  minutes: number
+  dragging?: boolean
+  ghost?: boolean
+  startHour?: number
+  onMouseDown?: (e: React.MouseEvent) => void
+  onToggle?: () => void
+}) {
+  const start = startHour !== undefined ? hourToHHmm(startHour) : goal.scheduledAt ? toTimeInput(new Date(goal.scheduledAt)) : ''
+  const classes = ['agenda-goal-block', goal.done ? 'agenda-goal-block--done' : '', dragging ? 'agenda-goal-block--dragging' : '', ghost ? 'agenda-goal-block--ghost' : '']
+    .filter(Boolean)
+    .join(' ')
+  return (
+    <div className={classes} style={style} onMouseDown={onMouseDown} title={goal.title}>
+      <div className="agenda-goal-block-row">
+        {!ghost && <GoalCheck done={goal.done} onToggle={() => onToggle?.()} />}
+        <span className="agenda-goal-block-title">{goal.title}</span>
+      </div>
+      {minutes > 30 && <span className="agenda-goal-block-time">{start}</span>}
+      {!ghost && <span className="agenda-event-resize" data-resize-handle="bottom" />}
     </div>
   )
 }

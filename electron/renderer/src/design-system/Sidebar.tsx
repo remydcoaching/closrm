@@ -156,7 +156,7 @@ const MessagesIcon = (
 // badge, not a fake "0", is the honest default per the no-fake-data rule.
 const NAV_ITEMS: SidebarItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-  { to: '/agenda', label: 'Agenda', icon: AgendaIcon, matchPaths: ['/agenda'] },
+  { to: '/agenda', label: 'Agenda', icon: AgendaIcon, matchPaths: ['/agenda', '/objectifs'] },
   // Pipeline, Closing, Relances and Deals are tabs of the Leads page.
   { to: '/leads', label: 'Leads', icon: LeadsIcon, matchPaths: ['/pipeline', '/closing', '/relances', '/deals', '/instagram/sessions-dm'] },
 ]

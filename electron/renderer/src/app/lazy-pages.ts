@@ -41,6 +41,7 @@ export const FunnelsPage = page(() => import('../features/marketing/FunnelsPage'
 export const EmailsPage = page(() => import('../features/marketing/EmailsPage'), 'EmailsPage')
 export const AutomationsPage = page(() => import('../features/marketing/AutomationsPage'), 'AutomationsPage')
 export const MessagesPage = page(() => import('../features/marketing/MessagesPage'), 'MessagesPage')
+export const GoalsPage = page(() => import('../features/goals/GoalsPage'), 'GoalsPage')
 export const AgendaPage = page(() => import('../features/agenda/AgendaPage'), 'AgendaPage')
 export const BookingPagesPage = page(() => import('../features/agenda/BookingPagesPage'), 'BookingPagesPage')
 export const BookingCalendarEditPage = page(() => import('../features/agenda/BookingCalendarEditPage'), 'BookingCalendarEditPage')

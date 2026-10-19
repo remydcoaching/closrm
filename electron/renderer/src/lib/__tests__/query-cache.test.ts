@@ -103,4 +103,23 @@ describe('query-cache', () => {
     setCached('/fresh', 3)
     expect(staleRecentKeys(10, 60_000)).toEqual(['/new', '/old'])
   })
+
+  it('ignores a fetch answer that started before a write, and fetches again', async () => {
+    setCachePartition('user-a')
+    let resolveOld: (v: string[]) => void = () => {}
+    get.mockImplementationOnce(() => new Promise((r) => { resolveOld = r }))
+    get.mockResolvedValueOnce(['after write'])
+    setCached('/api/x', ['before'])
+    const unsub = subscribe('/api/x', () => {})
+    const old = revalidate('/api/x') // started before the write
+    setCached('/api/x', ['optimistic'])
+    invalidate('/api/x') // the write is done: refetch
+    resolveOld(['before write'])
+    await old
+    await Promise.resolve()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(getCached<string[]>('/api/x')?.data).toEqual(['after write'])
+    expect(get).toHaveBeenCalledTimes(2)
+    unsub()
+  })
 })

@@ -25,6 +25,27 @@ Chaque amélioration suit ce format :
 
 ## Améliorations en attente de validation
 
+### A-050-3 — Objectifs : page Rapport
+- **Contexte :** idée de Pierre pendant la conception des objectifs récurrents.
+- **Description :** une page Rapport des objectifs : cumul des occurrences récurrentes par mois et par trimestre (par exemple 27/40 posts en octobre), séries de semaines réussies, taux d'objectifs faits par horizon.
+- **Priorité estimée :** Basse (pas la priorité selon Pierre)
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
+### A-050-1 — Objectifs : vue « Horizons » d'ensemble
+- **Contexte :** identifiée pendant la tâche 050. Timestripe a une vue qui réunit l'Inbox, aujourd'hui, la semaine, le mois, l'année et la vie, chacun sur sa période courante.
+- **Description :** ajouter un 7ᵉ onglet qui affiche une colonne par horizon, chacune sur sa période courante.
+- **Priorité estimée :** Moyenne
+- **Effort estimé :** Faible
+- **Statut :** En attente de validation
+
+### A-050-2 — Objectifs : glisser-déposer à la position près et défilement infini
+- **Contexte :** en v1, un objectif déposé dans une autre colonne se place en fin de colonne, et on navigue avec ‹ ›. `computeMove()` est déjà prêt et testé.
+- **Description :** ajouter une ligne d'insertion pendant le glisser, permettre de réordonner dans une même colonne, et charger les colonnes au défilement.
+- **Priorité estimée :** Basse
+- **Effort estimé :** Moyen
+- **Statut :** En attente de validation
+
 ### A-044-1 — Virtualisation table Leads (react-window)
 - **Contexte :** Identifiée pendant T-044 (audit perf). Avec 25 rows par page actuellement c'est OK, mais si on bumped à 50-100 rows/page la table devient lourde (11 colonnes × N).
 - **Description :** Ajouter react-window ou @tanstack/react-virtual pour ne rendre que les rows visibles. Permet aussi d'envisager un scroll infini en remplacement de la pagination.

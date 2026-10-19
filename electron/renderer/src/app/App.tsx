@@ -34,6 +34,7 @@ import {
   AutomationsPage,
   MessagesPage,
   AgendaPage,
+  GoalsPage,
   BookingPagesPage,
   BookingCalendarEditPage,
   StatsPage,
@@ -83,6 +84,7 @@ function AppRoutes() {
         <Route element={<TabGroupLayout group={TAB_GROUPS.agenda} />}>
           <Route path="agenda" element={<AgendaPage />} />
           <Route path="agenda/pages" element={<BookingPagesPage />} />
+          <Route path="objectifs" element={<GoalsPage />} />
         </Route>
         <Route path="agenda/pages/:id" element={<BookingCalendarEditPage />} />
         <Route element={<TabGroupLayout group={TAB_GROUPS.stats} />}>
